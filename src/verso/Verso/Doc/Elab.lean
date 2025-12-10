@@ -191,6 +191,8 @@ public meta def _root_.Lean.Doc.Syntax.code.expand : InlineExpander
   | _ => throwUnsupportedSyntax
 
 
+-- Copy and paste this on our file, it tries this in order, with the
+-- most recently declared one first. Great.
 @[inline_expander Lean.Doc.Syntax.inline_math]
 public meta def _root_.Lean.Doc.Syntax.inline_math.expand : InlineExpander
   |  `(inline| \math code( $s )) =>

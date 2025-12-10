@@ -3,11 +3,18 @@ open Lake DSL
 
 require subverso from git "https://github.com/leanprover/subverso"@"main"
 require MD4Lean from git "https://github.com/acmepjz/md4lean"@"main"
-require plausible from git "https://github.com/leanprover-community/plausible"@"main"
+-- require plausible from git "https://github.com/leanprover-community/plausible"@"main"
+
+-- For blueprints
+require mathlib from git "https://github.com/leanprover-community/mathlib4"@"v4.28.0-rc1"
+-- require architect from git "https://github.com/hanwenzhu/LeanArchitect"@"main"
 
 package verso where
   precompileModules := false -- temporarily disabled to work around an issue with nightly-2025-03-30
   leanOptions := #[⟨`experimental.module, true⟩]
+  -- moreLeancArgs := #["-O0", "-mllvm", "-fast-isel", "-mllvm", "-fast-isel-abort=0"]
+
+require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.86"
 
 @[default_target]
 lean_lib VersoUtil where
@@ -58,6 +65,12 @@ lean_lib VersoTutorial where
   srcDir := "src/verso-tutorial"
   roots := #[`VersoTutorial]
   needs := #[tutorialDefaultCss]
+
+@[default_target]
+lean_lib VersoBlueprint where
+  srcDir := "src/verso-blueprint"
+  roots := #[`VersoBlueprint]
+--  needs := #[findJs]
 
 @[default_target]
 lean_exe «verso» where
@@ -163,6 +176,17 @@ lean_lib TutorialExample where
 @[default_target]
 lean_exe «tutorial-example» where
   srcDir := "test-projects/tutorial-test"
+  root := `Main
+  supportInterpreter := true
+
+-- An example of a "math blueprint" project built in Verso
+lean_lib Noperthedron where
+  srcDir := "test-projects/Noperthedron"
+  roots := #[`Contents, `Chapters, `Noperthedron]
+
+@[default_target]
+lean_exe noperthedron where
+  srcDir := "test-projects/Noperthedron"
   root := `Main
   supportInterpreter := true
 
