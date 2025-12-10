@@ -1258,7 +1258,6 @@ def sectionNumberString (num : Array Numbering) : String := Id.run do
 def sectionString (ctxt : TraverseContext) : Option String :=
   ctxt.sectionNumber.mapM id |>.map sectionNumberString
 
-
 def sectionDomain := `Verso.Genre.Manual.section
 
 open Verso.Search in

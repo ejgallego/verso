@@ -1,0 +1,12 @@
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Analysis.Calculus.Taylor
+import Mathlib.Analysis.SpecialFunctions.Trigonometric.Deriv
+import Mathlib.Data.Int.Star
+import Mathlib.Data.Real.StarOrdered
+import Noperthedron.RationalApprox.Basic
+import Noperthedron.RationalApprox.Lemma39
+import Noperthedron.RationalApprox.Lemma42
+import Noperthedron.RationalApprox.RationalLocal
+import Noperthedron.RationalApprox.ApproximableMatrices
+import Noperthedron.RationalApprox.MatrixBounds
+import Noperthedron.RationalApprox.TrigLemmas
