@@ -891,10 +891,10 @@ def leanFromMarkdown.blockdescr : BlockDescr := withHighlighting {
 open Lean Elab Term in
 def tryElabCodeTermWith (mk : Highlighted → String → DocElabM α) (str : String) (ignoreElabErrors := false) (identOnly := false) : DocElabM α := do
   let loc := (← getRef).getPos?.map (← getFileMap).utf8PosToLspPos
-  let src :=
+  let fileName :=
     if let some ⟨line, col⟩ := loc then s!"<docstring at {← getFileName}:{line}:{col}>"
     else s!"<docstring at {← getFileName} (unknown line)>"
-  match Parser.runParserCategory (← getEnv) `term str src with
+  match (← SyntaxUtils.runParserCategory `term str fileName) with
   | .error e => throw (.error (← getRef) e)
   | .ok stx => DocElabM.withFileMap (.ofString str) <| do
     if stx.isIdent && (← readThe Term.Context).autoBoundImplicitContext.isSome then
@@ -936,10 +936,10 @@ scoped syntax (name := docMetavar) term ":" term : doc_metavar
 open Lean Elab Term in
 def tryElabCodeMetavarTermWith (mk : Highlighted → String → DocElabM α) (str : String) (ignoreElabErrors := false) : DocElabM α := do
   let loc := (← getRef).getPos?.map (← getFileMap).utf8PosToLspPos
-  let src :=
+  let fileName :=
     if let some ⟨line, col⟩ := loc then s!"<docstring at {← getFileName}:{line}:{col}>"
     else s!"<docstring at {← getFileName} (unknown line)>"
-  match Parser.runParserCategory (← getEnv) `doc_metavar str src with
+  match (← SyntaxUtils.runParserCategory `doc_metavar str fileName) with
   | .error e => throw (.error (← getRef) e)
   | .ok stx => DocElabM.withFileMap (.ofString str) <| do
     if let `(doc_metavar|$pat:term : $ty:term) := stx then
@@ -994,10 +994,10 @@ def tryElabBlockCodeTerm (str : String)  (ignoreElabErrors := false) : DocElabM 
 open Lean Elab Term in
 def tryParseInlineCodeTactic (str : String) : DocElabM Term := do
   let loc := (← getRef).getPos?.map (← getFileMap).utf8PosToLspPos
-  let src :=
+  let fileName :=
     if let some ⟨line, col⟩ := loc then s!"<docstring at {← getFileName}:{line}:{col}>"
     else s!"<docstring at {← getFileName} (unknown line)>"
-  match Parser.runParserCategory (← getEnv) `tactic str src with
+  match (← SyntaxUtils.runParserCategory `tactic str fileName) with
   | .error e => throw (.error (← getRef) e)
   | .ok stx => DocElabM.withFileMap (.ofString str) <| do
     -- TODO try actually running the tactic - if the parameters are simple enough, then it may work
@@ -1080,7 +1080,7 @@ def tryParseInlineCodeAttribute (validate := true) (str : String) : DocElabM Ter
   let src :=
     if let some ⟨line, col⟩ := loc then s!"<docstring at {← getFileName}:{line}:{col}>"
     else s!"<docstring at {← getFileName} (unknown line)>"
-  match Parser.runParserCategory (← getEnv) `braces_attr str src with
+  match (← SyntaxUtils.runParserCategory `braces_attr str) with
   | .error e => throw (.error (← getRef) e)
   | .ok stx => DocElabM.withFileMap (.ofString str) <| do
     let inner := getAttr stx
