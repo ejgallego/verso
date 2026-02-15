@@ -13,6 +13,7 @@ import VersoManual
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
 import VersoBlueprint.Commands
+import VersoBlueprint.Lean
 -- import DevWidgets.DHover
 -- import DevWidgets.InfoViewExplorer
 
@@ -62,8 +63,10 @@ Elaboration, traversal, and rendering are standard, using {ref VersoManual} help
   characterized by its canonical name declared by the user. -/
 def informal : Domain := {}
 
-/-- Name used in `TraverseState.domains` for informal objects. -/
+/-- Name used in {name}`TraverseState.domains` for informal objects. -/
 def informalDomain : Name := Name.mkSimple "Informal.Block.informal"
+/-- Name used in {name}`TraverseState.domains` for informal Lean code blocks. -/
+def informalCodeDomain : Name := Name.mkSimple "Informal.Block.informalCode"
 
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
@@ -111,24 +114,145 @@ structure BlockData where
   count : Nat
 deriving FromJson, ToJson, Quote
 
+structure CodeBlockData where
+  label : Data.Label
+  definedConsts : Array Name := #[]
+  definedProofs : Array Name := #[]
+deriving FromJson, ToJson, Quote
+
 structure ComputedData where
   proved : Bool := false
+  codeHref : Option String := none
+  codeHover : Option String := none
 
-def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (content : Array Output.Html) : Output.Html :=
-  open Verso.Output.Html in
-  if data.kind = .code_ then
-    {{ "hidden lean code" }}
+def codeHoverText (label : Data.Label) (definedConsts definedProofs : Array Name) : String :=
+  if definedConsts.isEmpty && definedProofs.isEmpty then
+    s!"{label}"
   else
-    {{ <div class="bp_wrapper" id=s!"{data.label}">
-         <div class="bp_heading">
-           <span class="bp_caption"> s!"{data.kind}" </span>
-           <span class="bp_label"> s!"{data.label}" </span>
-           <div class="bp_extras"> {{ if cdata.proved then "✓" else "" }} </div>
-           <div class="bp_hiddenextras"> </div>
+    let defs :=
+      if definedConsts.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (definedConsts.toList.map toString)
+    let prfs :=
+      if definedProofs.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (definedProofs.toList.map toString)
+    s!"{label}\nLean definitions: {defs}\nLean proofs: {prfs}"
+
+def blueprintCss : String := r##"
+.bp_wrapper {
+  --bp-border: #dbe4f0;
+  --bp-heading-bg: #f8fafc;
+  --bp-caption-bg: #e2e8f0;
+  --bp-caption-fg: #0f172a;
+  --bp-content-fg: #0f172a;
+  --bp-link-bg: #0f172a;
+  --bp-link-fg: #f8fafc;
+  scroll-margin-top: 1rem;
+  margin: 1rem 0;
+  border: 1px solid var(--bp-border);
+  border-radius: 0.45rem;
+  background: white;
+  overflow: clip;
+}
+
+.bp_heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--bp-border);
+  background: var(--bp-heading-bg);
+}
+
+.bp_caption {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--bp-caption-bg);
+  color: var(--bp-caption-fg);
+  font-size: 0.84rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.bp_extras {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bp_code_link {
+  display: inline-block;
+  padding: 0.08rem 0.4rem;
+  border-radius: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 650;
+  background: var(--bp-link-bg);
+  color: var(--bp-link-fg);
+  text-decoration: none;
+}
+
+.bp_code_link:hover {
+  text-decoration: underline;
+}
+
+.bp_content {
+  color: var(--bp-content-fg);
+  padding: 0.75rem 0.85rem 0.85rem;
+}
+
+.bp_content > :first-child {
+  margin-top: 0;
+}
+
+.bp_content > :last-child {
+  margin-bottom: 0;
+}
+
+.bp_wrapper:target {
+  animation: bp-target-pulse 1.6s ease-out;
+  box-shadow: 0 0 0 0.18rem rgba(37, 99, 235, 0.22);
+  border-radius: 0.35rem;
+}
+
+@keyframes bp-target-pulse {
+  0% {
+    background-color: rgba(37, 99, 235, 0.14);
+    box-shadow: 0 0 0 0.28rem rgba(37, 99, 235, 0.28);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: 0 0 0 0.18rem rgba(37, 99, 235, 0.22);
+  }
+}
+"##
+
+def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : Array (String × String))
+    (content : Array Output.Html) : Output.Html :=
+  open Verso.Output.Html in
+  let titleText := s!"{data.kind} {data.count}"
+  let labelText := s!"{data.label}"
+  {{ <div class="bp_wrapper" title={{labelText}} {{attrs}}>
+       <div class="bp_heading">
+         <span class="bp_caption" title={{labelText}}> {{titleText}} </span>
+         <div class="bp_extras">
+           {{ if cdata.proved then "✓" else "" }}
+           {{
+             if let some href := cdata.codeHref then
+               let hover := cdata.codeHover.getD labelText
+               {{ <a class="bp_code_link" href={{href}} title={{hover}}>"L∃∀N"</a> }}
+             else ""
+           }}
          </div>
-         <div class="bp_content"> {{ content }} </div>
+         <div class="bp_hiddenextras"> </div>
        </div>
-    }}
+       <div class="bp_content"> {{ content }} </div>
+     </div>
+  }}
 
 /- Informal custom blocks -/
 block_extension Block.informal (data : BlockData) where
@@ -149,24 +273,77 @@ block_extension Block.informal (data : BlockData) where
       modify λ s => s.saveDomainObjectData informalDomain label.toString (toJson blockData)
       return none
   toTeX := none
+  extraCss := singleton ⟨blueprintCss⟩
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
-    some <| fun _goI goB _id data blocks => do
+    some <| fun _goI goB id data blocks => do
       let .ok data := fromJson? (α := BlockData) data
         | HtmlT.logError s!"Malformed data: {data}"
           pure .empty
       let s ← HtmlT.state
+      let attrs := s.htmlId id
       let dentry : Json := ((s.getDomainObject? informalDomain data.label.toString).map (·.data)).getD (.str "")
-      let cdata := { proved := true }
-      return toHtml data cdata dentry (← blocks.mapM goB)
+      let codeHref : Option String :=
+        match s.resolveDomainObject informalCodeDomain data.label.toString with
+        | .ok dest => some dest.relativeLink
+        | .error _ => none
+      let codeHover : Option String :=
+        match s.getDomainObject? informalCodeDomain data.label.toString with
+        | none => none
+        | some obj =>
+          match fromJson? (α := CodeBlockData) obj.data with
+          | .ok cdata => some (codeHoverText data.label cdata.definedConsts cdata.definedProofs)
+          | .error _ => none
+      let cdata := { proved := true, codeHref, codeHover }
+      return toHtml data cdata dentry attrs (← blocks.mapM goB)
+
+block_extension Block.informalCode (data : CodeBlockData) where
+  data := toJson data
+  traverse id data _contents := do
+    let .ok cdata@{ label, definedConsts := _, definedProofs := _ } := fromJson? (α := CodeBlockData) data
+      | logError s!"Malformed data: {data}"
+        pure none
+    if let .some _d := (← get).getDomainObject? informalCodeDomain label.toString then
+      pure none
+    else
+      let path ← (·.path) <$> read
+      let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-code-{label}"
+      modify λ s => s.saveDomainObject informalCodeDomain label.toString id
+      modify λ s => s.saveDomainObjectData informalCodeDomain label.toString (toJson cdata)
+      pure none
+  toTeX := none
+  toHtml :=
+    open Verso.Doc.Html in
+    open Verso.Output.Html in
+    some <| fun _goI goB id data blocks => do
+      let .ok { label, definedConsts, definedProofs } := fromJson? (α := CodeBlockData) data
+        | HtmlT.logError s!"Malformed data: {data}"
+          pure .empty
+      let s ← HtmlT.state
+      let attrs := s.htmlId id
+      let summaryText :=
+        match s.getDomainObject? informalDomain label.toString with
+        | some obj =>
+          match fromJson? (α := BlockData) obj.data with
+          | .ok b => s!"Code for {b.kind} {b.count}"
+          | .error _ => "Code"
+        | none => "Code"
+      let summaryHover := codeHoverText label definedConsts definedProofs
+      pure {{
+        <details class="bp_code_block" {{attrs}}>
+          <summary title={{summaryHover}}> {{summaryText}} </summary>
+          {{ ← blocks.mapM goB }}
+        </details>
+      }}
 
 /-- Informal directives -/
 def expander (kind : BlockKind) : DirectiveExpanderOf Config
   | cfg, contents => do
     let label := cfg.label
     let isProof := (kind == .proof_)
-    Environment.push label isProof
+    let kind? := if isProof then none else some (toString kind)
+    Environment.push label kind? isProof
     let contents ← contents.mapM elabBlock
     let ref ← getRef
     let proof := if isProof then some ref else none
@@ -182,29 +359,48 @@ def expander (kind : BlockKind) : DirectiveExpanderOf Config
 
 -- Have a look to MonadQuotation ()
 
-/-- Formal (lean) code blocks -/
-
--- XXX: Needs fixing upstream, maybe fork?
-def default_config : InlineLean.LeanBlockConfig where
-  «show» := true
-  keep := true
-  name := none
-  error := false
-  fresh := false
+-- Formal (lean) code blocks.
 
 /-- Interpreting Embedded Lean Code blocks -/
 @[code_block]
 def lean : CodeBlockExpanderOf Config
   | cfg, contents => do
-    -- XXX: do something fun with cfg.label
-    let data : BlockData := { kind := .code_, label := cfg.label, count := 0}
-    let codeBlock ← InlineLean.lean default_config contents
-    ``(Block.other (Block.informal $(quote data)) #[$codeBlock])
+    let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some (cfg.label : Lean.Name) }
+    let res ← Lean.elabCommands leanCfg contents
+    let codeBlock := res.block
+    let definedConsts := res.definedConsts
+    let definedProofs := res.definedProofs
+    let data : CodeBlockData := { label := cfg.label, definedConsts, definedProofs }
+    let codeRef ← getRef
+    let codeInfo : Data.CodeInfo := { proved := !definedProofs.isEmpty, definedConsts, definedProofs }
+    Environment.registerCode cfg.label codeRef (some codeInfo)
+    ``(Block.other (Block.informalCode $(quote data)) #[$codeBlock])
+
+/-- Internal Lean setup blocks:
+executed but not rendered and not tracked as blueprint code blocks. -/
+@[code_block]
+def internal : CodeBlockExpanderOf Unit
+  | _, contents => do
+    let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with «show» := false, name := none }
+    let _ ← Lean.elabCommands leanCfg contents
+    ``(Block.concat #[])
 
 structure InlineData where
   label : Data.Label
   block : Option BlockData
 deriving FromJson, ToJson, Quote
+
+def Data.Node.toBlockInfo (node : Data.Node) (label : Data.Label) : BlockData :=
+  let kind :=
+    match node.kind with
+    | "Definition" => BlockKind.def_
+    | "Lemma" => BlockKind.lem_
+    | "Theorem" => BlockKind.thm_
+    | "Proof" => BlockKind.proof_
+    | "Corollary" => BlockKind.cor_
+    | "Lean Code" => BlockKind.code_
+    | _ => BlockKind.lem_
+  { kind, label, count := node.count }
 
 inline_extension Inline.informal (data : InlineData) where
   data := toJson data
@@ -249,13 +445,16 @@ inline_extension Inline.informal (data : InlineData) where
       | none, false =>
         return {{ <span> {{ ← inlines.mapM goI }} </span> }}
       | some block, true =>
+        let labelText := s!"{label}"
+        let titleText := s!"{block.kind} {block.count}"
         if let some href := href then
-          return {{ <span> <a href={{href}}>s!"{block.kind} {block.count}" </a> </span> }}
+          return {{ <span> <a href={{href}} title={{labelText}}> {{titleText}} </a> </span> }}
         else
-          return {{ <span> s!"{block.kind} {block.count}" </span> }}
+          return {{ <span title={{labelText}}> {{titleText}} </span> }}
       | some _block, false =>
+        let labelText := s!"{label}"
         if let some href := href then
-          return {{ <span> <a href={{href}}> {{ ← inlines.mapM goI }} </a> </span> }}
+          return {{ <span> <a href={{href}} title={{labelText}}> {{ ← inlines.mapM goI }} </a> </span> }}
         else
           return {{ <span> {{ ← inlines.mapM goI }} </span> }}
   toTeX := none
@@ -265,9 +464,9 @@ def uses : RoleExpanderOf Config
   | cfg, contents => do
     let contents ← contents.mapM elabInline
     let label := cfg.label
-    let _node ← Environment.getNode? label
+    let node ← Environment.getNode? label
     Environment.addDep (← getRef) label
-    let data : InlineData := { label, block := none }
+    let data : InlineData := { label, block := node.map (fun n => n.toBlockInfo label) }
     ``(Inline.other (Inline.informal $(quote data)) #[$contents,*])
 
 -- Extra stuff

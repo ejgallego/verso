@@ -15,6 +15,7 @@ open Informal.Data
 
 structure InProgress where
   label : Label
+  kind? : Option String := none
   deps : Array Label
 deriving Inhabited, Repr
 
@@ -62,11 +63,11 @@ def checkLabelAndNesting (label : Label) (isProof : Bool) : m Unit := do
   | (_, _, false) => logError m!"Cannot declare nested definitions"
 
 -- stack operators, to associate {uses} role to the currently opened label
-def push (label : Label) (isProof : Bool) : m Unit := do
+def push (label : Label) (kind? : Option String) (isProof : Bool) : m Unit := do
   -- logInfo m!"push for {label} {isProof}"
   checkLabelAndNesting label isProof
   modify fun data =>
-    let pdata := { label, deps := #[] }
+    let pdata := { label, kind?, deps := #[] }
     { data with stack := pdata :: data.stack }
 
 def getCount : m Nat := do
@@ -78,7 +79,7 @@ def pop (isProof : Option Syntax) : m Nat := do
     logError m!"Internal Error: closing non-opened directive"
     return state
   | cur :: stack =>
-    let data ← state.data.register cur.label cur.deps isProof
+    let data ← state.data.register cur.label cur.kind? cur.deps isProof
     return { state with data, stack }
   getCount
 
@@ -97,6 +98,11 @@ def addDep (stx : Syntax) (dep : Name) : m Unit := do
     let cur := { cur with deps := cur.deps.push dep }
     let stack := cur :: rest
     modify fun state => { state with stack }
+
+def registerCode (label : Label) (code : Syntax) (info : Option CodeInfo := none) : m Unit := do
+  modifyM fun state => do
+    let data ← state.data.registerCode label code info
+    return { state with data }
 
 def getNode? (label : Label) : m (Option Node) := do
   return (informalExt.getState (← getEnv)).data.get? label
