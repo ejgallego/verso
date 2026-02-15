@@ -9,9 +9,10 @@ import VersoManual
 import VersoBlueprint
 import VersoBlueprint.Commands
 
+import Bibliography
 import Chapters.Noperthedron
--- import Chapters.Bounding
--- import Chapters.Prelims
+import Chapters.Bounding
+import Chapters.Prelims
 -- import Chapters.GlobalTheorem
 -- import Chapters.LocalTheorem
 -- import Chapters.Rational
@@ -34,27 +35,13 @@ authors := ["David Renshaw", "Jason Reed"]
 
 # Introduction
 
-We follow for the most part the structure of `\cite{polyhedron.without.rupert}`.
+We follow for the most part the structure of {citet polyhedron.without.rupert}[].
 
-```
--- {include 0 Chapters.Bounding}
--- {include 0 Chapters.Prelims}
--- {include 0 Chapters.GlobalTheorem}
--- {include 0 Chapters.LocalTheorem}
--- {include 0 Chapters.Rational}
--- {include 0 Chapters.Computational}
-```
-
-{include 0 Chapters.Main}
 {include 0 Chapters.Noperthedron}
+{include 0 Chapters.Bounding}
+{include 0 Chapters.Prelims}
 
 # Bibliography
-
-```
--- TODO
-\bibliographystyle{alpha}
-\bibliography{references}
-```
 
 {blueprint_graph}
 

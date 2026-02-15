@@ -255,8 +255,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       cmdState := { cmdState with messages := messages }
 
 
-      cmdState ← withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
-        runCommand (Command.elabCommand cmd) cmd cctx cmdState
+      cmdState ← runCommand (Command.elabCommand cmd) cmd cctx cmdState
 
       if Parser.isTerminalCommand cmd then break
 
