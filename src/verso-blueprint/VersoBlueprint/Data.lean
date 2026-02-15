@@ -27,20 +27,23 @@ instance [Repr A] : Repr (LabelMap A) := inferInstanceAs <| Repr (NameMap A)
 structure CodeInfo where
   proved : Bool := false
   deps : Array Label := #[]
+  definedConsts : Array Name := #[]
+  definedProofs : Array Name := #[]
 deriving Repr, Inhabited
 
 -- def CodeInfo.get (name : Name) : CodeInfo := by sorry
 
 structure Code where
   code : Syntax := .missing
-  info : Option CodeInfo
+  info : Option CodeInfo := none
 deriving Repr, Inhabited
 
 structure Node where
   kind : String := "Lemma"
+  count : Nat := 0
   statement : Syntax := .missing -- Informal Object statement
   proof : Syntax := .missing -- Informal Object proof
-  code : Syntax := .missing -- Informal Object associated code
+  code : Code := {} -- Informal Object associated code
   deps : Array Label := #[] -- Informal Object deps
 deriving Repr, Inhabited
 
@@ -69,10 +72,12 @@ variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
 -- XXX: needs: test
 /-- registers an informal definition, will error if already existing -/
-def Data.register (data : Data) (label : Label) (deps : Array Label) (isProof : Option Syntax) : m Data := do
+def Data.register (data : Data) (label : Label) (kind? : Option String) (deps : Array Label)
+    (isProof : Option Syntax) : m Data := do
   match data.get? label, isProof with
   | none, none =>
-    return data.insert label { deps }
+    let count := data.size + 1
+    return data.insert label { deps, count, kind := kind?.getD "Lemma" }
   | none, some _ =>
     -- logError m!"No statement for proof with label {label}"
     return data
@@ -84,6 +89,19 @@ def Data.register (data : Data) (label : Label) (deps : Array Label) (isProof : 
       return data.modify label fun node => { node with proof }
     else
       -- logError m!"{label} already has a proof"
+      return data
+
+/-- Register Lean code and code metadata for an informal object label. -/
+def Data.registerCode (data : Data) (label : Label) (code : Syntax) (info : Option CodeInfo := none) : m Data := do
+  match data.get? label with
+  | none =>
+    return data.insert label { code := { code, info } }
+  | some node =>
+    if node.code.code == .missing then
+      return data.modify label fun node => { node with code := { code, info } }
+    else
+      -- Could also append multiple code blocks here instead of erroring.
+      logError m!"Label {label} already has code"
       return data
 
 end

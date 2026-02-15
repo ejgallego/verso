@@ -33,7 +33,7 @@ set_option verso.code.warnLineLength 0
 
 #doc (Manual) "The Noperthedron" =>
 
-```lean "internal"
+```internal
 open scoped Matrix
 namespace Nopert
 open Real
@@ -415,7 +415,7 @@ The {uses "def:noperthedron"}[noperthedron] is {uses "def:pointsymmetric"}[point
 :::
 
 :::proof "lemma:nopert_point_symmetric"
-Follows from Lemma~{uses "lemma:pointsymmetrization_is_pointsym"}[]
+Follows from {uses "lemma:pointsymmetrization_is_pointsym"}[]
 :::
 
 # Refined Rupert's property for the Noperthedron
