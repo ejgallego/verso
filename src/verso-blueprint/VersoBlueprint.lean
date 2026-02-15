@@ -62,6 +62,9 @@ Elaboration, traversal, and rendering are standard, using {ref VersoManual} help
   characterized by its canonical name declared by the user. -/
 def informal : Domain := {}
 
+/-- Name used in `TraverseState.domains` for informal objects. -/
+def informalDomain : Name := Name.mkSimple "Informal.Block.informal"
+
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
   label : Data.Label
@@ -134,17 +137,16 @@ block_extension Block.informal (data : BlockData) where
   data := toJson data
   traverse id data _contents := do
     -- XXX: (maybe) lift the Except into the main monad error thread
-    let .ok { kind := _, label, count := _ } := fromJson? (α := BlockData) data
+    let .ok blockData@{ kind := _, label, count := _ } := fromJson? (α := BlockData) data
       | logError s!"Malformed data: {data}"
         pure none
-    let d : Option Multi.Domain := (← get).domains.get? ``informal
-    let size : Nat := d.map (·.objects.size) |>.getD 0
-    if let .some _d := (← get).getDomainObject? ``informal label.toString then
+    if let .some _d := (← get).getDomainObject? informalDomain label.toString then
       return none
     else
-      let n_entry := size + 1
-      modify λ s => s.saveDomainObject ``informal label.toString id
-      modify λ s => s.saveDomainObjectData ``informal label.toString n_entry
+      let path ← (·.path) <$> read
+      let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-{label}"
+      modify λ s => s.saveDomainObject informalDomain label.toString id
+      modify λ s => s.saveDomainObjectData informalDomain label.toString (toJson blockData)
       return none
   toTeX := none
   toHtml :=
@@ -155,7 +157,7 @@ block_extension Block.informal (data : BlockData) where
         | HtmlT.logError s!"Malformed data: {data}"
           pure .empty
       let s ← HtmlT.state
-      let dentry : Json := ((s.getDomainObject? ``informal data.label.toString).map (·.data)).getD (.str "")
+      let dentry : Json := ((s.getDomainObject? informalDomain data.label.toString).map (·.data)).getD (.str "")
       let cdata := { proved := true }
       return toHtml data cdata dentry (← blocks.mapM goB)
 
@@ -206,7 +208,19 @@ deriving FromJson, ToJson, Quote
 
 inline_extension Inline.informal (data : InlineData) where
   data := toJson data
-  traverse _id _data _contents := pure none
+  traverse _id data contents := do
+    let .ok info@{ label, block } := fromJson? (α := InlineData) data
+      | logError s!"Malformed data in Inline.informal traversal: {data}"
+        pure none
+    if block.isSome then
+      pure none
+    else
+      let some obj := (← get).getDomainObject? informalDomain label.toString
+        | pure none
+      let .ok bdata := fromJson? (α := BlockData) obj.data
+        | logError s!"Malformed informal domain data for {label}: {obj.data}"
+          pure none
+      pure <| some (.other (Inline.informal { info with block := some bdata }) contents)
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
@@ -214,15 +228,36 @@ inline_extension Inline.informal (data : InlineData) where
       let .ok { label, block } := fromJson? (α := InlineData) data
         | HtmlT.logError "Malformed data in Inline.informal traversal"
           pure .empty
-      match block, inlines.isEmpty with
+      let st ← HtmlT.state
+      let resolvedBlock : Option BlockData :=
+        match block with
+        | some b => some b
+        | none =>
+          match st.getDomainObject? informalDomain label.toString with
+          | none => none
+          | some obj =>
+            match fromJson? (α := BlockData) obj.data with
+            | .ok b => some b
+            | .error _ => none
+      let href : Option String :=
+        match st.resolveDomainObject informalDomain label.toString with
+        | .ok dest => some dest.relativeLink
+        | .error _ => none
+      match resolvedBlock, inlines.isEmpty with
       | none, true =>
         return {{ <span> "[??]" </span> }}
       | none, false =>
         return {{ <span> {{ ← inlines.mapM goI }} </span> }}
       | some block, true =>
-        return {{ <span> <a href="">s!"{block.kind} {block.count}" </a> </span> }}
-      | some block, false =>
-        return {{ <span> <a href=""> {{ ← inlines.mapM goI }} </a> </span> }}
+        if let some href := href then
+          return {{ <span> <a href={{href}}>s!"{block.kind} {block.count}" </a> </span> }}
+        else
+          return {{ <span> s!"{block.kind} {block.count}" </span> }}
+      | some _block, false =>
+        if let some href := href then
+          return {{ <span> <a href={{href}}> {{ ← inlines.mapM goI }} </a> </span> }}
+        else
+          return {{ <span> {{ ← inlines.mapM goI }} </span> }}
   toTeX := none
 
 @[role]
@@ -231,9 +266,8 @@ def uses : RoleExpanderOf Config
     let contents ← contents.mapM elabInline
     let label := cfg.label
     let _node ← Environment.getNode? label
-    let block := some { kind := .lem_, label, count := 1 }
     Environment.addDep (← getRef) label
-    let data : InlineData := { label, block }
+    let data : InlineData := { label, block := none }
     ``(Inline.other (Inline.informal $(quote data)) #[$contents,*])
 
 -- Extra stuff
