@@ -39,7 +39,64 @@ def elabGraph : CommandElab := fun _stx => do
 /- Blueprint summary commands, Verso -/
 
 --
-def Graph := List (Name × List Name) deriving ToJson, Quote
+def Graph := List (Name × List Name) deriving FromJson, ToJson, Quote
+
+def Graph.toDot (g : Graph) : String :=
+  let edges := g.flatMap fun (src, dests) =>
+    dests.map fun dest => s!"  \"{src}\" -> \"{dest}\";"
+  let footer := "}"
+  String.intercalate "\n" ([header] ++ edges ++ [footer])
+where
+  header := r##"strict digraph "" {
+    graph [bgcolor=transparent];
+    node [label="\N", penwidth=1.8];
+    edge [arrowhead=vee];
+  "##
+
+def loadD3Dot :=
+  r##"(function () {
+    function load(src) {
+      return new Promise(function (resolve, reject) {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    Promise.resolve()
+      .then(() => load("https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"))
+      .then(() => load("https://cdn.jsdelivr.net/npm/d3-graphviz@5.6.0/build/d3-graphviz.min.js"))
+      .then(() => {
+
+  const graphContainer = d3.select("#graph");
+
+  const dotTxt = graphContainer
+    .select("script.dot-source")
+    .text()
+    .trim();
+
+  const width = graphContainer.node().clientWidth;
+  const height = graphContainer.node().clientHeight;
+
+  // graphContainer.graphviz({useWorker: true})
+  graphContainer.graphviz()
+      .width(width)
+      .height(height)
+      .fit(true)
+      .renderDot(dotTxt)
+      // .on("end", interactive);
+  });
+  })();
+  "##
+
+def d3DotCss := r##"div#graph {
+  width: 100%;
+  height: 90vh;
+  resize: both;
+  overflow: hidden; }
+"##
 
 -- block_extension Block.dependency_graph (label : String) where
 open Verso Doc Elab Genre Manual in
@@ -54,37 +111,16 @@ block_extension Block.graph (graph : Graph) where
     open Verso.Doc.Html in
     open Verso.Output.Html in
     some <| fun _goI _goB _id data _blocks => do
-      return {{ <div id="graph"> s!"{data}" </div> }}
-  extraJs := singleton ⟨r##"console.log("hi")"##⟩
-
-def header := r##"digraph Blueprint {
-  rankdir=LR;
-  bgcolor="white";
-  splines=true;
-  nodesep=0.35;
-  ranksep=0.45;
-
-  node [
-    shape=box,
-    style="rounded,filled",
-    fontname="Helvetica",
-    fontsize=10,
-    margin="0.08,0.04",
-    color="#6b7280"
-  ];
-
-  edge [
-    color="#6b7280",
-    arrowsize=0.6,
-    penwidth=1
-  ];"##
-
-def graphToDot (g : Graph) : String :=
-  let edges := g.flatMap fun (src, dests) =>
-    dests.map fun dest => s!"  \"{src}\" -> \"{dest}\";"
-  let footer := "}"
-  String.intercalate "\n" ([header] ++ edges ++ [footer])
-
+      let .ok data := fromJson? (α := Graph) data
+        | HtmlT.logError "Malformed data in Block.graph.toHtml"
+          pure .empty
+      return {{ <div id="graph">
+                  <script type="text/plain" class="dot-source">
+                    s!"{data.toDot}"
+                  </script>
+                </div> }}
+  extraCss := singleton ⟨d3DotCss⟩
+  extraJs := singleton ⟨loadD3Dot⟩
 --
 open Informal Data Environment
 def buildAll : CoreM Graph := do

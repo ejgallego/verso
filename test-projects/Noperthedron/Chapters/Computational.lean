@@ -39,7 +39,7 @@ set_option pp.rawOnError true
 # Main Theorems
 
 -- Infer automatically
-:::theorem (label:="no_nopert_tight_view_pose")
+:::theorem "no_nopert_tight_view_pose"
 
 There does not in fact exist a `{ref "noperthedron"}[noperthedron]` Rupert solution with
 
@@ -53,7 +53,7 @@ $$`
 `
 :::
 
-:::proof (label:="no_nopert_tight_view_pose")
+:::proof "no_nopert_tight_view_pose"
 
 `{uses "thm:exists_solution_table" "thm:row_valid_imp_not_rupert"}[`todo`]`
 
@@ -65,7 +65,7 @@ there is no Rupert solution in that interval.
 
 - Big string literal
 
-```lean (label := "no_nopert_tight_view_pose")
+```lean "no_nopert_tight_view_pose"
 -- Insert code for formal version of the proof above.
 -- Challenge, how to separate the proof and statement of the theorem!
 def a := 3

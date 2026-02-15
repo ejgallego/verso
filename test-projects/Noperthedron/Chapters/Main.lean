@@ -10,25 +10,6 @@ import VersoBlueprint
 
 open Verso.Genre Manual Informal
 
-/-
-
-TODO:
-
-Blocks:
-
-:::prelude
-
-:::theorem
-   :::proof (nested)
-
-:::definition
-
-Roles:
-
-{uses } / {ref }
-
--/
-
 -- EJGA: Seems like a good idea for hybrid setups
 set_option doc.verso true
 
@@ -41,7 +22,7 @@ set_option verso.code.warnLineLength 0
 # Main Theorems
 
 -- Infer automatically
-:::theorem (label:="no_nopert_tight_view_pose")
+:::theorem "no_nopert_tight_view_pose"
 
 There does not in fact exist a `{ref "noperthedron"}[noperthedron]` Rupert solution with
 
@@ -55,16 +36,16 @@ $$`
 `
 :::
 
-:::proof (label:="no_nopert_tight_view_pose")
+:::proof "no_nopert_tight_view_pose"
 
-By {uses (label:="thm:exists_solution_table")}[], there is a valid solution table
+By {uses "thm:exists_solution_table"}[], there is a valid solution table
 containing a valid row whose pose interval is a superset of
-the 5-d interval above. By `{uses (label:="thm:row_valid_imp_not_rupert")}[]`, this means
+the 5-d interval above. By `{uses "thm:row_valid_imp_not_rupert"}[]`, this means
 there is no Rupert solution in that interval.
 
 :::
 
-```lean (label := "no_nopert_tight_view_pose")
+```lean "no_nopert_tight_view_pose"
 -- Insert code for formal version of the proof above.
 -- Challenge, how to separate the proof and statement of the theorem!
 def a := 3

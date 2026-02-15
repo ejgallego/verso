@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: Emilio J. Gallego Arias
 -/
 
+import Lean
 import Lean.Data.Json
 
 namespace Informal.Data
@@ -14,11 +15,11 @@ set_option doc.verso true
 -- set_option pp.rawOnError true
 
 -- informal object labels are names for now, but that could change
+@[expose]
 def Label := Name
-deriving Repr, Inhabited
+deriving Repr, Inhabited, ToString, ToMessageData, ToJson, FromJson, Quote
 
-def LabelMap A := NameMap A
-deriving Inhabited
+@[expose] def LabelMap A := NameMap A
 
 instance [Repr A] : Repr (LabelMap A) := inferInstanceAs <| Repr (NameMap A)
 
@@ -36,6 +37,7 @@ structure Code where
 deriving Repr, Inhabited
 
 structure Node where
+  kind : String := "Lemma"
   statement : Syntax := .missing -- Informal Object statement
   proof : Syntax := .missing -- Informal Object proof
   code : Syntax := .missing -- Informal Object associated code
@@ -61,9 +63,27 @@ def Data.proved : Bool := false
 /--  -/
 def Data.fully_proved : Bool := false
 
--- labels operations
-def Data.pushDep (data : Data) (label : Label) (dep : Label) : Data :=
-  data.alter label fun data =>
-    let data := data.getD default
-    some { data with deps := data.deps.push dep }
+section
 
+variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
+
+-- XXX: needs: test
+/-- registers an informal definition, will error if already existing -/
+def Data.register (data : Data) (label : Label) (deps : Array Label) (isProof : Option Syntax) : m Data := do
+  match data.get? label, isProof with
+  | none, none =>
+    return data.insert label { deps }
+  | none, some _ =>
+    -- logError m!"No statement for proof with label {label}"
+    return data
+  | some _node, none =>
+    -- logError m!"Duplicated entry for {label}"
+    return data
+  | some node, some proof =>
+    if node.proof == .missing then
+      return data.modify label fun node => { node with proof }
+    else
+      -- logError m!"{label} already has a proof"
+      return data
+
+end

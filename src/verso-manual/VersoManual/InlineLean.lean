@@ -277,6 +277,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       cmdState := { cmdState with messages := messages }
 
 
+<<<<<<< HEAD
       -- Use elabCommandTopLevel so that linters run after each command (matching Lean's normal
       -- behavior). Since it resets messages and infoState, save and restore them to accumulate.
       let savedMsgs := cmdState.messages
@@ -287,6 +288,9 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
         messages := savedMsgs ++ cmdState.messages,
         infoState := { cmdState.infoState with trees := savedTrees ++ cmdState.infoState.trees }
       }
+=======
+      cmdState ← runCommand (Command.elabCommand cmd) cmd cctx cmdState
+>>>>>>> acb14f4e (wip before c)
 
       if Parser.isTerminalCommand cmd then break
 
