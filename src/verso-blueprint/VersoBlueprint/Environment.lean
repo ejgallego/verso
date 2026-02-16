@@ -16,7 +16,9 @@ open Informal.Data
 structure InProgress where
   label : Label
   kind? : Option String := none
+  isProof : Bool := false
   deps : Array Label
+  proofDeps : Array Label := #[]
 deriving Inhabited, Repr
 
 structure State where
@@ -67,19 +69,21 @@ def push (label : Label) (kind? : Option String) (isProof : Bool) : m Unit := do
   -- logInfo m!"push for {label} {isProof}"
   checkLabelAndNesting label isProof
   modify fun data =>
-    let pdata := { label, kind?, deps := #[] }
+    let pdata := { label, kind?, isProof, deps := #[] }
     { data with stack := pdata :: data.stack }
 
 def getCount : m Nat := do
   return (informalExt.getState (← getEnv)).data.size
 
-def pop (isProof : Option Syntax) : m Nat := do
+def pop (ref : Syntax) : m Nat := do
   modifyM fun state => do match state.stack with
   | [] =>
     logError m!"Internal Error: closing non-opened directive"
     return state
   | cur :: stack =>
-    let data ← state.data.register cur.label cur.kind? cur.deps isProof
+    let statement := if cur.isProof then none else some ref
+    let proof := if cur.isProof then some ref else none
+    let data ← state.data.register cur.label cur.kind? cur.deps cur.proofDeps statement proof
     return { state with data, stack }
   getCount
 
@@ -95,7 +99,11 @@ def addDep (stx : Syntax) (dep : Name) : m Unit := do
     logErrorAt stx m!"uses declaration outside an informal enviroment"
     pure ()
   | cur :: rest =>
-    let cur := { cur with deps := cur.deps.push dep }
+    let cur :=
+      if cur.isProof then
+        { cur with proofDeps := cur.proofDeps.push dep }
+      else
+        { cur with deps := cur.deps.push dep }
     let stack := cur :: rest
     modify fun state => { state with stack }
 

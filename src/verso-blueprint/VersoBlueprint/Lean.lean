@@ -10,6 +10,7 @@ import Lean.Elab.InfoTree
 import SubVerso.Highlighting
 
 import Verso
+import VersoBlueprint.Data
 
 import VersoManual.Basic
 import VersoManual.HighlightedCode
@@ -33,10 +34,24 @@ structure LeanBlockConfig where
   «show» : Bool
   name : Option Lean.Name
 
+structure DefinedDecl where
+  name : Name
+  hasSorry : Bool := false
+  hasTypeSorry : Bool := false
+  hasProofSorry : Bool := false
+  sorryRefs : Array Syntax := #[]
+  typeSorryRefs : Array Syntax := #[]
+  proofSorryRefs : Array Syntax := #[]
+
 structure ElabCommandResult where
   block : Term
-  definedConsts : Array Name := #[]
-  definedProofs : Array Name := #[]
+  definedConsts : Array DefinedDecl := #[]
+  definedProofs : Array DefinedDecl := #[]
+
+private structure DeclSorryRefs where
+  allRefs : Array Syntax := #[]
+  typeRefs : Array Syntax := #[]
+  proofRefs : Array Syntax := #[]
 
 def LeanBlockConfig.outlineMeta (cfg : LeanBlockConfig) : String :=
   if cfg.show then " " else " (hidden)"
@@ -93,7 +108,8 @@ private def toHighlightedLeanBlock (shouldShow : Bool) (hls : Highlighted) (str:
       (Verso.Genre.Manual.InlineLean.Block.lean $(← quoteHighlightViaSerialization hls) (some $(quote (← getFileName))) $(quote range))
       #[Block.code $(quote str.getString)])
 
-private def getDefinedDecls (before after : Environment) : Array Name × Array Name :=
+private def getDefinedDecls (before after : Environment) (sorryRefsByDecl : Lean.NameMap DeclSorryRefs) :
+    Array DefinedDecl × Array DefinedDecl :=
   Id.run <| do
     let mut consts := #[]
     let mut proofs := #[]
@@ -102,11 +118,94 @@ private def getDefinedDecls (before after : Environment) : Array Name × Array N
         continue
       if name.isInternalOrNum || name.hasMacroScopes then
         continue
-      consts := consts.push name
+      let hasTypeSorry := info.type.hasSorry
+      let hasProofSorry := info.value?.map (·.hasSorry) |>.getD false
+      let hasSorry := hasTypeSorry || hasProofSorry
+      let refs := (sorryRefsByDecl.find? name).getD {}
+      let (typeSorryRefs, proofSorryRefs, sorryRefs) :=
+        if hasSorry then
+          match info with
+          | .thmInfo _ => (refs.typeRefs, refs.proofRefs, refs.allRefs)
+          | _ => (if hasTypeSorry then refs.allRefs else #[], if hasProofSorry then refs.allRefs else #[], refs.allRefs)
+        else
+          (#[], #[], #[])
+      consts := consts.push ({
+        name
+        hasSorry
+        hasTypeSorry
+        hasProofSorry
+        sorryRefs
+        typeSorryRefs
+        proofSorryRefs
+      } : DefinedDecl)
       match info with
-      | .thmInfo _ => proofs := proofs.push name
+      | .thmInfo _ =>
+        proofs := proofs.push ({
+          name
+          hasSorry
+          hasTypeSorry
+          hasProofSorry
+          sorryRefs
+          typeSorryRefs
+          proofSorryRefs
+        } : DefinedDecl)
       | _ => pure ()
-    (consts.qsort (fun a b => a.toString < b.toString), proofs.qsort (fun a b => a.toString < b.toString))
+    (consts.qsort (fun a b => a.name.toString < b.name.toString),
+      proofs.qsort (fun a b => a.name.toString < b.name.toString))
+
+private def getNewPublicDecls (before after : Environment) : Array Name :=
+  Id.run <| do
+    let mut out := #[]
+    for (name, _) in after.constants do
+      if (before.find? name).isSome then
+        continue
+      if name.isInternalOrNum || name.hasMacroScopes then
+        continue
+      out := out.push name
+    out
+
+private partial def collectSorryRefs (stx : Syntax) : Array Syntax :=
+  let fromChildren := stx.getArgs.foldl (init := #[]) fun acc arg =>
+    acc ++ collectSorryRefs arg
+  match stx with
+  | .atom _ val =>
+    if val == "sorry" then
+      fromChildren.push stx
+    else
+      fromChildren
+  | _ => fromChildren
+
+private def getSorryRefs (cmds : Array Syntax) : Array Syntax :=
+  Id.run <| do
+    let mut out : Array Syntax := #[]
+    for cmd in cmds do
+      for sorryRef in collectSorryRefs cmd do
+        out := out.push sorryRef
+    out
+
+private def getAssignPos? (cmd : Syntax) : Option String.Pos.Raw :=
+  match cmd.find? fun
+    | .atom info ":=" =>
+      match info with
+      | .original .. => true
+      | _ => false
+    | _ => false
+  with
+  | some (.atom info ":=") =>
+    match info with
+    | .original _ pos _ _ => some pos
+    | _ => none
+  | _ => none
+
+private def splitRefsByAssignPos (cmd : Syntax) (refs : Array Syntax) : Array Syntax × Array Syntax :=
+  match getAssignPos? cmd with
+  | none => (#[], refs)
+  | some pivot =>
+    refs.foldl (init := (#[], #[])) fun (ty, pr) ref =>
+      match ref.getPos? with
+      | some p =>
+        if p < pivot then (ty.push ref, pr) else (ty, pr.push ref)
+      | none => (ty, pr.push ref)
 
 def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabCommandResult :=
   withoutAsync <| do
@@ -135,6 +234,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
     }
     let mut pstate := {pos := 0, recovering := false}
     let mut cmds := #[]
+    let mut sorryRefsByDecl : Lean.NameMap DeclSorryRefs := {}
 
     repeat
       let scope := cmdState.scopes.head!
@@ -149,7 +249,19 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
       pstate := ps'
       cmdState := { cmdState with messages := messages }
 
+      let cmdEnvBefore := cmdState.env
       cmdState ← runCommand (Command.elabCommand cmd) cmd cctx cmdState
+      let cmdSorryRefs := getSorryRefs #[cmd]
+      if !cmdSorryRefs.isEmpty then
+        let (typeRefs, proofRefs) := splitRefsByAssignPos cmd cmdSorryRefs
+        for name in getNewPublicDecls cmdEnvBefore cmdState.env do
+          let prior := (sorryRefsByDecl.find? name).getD {}
+          let refs : DeclSorryRefs := {
+            allRefs := prior.allRefs ++ cmdSorryRefs
+            typeRefs := prior.typeRefs ++ typeRefs
+            proofRefs := prior.proofRefs ++ proofRefs
+          }
+          sorryRefsByDecl := sorryRefsByDecl.insert name refs
       if Parser.isTerminalCommand cmd then break
 
     setEnv cmdState.env
@@ -177,7 +289,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
       warnLongLines col? str
 
     let block ← toHighlightedLeanBlock config.show hls str
-    let (definedConsts, definedProofs) := getDefinedDecls envBefore cmdState.env
+    let (definedConsts, definedProofs) := getDefinedDecls envBefore cmdState.env sorryRefsByDecl
     pure { block, definedConsts, definedProofs }
 where
   runCommand (act : Command.CommandElabM Unit) (stx : Syntax)

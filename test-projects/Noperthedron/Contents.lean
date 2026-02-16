@@ -40,8 +40,11 @@ We follow for the most part the structure of {citet polyhedron.without.rupert}[]
 {include 0 Chapters.Noperthedron}
 {include 0 Chapters.Bounding}
 {include 0 Chapters.Prelims}
+{include 0 Chapters.Main}
 
 # Bibliography
 
 {blueprint_graph}
+
+{bp_summary}
 

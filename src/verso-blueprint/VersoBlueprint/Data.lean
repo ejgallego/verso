@@ -24,11 +24,22 @@ deriving Repr, Inhabited, ToString, ToMessageData, ToJson, FromJson, Quote
 instance [Repr A] : Repr (LabelMap A) := inferInstanceAs <| Repr (NameMap A)
 
 /-- Information about a code block, including Lean-level analysis -/
+structure DefinedDecl where
+  name : Name
+  hasSorry : Bool := false
+  hasTypeSorry : Bool := false
+  hasProofSorry : Bool := false
+  sorryRefs : Array Syntax := #[]
+  typeSorryRefs : Array Syntax := #[]
+  proofSorryRefs : Array Syntax := #[]
+deriving Repr, Inhabited
+
+/-- Information about a code block, including Lean-level analysis -/
 structure CodeInfo where
   proved : Bool := false
   deps : Array Label := #[]
-  definedConsts : Array Name := #[]
-  definedProofs : Array Name := #[]
+  definedConsts : Array DefinedDecl := #[]
+  definedProofs : Array DefinedDecl := #[]
 deriving Repr, Inhabited
 
 -- def CodeInfo.get (name : Name) : CodeInfo := by sorry
@@ -45,6 +56,7 @@ structure Node where
   proof : Syntax := .missing -- Informal Object proof
   code : Code := {} -- Informal Object associated code
   deps : Array Label := #[] -- Informal Object deps
+  proofDeps : Array Label := #[] -- Informal proof deps
 deriving Repr, Inhabited
 
 /-- Map of labels to Node data -/
@@ -73,23 +85,24 @@ variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 -- XXX: needs: test
 /-- registers an informal definition, will error if already existing -/
 def Data.register (data : Data) (label : Label) (kind? : Option String) (deps : Array Label)
-    (isProof : Option Syntax) : m Data := do
-  match data.get? label, isProof with
-  | none, none =>
+    (proofDeps : Array Label) (statement : Option Syntax) (proof : Option Syntax) : m Data := do
+  match data.get? label, statement, proof with
+  | none, some statement, none =>
     let count := data.size + 1
-    return data.insert label { deps, count, kind := kind?.getD "Lemma" }
-  | none, some _ =>
+    return data.insert label { deps, proofDeps, statement, count, kind := kind?.getD "Lemma" }
+  | none, none, some _ =>
     -- logError m!"No statement for proof with label {label}"
     return data
-  | some _node, none =>
+  | some _node, some _, none =>
     -- logError m!"Duplicated entry for {label}"
     return data
-  | some node, some proof =>
+  | some node, none, some proof =>
     if node.proof == .missing then
-      return data.modify label fun node => { node with proof }
+      return data.modify label fun node => { node with proof, proofDeps }
     else
       -- logError m!"{label} already has a proof"
       return data
+  | _, _, _ => return data
 
 /-- Register Lean code and code metadata for an informal object label. -/
 def Data.registerCode (data : Data) (label : Label) (code : Syntax) (info : Option CodeInfo := none) : m Data := do
