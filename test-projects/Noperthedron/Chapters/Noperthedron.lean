@@ -25,6 +25,8 @@ set_option doc.verso true
 
 set_option pp.rawOnError true
 
+set_option verso.blueprint.foldProofs true
+
 -- set_option trace.Elab.info true
 
 -- No warnings for line length (warning more globally?)
@@ -180,8 +182,6 @@ By {uses "c1_c2_c3_norms"}[], {uses "thm:pointsymmetrize_pres_radius"}[],
 :::
 
 ```lean "lem:radius_noperthedron_one"
-
-#show_graph "lem:radius_noperthedron_one"
 
 /--
 Half of the vertices of the noperthedron
@@ -376,6 +376,10 @@ of rotations, we instead define
 $$`
     \mathcal{C}_{15} \coloneqq \left\{ R_z\left(\frac{2\pi k}{15}\right) \colon k=0,\dots,14 \right\}.
 `
+:::
+
+:::proof "def:C15"
+showgraph
 :::
 
 without point-symmetricness "baked in" as it is in $`C_{30}`. It's more convenient for the formalization to apply $`C_{15}` to the points $`C_1, C_2, C_3`, and then point-symmetrize that set afterwards.

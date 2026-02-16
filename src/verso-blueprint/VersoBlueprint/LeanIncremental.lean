@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean.Elab.Command
 import Lean.Elab.InfoTree
+import Lean.Language.Basic
 
 import SubVerso.Highlighting
 
@@ -28,7 +29,7 @@ open _root_.Verso.Genre.Manual (warnLongLines)
 open _root_.Verso.Genre.Manual.InlineLean (saveOutputs)
 open Verso.Genre.Manual.InlineLean.Scopes (getScopes setScopes)
 
-namespace Informal.Lean
+namespace Informal.LeanIncremental
 
 structure LeanBlockConfig where
   «show» : Bool
@@ -79,6 +80,17 @@ private def reportMessages {m} [Monad m] [MonadLog m]
     logMessage {msg with
       isSilent := msg.isSilent || msg.severity != .error
     }
+
+private def mkCommandProgressTask
+    (stx : Syntax)
+    (task : Task (Except IO.Error (String × Except Exception (Unit × Command.State)))) :
+    Language.SnapshotTask Language.SnapshotTree := {
+  stx? := some stx
+  reportingRange := Language.SnapshotTask.defaultReportingRange (some stx)
+  cancelTk? := none
+  task := task.map (sync := true) fun _ =>
+    { element := { diagnostics := .empty }, children := #[] }
+}
 
 def reconstructHighlight (docReconst : DocReconstruction) (key : Export.Key) :=
   match docReconst.highlightDeduplication.toHighlighted key with
@@ -245,6 +257,8 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
     let mut pstate := {pos := 0, recovering := false}
     let mut cmds := #[]
     let mut sorryRefsByDecl : Lean.NameMap DeclSorryRefs := {}
+    let mut declCmdInfo : Lean.NameMap (Nat × Syntax) := {}
+    let mut cmdIndex := 0
 
     repeat
       let scope := cmdState.scopes.head!
@@ -261,6 +275,9 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
 
       let cmdEnvBefore := cmdState.env
       cmdState ← runCommand (Command.elabCommand cmd) cmd cctx cmdState
+      for name in getNewPublicDecls cmdEnvBefore cmdState.env do
+        declCmdInfo := declCmdInfo.insert name (cmdIndex, cmd)
+      cmdIndex := cmdIndex + 1
       let cmdSorryRefs := getSorryRefs #[cmd]
       if !cmdSorryRefs.isEmpty then
         let (typeRefs, proofRefs) := splitRefsByAssignPos cmd cmdSorryRefs
@@ -299,16 +316,19 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
       warnLongLines col? str
 
     let block ← toHighlightedLeanBlock config.show hls str
-    let (definedDefs, definedTheorems) := getDefinedDecls envBefore cmdState.env sorryRefsByDecl {}
+    let (definedDefs, definedTheorems) := getDefinedDecls envBefore cmdState.env sorryRefsByDecl declCmdInfo
     pure { block, definedDefs, definedTheorems }
 where
   runCommand (act : Command.CommandElabM Unit) (stx : Syntax)
       (cctx : Command.Context) (cmdState : Command.State) :
       DocElabM Command.State := do
+    let elabTask ← liftM <| IO.asTask <| IO.FS.withIsolatedStreams <| EIO.toIO' <| (act.run cctx).run cmdState
+    liftM <| Lean.Core.logSnapshotTask (mkCommandProgressTask stx elabTask)
     let (output, cmdState) ←
-      match (← liftM <| IO.FS.withIsolatedStreams <| EIO.toIO' <| (act.run cctx).run cmdState) with
-      | (output, .error e) => Lean.logError e.toMessageData; pure (output, cmdState)
-      | (output, .ok ((), cmdState)) => pure (output, cmdState)
+      match elabTask.get with
+      | .error e => Lean.logError m!"{e}"; pure ("", cmdState)
+      | .ok (output, .error e) => Lean.logError e.toMessageData; pure (output, cmdState)
+      | .ok (output, .ok ((), cmdState)) => pure (output, cmdState)
 
     if output.trimAscii.isEmpty then return cmdState
 
@@ -326,4 +346,4 @@ def defaultConfig : LeanBlockConfig where
   «show» := true
   name := none
 
-end Informal.Lean
+end Informal.LeanIncremental

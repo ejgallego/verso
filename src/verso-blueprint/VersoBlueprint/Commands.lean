@@ -58,7 +58,7 @@ structure SorryItem where
   label : Name
   kind : String
   decl : Name
-  isProof : Bool := false
+  isTheorem : Bool := false
   sorryRefs : Nat := 0
   typeSorryRefs : Nat := 0
   proofSorryRefs : Nat := 0
@@ -79,7 +79,7 @@ structure Summary where
   leanOnlyEntries : Nat := 0
   informalOnlyEntries : Nat := 0
   pendingInformalProofEntries : List PendingProofItem := []
-  leanConstants : Nat := 0
+  leanDecls : Nat := 0
   sorries : Nat := 0
   sorryDetails : List SorryItem := []
   definitionIndex : List IndexItem := []
@@ -89,7 +89,7 @@ deriving Inhabited, FromJson, ToJson, Quote
 def definitionNodeColor : String := "#bfdbfe" -- Definition
 def leanOnlyDefNodeColor : String := "#e9d5ff" -- Lean-only definition, informal object missing
 def leanOkNodeColor : String := "#d4f4dd" -- Lean + proof available
-def sorryNodeColor : String := "#fff3bf" -- Lean only / proof pending
+def sorryNodeColor : String := "#fff3bf" -- Lean code present / informal proof pending
 def informalNodeColor : String := "#f3f4f6" -- Informal/proof-only
 def informalDomainName : Name := Name.mkSimple "Informal.Block.informal"
 def informalCodeDomainName : Name := Name.mkSimple "Informal.Block.informalCode"
@@ -319,7 +319,7 @@ block_extension Block.graph (graph : Graph) where
           <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#bfdbfe;"></span>"Definition"</span>
           <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#e9d5ff;"></span>"Lean-only def (informal missing)"</span>
           <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#d4f4dd;"></span>"Lean + proof"</span>
-          <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#fff3bf;"></span>"Lean proof, informal proof pending"</span>
+          <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#fff3bf;"></span>"Lean code, informal proof pending"</span>
           <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#f3f4f6;"></span>"Informal / text-only"</span>
           <span class="bp_graph_legend_item">"Edge styles: solid = statement deps, dashed = proof deps"</span>
         </div>
@@ -439,7 +439,7 @@ block_extension Block.summary (summary : Summary) where
                <div class="bp_summary_item_body">
                  "Declaration with sorry: " {{declLink}} " "
                  <span class="bp_summary_badge">
-                   s!"[{if item.isProof then "proof" else "constant"}; {whereTxt}; refs: {item.sorryRefs}]"
+                   s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {whereTxt}; refs: {item.sorryRefs}]"
                  </span>
                </div>
                {{if Array.isEmpty sorryLinks then
@@ -508,7 +508,7 @@ block_extension Block.summary (summary : Summary) where
           <details class="bp_summary_section" open>
             <summary>"Lean progress"</summary>
             <div class="bp_summary_grid">
-              <div class="bp_summary_card"><span class="bp_summary_label">"Lean constants/proofs"</span><span class="bp_summary_value">s!"{data.leanConstants}"</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Lean definitions/theorems"</span><span class="bp_summary_value">s!"{data.leanDecls}"</span></div>
               <div class="bp_summary_card"><span class="bp_summary_label">"Entries with informal proof pending"</span><span class="bp_summary_value">s!"{data.pendingInformalProofEntries.length}"</span></div>
               <div class="bp_summary_card bp_summary_placeholder"><span class="bp_summary_label">"Sorries"</span><span class="bp_summary_value">s!"{data.sorries}"</span></div>
             </div>
@@ -535,7 +535,7 @@ def nodeHasSorries (node : Data.Node) : Bool :=
   match node.code.info with
   | none => false
   | some info =>
-    info.definedConsts.any (·.hasSorry) || info.definedProofs.any (·.hasSorry)
+    info.definedDefs.any (·.hasSorry) || info.definedTheorems.any (·.hasSorry)
 
 def nodeColor (node : Data.Node) : String :=
   if node.code.code != .missing && node.statement == .missing then
@@ -560,7 +560,7 @@ def buildAll : CoreM Graph := do
 def countSorries (decls : Array Data.DefinedDecl) : Nat :=
   decls.foldl (init := 0) fun acc decl => acc + (if decl.hasSorry then 1 else 0)
 
-def collectSorries (label : Name) (kind : String) (decls : Array Data.DefinedDecl) (proofNames : NameSet) :
+def collectSorries (label : Name) (kind : String) (decls : Array Data.DefinedDecl) (theoremNames : NameSet) :
     List SorryItem :=
   decls.foldl (init := []) fun acc decl =>
     if decl.hasSorry then
@@ -568,7 +568,7 @@ def collectSorries (label : Name) (kind : String) (decls : Array Data.DefinedDec
         label
         kind
         decl := decl.name
-        isProof := proofNames.contains decl.name
+        isTheorem := theoremNames.contains decl.name
         sorryRefs := decl.sorryRefs.size
         typeSorryRefs := decl.typeSorryRefs.size
         proofSorryRefs := decl.proofSorryRefs.size
@@ -585,17 +585,19 @@ def buildSummary : CoreM Summary := do
     let hasStatement := node.statement != .missing
     let hasProof := node.proof != .missing
     let hasCode := node.code.code != .missing
-    let (leanConstants, sorries, leanObjects, sorryDetails) :=
+    let (leanDecls, sorries, leanObjects, sorryDetails) :=
       match node.code.info with
       | none => (0, 0, ([] : List Name), ([] : List SorryItem))
       | some info =>
-        let proofNames : NameSet := info.definedProofs.foldl (init := {}) fun acc d => acc.insert d.name
-        let leanObjects := (info.definedConsts.map (fun d : Data.DefinedDecl => d.name)).toList
-        let sorries := countSorries info.definedConsts
-        let sorryDetails := collectSorries label node.kind info.definedConsts proofNames
-        (info.definedConsts.size, sorries, leanObjects, sorryDetails)
+        let theoremNames : NameSet := info.definedTheorems.foldl (init := {}) fun acc d => acc.insert d.name
+        let leanObjects := (info.definedDefs ++ info.definedTheorems).map (fun d : Data.DefinedDecl => d.name) |>.toList
+        let leanDecls := info.definedDefs.size + info.definedTheorems.size
+        let allDecls := info.definedDefs ++ info.definedTheorems
+        let sorries := countSorries allDecls
+        let sorryDetails := collectSorries label node.kind allDecls theoremNames
+        (leanDecls, sorries, leanObjects, sorryDetails)
     let pendingInformalProofEntries : List PendingProofItem :=
-      if hasCode && hasStatement && kindNeedsInformalProof node.kind && !hasProof then
+      if hasCode && ((kindNeedsInformalProof node.kind && !hasProof) || !hasStatement) then
         { label, kind := node.kind, leanObjects } :: acc.pendingInformalProofEntries
       else
         acc.pendingInformalProofEntries
@@ -614,7 +616,7 @@ def buildSummary : CoreM Summary := do
       leanOnlyEntries := acc.leanOnlyEntries + (if hasCode && !hasStatement then 1 else 0)
       informalOnlyEntries := acc.informalOnlyEntries + (if hasStatement && !hasCode then 1 else 0)
       pendingInformalProofEntries
-      leanConstants := acc.leanConstants + leanConstants
+      leanDecls := acc.leanDecls + leanDecls
       sorries := acc.sorries + sorries
       sorryDetails := sorryDetails ++ acc.sorryDetails
       definitionIndex
