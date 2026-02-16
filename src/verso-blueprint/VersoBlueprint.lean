@@ -15,6 +15,7 @@ import VersoBlueprint.Environment
 import VersoBlueprint.Attribute
 import VersoBlueprint.Commands
 import VersoBlueprint.Lean
+import VersoBlueprint.Widget
 -- import DevWidgets.DHover
 -- import DevWidgets.InfoViewExplorer
 
@@ -72,6 +73,7 @@ def informalCodeDomain : Name := Name.mkSimple "Informal.Block.informalCode"
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
   label : Data.Label
+  labelSyntax : Syntax := Syntax.missing
   lean : Option String := none
 --  hide : Bool := false
 
@@ -84,7 +86,12 @@ variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadErr
 --   get := sorry
 
 def Config.parse  : ArgParse m Config :=
-  Config.mk <$> (Name.mkSimple <$> .positional `label .string) <*> .named `lean .string true
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean =>
+    {
+      label := Name.mkSimple labelArg.val
+      labelSyntax := labelArg.syntax
+      lean := lean
+    }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
@@ -117,6 +124,8 @@ deriving FromJson, ToJson, Quote
 
 structure CodeDeclData where
   name : Name
+  commandIndex : Nat := 0
+  weight : Nat := 1
   hasSorry : Bool := false
   hasTypeSorry : Bool := false
   hasProofSorry : Bool := false
@@ -124,9 +133,15 @@ deriving FromJson, ToJson, Quote
 
 structure CodeBlockData where
   label : Data.Label
-  definedConsts : Array CodeDeclData := #[]
-  definedProofs : Array CodeDeclData := #[]
+  definedDefs : Array CodeDeclData := #[]
+  definedTheorems : Array CodeDeclData := #[]
+  foldProofs : Bool := true
 deriving FromJson, ToJson, Quote
+
+register_option verso.blueprint.foldProofs : Bool := {
+  defValue := true
+  descr := "Enable proof folding in VersoBlueprint Lean code blocks (hide text after `by` behind a toggle)"
+}
 
 structure CodeHoverDecl where
   text : String
@@ -134,8 +149,8 @@ structure CodeHoverDecl where
 
 structure CodeHoverData where
   label : Data.Label
-  definedConsts : Array CodeHoverDecl := #[]
-  definedProofs : Array CodeHoverDecl := #[]
+  definedDefs : Array CodeHoverDecl := #[]
+  definedTheorems : Array CodeHoverDecl := #[]
   sorries : Array CodeHoverDecl := #[]
 
 structure ComputedData where
@@ -147,7 +162,7 @@ structure ComputedData where
 
 def mkCodeHoverData
     (label : Data.Label)
-    (definedConsts definedProofs : Array CodeDeclData)
+    (definedDefs definedTheorems : Array CodeDeclData)
     (hrefOf : Name → Option String) : CodeHoverData :=
   let toDecl (d : CodeDeclData) : CodeHoverDecl :=
     { text := toString d.name, href := hrefOf d.name }
@@ -160,28 +175,28 @@ def mkCodeHoverData
     { text := s!"{d.name} [{kind}]", href := hrefOf d.name }
   {
     label
-    definedConsts := definedConsts.map toDecl
-    definedProofs := definedProofs.map toDecl
-    sorries := (definedConsts ++ definedProofs).filter (·.hasSorry) |>.map toSorry
+    definedDefs := definedDefs.map toDecl
+    definedTheorems := definedTheorems.map toDecl
+    sorries := (definedDefs ++ definedTheorems).filter (·.hasSorry) |>.map toSorry
   }
 
-def codeHoverText (label : Data.Label) (definedConsts definedProofs : Array CodeDeclData) : String :=
-  if definedConsts.isEmpty && definedProofs.isEmpty then
+def codeHoverText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
+  if definedDefs.isEmpty && definedTheorems.isEmpty then
     s!"{label}"
   else
-    let definedConstNames := definedConsts.map (·.name)
-    let definedProofNames := definedProofs.map (·.name)
+    let definedDefNames := definedDefs.map (·.name)
+    let definedTheoremNames := definedTheorems.map (·.name)
     let defs :=
-      if definedConstNames.isEmpty then
+      if definedDefNames.isEmpty then
         "none"
       else
-        String.intercalate ", " (definedConstNames.toList.map toString)
-    let prfs :=
-      if definedProofNames.isEmpty then
+        String.intercalate ", " (definedDefNames.toList.map toString)
+    let thms :=
+      if definedTheoremNames.isEmpty then
         "none"
       else
-        String.intercalate ", " (definedProofNames.toList.map toString)
-    let sorryDecls := (definedConsts ++ definedProofs).filter (·.hasSorry)
+        String.intercalate ", " (definedTheoremNames.toList.map toString)
+    let sorryDecls := (definedDefs ++ definedTheorems).filter (·.hasSorry)
     let sorries :=
       if sorryDecls.isEmpty then
         "none"
@@ -193,7 +208,12 @@ def codeHoverText (label : Data.Label) (definedConsts definedProofs : Array Code
             else if d.hasProofSorry then "in proof"
             else "unknown"
           s!"{d.name} [{kind}]"
-    s!"{label}\nLean definitions: {defs}\nLean proofs: {prfs}\nSorries: {sorries}"
+    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
+
+private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
+  decls.qsort (fun a b =>
+    a.commandIndex < b.commandIndex ||
+    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
 
 def blueprintCss : String := r##"
 .bp_wrapper {
@@ -303,6 +323,58 @@ span[class$="_thmlabel"]::after {
   font-style: italic;
 }
 
+.bp_code_block summary {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.bp_code_summary_text {
+  white-space: nowrap;
+}
+
+.bp_code_progress {
+  display: inline-flex;
+  flex: 1 1 10rem;
+  min-width: 7rem;
+  max-width: 22rem;
+  height: 0.72rem;
+  border-radius: 0;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.bp_code_progress_segment {
+  min-width: 0.28rem;
+}
+
+.bp_code_progress_segment + .bp_code_progress_segment {
+  border-left: 2px solid rgba(15, 23, 42, 0.45);
+}
+
+.bp_code_progress_segment_ok {
+  background: #16a34a;
+}
+
+.bp_code_progress_segment_sorry {
+  background: #dc2626;
+}
+
+.bp_code_expand_hint {
+  color: #64748b;
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+
+.bp_code_expand_hint::before {
+  content: "expand";
+}
+
+details[open] > summary .bp_code_expand_hint::before {
+  content: "collapse";
+}
+
 .bp_decl_target {
   background: rgba(59, 130, 246, 0.18);
   border-radius: 0.18rem;
@@ -355,24 +427,27 @@ span[class$="_thmlabel"]::after {
   margin-bottom: 0;
 }
 
-.bp-proof-toggle {
-  margin: 0 0 0.3rem;
-  padding: 0.1rem 0.4rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.3rem;
-  background: #f8fafc;
-  color: #334155;
-  font-size: 0.72rem;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.bp-proof-toggle:hover {
-  background: #eef2f7;
-}
-
 .bp-proof-tail-hidden {
   display: none;
+}
+
+.bp-proof-gap-hidden {
+  display: none;
+}
+
+.bp-proof-by-toggle {
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-decoration-thickness: 1px;
+}
+
+.bp-proof-by-toggle::after {
+  content: " ...";
+  color: #64748b;
+}
+
+.bp-proof-by-toggle.bp-proof-open::after {
+  content: "";
 }
 
 div.theorem-style-plain div[class$="_thmheading"] {
@@ -635,63 +710,167 @@ def blueprintStyleSwitcherJs : String := r##"(function () {
 
   function installProofHider() {
     const blocks = document.querySelectorAll("details.bp_code_block code.hl.lean.block");
-    const declRegex = /\b(theorem|lemma|corollary|example)\b/;
-    const byRegex = /\bby\b/g;
-    blocks.forEach((block) => {
-      if (!(block instanceof HTMLElement)) return;
-      if (block.dataset.bpProofHider === "1") return;
-      block.dataset.bpProofHider = "1";
+    const declKeywords = new Set(["theorem", "lemma", "corollary", "example"]);
+    const commandStartKeywords = new Set([
+      "theorem", "lemma", "corollary", "example", "def", "abbrev", "instance",
+      "axiom", "constant", "opaque", "inductive", "structure", "class", "namespace",
+      "section", "end", "open", "local", "attribute", "set_option", "variable",
+      "variables", "notation", "infix", "infixl", "infixr", "prefix", "postfix",
+      "macro", "syntax", "elab", "initialize", "mutual"
+    ]);
 
-      const text = block.textContent || "";
-      const declMatch = declRegex.exec(text);
-      if (!declMatch) return;
-      byRegex.lastIndex = declMatch.index + declMatch[0].length;
-      const byMatch = byRegex.exec(text);
-      if (!byMatch) return;
-      const hideFrom = byMatch.index + byMatch[0].length;
-      if (hideFrom >= text.length) return;
-
-      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    function locateTextPosition(rootNode, absIndex) {
+      const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT);
       let seen = 0;
-      let startNode = null;
-      let startOffset = 0;
       while (true) {
         const node = walker.nextNode();
         if (!node) break;
         const len = node.nodeValue ? node.nodeValue.length : 0;
-        if (hideFrom <= seen + len) {
-          startNode = node;
-          startOffset = hideFrom - seen;
-          break;
+        if (absIndex <= seen + len) {
+          return { node, offset: absIndex - seen };
         }
         seen += len;
       }
-      if (!startNode) return;
+      return null;
+    }
 
-      const range = document.createRange();
-      range.setStart(startNode, startOffset);
-      range.setEnd(block, block.childNodes.length);
-      const fragment = range.extractContents();
-      if (!fragment.textContent || fragment.textContent.length === 0) return;
+    function toggleProof(toggleNode, proofTail, gapNode) {
+      const hidden = proofTail.classList.toggle("bp-proof-tail-hidden");
+      toggleNode.classList.toggle("bp-proof-open", !hidden);
+      toggleNode.setAttribute("aria-expanded", hidden ? "false" : "true");
+      if (gapNode) {
+        gapNode.classList.toggle("bp-proof-gap-hidden", !hidden);
+      }
+    }
 
-      const proofTail = document.createElement("span");
-      proofTail.className = "bp-proof-tail bp-proof-tail-hidden";
-      proofTail.appendChild(fragment);
-      range.insertNode(proofTail);
+    function absIndexBeforeElement(rootNode, el) {
+      const r = document.createRange();
+      r.setStart(rootNode, 0);
+      r.setEndBefore(el);
+      return r.toString().length;
+    }
 
-      const toggle = document.createElement("button");
-      toggle.type = "button";
-      toggle.className = "bp-proof-toggle";
-      toggle.setAttribute("aria-expanded", "false");
-      toggle.textContent = "show proof";
-      toggle.addEventListener("click", function () {
-        const hidden = proofTail.classList.toggle("bp-proof-tail-hidden");
-        toggle.textContent = hidden ? "show proof" : "hide proof";
-        toggle.setAttribute("aria-expanded", hidden ? "false" : "true");
+    function lineIndent(text, idx) {
+      const lastNl = text.lastIndexOf("\n", Math.max(0, idx - 1));
+      const lineStart = lastNl + 1;
+      let i = lineStart;
+      while (i < idx && text[i] === " ") i++;
+      return i - lineStart;
+    }
+
+    function isFirstTokenOnLine(text, idx) {
+      const lastNl = text.lastIndexOf("\n", Math.max(0, idx - 1));
+      const lineStart = lastNl + 1;
+      return /^[ \t]*$/.test(text.slice(lineStart, idx));
+    }
+
+    function isCommandStartText(tokText) {
+      if (!tokText) return false;
+      if (tokText[0] === "#") return true;
+      return commandStartKeywords.has(tokText);
+    }
+
+    blocks.forEach((block) => {
+      if (!(block instanceof HTMLElement)) return;
+      const details = block.closest("details.bp_code_block");
+      if (details instanceof HTMLElement && details.dataset.bpProofFold === "off") return;
+      if (block.dataset.bpProofHider === "1") return;
+      block.dataset.bpProofHider = "1";
+
+      const text = block.textContent || "";
+      if (!text) return;
+
+      const tokenNodes = Array.from(block.querySelectorAll(".token"));
+      const keywordNodes = Array.from(block.querySelectorAll(".keyword.token"));
+
+      const allTokens = tokenNodes.map((el) => {
+        const tokText = (el.textContent || "").trim();
+        const start = absIndexBeforeElement(block, el);
+        const end = start + (el.textContent || "").length;
+        const firstOnLine = isFirstTokenOnLine(text, start);
+        const indent = lineIndent(text, start);
+        return { el, tokText, start, end, firstOnLine, indent };
       });
 
-      const host = block.parentElement;
-      if (host) host.insertBefore(toggle, block);
+      const commandStarts = allTokens.filter((t) =>
+        t.firstOnLine && isCommandStartText(t.tokText)
+      );
+
+      const keywordTokens = keywordNodes.map((el) => {
+        const tokText = (el.textContent || "").trim();
+        const start = absIndexBeforeElement(block, el);
+        const end = start + (el.textContent || "").length;
+        const indent = lineIndent(text, start);
+        return { el, tokText, start, end, indent };
+      });
+
+      const declStarts = keywordTokens.filter((t) => declKeywords.has(t.tokText));
+      if (declStarts.length === 0) return;
+
+      const segments = [];
+      for (const decl of declStarts) {
+        const boundary = commandStarts.find((c) =>
+          c.start > decl.start && c.indent <= decl.indent
+        );
+        const segmentEnd = boundary ? boundary.start : text.length;
+        if (segmentEnd <= decl.start) continue;
+        const byTok = keywordTokens.find((t) =>
+          t.tokText === "by" && t.start > decl.start && t.end <= segmentEnd
+        );
+        if (!byTok) continue;
+        let hideStart = byTok.end;
+        if (hideStart >= segmentEnd) continue;
+        const gapText = text.slice(hideStart, segmentEnd).includes("\n") ? "\n" : "";
+        segments.push({
+          byEl: byTok.el,
+          byStart: byTok.start,
+          byEnd: byTok.end,
+          hideStart,
+          hideEnd: segmentEnd,
+          gapText
+        });
+      }
+      if (segments.length === 0) return;
+
+      for (let i = segments.length - 1; i >= 0; i--) {
+        const seg = segments[i];
+        const hideStartPos = locateTextPosition(block, seg.hideStart);
+        const hideEndPos = locateTextPosition(block, seg.hideEnd);
+        if (!hideStartPos || !hideEndPos) continue;
+        const hideRange = document.createRange();
+        hideRange.setStart(hideStartPos.node, hideStartPos.offset);
+        hideRange.setEnd(hideEndPos.node, hideEndPos.offset);
+        const fragment = hideRange.extractContents();
+        if (!fragment.textContent || fragment.textContent.length === 0) continue;
+
+        const proofTail = document.createElement("span");
+        proofTail.className = "bp-proof-tail bp-proof-tail-hidden";
+        proofTail.appendChild(fragment);
+        hideRange.insertNode(proofTail);
+        let gapNode = null;
+        if (seg.gapText) {
+          gapNode = document.createElement("span");
+          gapNode.textContent = seg.gapText;
+          proofTail.parentNode.insertBefore(gapNode, proofTail);
+        }
+
+        const toggle = seg.byEl;
+        if (!(toggle instanceof HTMLElement)) continue;
+        toggle.classList.add("bp-proof-by-toggle");
+        toggle.tabIndex = 0;
+        toggle.setAttribute("role", "button");
+        toggle.setAttribute("aria-expanded", "false");
+        toggle.setAttribute("aria-label", "Toggle proof");
+        toggle.addEventListener("click", function () {
+          toggleProof(toggle, proofTail, gapNode);
+        });
+        toggle.addEventListener("keydown", function (ev) {
+          if (!(ev instanceof KeyboardEvent)) return;
+          if (ev.key !== "Enter" && ev.key !== " ") return;
+          ev.preventDefault();
+          toggleProof(toggle, proofTail, gapNode);
+        });
+      }
     });
   }
 
@@ -772,13 +951,13 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
         <div class="bp_code_hover_section">
           <span class="bp_code_hover_label">"Lean definitions"</span>
           <ul class="bp_code_hover_list">
-            {{listItems hover.definedConsts}}
+            {{listItems hover.definedDefs}}
           </ul>
         </div>
         <div class="bp_code_hover_section">
-          <span class="bp_code_hover_label">"Lean proofs"</span>
+          <span class="bp_code_hover_label">"Lean theorems/lemmas"</span>
           <ul class="bp_code_hover_list">
-            {{listItems hover.definedProofs}}
+            {{listItems hover.definedTheorems}}
           </ul>
         </div>
         <div class="bp_code_hover_section">
@@ -910,21 +1089,21 @@ block_extension Block.informal (data : BlockData) where
             else
               none
       let codeHover : Option CodeHoverData := codeData?.map (fun cdata =>
-        mkCodeHoverData data.label cdata.definedConsts cdata.definedProofs getDeclHref)
+        mkCodeHoverData data.label cdata.definedDefs cdata.definedTheorems getDeclHref)
       let hasSorries : Bool :=
         match codeData? with
         | none => false
-        | some cdata => (cdata.definedConsts ++ cdata.definedProofs).any (·.hasSorry)
+        | some cdata => (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasSorry)
       let hasStatementSorries : Bool :=
         match codeData? with
         | none => false
         | some cdata =>
-          (cdata.definedConsts ++ cdata.definedProofs).any (·.hasTypeSorry)
+          (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasTypeSorry)
       let hasProofSorries : Bool :=
         match codeData? with
         | none => false
         | some cdata =>
-          (cdata.definedConsts ++ cdata.definedProofs).any (·.hasProofSorry)
+          (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasProofSorry)
       let cdata := {
         proved := codeData?.isSome && !hasSorries
         codeHref
@@ -937,7 +1116,7 @@ block_extension Block.informal (data : BlockData) where
 block_extension Block.informalCode (data : CodeBlockData) where
   data := toJson data
   traverse id data _contents := do
-    let .ok cdata@{ label, definedConsts := _, definedProofs := _ } := fromJson? (α := CodeBlockData) data
+    let .ok cdata@{ label, definedDefs := _, definedTheorems := _ } := fromJson? (α := CodeBlockData) data
       | logError s!"Malformed data: {data}"
         pure none
     if let .some _d := (← get).getDomainObject? informalCodeDomain label.toString then
@@ -955,7 +1134,7 @@ block_extension Block.informalCode (data : CodeBlockData) where
     open Verso.Doc.Html in
     open Verso.Output.Html in
     some <| fun _goI goB id data blocks => do
-      let .ok { label, definedConsts, definedProofs } := fromJson? (α := CodeBlockData) data
+      let .ok { label, definedDefs, definedTheorems, foldProofs } := fromJson? (α := CodeBlockData) data
         | HtmlT.logError s!"Malformed data: {data}"
           pure .empty
       let s ← HtmlT.state
@@ -967,10 +1146,33 @@ block_extension Block.informalCode (data : CodeBlockData) where
           | .ok b => s!"Code for {b.kind} {b.count}"
           | .error _ => "Code"
         | none => "Code"
-      let summaryHover := codeHoverText label definedConsts definedProofs
+      let orderedDecls := sortDeclsByCommand (definedDefs ++ definedTheorems)
+      let progressBar : Output.Html :=
+        if orderedDecls.isEmpty then
+          .empty
+        else
+          let segments := orderedDecls.map fun decl =>
+            let cls :=
+              if decl.hasSorry then
+                "bp_code_progress_segment bp_code_progress_segment_sorry"
+              else
+                "bp_code_progress_segment bp_code_progress_segment_ok"
+            let weight := max decl.weight 1
+            let title :=
+              if decl.hasSorry then
+                s!"{decl.name}: has sorry"
+              else
+                s!"{decl.name}: complete"
+            {{<span class={{cls}} title={{title}} style={{s!"flex: {weight} 1 0%"}}></span>}}
+          {{<span class="bp_code_progress" aria-label="Lean declaration progress">{{segments}}</span>}}
+      let summaryHover := codeHoverText label definedDefs definedTheorems
       pure {{
-        <details class="bp_code_block" {{attrs}}>
-          <summary title={{summaryHover}}> {{summaryText}} </summary>
+        <details class="bp_code_block" "data-bp-proof-fold"={{if foldProofs then "on" else "off"}} {{attrs}}>
+          <summary title={{summaryHover}}>
+            <span class="bp_code_summary_text">{{summaryText}}</span>
+            {{progressBar}}
+            <span class="bp_code_expand_hint"></span>
+          </summary>
           {{ ← blocks.mapM goB }}
         </details>
       }}
@@ -981,10 +1183,14 @@ def expander (kind : BlockKind) : DirectiveExpanderOf Config
     let label := cfg.label
     let isProof := (kind == .proof_)
     let kind? := if isProof then none else some (toString kind)
+    let blockRef ← getRef
     Environment.push label kind? isProof
     let contents ← contents.mapM elabBlock
-    let ref ← getRef
-    let count ← Environment.pop ref
+    if !isProof then
+      Environment.setStatementElab contents
+    let count ← Environment.pop blockRef
+    -- Make the blueprint widget available when selecting this labeled block.
+    activateForLabelDoc label blockRef
     let data : BlockData := {kind, label, count}
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
@@ -1005,28 +1211,35 @@ def lean : CodeBlockExpanderOf Config
     let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some (cfg.label : Lean.Name) }
     let res ← Lean.elabCommands leanCfg contents
     let codeBlock := res.block
-    let definedConsts := res.definedConsts.map (fun d => ({
+    let definedDefs := res.definedDefs.map (fun d => ({
       name := d.name
+      commandIndex := d.commandIndex
+      weight := max (toString d.name).length 1
       hasSorry := d.hasSorry
       hasTypeSorry := d.hasTypeSorry
       hasProofSorry := d.hasProofSorry
     } : CodeDeclData))
-    let definedProofs := res.definedProofs.map (fun d => ({
+    let definedTheorems := res.definedTheorems.map (fun d => ({
       name := d.name
+      commandIndex := d.commandIndex
+      weight := max (toString d.name).length 1
       hasSorry := d.hasSorry
       hasTypeSorry := d.hasTypeSorry
       hasProofSorry := d.hasProofSorry
     } : CodeDeclData))
     let data : CodeBlockData := {
       label := cfg.label
-      definedConsts
-      definedProofs
+      definedDefs
+      definedTheorems
+      foldProofs := verso.blueprint.foldProofs.get (← getOptions)
     }
     let codeRef ← getRef
     let codeInfo : Data.CodeInfo := {
-      proved := !definedProofs.isEmpty
-      definedConsts := res.definedConsts.map (fun d => ({
+      proved := !definedTheorems.isEmpty
+      definedDefs := res.definedDefs.map (fun d => ({
         name := d.name
+        commandStx := d.commandStx
+        commandIndex := d.commandIndex
         hasSorry := d.hasSorry
         sorryRefs := d.sorryRefs
         hasTypeSorry := d.hasTypeSorry
@@ -1034,8 +1247,10 @@ def lean : CodeBlockExpanderOf Config
         typeSorryRefs := d.typeSorryRefs
         proofSorryRefs := d.proofSorryRefs
       } : Data.DefinedDecl))
-      definedProofs := res.definedProofs.map (fun d => ({
+      definedTheorems := res.definedTheorems.map (fun d => ({
         name := d.name
+        commandStx := d.commandStx
+        commandIndex := d.commandIndex
         hasSorry := d.hasSorry
         sorryRefs := d.sorryRefs
         hasTypeSorry := d.hasTypeSorry
@@ -1045,6 +1260,7 @@ def lean : CodeBlockExpanderOf Config
       } : Data.DefinedDecl))
     }
     Environment.registerCode cfg.label codeRef (some codeInfo)
+    activateForLabelDoc cfg.label codeRef
     ``(Block.other (Block.informalCode $(quote data)) #[$codeBlock])
 
 /-- Internal Lean setup blocks:
@@ -1136,7 +1352,10 @@ def uses : RoleExpanderOf Config
     let contents ← contents.mapM elabInline
     let label := cfg.label
     let node ← Environment.getNode? label
-    Environment.addDep (← getRef) label
+    let useRef ← getRef
+    Environment.addDep useRef label
+    if node.isSome then
+      activateForLabelDoc label useRef
     let data : InlineData := { label, block := node.map (fun n => n.toBlockInfo label) }
     ``(Inline.other (Inline.informal $(quote data)) #[$contents,*])
 

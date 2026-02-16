@@ -26,6 +26,8 @@ instance [Repr A] : Repr (LabelMap A) := inferInstanceAs <| Repr (NameMap A)
 /-- Information about a code block, including Lean-level analysis -/
 structure DefinedDecl where
   name : Name
+  commandStx : Syntax := .missing
+  commandIndex : Nat := 0
   hasSorry : Bool := false
   hasTypeSorry : Bool := false
   hasProofSorry : Bool := false
@@ -38,8 +40,8 @@ deriving Repr, Inhabited
 structure CodeInfo where
   proved : Bool := false
   deps : Array Label := #[]
-  definedConsts : Array DefinedDecl := #[]
-  definedProofs : Array DefinedDecl := #[]
+  definedDefs : Array DefinedDecl := #[]
+  definedTheorems : Array DefinedDecl := #[]
 deriving Repr, Inhabited
 
 -- def CodeInfo.get (name : Name) : CodeInfo := by sorry
@@ -53,6 +55,7 @@ structure Node where
   kind : String := "Lemma"
   count : Nat := 0
   statement : Syntax := .missing -- Informal Object statement
+  statementElab : Array Syntax := #[] -- elaborated statement blocks, transient
   proof : Syntax := .missing -- Informal Object proof
   code : Code := {} -- Informal Object associated code
   deps : Array Label := #[] -- Informal Object deps
@@ -85,11 +88,12 @@ variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 -- XXX: needs: test
 /-- registers an informal definition, will error if already existing -/
 def Data.register (data : Data) (label : Label) (kind? : Option String) (deps : Array Label)
-    (proofDeps : Array Label) (statement : Option Syntax) (proof : Option Syntax) : m Data := do
+    (proofDeps : Array Label) (statement : Option Syntax) (proof : Option Syntax)
+    (statementElab : Array Syntax := #[]) : m Data := do
   match data.get? label, statement, proof with
   | none, some statement, none =>
     let count := data.size + 1
-    return data.insert label { deps, proofDeps, statement, count, kind := kind?.getD "Lemma" }
+    return data.insert label { deps, proofDeps, statement, statementElab, count, kind := kind?.getD "Lemma" }
   | none, none, some _ =>
     -- logError m!"No statement for proof with label {label}"
     return data

@@ -32,8 +32,8 @@ private def registerLeanOnlyDef (decl label : Name) (ref : Syntax) : CoreM Unit 
   let definedDecl := mkDefinedDecl decl info
   let codeInfo : Data.CodeInfo := {
     proved := false
-    definedConsts := #[definedDecl]
-    definedProofs := #[]
+    definedDefs := #[definedDecl]
+    definedTheorems := #[]
   }
 
   Environment.modifyM fun state => do

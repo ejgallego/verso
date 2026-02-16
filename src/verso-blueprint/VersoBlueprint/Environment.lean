@@ -19,6 +19,7 @@ structure InProgress where
   isProof : Bool := false
   deps : Array Label
   proofDeps : Array Label := #[]
+  statementElab : Array Syntax := #[]
 deriving Inhabited, Repr
 
 structure State where
@@ -36,7 +37,9 @@ initialize informalExt : PersistentEnvExtension (Name × Node) (Name × Node) St
         entry.foldl (init := acc) fun acc (name, node) =>
            acc.insert name node
       pure $ { data }
-    exportEntriesFnEx env := fun state _level => state.data.toArray
+    -- Strip transient elaboration cache before exporting nodes to the environment.
+    exportEntriesFnEx env := fun state _level =>
+      state.data.toArray.map fun (name, node) => (name, { node with statementElab := #[] })
   }
 
 section EnvOps
@@ -83,7 +86,8 @@ def pop (ref : Syntax) : m Nat := do
   | cur :: stack =>
     let statement := if cur.isProof then none else some ref
     let proof := if cur.isProof then some ref else none
-    let data ← state.data.register cur.label cur.kind? cur.deps cur.proofDeps statement proof
+    let statementElab := if cur.isProof then #[] else cur.statementElab
+    let data ← state.data.register cur.label cur.kind? cur.deps cur.proofDeps statement proof statementElab
     return { state with data, stack }
   getCount
 
@@ -106,6 +110,16 @@ def addDep (stx : Syntax) (dep : Name) : m Unit := do
         { cur with deps := cur.deps.push dep }
     let stack := cur :: rest
     modify fun state => { state with stack }
+
+def setStatementElab (stxs : Array Syntax) : m Unit := do
+  match (informalExt.getState (← getEnv)).stack with
+  | [] => pure ()
+  | cur :: rest =>
+    if cur.isProof then
+      pure ()
+    else
+      let cur := { cur with statementElab := stxs }
+      modify fun state => { state with stack := cur :: rest }
 
 def registerCode (label : Label) (code : Syntax) (info : Option CodeInfo := none) : m Unit := do
   modifyM fun state => do
