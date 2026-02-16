@@ -25,6 +25,8 @@ structure GraphParams where
   statementHtml : Json
   /-- DOT source to render. -/
   dot : String
+  /-- TeX macro prelude shared with KaTeX rendering. -/
+  texPrelude : String := ""
   deriving Server.RpcEncodable
 
 @[widget_module]
@@ -35,7 +37,7 @@ def blueprintWidget : Component GraphParams where
     import katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.27/+esm'
     import * as React from 'react';
 
-    export default function ({ title, label, statementHtml, dot }) {
+    export default function ({ title, label, statementHtml, dot, texPrelude }) {
         const graphRef = React.useRef(null);
 
         function loadStyle(url) {
@@ -57,6 +59,8 @@ def blueprintWidget : Component GraphParams where
                .renderDot(dot);
            }
         }, [dot]);
+
+        const prelude = typeof texPrelude === 'string' ? texPrelude.trim() : '';
 
         const rootStyle = { display: 'grid', gap: '0.6rem', fontSize: '0.9rem', lineHeight: 1.45 };
         const statementStyle = {
@@ -118,8 +122,9 @@ def blueprintWidget : Component GraphParams where
               const tex = extractText(node.content);
               const displayMode = classes.includes('display');
               let rendered = tex;
+              const renderInput = prelude.length > 0 ? `${prelude}\n${tex}` : tex;
               try {
-                rendered = katex.renderToString(tex, { throwOnError: false, displayMode });
+                rendered = katex.renderToString(renderInput, { throwOnError: false, displayMode });
               } catch (_err) {}
               return React.createElement(displayMode ? 'div' : 'span', {
                 key,
@@ -265,6 +270,7 @@ open Informal Data Environment
 structure BuildResult where
   dot : String
   statementElab : Array Syntax
+  texPrelude : String
 
 def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResult := do
   let state := informalExt.getState (← getEnv)
@@ -280,20 +286,20 @@ def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResul
   let labels : List Name := (label :: stmtDeps ++ prfDeps).eraseDups
   let graph : Graph := labels.map (mkNode state)
   let dot := graph.toDot
-  pure { dot, statementElab := root.statementElab }
+  pure { dot, statementElab := root.statementElab, texPrelude := state.texPrelude }
 
 open Server in
-def updatePanel (title label : String) (statementHtml : Json) (dot : String) stx :=
+def updatePanel (title label : String) (statementHtml : Json) (dot texPrelude : String) stx :=
   Widget.savePanelWidgetInfo
     (blueprintWidget.javascriptHash)
-    (rpcEncode ({ title, label, statementHtml, dot } : GraphParams )) stx
+    (rpcEncode ({ title, label, statementHtml, dot, texPrelude } : GraphParams )) stx
 
 def activateForLabelDoc (label : Name) (stx : Syntax) : Verso.Doc.Elab.DocElabM Unit := do
   if stx.getPos?.isNone then
     return ()
   let out ← buildFor label
   let statementHtml := toJson (← Informal.renderStatementElabHtml out.statementElab)
-  (monadLift (updatePanel s!"BluePrint widget: {label}" label.toString statementHtml out.dot stx) : Verso.Doc.Elab.DocElabM Unit)
+  (monadLift (updatePanel s!"BluePrint widget: {label}" label.toString statementHtml out.dot out.texPrelude stx) : Verso.Doc.Elab.DocElabM Unit)
 
 show_panel_widgets [local blueprintWidget]
 
@@ -306,7 +312,7 @@ unsafe def elabGraph : CommandElab := fun
     let target := Name.mkSimple label.getString
     let out ← liftCoreM <| buildFor target
     let statementHtml := toJson (← Lean.Elab.Command.liftTermElabM <| Informal.renderStatementElabHtml out.statementElab)
-    liftCoreM <| updatePanel s!"BluePrint widget: {target}" label.getString statementHtml out.dot stx
+    liftCoreM <| updatePanel s!"BluePrint widget: {target}" label.getString statementHtml out.dot out.texPrelude stx
   | _ => throwUnsupportedSyntax
 
 -- #show_graph exampleGraph
