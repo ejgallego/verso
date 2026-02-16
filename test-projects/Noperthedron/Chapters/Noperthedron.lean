@@ -8,7 +8,7 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import VersoBlueprint.Commands
-import VersoBlueprint.GraphViz
+import VersoBlueprint.Widget
 
 -- FIXME: This should happen in a special verso code block
 import Noperthedron.Basic
@@ -30,6 +30,9 @@ set_option pp.rawOnError true
 -- No warnings for line length (warning more globally?)
 -- Look at ref manual, global options
 set_option verso.code.warnLineLength 0
+
+-- Example of a Lean-only blueprint node registered via the attribute.
+@[blueprint "example:lean_only_node"] def blueprintLeanOnlyNodeExample : Nat := 42
 
 #doc (Manual) "The Noperthedron" =>
 
@@ -62,6 +65,7 @@ $$`
         8193990033 \\ 5298215096 \\ 1230614493
         \end{pmatrix}.
 `
+and we {uses "example:lean_only_node"}[link to a lean-only def] as an example.
 :::
 
 ```lean "def:noperthedron_main"
@@ -176,6 +180,9 @@ By {uses "c1_c2_c3_norms"}[], {uses "thm:pointsymmetrize_pres_radius"}[],
 :::
 
 ```lean "lem:radius_noperthedron_one"
+
+#show_graph "lem:radius_noperthedron_one"
+
 /--
 Half of the vertices of the noperthedron
 -/
