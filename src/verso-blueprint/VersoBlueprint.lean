@@ -138,6 +138,10 @@ structure CodeBlockData where
   foldProofs : Bool := true
 deriving FromJson, ToJson, Quote
 
+structure TexPreludeData where
+  prelude : String
+deriving FromJson, ToJson, Quote
+
 register_option verso.blueprint.foldProofs : Bool := {
   defValue := true
   descr := "Enable proof folding in VersoBlueprint Lean code blocks (hide text after `by` behind a toggle)"
@@ -1177,7 +1181,63 @@ block_extension Block.informalCode (data : CodeBlockData) where
         </details>
       }}
 
+block_extension Block.texPrelude (data : TexPreludeData) where
+  data := toJson data
+  traverse _id _data _contents := do
+    pure none
+  toTeX := none
+  toHtml :=
+    open Verso.Doc.Html in
+    open Verso.Output.Html in
+    some <| fun _goI _goB _id data _blocks => do
+      let .ok { prelude } := fromJson? (α := TexPreludeData) data
+        | HtmlT.logError s!"Malformed data: {data}"
+          pure .empty
+      let injectorJs := r##"
+(() => {
+  const script = document.currentScript;
+  const carrier = script && script.previousElementSibling;
+  if (!carrier || !carrier.classList || !carrier.classList.contains('verso-tex-prelude')) return;
+
+  const prelude = carrier.textContent || '';
+  if (!window.__versoTexPreludeBlocks) window.__versoTexPreludeBlocks = [];
+  if (prelude.trim().length > 0) window.__versoTexPreludeBlocks.push(prelude);
+
+  if (window.__versoTexPreludePatched) return;
+
+  const patchKaTeX = () => {
+    if (!window.katex || typeof window.katex.render !== 'function') return false;
+    const originalRender = window.katex.render.bind(window.katex);
+    window.katex.render = (tex, ...args) => {
+      const blocks = window.__versoTexPreludeBlocks || [];
+      const fullPrelude = blocks.join('\n').trim();
+      const base = tex == null ? '' : String(tex);
+      const injected = fullPrelude.length > 0 ? `${fullPrelude}\n${base}` : base;
+      return originalRender(injected, ...args);
+    };
+    window.__versoTexPreludePatched = true;
+    return true;
+  };
+
+  if (!patchKaTeX()) {
+    document.addEventListener('DOMContentLoaded', () => { patchKaTeX(); }, { once: true });
+  }
+})();
+"##
+      pure {{
+        <script type="text/plain" class="verso-tex-prelude">{{.text false prelude}}</script>
+        <script>{{.text false injectorJs}}</script>
+      }}
+
 /-- Informal directives -/
+@[code_block]
+def texPrelude : CodeBlockExpanderOf Unit
+  | _, contents => do
+    let prelude := contents.getString
+    Environment.addTexPrelude prelude
+    let data : TexPreludeData := { prelude }
+    ``(Block.other (Block.texPrelude $(quote data)) #[])
+
 def expander (kind : BlockKind) : DirectiveExpanderOf Config
   | cfg, contents => do
     let label := cfg.label

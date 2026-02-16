@@ -25,6 +25,7 @@ deriving Inhabited, Repr
 structure State where
   data : Data := Data.empty
   stack : List InProgress := []
+  texPrelude : String := ""
 deriving Inhabited, Repr
 
 initialize informalExt : PersistentEnvExtension (Name × Node) (Name × Node) State ←
@@ -56,7 +57,7 @@ def modifyM (f : State -> m State) : m Unit := do
 
 -- XXX: needs: test
 def checkLabelAndNesting (label : Label) (isProof : Bool) : m Unit := do
-  let { data, stack } := informalExt.getState (← getEnv)
+  let { data, stack, .. } := informalExt.getState (← getEnv)
   match (isProof, data.get? label, stack.isEmpty) with
   | (false, none, true) => return ()
   | (false, some _, true) => logError m!"Label {label} already defined"
@@ -128,5 +129,21 @@ def registerCode (label : Label) (code : Syntax) (info : Option CodeInfo := none
 
 def getNode? (label : Label) : m (Option Node) := do
   return (informalExt.getState (← getEnv)).data.get? label
+
+def addTexPrelude (texPrelude : String) : m Unit := do
+  let texPrelude := texPrelude.trimAscii.toString
+  if texPrelude.isEmpty then
+    pure ()
+  else
+    modify fun state =>
+      let texPrelude :=
+        if state.texPrelude.isEmpty then
+          texPrelude
+        else
+          state.texPrelude ++ "\n" ++ texPrelude
+      { state with texPrelude }
+
+def getTexPrelude : m String := do
+  return (informalExt.getState (← getEnv)).texPrelude
 
 end EnvOps

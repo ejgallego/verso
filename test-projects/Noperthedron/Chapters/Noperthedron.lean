@@ -44,6 +44,11 @@ namespace Nopert
 open Real
 ```
 
+```texPrelude
+\newcommand{\PPP}{\operatorname{\mathbf{P}}}
+\newcommand{\NOP}{\operatorname{\mathbf{NOP}}}
+```
+
 # Definition of the Noperthedron
 
 :::definition "def:noperthedron_main"
