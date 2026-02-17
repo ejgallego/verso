@@ -98,34 +98,8 @@ instance : FromArgs Config m where
 
 end
 
-inductive BlockKind where
-  | def_
-  | lem_
-  | thm_
-  | proof_
-  | cor_
-  | code_
-deriving FromJson, ToJson, DecidableEq, Quote
-
-instance : ToString BlockKind where
- toString
-  | .def_   => "Definition"
-  | .lem_   => "Lemma"
-  | .thm_   => "Theorem"
-  | .proof_ => "Proof"
-  | .cor_   => "Corollary"
-  | .code_  => "Lean Code"
-
-def BlockKind.toNodeKind : BlockKind → Data.NodeKind
-  | .def_ => Data.NodeKind.definition
-  | .lem_ => Data.NodeKind.lemma
-  | .thm_ => Data.NodeKind.theorem
-  | .proof_ => Data.NodeKind.proof
-  | .cor_ => Data.NodeKind.corollary
-  | .code_ => Data.NodeKind.leanCode
-
 structure BlockData where
-  kind : BlockKind
+  kind : Data.NodeKind
   label : Data.Label
   count : Nat
 deriving FromJson, ToJson, Quote
@@ -993,27 +967,24 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
   let kindText := s!"{data.kind}"
   let labelTextNum := s!"{data.count}"
   let labelText := s!"{data.label}"
-  let showLabel := data.kind != .proof_
+  let showLabel := data.kind != .proof
   let (kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
     match data.kind with
-    | .def_ =>
+    | .definition =>
       ("definition", "definition_thmwrapper theorem-style-definition bp_kind_definition",
         "definition_thmheading", "definition_thmcaption", "definition_thmlabel", "definition_thmcontent")
-    | .thm_ =>
+    | .theorem =>
       ("theorem", "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
         "theorem_thmheading", "theorem_thmcaption", "theorem_thmlabel", "theorem_thmcontent")
-    | .lem_ =>
+    | .lemma =>
       ("lemma", "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
         "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
-    | .cor_ =>
+    | .corollary =>
       ("corollary", "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
         "corollary_thmheading", "corollary_thmcaption", "corollary_thmlabel", "corollary_thmcontent")
-    | .proof_ =>
+    | .proof =>
       ("proof", "proof_wrapper bp_kind_proof",
         "proof_heading", "proof_caption", "proof_label", "proof_content")
-    | .code_ =>
-      ("code", "lemma_thmwrapper theorem-style-plain bp_kind_code",
-        "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
   let wrapperClass := s!"bp_wrapper {kindCss}_thmwrapper {wrapperCss}"
   let headingClass := s!"bp_heading {headingCss}"
   let captionClass := s!"bp_caption {captionCss}"
@@ -1024,7 +995,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
       .empty
     else
       let (hasSorriesHere, whereTxt) :=
-        if data.kind == .proof_ then
+        if data.kind == .proof then
           (cdata.hasProofSorries, "proof")
         else
           (cdata.hasStatementSorries, "statement")
@@ -1256,11 +1227,11 @@ def texPrelude : CodeBlockExpanderOf Unit
     let data : TexPreludeData := { prelude }
     ``(Block.other (Block.texPrelude $(quote data)) #[])
 
-def expander (kind : BlockKind) : DirectiveExpanderOf Config
+def expander (kind : Data.NodeKind) : DirectiveExpanderOf Config
   | cfg, contents => do
     let label := cfg.label
-    let isProof := (kind == .proof_)
-    let kind? := if isProof then none else some kind.toNodeKind
+    let isProof := (kind == .proof)
+    let kind? := if isProof then none else some kind
     let blockRef ← getRef
     Environment.push label kind? isProof
     let contents ← contents.mapM elabBlock
@@ -1272,11 +1243,11 @@ def expander (kind : BlockKind) : DirectiveExpanderOf Config
     let data : BlockData := {kind, label, count}
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
-@[directive] def «definition» := expander .def_
-@[directive] def «lemma_» := expander .lem_
-@[directive] def «theorem» := expander .thm_
-@[directive] def «corollary» := expander .cor_
-@[directive] def «proof» := expander .proof_
+@[directive] def «definition» := expander .definition
+@[directive] def «lemma_» := expander .lemma
+@[directive] def «theorem» := expander .theorem
+@[directive] def «corollary» := expander .corollary
+@[directive] def «proof» := expander .proof
 
 -- Have a look to MonadQuotation ()
 
@@ -1298,11 +1269,7 @@ def lean : CodeBlockExpanderOf Config
       foldProofs := verso.blueprint.foldProofs.get (← getOptions)
     }
     let codeRef ← getRef
-    let codeInfo : Data.CodeInfo := {
-      definedDefs := res.definedDefs
-      definedTheorems := res.definedTheorems
-    }
-    Environment.registerCode cfg.label codeRef codeInfo
+    Environment.registerCode cfg.label codeRef res.definedDefs res.definedTheorems
     activateForLabelDoc cfg.label codeRef
     ``(Block.other (Block.informalCode $(quote data)) #[$codeBlock])
 
@@ -1321,16 +1288,7 @@ structure InlineData where
 deriving FromJson, ToJson, Quote
 
 def Data.Node.toBlockInfo (node : Data.Node) (label : Data.Label) : BlockData :=
-  let kind :=
-    match node.kind with
-    | Data.NodeKind.definition => BlockKind.def_
-    | Data.NodeKind.lemma => BlockKind.lem_
-    | Data.NodeKind.theorem => BlockKind.thm_
-    | Data.NodeKind.proof => BlockKind.proof_
-    | Data.NodeKind.corollary => BlockKind.cor_
-    | Data.NodeKind.leanCode => BlockKind.code_
-    | Data.NodeKind.other _ => BlockKind.lem_
-  { kind, label, count := node.count }
+  { kind := node.kind, label, count := node.count }
 
 inline_extension Inline.informal (data : InlineData) where
   data := toJson data

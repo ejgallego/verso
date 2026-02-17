@@ -27,10 +27,8 @@ inductive NodeKind where
   | definition
   | lemma
   | theorem
-  | proof
   | corollary
-  | leanCode
-  | other (kind : String)
+  | proof
 deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
 
 instance : ToString NodeKind where
@@ -40,8 +38,15 @@ instance : ToString NodeKind where
     | .theorem => "Theorem"
     | .proof => "Proof"
     | .corollary => "Corollary"
-    | .leanCode => "Lean Code"
-    | .other k => k
+
+open Syntax in
+instance : Quote NodeKind where
+  quote
+    | .definition => mkCApp ``NodeKind.definition #[]
+    | .lemma => mkCApp ``NodeKind.lemma #[]
+    | .theorem => mkCApp ``NodeKind.theorem #[]
+    | .proof => mkCApp ``NodeKind.proof #[]
+    | .corollary => mkCApp ``NodeKind.corollary #[]
 
 /-- Information about a code block, including Lean-level analysis -/
 structure DefinedDecl where
@@ -51,20 +56,14 @@ structure DefinedDecl where
   hasSorry : Bool := false
   hasTypeSorry : Bool := false
   hasProofSorry : Bool := false
-  sorryRefs : Array Syntax := #[]
   typeSorryRefs : Array Syntax := #[]
   proofSorryRefs : Array Syntax := #[]
 deriving Repr, Inhabited
 
-/-- Information about a code block, including Lean-level analysis -/
-structure CodeInfo where
-  definedDefs : Array DefinedDecl := #[]
-  definedTheorems : Array DefinedDecl := #[]
-deriving Repr, Inhabited
-
 structure Code where
   stx : Syntax
-  info : CodeInfo
+  definedDefs : Array DefinedDecl := #[]
+  definedTheorems : Array DefinedDecl := #[]
 deriving Repr, Inhabited
 
 structure InformalData where
@@ -132,13 +131,14 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
   | _, _, _ => return data
 
 /-- Register Lean code and code metadata for an informal object label. -/
-def Data.registerCode (data : Data) (label : Label) (code : Syntax) (info : CodeInfo) : m Data := do
+def Data.registerCode (data : Data) (label : Label) (code : Syntax)
+    (definedDefs : Array DefinedDecl := #[]) (definedTheorems : Array DefinedDecl := #[]) : m Data := do
   match data.get? label with
   | none =>
-    return data.insert label { code := some { stx := code, info } }
+    return data.insert label { code := some { stx := code, definedDefs, definedTheorems } }
   | some node =>
     if node.code.isNone then
-      return data.modify label fun node => { node with code := some { stx := code, info } }
+      return data.modify label fun node => { node with code := some { stx := code, definedDefs, definedTheorems } }
     else
       -- Could also append multiple code blocks here instead of erroring.
       logError m!"Label {label} already has code"

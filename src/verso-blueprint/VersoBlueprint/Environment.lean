@@ -130,9 +130,10 @@ def setStatementElab (stxs : Array Syntax) : m Unit := do
       let cur := { cur with elabStx := stxs }
       modify fun state => { state with stack := cur :: rest }
 
-def registerCode (label : Label) (code : Syntax) (info : CodeInfo) : m Unit := do
+def registerCode (label : Label) (code : Syntax)
+    (definedDefs : Array DefinedDecl := #[]) (definedTheorems : Array DefinedDecl := #[]) : m Unit := do
   modifyM fun state => do
-    let data ← state.data.registerCode label code info
+    let data ← state.data.registerCode label code definedDefs definedTheorems
     return { state with data }
 
 def getNode? (label : Label) : m (Option Node) := do

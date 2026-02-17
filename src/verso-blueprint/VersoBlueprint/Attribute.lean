@@ -14,14 +14,6 @@ open Lean
 
 syntax (name := blueprint) "blueprint" ppSpace str : attr
 
-private inductive BlueprintDeclKind where
-  | definition
-  | theorem
-
-private def BlueprintDeclKind.nodeKind : BlueprintDeclKind → Data.NodeKind
-  | .definition => Data.NodeKind.definition
-  | .theorem => Data.NodeKind.theorem
-
 private def constantInfoKind : ConstantInfo → String
   | .axiomInfo _ => "axiom"
   | .defnInfo _ => "definition"
@@ -32,7 +24,7 @@ private def constantInfoKind : ConstantInfo → String
   | .ctorInfo _ => "constructor"
   | .recInfo _ => "recursor"
 
-private def classifyDeclKind (decl : Name) (info : ConstantInfo) : CoreM BlueprintDeclKind :=
+private def classifyDeclKind (decl : Name) (info : ConstantInfo) : CoreM Data.NodeKind :=
   match info with
   | .defnInfo _ => pure .definition
   | .thmInfo _ => pure .theorem
@@ -49,10 +41,12 @@ private def mkDefinedDecl (decl : Name) (info : ConstantInfo) : Data.DefinedDecl
     hasProofSorry
   }
 
-private def mkCodeInfo (definedDecl : Data.DefinedDecl) (declKind : BlueprintDeclKind) : Data.CodeInfo :=
+private def mkCodeDecls (definedDecl : Data.DefinedDecl) (declKind : Data.NodeKind) :
+    Array Data.DefinedDecl × Array Data.DefinedDecl :=
   match declKind with
-  | .definition => { definedDefs := #[definedDecl], definedTheorems := #[] }
-  | .theorem => { definedDefs := #[], definedTheorems := #[definedDecl] }
+  | .definition => (#[definedDecl], #[])
+  | .theorem => (#[], #[definedDecl])
+  | _ => panic! "impossible: classifyDeclKind only returns definition/theorem"
 
 private def logDocstringIfPresent (decl : Name) : CoreM Unit := do
   let env ← getEnv
@@ -72,15 +66,15 @@ private def registerLeanOnlyDecl (decl label : Name) (ref : Syntax) : CoreM Unit
   logDocstringIfPresent decl
 
   let definedDecl := mkDefinedDecl decl info
-  let codeInfo := mkCodeInfo definedDecl declKind
+  let (definedDefs, definedTheorems) := mkCodeDecls definedDecl declKind
 
   Environment.modifyM fun state => do
-    let data ← state.data.registerCode label ref codeInfo
+    let data ← state.data.registerCode label ref definedDefs definedTheorems
     let data :=
       match data.get? label with
       | some node =>
         if node.statement.isNone then
-          data.modify label fun node => { node with kind := declKind.nodeKind }
+          data.modify label fun node => { node with kind := declKind }
         else
           data
       | none => data
