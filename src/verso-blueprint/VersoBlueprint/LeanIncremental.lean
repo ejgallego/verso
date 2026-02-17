@@ -129,13 +129,13 @@ private def getDefinedDecls (before after : Environment) (sorryRefsByDecl : Lean
       let hasSorry := hasTypeSorry || hasProofSorry
       let refs := (sorryRefsByDecl.find? name).getD {}
       let (commandIndex, commandStx) := (declCmdInfo.find? name).getD (0, .missing)
-      let (typeSorryRefs, proofSorryRefs, sorryRefs) :=
+      let (typeSorryRefs, proofSorryRefs) :=
         if hasSorry then
           match info with
-          | .thmInfo _ => (refs.typeRefs, refs.proofRefs, refs.allRefs)
-          | _ => (if hasTypeSorry then refs.allRefs else #[], if hasProofSorry then refs.allRefs else #[], refs.allRefs)
+          | .thmInfo _ => (refs.typeRefs, refs.proofRefs)
+          | _ => (if hasTypeSorry then refs.allRefs else #[], if hasProofSorry then refs.allRefs else #[])
         else
-          (#[], #[], #[])
+          (#[], #[])
       match info with
       | .thmInfo _ =>
         theorems := theorems.push ({
@@ -145,7 +145,6 @@ private def getDefinedDecls (before after : Environment) (sorryRefsByDecl : Lean
           hasSorry
           hasTypeSorry
           hasProofSorry
-          sorryRefs
           typeSorryRefs
           proofSorryRefs
         } : DefinedDecl)
@@ -157,7 +156,6 @@ private def getDefinedDecls (before after : Environment) (sorryRefsByDecl : Lean
           hasSorry
           hasTypeSorry
           hasProofSorry
-          sorryRefs
           typeSorryRefs
           proofSorryRefs
         } : DefinedDecl)

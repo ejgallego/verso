@@ -9,6 +9,7 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Environment
+import VersoBlueprint.Graph
 
 open Lean Elab Command
 
@@ -38,15 +39,8 @@ def elabGraph : CommandElab := fun _stx => do
 
 /- Blueprint summary commands, Verso -/
 
-structure GraphNode where
-  label : Name
-  deps : List Name
-  proofDeps : List Name := []
-  fillcolor : String
-  href : Option String := none
-deriving FromJson, ToJson, Quote
-
-def Graph := List GraphNode deriving FromJson, ToJson, Quote
+abbrev GraphNode := Informal.Graph.GraphNode Name
+abbrev Graph := Informal.Graph.Graph Name
 
 structure PendingProofItem where
   label : Name
@@ -59,7 +53,6 @@ structure SorryItem where
   kind : String
   decl : Name
   isTheorem : Bool := false
-  sorryRefs : Nat := 0
   typeSorryRefs : Nat := 0
   proofSorryRefs : Nat := 0
 deriving Inhabited, FromJson, ToJson, Quote
@@ -86,40 +79,11 @@ structure Summary where
   theoremLikeIndex : List IndexItem := []
 deriving Inhabited, FromJson, ToJson, Quote
 
-def definitionNodeColor : String := "#bfdbfe" -- Definition
-def leanOnlyDefNodeColor : String := "#e9d5ff" -- Lean-only definition, informal object missing
-def leanOkNodeColor : String := "#d4f4dd" -- Lean + proof available
-def sorryNodeColor : String := "#fff3bf" -- Lean code present / informal proof pending
-def informalNodeColor : String := "#f3f4f6" -- Informal/proof-only
 def informalDomainName : Name := Name.mkSimple "Informal.Block.informal"
 def informalCodeDomainName : Name := Name.mkSimple "Informal.Block.informalCode"
 def exampleDomainName : Name := ``Verso.Genre.Manual.example
 
-def Graph.toDot (g : Graph) : String :=
-  let known : NameSet := g.foldl (init := {}) fun acc node => acc.insert node.label
-  let nodes := g.map fun node =>
-    let attrs :=
-      if let some href := node.href then
-        s!"label=\"{node.label}\", fillcolor=\"{node.fillcolor}\", URL=\"{href}\", target=\"_self\", tooltip=\"{node.label}\""
-      else
-        s!"label=\"{node.label}\", fillcolor=\"{node.fillcolor}\""
-    s!"  \"{node.label}\" [{attrs}];"
-  let edges := g.flatMap fun node =>
-    node.deps.filterMap fun dep =>
-      if known.contains dep then
-        some s!"  \"{node.label}\" -> \"{dep}\";"
-      else
-        none
-  let proofEdges := g.flatMap fun node =>
-    node.proofDeps.filterMap fun dep =>
-      if known.contains dep then
-        some s!"  \"{node.label}\" -> \"{dep}\" [style=dashed, penwidth=1.2];"
-      else
-        none
-  let footer := "}"
-  String.intercalate "\n" ([header] ++ nodes ++ edges ++ proofEdges ++ [footer])
-where
-  header := r##"strict digraph "" {
+def graphDotHeader : String := r##"strict digraph "" {
     rankdir=LR;
     bgcolor="white";
     splines=true;
@@ -129,6 +93,10 @@ where
     edge [color="#6b7280", arrowhead=vee, arrowsize=0.6, penwidth=1];
     graph [fontname="Helvetica"];
   "##
+
+def Graph.toDot (g : Graph) (resolveHref : Name → Option String := fun _ => none) : String :=
+  Informal.Graph.Graph.toDot g graphDotHeader (refAttrs? := some fun ref =>
+    (resolveHref ref).map (fun href => s!"URL=\"{href}\", target=\"_self\", tooltip=\"{ref}\""))
 
 def loadD3Dot :=
   r##"(function () {
@@ -308,12 +276,10 @@ block_extension Block.graph (graph : Graph) where
         | HtmlT.logError "Malformed data in Block.graph.toHtml"
           pure .empty
       let s ← HtmlT.state
-      let data : Graph := data.map fun node =>
-        let href :=
-          match s.resolveDomainObject informalDomainName node.label.toString with
-          | .ok dest => some dest.relativeLink
-          | .error _ => none
-        ({ node with href } : GraphNode)
+      let resolveHref : Name → Option String := fun ref =>
+        match s.resolveDomainObject informalDomainName ref.toString with
+        | .ok dest => some dest.relativeLink
+        | .error _ => none
       return {{
         <div class="bp_graph_legend">
           <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#bfdbfe;"></span>"Definition"</span>
@@ -325,7 +291,7 @@ block_extension Block.graph (graph : Graph) where
         </div>
         <div id="graph">
           <script type="text/plain" class="dot-source">
-            s!"{data.toDot}"
+            s!"{data.toDot resolveHref}"
           </script>
         </div>
       }}
@@ -414,6 +380,7 @@ block_extension Block.summary (summary : Summary) where
               "in proof"
             else
               "location unknown"
+          let sorryRefs := item.typeSorryRefs + item.proofSorryRefs
           let sorryLinks : Array Output.Html :=
             match codeHref with
             | Option.none => #[]
@@ -430,7 +397,7 @@ block_extension Block.summary (summary : Summary) where
                   #[]
               let links := stmtLinks ++ proofLinks
               if links.isEmpty then
-                #[{{ <a class="bp_code_link" href={{href}}>s!"in code ({item.sorryRefs})"</a> }}]
+                #[{{ <a class="bp_code_link" href={{href}}>s!"in code ({sorryRefs})"</a> }}]
               else
                 links
           {{ <li>
@@ -439,7 +406,7 @@ block_extension Block.summary (summary : Summary) where
                <div class="bp_summary_item_body">
                  "Declaration with sorry: " {{declLink}} " "
                  <span class="bp_summary_badge">
-                   s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {whereTxt}; refs: {item.sorryRefs}]"
+                   s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {whereTxt}; refs: {sorryRefs}]"
                  </span>
                </div>
                {{if Array.isEmpty sorryLinks then
@@ -531,31 +498,10 @@ block_extension Block.summary (summary : Summary) where
   extraJs := singleton ⟨openTargetDetailsJs⟩
 --
 open Informal Data Environment
-def nodeHasSorries (node : Data.Node) : Bool :=
-  match node.code.map (·.info) with
-  | none => false
-  | some info =>
-    info.definedDefs.any (·.hasSorry) || info.definedTheorems.any (·.hasSorry)
-
-def nodeColor (node : Data.Node) : String :=
-  if node.code.isSome && node.statement.isNone then
-    leanOnlyDefNodeColor
-  else if node.kind == Data.NodeKind.definition then
-    definitionNodeColor
-  else if node.code.isSome then
-    if nodeHasSorries node then sorryNodeColor
-    else if node.proof.isSome then leanOkNodeColor
-    else sorryNodeColor
-  else
-    informalNodeColor
-
 def buildAll : CoreM Graph := do
-  return (informalExt.getState (← getEnv)).data.foldl (fun label data => {
-    label := label
-    deps := ((data.statement.map (·.deps)).getD #[]).toList
-    proofDeps := ((data.proof.map (·.deps)).getD #[]).toList
-    fillcolor := nodeColor data
-  } :: ·) []
+  let state := informalExt.getState (← getEnv)
+  let roots : Array Name := state.data.toArray.map (·.1)
+  return Informal.Graph.build state roots (resolveRef? := some)
 
 def countSorries (decls : Array Data.DefinedDecl) : Nat :=
   decls.foldl (init := 0) fun acc decl => acc + (if decl.hasSorry then 1 else 0)
@@ -569,7 +515,6 @@ def collectSorries (label : Name) (kind : String) (decls : Array Data.DefinedDec
         kind
         decl := decl.name
         isTheorem := theoremNames.contains decl.name
-        sorryRefs := decl.sorryRefs.size
         typeSorryRefs := decl.typeSorryRefs.size
         proofSorryRefs := decl.proofSorryRefs.size
       } :: acc
@@ -586,13 +531,13 @@ def buildSummary : CoreM Summary := do
     let hasProof := node.proof.isSome
     let hasCode := node.code.isSome
     let (leanDecls, sorries, leanObjects, sorryDetails) :=
-      match node.code.map (·.info) with
+      match node.code with
       | none => (0, 0, ([] : List Name), ([] : List SorryItem))
-      | some info =>
-        let theoremNames : NameSet := info.definedTheorems.foldl (init := {}) fun acc (d : Data.DefinedDecl) => acc.insert d.name
-        let leanObjects := (info.definedDefs ++ info.definedTheorems).map (fun d : Data.DefinedDecl => d.name) |>.toList
-        let leanDecls := info.definedDefs.size + info.definedTheorems.size
-        let allDecls := info.definedDefs ++ info.definedTheorems
+      | some code =>
+        let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.DefinedDecl) => acc.insert d.name
+        let leanObjects := (code.definedDefs ++ code.definedTheorems).map (fun d : Data.DefinedDecl => d.name) |>.toList
+        let leanDecls := code.definedDefs.size + code.definedTheorems.size
+        let allDecls := code.definedDefs ++ code.definedTheorems
         let sorries := countSorries allDecls
         let sorryDetails := collectSorries label (toString node.kind) allDecls theoremNames
         (leanDecls, sorries, leanObjects, sorryDetails)
@@ -639,7 +584,7 @@ def mkGraphPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPar
   let expandedTitle ← #[titleInlines].mapM (elabInline ·)
   let metadata := none
   let graph ← buildAll
-  logInfo m!"Adding {graph.length} nodes"
+  logInfo m!"Adding {graph.size} nodes"
   let block ← ``(Verso.Doc.Block.other (Block.graph $(quote graph)) #[])
   let subParts := #[]
   pure $ FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
