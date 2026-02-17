@@ -23,6 +23,26 @@ deriving Repr, Inhabited, ToString, ToMessageData, ToJson, FromJson, Quote
 
 instance [Repr A] : Repr (LabelMap A) := inferInstanceAs <| Repr (NameMap A)
 
+inductive NodeKind where
+  | definition
+  | lemma
+  | theorem
+  | proof
+  | corollary
+  | leanCode
+  | other (kind : String)
+deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
+
+instance : ToString NodeKind where
+  toString
+    | .definition => "Definition"
+    | .lemma => "Lemma"
+    | .theorem => "Theorem"
+    | .proof => "Proof"
+    | .corollary => "Corollary"
+    | .leanCode => "Lean Code"
+    | .other k => k
+
 /-- Information about a code block, including Lean-level analysis -/
 structure DefinedDecl where
   name : Name
@@ -38,28 +58,27 @@ deriving Repr, Inhabited
 
 /-- Information about a code block, including Lean-level analysis -/
 structure CodeInfo where
-  proved : Bool := false
-  deps : Array Label := #[]
   definedDefs : Array DefinedDecl := #[]
   definedTheorems : Array DefinedDecl := #[]
 deriving Repr, Inhabited
 
--- def CodeInfo.get (name : Name) : CodeInfo := by sorry
-
 structure Code where
-  code : Syntax := .missing
-  info : Option CodeInfo := none
+  stx : Syntax
+  info : CodeInfo
+deriving Repr, Inhabited
+
+structure InformalData where
+  stx : Syntax
+  deps : Array Label := #[]
+  elabStx : Array Syntax := #[]
 deriving Repr, Inhabited
 
 structure Node where
-  kind : String := "Lemma"
+  kind : NodeKind := .lemma
   count : Nat := 0
-  statement : Syntax := .missing -- Informal Object statement
-  statementElab : Array Syntax := #[] -- elaborated statement blocks, transient
-  proof : Syntax := .missing -- Informal Object proof
-  code : Code := {} -- Informal Object associated code
-  deps : Array Label := #[] -- Informal Object deps
-  proofDeps : Array Label := #[] -- Informal proof deps
+  statement : Option InformalData := none -- Informal Object statement
+  proof : Option InformalData := none -- Informal Object proof
+  code : Option Code := none -- Informal Object associated code
 deriving Repr, Inhabited
 
 /-- Map of labels to Node data -/
@@ -69,53 +88,57 @@ deriving Repr, Inhabited
 /-- We can state a theorem if all its deps are done, and the theorem isn't "not ready" -/
 def Data.empty : Data := Std.TreeMap.empty
 
-/-- We can state a theorem if all its deps are done, and the theorem isn't "not ready" -/
-def Data.can_state : Bool := false
-
-/-- all of the deps are OK, including the proof -/
-def Data.can_prove : Bool := false
-
-/-- the lean definition is Ok -/
-def Data.proved : Bool := false
-
-/--  -/
-def Data.fully_proved : Bool := false
-
 section
 
 variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
 -- XXX: needs: test
 /-- registers an informal definition, will error if already existing -/
-def Data.register (data : Data) (label : Label) (kind? : Option String) (deps : Array Label)
-    (proofDeps : Array Label) (statement : Option Syntax) (proof : Option Syntax)
-    (statementElab : Array Syntax := #[]) : m Data := do
+def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
+    (statement : Option InformalData) (proof : Option InformalData) : m Data := do
+  let nextCount := data.size + 1
   match data.get? label, statement, proof with
   | none, some statement, none =>
-    let count := data.size + 1
-    return data.insert label { deps, proofDeps, statement, statementElab, count, kind := kind?.getD "Lemma" }
+    let count := nextCount
+    return data.insert label {
+      statement := some statement
+      count
+      kind := kind?.getD .lemma
+    }
   | none, none, some _ =>
     -- logError m!"No statement for proof with label {label}"
     return data
-  | some _node, some _, none =>
-    -- logError m!"Duplicated entry for {label}"
-    return data
-  | some node, none, some proof =>
-    if node.proof == .missing then
-      return data.modify label fun node => { node with proof, proofDeps }
+  | some node, some statement, none =>
+    if node.statement.isNone then
+      let count := if node.count == 0 then nextCount else node.count
+      return data.modify label fun node => {
+        node with
+          kind := kind?.getD node.kind
+          count
+          statement := some statement
+      }
     else
+      -- logError m!"Duplicated entry for {label}"
+      return data
+  | some node, none, some proof =>
+    if node.proof.isSome then
       -- logError m!"{label} already has a proof"
       return data
+    else if node.statement.isNone then
+      logError m!"Cannot register proof for {label}: statement dependencies are missing"
+      return data
+    else
+      return data.modify label fun node => { node with proof := some proof }
   | _, _, _ => return data
 
 /-- Register Lean code and code metadata for an informal object label. -/
-def Data.registerCode (data : Data) (label : Label) (code : Syntax) (info : Option CodeInfo := none) : m Data := do
+def Data.registerCode (data : Data) (label : Label) (code : Syntax) (info : CodeInfo) : m Data := do
   match data.get? label with
   | none =>
-    return data.insert label { code := { code, info } }
+    return data.insert label { code := some { stx := code, info } }
   | some node =>
-    if node.code.code == .missing then
-      return data.modify label fun node => { node with code := { code, info } }
+    if node.code.isNone then
+      return data.modify label fun node => { node with code := some { stx := code, info } }
     else
       -- Could also append multiple code blocks here instead of erroring.
       logError m!"Label {label} already has code"

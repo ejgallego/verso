@@ -205,18 +205,18 @@ def informalNodeColor : String := "#f3f4f6"
 def unresolvedDepNodeColor : String := "#fee2e2"
 
 def nodeHasSorries (node : Informal.Data.Node) : Bool :=
-  match node.code.info with
+  match node.code.map (·.info) with
   | none => false
   | some info => info.definedDefs.any (·.hasSorry) || info.definedTheorems.any (·.hasSorry)
 
 def nodeColor (node : Informal.Data.Node) : String :=
-  if node.code.code != Syntax.missing && node.statement == Syntax.missing then
+  if node.code.isSome && node.statement.isNone then
     leanOnlyDefNodeColor
-  else if node.kind == "Definition" then
+  else if node.kind == Informal.Data.NodeKind.definition then
     definitionNodeColor
-  else if node.code.code != Syntax.missing then
+  else if node.code.isSome then
     if nodeHasSorries node then sorryNodeColor
-    else if node.proof != Syntax.missing then leanOkNodeColor
+    else if node.proof.isSome then leanOkNodeColor
     else sorryNodeColor
   else
     informalNodeColor
@@ -254,8 +254,8 @@ def mkNode (state : Informal.Environment.State) (label : Name) : GraphNode :=
   | some node =>
     {
       label
-      deps := node.deps.toList
-      proofDeps := node.proofDeps.toList
+      deps := ((node.statement.map (·.deps)).getD #[]).toList
+      proofDeps := ((node.proof.map (·.deps)).getD #[]).toList
       fillcolor := nodeColor node
     }
   | none =>
@@ -281,12 +281,12 @@ def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResul
           |>.map (·.1.toString)
           |>.take 12
       throwError m!"No Label Found for '{label}'. Known labels (first {available.size}): {String.intercalate ", " available.toList}"
-  let stmtDeps : List Name := root.deps.toList.map (fun d => (d : Name))
-  let prfDeps : List Name := root.proofDeps.toList.map (fun d => (d : Name))
+  let stmtDeps : List Name := ((root.statement.map (·.deps)).getD #[]).toList.map (fun d => (d : Name))
+  let prfDeps : List Name := ((root.proof.map (·.deps)).getD #[]).toList.map (fun d => (d : Name))
   let labels : List Name := (label :: stmtDeps ++ prfDeps).eraseDups
   let graph : Graph := labels.map (mkNode state)
   let dot := graph.toDot
-  pure { dot, statementElab := root.statementElab, texPrelude := state.texPrelude }
+  pure { dot, statementElab := (root.statement.map (·.elabStx)).getD #[], texPrelude := state.texPrelude }
 
 open Server in
 def updatePanel (title label : String) (statementHtml : Json) (dot texPrelude : String) stx :=

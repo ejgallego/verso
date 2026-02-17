@@ -532,19 +532,19 @@ block_extension Block.summary (summary : Summary) where
 --
 open Informal Data Environment
 def nodeHasSorries (node : Data.Node) : Bool :=
-  match node.code.info with
+  match node.code.map (·.info) with
   | none => false
   | some info =>
     info.definedDefs.any (·.hasSorry) || info.definedTheorems.any (·.hasSorry)
 
 def nodeColor (node : Data.Node) : String :=
-  if node.code.code != .missing && node.statement == .missing then
+  if node.code.isSome && node.statement.isNone then
     leanOnlyDefNodeColor
-  else if node.kind == "Definition" then
+  else if node.kind == Data.NodeKind.definition then
     definitionNodeColor
-  else if node.code.code != .missing then
+  else if node.code.isSome then
     if nodeHasSorries node then sorryNodeColor
-    else if node.proof != .missing then leanOkNodeColor
+    else if node.proof.isSome then leanOkNodeColor
     else sorryNodeColor
   else
     informalNodeColor
@@ -552,8 +552,8 @@ def nodeColor (node : Data.Node) : String :=
 def buildAll : CoreM Graph := do
   return (informalExt.getState (← getEnv)).data.foldl (fun label data => {
     label := label
-    deps := data.deps.toList
-    proofDeps := data.proofDeps.toList
+    deps := ((data.statement.map (·.deps)).getD #[]).toList
+    proofDeps := ((data.proof.map (·.deps)).getD #[]).toList
     fillcolor := nodeColor data
   } :: ·) []
 
@@ -576,39 +576,39 @@ def collectSorries (label : Name) (kind : String) (decls : Array Data.DefinedDec
     else
       acc
 
-def kindNeedsInformalProof (kind : String) : Bool :=
-  kind == "Lemma" || kind == "Theorem" || kind == "Corollary"
+def kindNeedsInformalProof (kind : Data.NodeKind) : Bool :=
+  kind == Data.NodeKind.lemma || kind == Data.NodeKind.theorem || kind == Data.NodeKind.corollary
 
 def buildSummary : CoreM Summary := do
   let entries := (informalExt.getState (← getEnv)).data.toArray
   return entries.foldl (init := ({} : Summary)) fun acc (label, node) =>
-    let hasStatement := node.statement != .missing
-    let hasProof := node.proof != .missing
-    let hasCode := node.code.code != .missing
+    let hasStatement := node.statement.isSome
+    let hasProof := node.proof.isSome
+    let hasCode := node.code.isSome
     let (leanDecls, sorries, leanObjects, sorryDetails) :=
-      match node.code.info with
+      match node.code.map (·.info) with
       | none => (0, 0, ([] : List Name), ([] : List SorryItem))
       | some info =>
-        let theoremNames : NameSet := info.definedTheorems.foldl (init := {}) fun acc d => acc.insert d.name
+        let theoremNames : NameSet := info.definedTheorems.foldl (init := {}) fun acc (d : Data.DefinedDecl) => acc.insert d.name
         let leanObjects := (info.definedDefs ++ info.definedTheorems).map (fun d : Data.DefinedDecl => d.name) |>.toList
         let leanDecls := info.definedDefs.size + info.definedTheorems.size
         let allDecls := info.definedDefs ++ info.definedTheorems
         let sorries := countSorries allDecls
-        let sorryDetails := collectSorries label node.kind allDecls theoremNames
+        let sorryDetails := collectSorries label (toString node.kind) allDecls theoremNames
         (leanDecls, sorries, leanObjects, sorryDetails)
     let pendingInformalProofEntries : List PendingProofItem :=
       if hasCode && ((kindNeedsInformalProof node.kind && !hasProof) || !hasStatement) then
-        { label, kind := node.kind, leanObjects } :: acc.pendingInformalProofEntries
+        { label, kind := toString node.kind, leanObjects } :: acc.pendingInformalProofEntries
       else
         acc.pendingInformalProofEntries
     let definitionIndex : List IndexItem :=
-      if node.kind == "Definition" then
-        { label, kind := node.kind, leanObjects } :: acc.definitionIndex
+      if node.kind == Data.NodeKind.definition then
+        { label, kind := toString node.kind, leanObjects } :: acc.definitionIndex
       else
         acc.definitionIndex
     let theoremLikeIndex : List IndexItem :=
       if kindNeedsInformalProof node.kind then
-        { label, kind := node.kind, leanObjects } :: acc.theoremLikeIndex
+        { label, kind := toString node.kind, leanObjects } :: acc.theoremLikeIndex
       else
         acc.theoremLikeIndex
     let acc := { acc with
@@ -623,10 +623,10 @@ def buildSummary : CoreM Summary := do
       theoremLikeIndex
     }
     match node.kind with
-    | "Definition" => { acc with definitions := acc.definitions + 1 }
-    | "Lemma" => { acc with lemmas := acc.lemmas + 1 }
-    | "Theorem" => { acc with theorems := acc.theorems + 1 }
-    | "Corollary" => { acc with corollaries := acc.corollaries + 1 }
+    | Data.NodeKind.definition => { acc with definitions := acc.definitions + 1 }
+    | Data.NodeKind.lemma => { acc with lemmas := acc.lemmas + 1 }
+    | Data.NodeKind.theorem => { acc with theorems := acc.theorems + 1 }
+    | Data.NodeKind.corollary => { acc with corollaries := acc.corollaries + 1 }
     | _ => acc
 
 -- this runs in corem as it only needs the env
