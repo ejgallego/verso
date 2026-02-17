@@ -383,14 +383,10 @@ $$`
 `
 :::
 
-:::proof "def:C15"
-showgraph
-:::
-
 without point-symmetricness "baked in" as it is in $`C_{30}`. It's more convenient for the formalization to apply $`C_{15}` to the points $`C_1, C_2, C_3`, and then point-symmetrize that set afterwards.
 
 :::definition "def:pointsymmetric" (lean := "PointSym")
-A set $`S \subseteq \R^3` is `{\em point-symmetric}` if $`x \in S` implies $`-x \in S`.
+A set $`S \subseteq \R^3` is _point-symmetric_ if $`x \in S` implies $`-x \in S`.
 :::
 
 :::definition "def:pointsymmetrize" (lean := "pointsymmetrize")

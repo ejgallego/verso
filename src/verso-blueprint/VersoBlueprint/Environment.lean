@@ -15,11 +15,10 @@ open Informal.Data
 
 structure InProgress where
   label : Label
-  kind? : Option String := none
+  kind? : Option NodeKind := none
   isProof : Bool := false
-  deps : Array Label
-  proofDeps : Array Label := #[]
-  statementElab : Array Syntax := #[]
+  deps : Array Label := #[]
+  elabStx : Array Syntax := #[]
 deriving Inhabited, Repr
 
 structure State where
@@ -40,7 +39,10 @@ initialize informalExt : PersistentEnvExtension (Name × Node) (Name × Node) St
       pure $ { data }
     -- Strip transient elaboration cache before exporting nodes to the environment.
     exportEntriesFnEx env := fun state _level =>
-      state.data.toArray.map fun (name, node) => (name, { node with statementElab := #[] })
+      state.data.toArray.map fun (name, node) =>
+        let statement := node.statement.map fun s => { s with elabStx := #[] }
+        let proof := node.proof.map fun p => { p with elabStx := #[] }
+        (name, { node with statement, proof })
   }
 
 section EnvOps
@@ -60,20 +62,26 @@ def checkLabelAndNesting (label : Label) (isProof : Bool) : m Unit := do
   let { data, stack, .. } := informalExt.getState (← getEnv)
   match (isProof, data.get? label, stack.isEmpty) with
   | (false, none, true) => return ()
-  | (false, some _, true) => logError m!"Label {label} already defined"
+  | (false, some node, true) =>
+    if node.statement.isNone then
+      return ()
+    else
+      logError m!"Label {label} already defined"
   | (true, some node, true) =>
-    if node.proof != .missing then
+    if node.proof.isSome then
       logError m!"Label {label} already has a proof"
+    else if node.statement.isNone then
+      logError m!"Cannot add proof for {label}: statement/dependencies are missing"
     else return ()
   | (true, none, true) => logError m!"Cannot find proof for label {label}"
   | (_, _, false) => logError m!"Cannot declare nested definitions"
 
 -- stack operators, to associate {uses} role to the currently opened label
-def push (label : Label) (kind? : Option String) (isProof : Bool) : m Unit := do
+def push (label : Label) (kind? : Option NodeKind) (isProof : Bool) : m Unit := do
   -- logInfo m!"push for {label} {isProof}"
   checkLabelAndNesting label isProof
   modify fun data =>
-    let pdata := { label, kind?, isProof, deps := #[] }
+    let pdata := { label, kind?, isProof }
     { data with stack := pdata :: data.stack }
 
 def getCount : m Nat := do
@@ -85,10 +93,14 @@ def pop (ref : Syntax) : m Nat := do
     logError m!"Internal Error: closing non-opened directive"
     return state
   | cur :: stack =>
-    let statement := if cur.isProof then none else some ref
-    let proof := if cur.isProof then some ref else none
-    let statementElab := if cur.isProof then #[] else cur.statementElab
-    let data ← state.data.register cur.label cur.kind? cur.deps cur.proofDeps statement proof statementElab
+    let payload : InformalData := {
+      stx := ref
+      deps := cur.deps
+      elabStx := cur.elabStx
+    }
+    let statement := if cur.isProof then none else some payload
+    let proof := if cur.isProof then some payload else none
+    let data ← state.data.register cur.label cur.kind? statement proof
     return { state with data, stack }
   getCount
 
@@ -104,11 +116,7 @@ def addDep (stx : Syntax) (dep : Name) : m Unit := do
     logErrorAt stx m!"uses declaration outside an informal enviroment"
     pure ()
   | cur :: rest =>
-    let cur :=
-      if cur.isProof then
-        { cur with proofDeps := cur.proofDeps.push dep }
-      else
-        { cur with deps := cur.deps.push dep }
+    let cur := { cur with deps := cur.deps.push dep }
     let stack := cur :: rest
     modify fun state => { state with stack }
 
@@ -119,10 +127,10 @@ def setStatementElab (stxs : Array Syntax) : m Unit := do
     if cur.isProof then
       pure ()
     else
-      let cur := { cur with statementElab := stxs }
+      let cur := { cur with elabStx := stxs }
       modify fun state => { state with stack := cur :: rest }
 
-def registerCode (label : Label) (code : Syntax) (info : Option CodeInfo := none) : m Unit := do
+def registerCode (label : Label) (code : Syntax) (info : CodeInfo) : m Unit := do
   modifyM fun state => do
     let data ← state.data.registerCode label code info
     return { state with data }

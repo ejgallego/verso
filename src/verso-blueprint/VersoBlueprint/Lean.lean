@@ -34,16 +34,7 @@ structure LeanBlockConfig where
   «show» : Bool
   name : Option Lean.Name
 
-structure DefinedDecl where
-  name : Name
-  commandStx : Syntax := .missing
-  commandIndex : Nat := 0
-  hasSorry : Bool := false
-  hasTypeSorry : Bool := false
-  hasProofSorry : Bool := false
-  sorryRefs : Array Syntax := #[]
-  typeSorryRefs : Array Syntax := #[]
-  proofSorryRefs : Array Syntax := #[]
+abbrev DefinedDecl := Data.DefinedDecl
 
 structure ElabCommandResult where
   block : Term

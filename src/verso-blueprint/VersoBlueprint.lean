@@ -116,6 +116,14 @@ instance : ToString BlockKind where
   | .cor_   => "Corollary"
   | .code_  => "Lean Code"
 
+def BlockKind.toNodeKind : BlockKind → Data.NodeKind
+  | .def_ => Data.NodeKind.definition
+  | .lem_ => Data.NodeKind.lemma
+  | .thm_ => Data.NodeKind.theorem
+  | .proof_ => Data.NodeKind.proof
+  | .cor_ => Data.NodeKind.corollary
+  | .code_ => Data.NodeKind.leanCode
+
 structure BlockData where
   kind : BlockKind
   label : Data.Label
@@ -130,6 +138,16 @@ structure CodeDeclData where
   hasTypeSorry : Bool := false
   hasProofSorry : Bool := false
 deriving FromJson, ToJson, Quote
+
+def CodeDeclData.ofDefinedDecl (d : Data.DefinedDecl) : CodeDeclData :=
+  {
+    name := d.name
+    commandIndex := d.commandIndex
+    weight := max (toString d.name).length 1
+    hasSorry := d.hasSorry
+    hasTypeSorry := d.hasTypeSorry
+    hasProofSorry := d.hasProofSorry
+  }
 
 structure CodeBlockData where
   label : Data.Label
@@ -1120,7 +1138,7 @@ block_extension Block.informal (data : BlockData) where
 block_extension Block.informalCode (data : CodeBlockData) where
   data := toJson data
   traverse id data _contents := do
-    let .ok cdata@{ label, definedDefs := _, definedTheorems := _ } := fromJson? (α := CodeBlockData) data
+    let .ok cdata@{ label, definedDefs := _, definedTheorems := _, foldProofs := _ } := fromJson? (α := CodeBlockData) data
       | logError s!"Malformed data: {data}"
         pure none
     if let .some _d := (← get).getDomainObject? informalCodeDomain label.toString then
@@ -1242,7 +1260,7 @@ def expander (kind : BlockKind) : DirectiveExpanderOf Config
   | cfg, contents => do
     let label := cfg.label
     let isProof := (kind == .proof_)
-    let kind? := if isProof then none else some (toString kind)
+    let kind? := if isProof then none else some kind.toNodeKind
     let blockRef ← getRef
     Environment.push label kind? isProof
     let contents ← contents.mapM elabBlock
@@ -1271,22 +1289,8 @@ def lean : CodeBlockExpanderOf Config
     let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some (cfg.label : Lean.Name) }
     let res ← Lean.elabCommands leanCfg contents
     let codeBlock := res.block
-    let definedDefs := res.definedDefs.map (fun d => ({
-      name := d.name
-      commandIndex := d.commandIndex
-      weight := max (toString d.name).length 1
-      hasSorry := d.hasSorry
-      hasTypeSorry := d.hasTypeSorry
-      hasProofSorry := d.hasProofSorry
-    } : CodeDeclData))
-    let definedTheorems := res.definedTheorems.map (fun d => ({
-      name := d.name
-      commandIndex := d.commandIndex
-      weight := max (toString d.name).length 1
-      hasSorry := d.hasSorry
-      hasTypeSorry := d.hasTypeSorry
-      hasProofSorry := d.hasProofSorry
-    } : CodeDeclData))
+    let definedDefs := res.definedDefs.map CodeDeclData.ofDefinedDecl
+    let definedTheorems := res.definedTheorems.map CodeDeclData.ofDefinedDecl
     let data : CodeBlockData := {
       label := cfg.label
       definedDefs
@@ -1295,31 +1299,10 @@ def lean : CodeBlockExpanderOf Config
     }
     let codeRef ← getRef
     let codeInfo : Data.CodeInfo := {
-      proved := !definedTheorems.isEmpty
-      definedDefs := res.definedDefs.map (fun d => ({
-        name := d.name
-        commandStx := d.commandStx
-        commandIndex := d.commandIndex
-        hasSorry := d.hasSorry
-        sorryRefs := d.sorryRefs
-        hasTypeSorry := d.hasTypeSorry
-        hasProofSorry := d.hasProofSorry
-        typeSorryRefs := d.typeSorryRefs
-        proofSorryRefs := d.proofSorryRefs
-      } : Data.DefinedDecl))
-      definedTheorems := res.definedTheorems.map (fun d => ({
-        name := d.name
-        commandStx := d.commandStx
-        commandIndex := d.commandIndex
-        hasSorry := d.hasSorry
-        sorryRefs := d.sorryRefs
-        hasTypeSorry := d.hasTypeSorry
-        hasProofSorry := d.hasProofSorry
-        typeSorryRefs := d.typeSorryRefs
-        proofSorryRefs := d.proofSorryRefs
-      } : Data.DefinedDecl))
+      definedDefs := res.definedDefs
+      definedTheorems := res.definedTheorems
     }
-    Environment.registerCode cfg.label codeRef (some codeInfo)
+    Environment.registerCode cfg.label codeRef codeInfo
     activateForLabelDoc cfg.label codeRef
     ``(Block.other (Block.informalCode $(quote data)) #[$codeBlock])
 
@@ -1340,13 +1323,13 @@ deriving FromJson, ToJson, Quote
 def Data.Node.toBlockInfo (node : Data.Node) (label : Data.Label) : BlockData :=
   let kind :=
     match node.kind with
-    | "Definition" => BlockKind.def_
-    | "Lemma" => BlockKind.lem_
-    | "Theorem" => BlockKind.thm_
-    | "Proof" => BlockKind.proof_
-    | "Corollary" => BlockKind.cor_
-    | "Lean Code" => BlockKind.code_
-    | _ => BlockKind.lem_
+    | Data.NodeKind.definition => BlockKind.def_
+    | Data.NodeKind.lemma => BlockKind.lem_
+    | Data.NodeKind.theorem => BlockKind.thm_
+    | Data.NodeKind.proof => BlockKind.proof_
+    | Data.NodeKind.corollary => BlockKind.cor_
+    | Data.NodeKind.leanCode => BlockKind.code_
+    | Data.NodeKind.other _ => BlockKind.lem_
   { kind, label, count := node.count }
 
 inline_extension Inline.informal (data : InlineData) where

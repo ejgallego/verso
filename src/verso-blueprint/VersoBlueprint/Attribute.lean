@@ -5,13 +5,39 @@ Author: Emilio J. Gallego Arias
 -/
 
 import Lean
+import Lean.DocString.Extension
 import VersoBlueprint.Environment
 
 namespace Informal
 
 open Lean
 
-syntax (name := blueprint) "blueprint" (ppSpace ident)? (ppSpace str)? : attr
+syntax (name := blueprint) "blueprint" ppSpace str : attr
+
+private inductive BlueprintDeclKind where
+  | definition
+  | theorem
+
+private def BlueprintDeclKind.nodeKind : BlueprintDeclKind → Data.NodeKind
+  | .definition => Data.NodeKind.definition
+  | .theorem => Data.NodeKind.theorem
+
+private def constantInfoKind : ConstantInfo → String
+  | .axiomInfo _ => "axiom"
+  | .defnInfo _ => "definition"
+  | .thmInfo _ => "theorem"
+  | .opaqueInfo _ => "opaque"
+  | .quotInfo _ => "quot primitive"
+  | .inductInfo _ => "inductive"
+  | .ctorInfo _ => "constructor"
+  | .recInfo _ => "recursor"
+
+private def classifyDeclKind (decl : Name) (info : ConstantInfo) : CoreM BlueprintDeclKind :=
+  match info with
+  | .defnInfo _ => pure .definition
+  | .thmInfo _ => pure .theorem
+  | _ =>
+    throwError "invalid '[blueprint]' target '{decl}': expected a definition or theorem, got {constantInfoKind info}"
 
 private def mkDefinedDecl (decl : Name) (info : ConstantInfo) : Data.DefinedDecl :=
   let hasTypeSorry := info.type.hasSorry
@@ -23,35 +49,45 @@ private def mkDefinedDecl (decl : Name) (info : ConstantInfo) : Data.DefinedDecl
     hasProofSorry
   }
 
-private def registerLeanOnlyDef (decl label : Name) (ref : Syntax) : CoreM Unit := do
+private def mkCodeInfo (definedDecl : Data.DefinedDecl) (declKind : BlueprintDeclKind) : Data.CodeInfo :=
+  match declKind with
+  | .definition => { definedDefs := #[definedDecl], definedTheorems := #[] }
+  | .theorem => { definedDefs := #[], definedTheorems := #[definedDecl] }
+
+private def logDocstringIfPresent (decl : Name) : CoreM Unit := do
+  let env ← getEnv
+  let internalDoc? ← liftM <| findInternalDocString? env decl
+  if let some doc := internalDoc? then
+    let asText? ← liftM <| findSimpleDocString? env decl
+    let isVerso : Bool := match doc with | Sum.inl _ => false | Sum.inr _ => true
+    let rendered := asText?.getD "<unable to render docstring text>"
+    logInfo m!"[blueprint] docstring for '{decl}' (isVerso := {isVerso}):\n{rendered}"
+
+private def registerLeanOnlyDecl (decl label : Name) (ref : Syntax) : CoreM Unit := do
   let decl := decl.eraseMacroScopes
   let label := label.eraseMacroScopes
   let some info := (← getEnv).find? decl
     | throwError "unknown declaration '{decl}'"
+  let declKind ← classifyDeclKind decl info
+  logDocstringIfPresent decl
 
   let definedDecl := mkDefinedDecl decl info
-  let codeInfo : Data.CodeInfo := {
-    proved := false
-    definedDefs := #[definedDecl]
-    definedTheorems := #[]
-  }
+  let codeInfo := mkCodeInfo definedDecl declKind
 
   Environment.modifyM fun state => do
-    let data ← state.data.registerCode label ref (some codeInfo)
+    let data ← state.data.registerCode label ref codeInfo
     let data :=
       match data.get? label with
       | some node =>
-        if node.statement == .missing then
-          data.modify label fun node => { node with kind := "Definition" }
+        if node.statement.isNone then
+          data.modify label fun node => { node with kind := declKind.nodeKind }
         else
           data
       | none => data
     return { state with data }
 
-private def labelFromAttr (decl : Name) (stx : Syntax) : CoreM Name := do
+private def labelFromAttr (stx : Syntax) : CoreM Name := do
   match stx with
-  | `(attr| blueprint) => pure decl
-  | `(attr| blueprint $lbl:ident) => pure lbl.getId
   | `(attr| blueprint $lbl:str) => pure (Name.mkSimple lbl.getString)
   | _ => throwError "invalid syntax for '[blueprint]' attribute"
 
@@ -65,9 +101,9 @@ initialize
         throwError "invalid attribute '[blueprint]', must be global"
       unless ((← getEnv).getModuleIdxFor? decl).isNone do
         throwError "invalid attribute '[blueprint]', declaration is in an imported module"
-      let label ← labelFromAttr decl stx
-      registerLeanOnlyDef decl label stx
-    descr := "Registers a declaration as a Lean-only definition node in the blueprint environment; optional argument sets the node label"
+      let label ← labelFromAttr stx
+      registerLeanOnlyDecl decl label stx
+    descr := "Registers a definition/theorem as a Lean-only blueprint node; argument sets the node label (string literal)"
   }
 
 end Informal
