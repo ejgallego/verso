@@ -67,14 +67,25 @@ structure Code where
   definedTheorems : Array DefinedDecl := #[]
 deriving Repr, Inhabited
 
-/-- coming from
+inductive ExternalOrigin where
+  | directiveLean
+  | blueprintAttr
+deriving Repr, Inhabited, DecidableEq
 
-```
-:::theorem "foo"
+structure ExternalRef where
+  written : Name
+  canonical : Name
+  origin : ExternalOrigin := .directiveLean
+deriving Repr, Inhabited
 
-:::
-```
--/
+def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean) : ExternalRef :=
+  { written := name, canonical := name.eraseMacroScopes, origin }
+
+inductive CodeRef where
+  | userOk
+  | external (decls : Array ExternalRef)
+  | literate (code : Code)
+deriving Repr, Inhabited
 
 structure InformalData where
   stx : Syntax
@@ -87,7 +98,7 @@ structure Node where
   count : Nat := 0
   statement : Option InformalData := none -- Informal Object statement
   proof : Option InformalData := none -- Informal Object proof
-  code : Option Code := none -- Informal Object associated code
+  code : Option CodeRef := none -- Informal Object associated code status
 deriving Repr, Inhabited
 
 /-- Map of labels to Node data -/
@@ -103,29 +114,76 @@ variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
 -- XXX: needs: test
 /-- registers an informal definition, will error if already existing -/
+private def mergeExternalRefs (xs ys : Array ExternalRef) : Array ExternalRef :=
+  ys.foldl (init := xs) fun acc y =>
+    if acc.any (fun x => x.canonical == y.canonical) then
+      acc
+    else
+      acc.push y
+
+private def mergeCodeRef (label : Label) (current : Option CodeRef) (incoming : CodeRef) : m (Option CodeRef) := do
+  match current, incoming with
+  | none, incoming => return some incoming
+  | some .userOk, .userOk => return current
+  | some (.external xs), .external ys => return some (.external (mergeExternalRefs xs ys))
+  | some .userOk, .external ys => return some (.external ys)
+  | some (.external xs), .userOk => return some (.external xs)
+  | some (.literate _), .literate _ =>
+    logError m!"Label {label} already has code"
+    return current
+  | some .userOk, .literate _ =>
+    logError m!"Label {label} uses '(leanok := true)' and cannot have an associated Lean code block"
+    return current
+  | some (.external _), .literate _ =>
+    logError m!"Label {label} uses '(lean := ...)' and cannot have an associated Lean code block"
+    return current
+  | some (.literate _), .userOk =>
+    logError m!"Label {label} cannot use '(leanok := true)' because it already has an associated Lean code block"
+    return current
+  | some (.literate _), .external _ =>
+    logError m!"Label {label} cannot use '(lean := ...)' because it already has an associated Lean code block"
+    return current
+
+def Data.registerCodeRef (data : Data) (label : Label) (codeRef : CodeRef) : m Data := do
+  match data.get? label with
+  | none =>
+    return data.insert label { code := some codeRef }
+  | some node =>
+    let code ← mergeCodeRef label node.code codeRef
+    return data.insert label { node with code }
+
 def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
-    (statement : Option InformalData) (proof : Option InformalData) : m Data := do
+    (statement : Option InformalData) (proof : Option InformalData)
+    (codeHint : Option CodeRef := none) : m Data := do
+  let applyCodeHint (node : Node) : m Node := do
+    match codeHint with
+    | none => return node
+    | some hint =>
+      let code ← mergeCodeRef label node.code hint
+      return { node with code }
   let nextCount := data.size + 1
   match data.get? label, statement, proof with
   | none, some statement, none =>
     let count := nextCount
-    return data.insert label {
+    let node ← applyCodeHint {
       statement := some statement
       count
       kind := kind?.getD .lemma
     }
+    return data.insert label node
   | none, none, some _ =>
     -- logError m!"No statement for proof with label {label}"
     return data
   | some node, some statement, none =>
     if node.statement.isNone then
       let count := if node.count == 0 then nextCount else node.count
-      return data.modify label fun node => {
+      let node ← applyCodeHint {
         node with
           kind := kind?.getD node.kind
           count
           statement := some statement
       }
+      return data.insert label node
     else
       -- logError m!"Duplicated entry for {label}"
       return data
@@ -137,21 +195,22 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
       logError m!"Cannot register proof for {label}: statement dependencies are missing"
       return data
     else
-      return data.modify label fun node => { node with proof := some proof }
+      let node ← applyCodeHint {
+        node with
+          proof := some proof
+      }
+      return data.insert label node
   | _, _, _ => return data
 
 /-- Register Lean code and code metadata for an informal object label. -/
 def Data.registerCode (data : Data) (label : Label) (code : Syntax)
     (definedDefs : Array DefinedDecl := #[]) (definedTheorems : Array DefinedDecl := #[]) : m Data := do
+  let literate : CodeRef := .literate { stx := code, definedDefs, definedTheorems }
   match data.get? label with
   | none =>
-    return data.insert label { code := some { stx := code, definedDefs, definedTheorems } }
+    return data.insert label { code := some literate }
   | some node =>
-    if node.code.isNone then
-      return data.modify label fun node => { node with code := some { stx := code, definedDefs, definedTheorems } }
-    else
-      -- Could also append multiple code blocks here instead of erroring.
-      logError m!"Label {label} already has code"
-      return data
+    let code ← mergeCodeRef label node.code literate
+    return data.insert label { node with code }
 
 end

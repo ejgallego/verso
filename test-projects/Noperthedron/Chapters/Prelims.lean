@@ -7,6 +7,7 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
+import Chapters.Macros
 
 open Verso.Genre Manual Informal
 
@@ -21,13 +22,13 @@ TODO: This whole chapter needs organization, it's just a grab bag of miscellaneo
 
 # Rupert Sets
 
-:::theorem "thm:rupert_iff_rupert_set" (lean := "rupert_iff_rupert_set")
+:::theorem "thm:rupert_iff_rupert_set" (lean := "rupert_iff_rupert_set") (leanok := true)
 The following are equivalent:
 - The convex polyhedron with vertex set $`v` is Rupert.
 - The convex closure of $`v` is a Rupert set.
 :::
 
-:::proof "thm:rupert_iff_rupert_set"
+:::proof "thm:rupert_iff_rupert_set" (leanok := true)
 TODO: import this from the other repo
 :::
 
@@ -35,41 +36,49 @@ TODO: import this from the other repo
 
 TODO
 
-:::theorem "thm:pose_of_matrix_pose" (lean := "pose_of_matrix_pose,converted_pose_rupert_iff")
+:::theorem "thm:pose_of_matrix_pose" (lean := "pose_of_matrix_pose,converted_pose_rupert_iff") (leanok := true)
 Given a pose with zero offset, there exists a 5-parameter pose that is equivalent to it.
 :::
 
-:::proof "thm:pose_of_matrix_pose"
+:::proof "thm:pose_of_matrix_pose" (leanok := true)
 By putting the pose into a canonical form as a Z rotation followed by a Y followed by a Z.
 :::
 
 # Pointsymmetry and Rupertness
 
-:::theorem "thm:rupert_implies_rot_rupert" (lean := "rupert_implies_rot_rupert")
+:::theorem "thm:rupert_implies_rot_rupert" (lean := "rupert_implies_rot_rupert") (leanok := true)
 If a set is point symmetric and convex, then it being Rupert implies
 it being purely rotationally Rupert.
 :::
 
-:::proof "thm:rupert_implies_rot_rupert"
+:::proof "thm:rupert_implies_rot_rupert" (leanok := true)
 TODO: informalize proof
 :::
 
-:::theorem "thm:polyhedron_radius_iff" (lean := "polyhedron_radius_iff")
+:::theorem "thm:polyhedron_radius_iff" (lean := "polyhedron_radius_iff") (leanok := true)
 Suppose $`S` is a finite set of points in $`\mathbb{R}^n`.
 The radius of the polyhedron $`S` is $`r` iff:
 - there is a vector $`v \in S` with $`\|v\| = r`
 - all vectors $`v \in S` have $`\|v\| \le r`
 :::
 
-:::proof "thm:polyhedron_radius_iff"
+:::proof "thm:polyhedron_radius_iff" (leanok := true)
 Immediate from definition.
 :::
 
-:::theorem "thm:pointsymmetrize_pres_radius" (lean := "pointsymmetrize_pres_radius")
+:::theorem "thm:polyhedron_radius_def" (lean := "polyhedron_radius_iff") (leanok := true)
+Alias of {uses "thm:polyhedron_radius_iff"}[] used in the original TeX source.
+:::
+
+:::proof "thm:polyhedron_radius_def" (leanok := true)
+Immediate from {uses "thm:polyhedron_radius_iff"}[].
+:::
+
+:::theorem "thm:pointsymmetrize_pres_radius" (lean := "pointsymmetrize_pres_radius") (leanok := true)
 Pointsymmetrization preserves radius.
 :::
 
-:::proof "thm:pointsymmetrize_pres_radius"
+:::proof "thm:pointsymmetrize_pres_radius" (leanok := true)
 Using {uses "thm:polyhedron_radius_iff"}[].
 Because the reflection of a point about the origin preserves its norm.
 :::

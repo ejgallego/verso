@@ -9,7 +9,10 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Environment
+import VersoBlueprint.Cite
 import VersoBlueprint.Graph
+import VersoBlueprint.Resolve
+import VersoBlueprint.StyleSwitcher
 
 open Lean Elab Command
 
@@ -79,27 +82,101 @@ structure Summary where
   theoremLikeIndex : List IndexItem := []
 deriving Inhabited, FromJson, ToJson, Quote
 
-def informalDomainName : Name := Name.mkSimple "Informal.Block.informal"
-def informalCodeDomainName : Name := Name.mkSimple "Informal.Block.informalCode"
-def exampleDomainName : Name := ``Verso.Genre.Manual.example
+open Verso.Genre.Manual.Bibliography
 
-def graphDotHeader : String := r##"strict digraph "" {
-    rankdir=LR;
-    bgcolor="white";
-    splines=true;
-    nodesep=0.35;
-    ranksep=0.45;
-    node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10, margin="0.08,0.04", color="#6b7280", penwidth=1.8];
-    edge [color="#6b7280", arrowhead=vee, arrowsize=0.6, penwidth=1];
-    graph [fontname="Helvetica"];
-  "##
+structure BibliographyEntry where
+  label : String
+  citation : Citable
+deriving FromJson, ToJson
 
-def Graph.toDot (g : Graph) (resolveHref : Name → Option String := fun _ => none) : String :=
-  Informal.Graph.Graph.toDot g graphDotHeader (refAttrs? := some fun ref =>
-    (resolveHref ref).map (fun href => s!"URL=\"{href}\", target=\"_self\", tooltip=\"{ref}\""))
+structure BibliographyData where
+  entries : List BibliographyEntry := []
+deriving FromJson, ToJson
+
+inductive GraphDirection where
+  | LR
+  | RL
+  | TB
+  | BT
+deriving Inhabited, Repr, BEq, FromJson, ToJson, Quote
+
+def GraphDirection.rankdir : GraphDirection → String
+  | .LR => "LR"
+  | .RL => "RL"
+  | .TB => "TB"
+  | .BT => "BT"
+
+def GraphDirection.parse? (s : String) : Option GraphDirection :=
+  match s.toLower with
+  | "lr" | "left-right" | "horizontal" => some .LR
+  | "rl" | "right-left" => some .RL
+  | "tb" | "top-bottom" | "vertical" => some .TB
+  | "bt" | "bottom-top" => some .BT
+  | _ => none
+
+structure GraphBlockData where
+  graph : Graph
+  direction : GraphDirection := .TB
+deriving Inhabited, FromJson, ToJson, Quote
+
+def graphDotHeader (rankdir : String) : String :=
+  "strict digraph \"\" {\n" ++
+  s!"    rankdir={rankdir};\n" ++
+  "    bgcolor=\"white\";\n" ++
+  "    splines=true;\n" ++
+  "    nodesep=0.35;\n" ++
+  "    ranksep=0.45;\n" ++
+  "    node [shape=box, style=\"rounded,filled\", fontname=\"Helvetica\", fontsize=10, margin=\"0.08,0.04\", color=\"#6b7280\", penwidth=1.8];\n" ++
+  "    edge [color=\"#6b7280\", arrowhead=vee, arrowsize=0.6, penwidth=1];\n" ++
+  "    graph [fontname=\"Helvetica\"];\n" ++
+  "  "
+
+def graphToDot (g : Graph) (direction : GraphDirection := .TB) (resolveHref : Name → Option String := fun _ => none) : String :=
+  Informal.Graph.Graph.toDot g (graphDotHeader direction.rankdir) (refAttrs? := some fun ref =>
+    (resolveHref ref).map (fun href => s!"URL=\"{href}\", target=\"_self\""))
 
 def loadD3Dot :=
   r##"(function () {
+    function debounce(fn, waitMs) {
+      let timeout = null;
+      return function () {
+        const args = arguments;
+        clearTimeout(timeout);
+        timeout = setTimeout(function () {
+          fn.apply(null, args);
+        }, waitMs);
+      };
+    }
+
+    function layoutGraphBlock(graphBlock) {
+      if (!graphBlock) return;
+
+      graphBlock.style.left = "0px";
+      graphBlock.style.width = "auto";
+      graphBlock.style.maxWidth = "none";
+
+      const main = document.querySelector(".with-toc > main");
+      const blockRect = graphBlock.getBoundingClientRect();
+      let left = 0;
+      let right = window.innerWidth;
+
+      if (main) {
+        const mainRect = main.getBoundingClientRect();
+        const mainStyle = window.getComputedStyle(main);
+        const padLeft = parseFloat(mainStyle.paddingLeft) || 0;
+        const padRight = parseFloat(mainStyle.paddingRight) || 0;
+        left = mainRect.left + padLeft;
+        right = mainRect.right - padRight;
+      }
+
+      const width = Math.max(320, right - left);
+      const shift = left - blockRect.left;
+
+      graphBlock.style.left = shift + "px";
+      graphBlock.style.width = width + "px";
+      graphBlock.style.maxWidth = width + "px";
+    }
+
     function load(src) {
       return new Promise(function (resolve, reject) {
         const s = document.createElement("script");
@@ -114,27 +191,84 @@ def loadD3Dot :=
       .then(() => load("https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"))
       .then(() => load("https://cdn.jsdelivr.net/npm/d3-graphviz@5.6.0/build/d3-graphviz.min.js"))
       .then(() => {
+  const graphBlock = document.querySelector(".bp_graph_fullwidth");
+  layoutGraphBlock(graphBlock);
 
   const graphContainer = d3.select("#graph");
+  if (graphContainer.empty()) return;
 
   const dotTxt = graphContainer
     .select("script.dot-source")
     .text()
     .trim();
 
-  const width = graphContainer.node().clientWidth;
-  const height = graphContainer.node().clientHeight;
+  function renderGraph() {
+    layoutGraphBlock(graphBlock);
+    const width = graphContainer.node().clientWidth;
+    const height = graphContainer.node().clientHeight;
 
-  // graphContainer.graphviz({useWorker: true})
-  graphContainer.graphviz()
+    // graphContainer.graphviz({useWorker: true})
+    graphContainer.graphviz()
       .width(width)
       .height(height)
       .fit(true)
       .renderDot(dotTxt)
       // .on("end", interactive);
+  }
+
+  renderGraph();
+  window.addEventListener("resize", debounce(renderGraph, 180));
   });
   })();
   "##
+
+def graphTocToggleJs : String := r##"(function () {
+  const className = "bp-graph-toc-hidden";
+  const storageKey = "verso-blueprint-graph-toc-visible";
+  if (!document.querySelector(".bp_graph_fullwidth")) return;
+  if (!document.getElementById("toc")) return;
+
+  function readVisible() {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved === "1") return true;
+      if (saved === "0") return false;
+    } catch (_err) {}
+    return false; // default: hidden
+  }
+
+  let visible = readVisible();
+  const root = document.documentElement;
+  const button = document.createElement("button");
+  button.id = "bp-toc-toggle";
+  button.type = "button";
+
+  function apply() {
+    if (visible) root.classList.remove(className);
+    else root.classList.add(className);
+    button.textContent = visible ? "Hide ToC" : "Show ToC";
+    window.dispatchEvent(new Event("resize"));
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem(storageKey, visible ? "1" : "0");
+    } catch (_err) {}
+  }
+
+  button.addEventListener("click", function () {
+    visible = !visible;
+    persist();
+    apply();
+  });
+
+  if (document.body) document.body.appendChild(button);
+  else document.addEventListener("DOMContentLoaded", function () {
+    if (document.body) document.body.appendChild(button);
+  }, { once: true });
+
+  apply();
+})();"##
 
 def d3DotCss := include_str "graph.css"
 
@@ -160,111 +294,16 @@ def openTargetDetailsJs : String := r##"(function () {
   window.addEventListener("hashchange", openFromHash);
 })();"##
 
-def blueprintStyleSwitcherCss : String := r##"
-#bp-style-switcher {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 1000;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.45rem;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
-  padding: 0.4rem 0.55rem;
-  font-size: 0.82rem;
-}
+def blueprintStyleSwitcherCss : String := Informal.StyleSwitcher.css
 
-#bp-style-switcher label {
-  margin-right: 0.35rem;
-  font-weight: 600;
-}
-
-#bp-style-switcher select {
-  border: 1px solid #cbd5e1;
-  border-radius: 0.3rem;
-  background: #ffffff;
-  font-size: 0.82rem;
-  padding: 0.1rem 0.25rem;
-}
-  "##
-
-def blueprintStyleSwitcherJs : String := r##"(function () {
-  const storageKey = "verso-blueprint-style";
-  const switcherId = "bp-style-switcher";
-  const root = document.documentElement;
-
-  function normalize(style) {
-    if (style === "blueprint" || style === "modern" || style === "bold") return style;
-    return "blueprint";
-  }
-
-  function applyStyle(style) {
-    root.setAttribute("data-bp-style", normalize(style));
-  }
-
-  function getSavedStyle() {
-    try {
-      return normalize(localStorage.getItem(storageKey));
-    } catch (_err) {
-      return "blueprint";
-    }
-  }
-
-  function saveStyle(style) {
-    try {
-      localStorage.setItem(storageKey, normalize(style));
-    } catch (_err) {}
-  }
-
-  function installSwitcher() {
-    if (document.getElementById(switcherId)) return;
-    if (!document.body) return;
-
-    const host = document.createElement("div");
-    host.id = switcherId;
-
-    const label = document.createElement("label");
-    label.setAttribute("for", "bp-style-select");
-    label.textContent = "Style";
-
-    const select = document.createElement("select");
-    select.id = "bp-style-select";
-    select.innerHTML = [
-      '<option value="blueprint">blueprint</option>',
-      '<option value="modern">modern</option>',
-      '<option value="bold">bold</option>'
-    ].join("");
-
-    const current = getSavedStyle();
-    select.value = current;
-    applyStyle(current);
-
-    select.addEventListener("change", function () {
-      const value = normalize(select.value);
-      applyStyle(value);
-      saveStyle(value);
-    });
-
-    host.appendChild(label);
-    host.appendChild(select);
-    document.body.appendChild(host);
-  }
-
-  applyStyle(getSavedStyle());
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", installSwitcher);
-  } else {
-    installSwitcher();
-  }
-})();"##
+def blueprintStyleSwitcherJs : String := Informal.StyleSwitcher.jsBasic
 
 -- block_extension Block.dependency_graph (label : String) where
 open Verso Doc Elab Genre Manual in
-block_extension Block.graph (graph : Graph) where
+block_extension Block.graph (graphData : GraphBlockData) where
   -- for TOC
   -- localContentItem _ _ _ := none
-  data := graph.toJson
+  data := toJson graphData
   traverse _id _data _contents := do
       return none
   toTeX := none
@@ -272,31 +311,63 @@ block_extension Block.graph (graph : Graph) where
     open Verso.Doc.Html in
     open Verso.Output.Html in
     some <| fun _goI _goB _id data _blocks => do
-      let .ok data := fromJson? (α := Graph) data
-        | HtmlT.logError "Malformed data in Block.graph.toHtml"
-          pure .empty
+      let graphData : GraphBlockData ←
+        match fromJson? (α := GraphBlockData) data with
+        | .ok gd => pure gd
+        | .error _ =>
+          match fromJson? (α := Graph) data with
+          | .ok graph => pure { graph, direction := .TB }
+          | .error _ =>
+            HtmlT.logError "Malformed data in Block.graph.toHtml"
+            pure { graph := #[], direction := .TB }
       let s ← HtmlT.state
       let resolveHref : Name → Option String := fun ref =>
-        match s.resolveDomainObject informalDomainName ref.toString with
-        | .ok dest => some dest.relativeLink
-        | .error _ => none
+        Resolve.resolveDomainHref? s Resolve.informalDomainName ref.toString
       return {{
-        <div class="bp_graph_legend">
-          <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#bfdbfe;"></span>"Definition"</span>
-          <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#e9d5ff;"></span>"Lean-only def (informal missing)"</span>
-          <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#d4f4dd;"></span>"Lean + proof"</span>
-          <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#fff3bf;"></span>"Lean code, informal proof pending"</span>
-          <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch" style="background:#f3f4f6;"></span>"Informal / text-only"</span>
-          <span class="bp_graph_legend_item">"Edge styles: solid = statement deps, dashed = proof deps"</span>
-        </div>
-        <div id="graph">
-          <script type="text/plain" class="dot-source">
-            s!"{data.toDot resolveHref}"
-          </script>
+        <div class="bp_graph_fullwidth">
+          <div class="bp_graph_legend">
+            <div class="bp_graph_legend_group">
+              <span class="bp_graph_legend_group_title">"Shapes"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_shape_box"></span>"Definition"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_shape_ellipse"></span>"Theorem / lemma / corollary"</span>
+            </div>
+            <div class="bp_graph_legend_group">
+              <span class="bp_graph_legend_group_title">"Statement Border"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_stmt_blocked"></span>"Blocked"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_stmt_ready"></span>"Ready to formalize"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_stmt_formalized"></span>"Formalized"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_stmt_mathlib"></span>"In Mathlib"</span>
+            </div>
+            <div class="bp_graph_legend_group">
+              <span class="bp_graph_legend_group_title">"Background Status"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_proof_none"></span>"Not ready"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_proof_ready"></span>"Ready to formalize"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_proof_formalized"></span>"Formalized"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_proof_anc"></span>"Formalized + ancestors"</span>
+            </div>
+            <div class="bp_graph_legend_group">
+              <span class="bp_graph_legend_group_title">"Warning Overlays"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_unknown"></span>"Unknown reference"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_lean_only"></span>"Lean code, informal statement missing"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_local_sorries"></span>"Local sorries"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_deps"></span>"Formalized node with incomplete ancestors"</span>
+            </div>
+            <div class="bp_graph_legend_group">
+              <span class="bp_graph_legend_group_title">"Edges"</span>
+              <span class="bp_graph_legend_item">"Solid: theorem/lemma deps"</span>
+              <span class="bp_graph_legend_item">"Dashed: definition-source deps"</span>
+              <span class="bp_graph_legend_item">"Dotted: proof-only deps"</span>
+            </div>
+          </div>
+          <div id="graph">
+            <script type="text/plain" class="dot-source">
+              s!"{graphToDot graphData.graph graphData.direction resolveHref}"
+            </script>
+          </div>
         </div>
       }}
   extraCss := ([d3DotCss, blueprintStyleSwitcherCss] : List String)
-  extraJs := ([loadD3Dot, blueprintStyleSwitcherJs] : List String)
+  extraJs := ([loadD3Dot, graphTocToggleJs, blueprintStyleSwitcherJs] : List String)
 
 open Verso Doc Elab Genre Manual in
 block_extension Block.summary (summary : Summary) where
@@ -313,32 +384,11 @@ block_extension Block.summary (summary : Summary) where
           pure .empty
       let s ← HtmlT.state
       let getEntryHref (label : Name) : Option String :=
-        match s.resolveDomainObject informalDomainName label.toString with
-        | .ok dest => Option.some dest.relativeLink
-        | .error _ => Option.none
+        Resolve.resolveDomainHref? s Resolve.informalDomainName label.toString
       let getCodeHref (label : Name) : Option String :=
-        match s.resolveDomainObject informalCodeDomainName label.toString with
-        | .ok dest => Option.some dest.relativeLink
-        | .error _ => Option.none
+        Resolve.resolveDomainHref? s Resolve.informalCodeDomainName label.toString
       let getDeclHref (decl : Name) : Option String :=
-        match s.resolveDomainObject exampleDomainName decl.toString with
-        | .ok dest => Option.some dest.relativeLink
-        | .error _ =>
-          match s.domains.get? exampleDomainName with
-          | Option.none => Option.none
-          | Option.some dom =>
-            let pref := decl.toString ++ " (in "
-            let cands := dom.objects.foldl (init := #[]) fun acc key _obj =>
-              if key == decl.toString || key.startsWith pref then
-                acc.push key
-              else
-                acc
-            if cands.size = 1 then
-              match s.resolveDomainObject exampleDomainName cands[0]! with
-              | .ok dest => Option.some dest.relativeLink
-              | .error _ => Option.none
-            else
-              Option.none
+        Resolve.resolveExampleDeclHref? s decl
       let mkEntryRef (label : Name) :=
         match getEntryHref label with
         | Option.some href => {{ <a href={{href}}> <code>s!"{label}"</code> </a> }}
@@ -348,22 +398,24 @@ block_extension Block.summary (summary : Summary) where
           match getDeclHref decl with
           | Option.some href => {{ <li><a href={{href}}> <code>s!"{decl}"</code> </a></li> }}
           | Option.none => {{ <li><code>s!"{decl}"</code></li> }}
+      let mkLeanRow (label : Name) (kind : String) (leanObjects : List Name) : Output.Html :=
+        let codeHref := getCodeHref label
+        let associatedDecls := !leanObjects.isEmpty
+        {{ <li>
+             <span class="bp_summary_item_head">{{mkEntryRef label}}</span>
+             <span class="bp_summary_item_meta">s!"({kind})"</span>
+             {{if associatedDecls then
+                {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems leanObjects}}</ul></details>}}
+               else
+                {{<span></span>}}}}
+             {{if let some href := codeHref then
+                {{<div class="bp_summary_item_body">"Lean code: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
+               else
+                {{<span></span>}}}}
+           </li> }}
       let pendingProofRows :=
         data.pendingInformalProofEntries.toArray.map fun item =>
-          let codeHref := getCodeHref item.label
-          let associatedDecls := !item.leanObjects.isEmpty
-          {{ <li>
-               <span class="bp_summary_item_head">{{mkEntryRef item.label}}</span>
-               <span class="bp_summary_item_meta">s!"({item.kind})"</span>
-               {{if associatedDecls then
-                  {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.leanObjects}}</ul></details>}}
-                 else
-                  {{<span></span>}}}}
-               {{if let some href := codeHref then
-                  {{<div class="bp_summary_item_body">"Lean code: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
-                 else
-                  {{<span></span>}}}}
-             </li> }}
+          mkLeanRow item.label item.kind item.leanObjects
       let sorryRows :=
         data.sorryDetails.toArray.map fun item =>
           let codeHref := getCodeHref item.label
@@ -416,36 +468,10 @@ block_extension Block.summary (summary : Summary) where
              </li> }}
       let definitionRows :=
         data.definitionIndex.toArray.map fun item =>
-          let codeHref := getCodeHref item.label
-          let associatedDecls := !item.leanObjects.isEmpty
-          {{ <li>
-               <span class="bp_summary_item_head">{{mkEntryRef item.label}}</span>
-               <span class="bp_summary_item_meta">s!"({item.kind})"</span>
-               {{if associatedDecls then
-                  {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.leanObjects}}</ul></details>}}
-                 else
-                  {{<span></span>}}}}
-               {{if let some href := codeHref then
-                  {{<div class="bp_summary_item_body">"Lean code: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
-                 else
-                  {{<span></span>}}}}
-             </li> }}
+          mkLeanRow item.label item.kind item.leanObjects
       let theoremLikeRows :=
         data.theoremLikeIndex.toArray.map fun item =>
-          let codeHref := getCodeHref item.label
-          let associatedDecls := !item.leanObjects.isEmpty
-          {{ <li>
-               <span class="bp_summary_item_head">{{mkEntryRef item.label}}</span>
-               <span class="bp_summary_item_meta">s!"({item.kind})"</span>
-               {{if associatedDecls then
-                  {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.leanObjects}}</ul></details>}}
-                 else
-                  {{<span></span>}}}}
-               {{if let some href := codeHref then
-                  {{<div class="bp_summary_item_body">"Lean code: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
-                 else
-                  {{<span></span>}}}}
-             </li> }}
+          mkLeanRow item.label item.kind item.leanObjects
       return {{
         <div class="bp_summary">
           <details class="bp_summary_section" open>
@@ -496,12 +522,72 @@ block_extension Block.summary (summary : Summary) where
       }}
   extraCss := singleton ⟨d3DotCss⟩
   extraJs := singleton ⟨openTargetDetailsJs⟩
+
+open Verso Doc Elab Genre Manual in
+block_extension Block.bibliography (biblio : BibliographyData) where
+  data := toJson biblio
+  traverse id data _contents := do
+    let .ok biblio := fromJson? (α := BibliographyData) data
+      | logError "Malformed data in Block.bibliography.traverse"
+        return none
+    let path ← (·.path) <$> read
+    let _ ← Verso.Genre.Manual.externalTag id path s!"--bp-bibliography"
+    for entry in biblio.entries do
+      modify fun st =>
+        st.saveDomainObject Resolve.bibliographyDomainName entry.label id
+    return none
+  toTeX := none
+  toHtml :=
+    open Verso.Doc.Html in
+    open Verso.Output.Html in
+    some <| fun goI _goB _id data _blocks => do
+      let .ok data := fromJson? (α := BibliographyData) data
+        | HtmlT.logError "Malformed data in Block.bibliography.toHtml"
+          pure .empty
+      let entries := data.entries.toArray.qsort (fun a b => a.citation.sortKey < b.citation.sortKey)
+      let rows ← entries.mapM fun entry => do
+        let rendered ← entry.citation.bibHtml goI
+        let itemId := s!"bp-bib-{Informal.Cite.citationAnchorId entry.label}"
+        pure {{
+          <li id={{itemId}}>
+            {{rendered}}
+          </li>
+        }}
+      pure {{
+        <div class="bp_summary">
+          <details class="bp_summary_section" open>
+            <summary>s!"Bibliography ({entries.size})"</summary>
+            <ul class="bp_summary_list">
+              {{if rows.isEmpty then {{<li class="bp_summary_empty">"No bibliography entries registered."</li>}} else rows}}
+            </ul>
+          </details>
+        </div>
+      }}
+  extraCss := singleton ⟨d3DotCss⟩
+  extraJs := singleton ⟨openTargetDetailsJs⟩
 --
 open Informal Data Environment
+def externalDeclHasTypeSorry (env : Lean.Environment) (decl : Name) : Bool :=
+  let decl := decl.eraseMacroScopes
+  match env.find? decl with
+  | none => true
+  | some info => info.type.hasSorry
+
+def externalDeclHasProofSorry (env : Lean.Environment) (decl : Name) : Bool :=
+  let decl := decl.eraseMacroScopes
+  match env.find? decl with
+  | none => true
+  | some info => info.value?.map (·.hasSorry) |>.getD false
+
 def buildAll : CoreM Graph := do
-  let state := informalExt.getState (← getEnv)
+  let env ← getEnv
+  let state := informalExt.getState env
   let roots : Array Name := state.data.toArray.map (·.1)
-  return Informal.Graph.build state roots (resolveRef? := some)
+  let external : Informal.Graph.ExternalCodeStatus := {
+    hasTypeSorry := externalDeclHasTypeSorry env
+    hasProofSorry := externalDeclHasProofSorry env
+  }
+  return Informal.Graph.buildWithExternal state roots external (resolveRef? := some)
 
 def countSorries (decls : Array Data.DefinedDecl) : Nat :=
   decls.foldl (init := 0) fun acc decl => acc + (if decl.hasSorry then 1 else 0)
@@ -533,7 +619,11 @@ def buildSummary : CoreM Summary := do
     let (leanDecls, sorries, leanObjects, sorryDetails) :=
       match node.code with
       | none => (0, 0, ([] : List Name), ([] : List SorryItem))
-      | some code =>
+      | some .userOk =>
+        (0, 0, ([] : List Name), ([] : List SorryItem))
+      | some (.external decls) =>
+        (decls.size, 0, (decls.map (·.canonical)).toList, ([] : List SorryItem))
+      | some (.literate code) =>
         let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.DefinedDecl) => acc.insert d.name
         let leanObjects := (code.definedDefs ++ code.definedTheorems).map (fun d : Data.DefinedDecl => d.name) |>.toList
         let leanDecls := code.definedDefs.size + code.definedTheorems.size
@@ -574,9 +664,39 @@ def buildSummary : CoreM Summary := do
     | Data.NodeKind.corollary => { acc with corollaries := acc.corollaries + 1 }
     | _ => acc
 
+open Verso.ArgParse
+
+instance : FromArgVal GraphDirection Verso.Doc.Elab.PartElabM where
+  fromArgVal := {
+    description := doc!"graph direction (`LR`, `RL`, `TB`, or `BT`)"
+    signature := CanMatch.Ident ∪ CanMatch.String
+    get := fun
+      | .name id =>
+        match GraphDirection.parse? id.getId.toString with
+        | some d => pure d
+        | none => throwErrorAt id "Expected one of `LR`, `RL`, `TB`, `BT`"
+      | .str s =>
+        match GraphDirection.parse? s.getString with
+        | some d => pure d
+        | none => throwErrorAt s "Expected one of \"lr\", \"rl\", \"tb\", \"bt\""
+      | other =>
+        throwError "Expected a direction identifier or string, got {toMessageData other}"
+  }
+
+structure BlueprintGraphConfig where
+  direction : Option GraphDirection := none
+
+instance : FromArgs BlueprintGraphConfig Verso.Doc.Elab.PartElabM where
+  fromArgs := BlueprintGraphConfig.mk <$> .named' `direction true
+
+def parseGraphDirection (cfg : BlueprintGraphConfig) : Verso.Doc.Elab.PartElabM GraphDirection := do
+  match cfg.direction with
+  | none => pure .TB
+  | some direction => pure direction
+
 -- this runs in corem as it only needs the env
 open Verso Doc Elab Syntax in
-def mkGraphPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do
+def mkGraphPart (stx : Syntax) (endPos : String.Pos.Raw) (direction : GraphDirection := .TB) : PartElabM FinishedPart := do
   let titlePreview := "Dependency Graph"
   -- XXX: Better way to do this?
   -- let titleInlines ← `(inline | $(quote titlePreview))
@@ -585,7 +705,8 @@ def mkGraphPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPar
   let metadata := none
   let graph ← buildAll
   logInfo m!"Adding {graph.size} nodes"
-  let block ← ``(Verso.Doc.Block.other (Block.graph $(quote graph)) #[])
+  let graphData : GraphBlockData := { graph, direction }
+  let block ← ``(Verso.Doc.Block.other (Block.graph $(quote graphData)) #[])
   let subParts := #[]
   pure $ FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
 
@@ -601,14 +722,31 @@ def mkSummaryPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedP
   let subParts := #[]
   pure $ FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
 
+open Verso Doc Elab Syntax in
+def mkBibliographyPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do
+  let titlePreview := "Blueprint Bibliography"
+  let titleInlines ← `(inline | "Blueprint Bibliography")
+  let expandedTitle ← #[titleInlines].mapM (elabInline ·)
+  let metadata := none
+  let entries := Informal.Cite.allBibEntries (← getEnv)
+  logInfo m!"Blueprint bibliography for {entries.length} entries"
+  let refs : Array (TSyntax `term) ← entries.toArray.mapM fun (label, decl) =>
+    `(BibliographyEntry.mk $(quote label) $(mkIdent decl))
+  let block ← ``(Verso.Doc.Block.other
+    (Block.bibliography (BibliographyData.mk (entries := ([$refs,*] : List BibliographyEntry)))) #[])
+  let subParts := #[]
+  pure $ FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
+
 open Verso Doc Elab Syntax PartElabM in
 @[part_command Lean.Doc.Syntax.command]
 public meta def depGraph : PartCommand
-  | stx@`(block|command{blueprint_graph}) => do
+  | stx@`(block|command{blueprint_graph $args*}) => do
+    let cfg ← Verso.ArgParse.parseThe BlueprintGraphConfig (← parseArgs args)
+    let direction ← parseGraphDirection cfg
     let endPos := stx.getTailPos?.get!
     -- Dependency graph is (for now) always at header level 1
     closePartsUntil 1 endPos
-    addPart (← mkGraphPart stx endPos)
+    addPart (← mkGraphPart stx endPos direction)
   | _ => (Lean.Elab.throwUnsupportedSyntax : PartElabM Unit)
 
 open Verso Doc Elab Syntax PartElabM in
@@ -622,4 +760,17 @@ public meta def bpSummaryCmd : PartCommand
     let endPos := stx.getTailPos?.get!
     closePartsUntil 1 endPos
     addPart (← mkSummaryPart stx endPos)
+  | _ => (Lean.Elab.throwUnsupportedSyntax : PartElabM Unit)
+
+open Verso Doc Elab Syntax PartElabM in
+@[part_command Lean.Doc.Syntax.command]
+public meta def bpBibliographyCmd : PartCommand
+  | stx@`(block|command{bp_bibliography}) => do
+    let endPos := stx.getTailPos?.get!
+    closePartsUntil 1 endPos
+    addPart (← mkBibliographyPart stx endPos)
+  | stx@`(block|command{blueprint_bibliography}) => do
+    let endPos := stx.getTailPos?.get!
+    closePartsUntil 1 endPos
+    addPart (← mkBibliographyPart stx endPos)
   | _ => (Lean.Elab.throwUnsupportedSyntax : PartElabM Unit)

@@ -32,23 +32,6 @@ private def classifyDeclKind (decl : Name) (info : ConstantInfo) : CoreM Data.No
   | _ =>
     throwError "invalid '[blueprint]' target '{decl}': expected a definition or theorem, got {constantInfoKind info}"
 
-private def mkDefinedDecl (decl : Name) (info : ConstantInfo) : Data.DefinedDecl :=
-  let hasTypeSorry := info.type.hasSorry
-  let hasProofSorry := info.value?.map (·.hasSorry) |>.getD false
-  {
-    name := decl
-    hasSorry := hasTypeSorry || hasProofSorry
-    hasTypeSorry
-    hasProofSorry
-  }
-
-private def mkCodeDecls (definedDecl : Data.DefinedDecl) (declKind : Data.NodeKind) :
-    Array Data.DefinedDecl × Array Data.DefinedDecl :=
-  match declKind with
-  | .definition => (#[definedDecl], #[])
-  | .theorem => (#[], #[definedDecl])
-  | _ => panic! "impossible: classifyDeclKind only returns definition/theorem"
-
 private def logDocstringIfPresent (decl : Name) : CoreM Unit := do
   let env ← getEnv
   let internalDoc? ← liftM <| findInternalDocString? env decl
@@ -182,11 +165,8 @@ private def registerLeanOnlyDecl (decl label : Name) (ref : Syntax) : CoreM Unit
   let statement? ← statementFromDocstring? decl ref
   -- logDocstringIfPresent decl
 
-  let definedDecl := mkDefinedDecl decl info
-  let (definedDefs, definedTheorems) := mkCodeDecls definedDecl declKind
-
   Environment.modifyM fun state => do
-    let data ← state.data.registerCode label ref definedDefs definedTheorems
+    let data ← state.data.registerCodeRef label (.external #[Data.ExternalRef.ofName decl .blueprintAttr])
     let data :=
       match data.get? label with
       | some node =>

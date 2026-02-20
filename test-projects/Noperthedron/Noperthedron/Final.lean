@@ -80,13 +80,7 @@ def sortedVerts : Fin nopert.vertices.card → ℝ³ := fun i => nopertVerts.equ
 
 lemma mem_iff_symm_mem {a : Type} {A : Finset a} {n : ℕ} {x : a} (eq : ↥A ≃ Fin n) :
     x ∈ A ↔ ∃ y, eq.symm y = x := by
-  constructor
-  · intro hx
-    use eq ⟨x, hx⟩
-    simp only [Equiv.symm_apply_apply]
-  · rintro ⟨y, hy⟩
-    rw [← hy]
-    simp
+  sorry
 
 /--
 The Noperthedron is not Rupert.

@@ -7,41 +7,19 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
+import Chapters.Macros
+import Bibliography
 
-open Verso.Genre Manual
+open Verso.Genre Manual Informal
 
-/-
-
-TODO:
-
-Blocks:
-
-:::prelude
-
-:::theorem
-   :::proof (nested)
-
-:::definition
-
-Roles:
-
-{uses } / {ref }
-
--/
-
--- EJGA: Seems like a good idea for hybrid setups
 set_option doc.verso true
-
 set_option pp.rawOnError true
+set_option verso.code.warnLineLength 0
 
-#doc (Manual) "Noperthedron" =>
+#doc (Manual) "Computational Step" =>
 
-# Main Theorems
-
--- Infer automatically
-:::theorem "no_nopert_tight_view_pose"
-
-There does not in fact exist a `{ref "noperthedron"}[noperthedron]` Rupert solution with
+:::theorem "thm:exists_solution_table" (lean := "exists_solution_table") (leanok := true)
+There exists a valid solution table whose zeroth row covers
 
 $$`
 \begin{align*}
@@ -53,22 +31,49 @@ $$`
 `
 :::
 
-:::proof "no_nopert_tight_view_pose"
-
-`{uses "thm:exists_solution_table" "thm:row_valid_imp_not_rupert"}[`todo`]`
-
-By `{ref "thm:exists_solution_table"}[todo]`, there is a valid solution table
-containing a valid row whose pose interval is a superset of
-the 5-d interval above. By `{ref "thm:row_valid_imp_not_rupert"}[todo]`, this means
-there is no Rupert solution in that interval.
+:::proof "thm:exists_solution_table" (leanok := true)
+By exhibiting the table and running the validity checking algorithm.
 :::
 
-- Big string literal
+:::theorem "thm:solution_global" (lean := "Solution.valid_global_imp_no_rupert") (leanok := true)
+If a global node in the solution tree is valid, then there is no Rupert solution for its interval.
+:::
 
-```lean "no_nopert_tight_view_pose"
--- Insert code for formal version of the proof above.
--- Challenge, how to separate the proof and statement of the theorem!
-def a := 3
+:::proof "thm:solution_global" (leanok := true)
+Using {uses "thm:global_rational"}[].
+:::
 
-#eval a
-```
+:::theorem "thm:solution_local" (lean := "Solution.valid_local_imp_no_rupert") (leanok := true)
+If a local node in the solution tree is valid, then there is no Rupert solution for its interval.
+:::
+
+:::proof "thm:solution_local" (leanok := true)
+Using {uses "thm:local_rational"}[], {uses "lem:radius_noperthedron_one"}[], and {uses "lem:congruent"}[].
+:::
+
+:::theorem "thm:row_valid_imp_not_rupert_ix" (lean := "Solution.Row.valid_imp_not_rupert_ix,Solution.valid_split_imp_no_rupert,Solution.valid_binary_split_imp_no_rupert,Solution.valid_full_split_imp_no_rupert,Solution.valid_param_split_imp_no_rupert") (leanok := true)
+Using {uses "def:noperthedron"}[].
+
+If we have a valid solution table, and in particular its $`i`th row is valid,
+then there is no Rupert solution of the interval of its $`i`th row.
+:::
+
+:::proof "thm:row_valid_imp_not_rupert_ix" (leanok := true)
+Using {uses "thm:solution_global"}[] and {uses "thm:solution_local"}[].
+
+By a mutual induction on the number of rows left in the table following the $`i`th.
+This is because validity constrains each row to only refer to later entries.
+Appeal inductively to this same theorem if the row splits into other nodes in
+the tree, or appeal to {uses "thm:solution_global"}[Theorem] or {uses "thm:solution_local"}[Theorem] at the leaves.
+:::
+
+:::corollary "thm:row_valid_imp_not_rupert" (lean := "Solution.Row.valid_imp_not_rupert") (leanok := true)
+Using {uses "def:noperthedron"}[].
+
+If we have a valid solution table, then there is no Rupert solution of the interval of its zeroth row.
+:::
+
+:::proof "thm:row_valid_imp_not_rupert" (leanok := true)
+Using {uses "thm:row_valid_imp_not_rupert_ix"}[].
+Immediate special case of {uses "thm:row_valid_imp_not_rupert_ix"}[this theorem].
+:::
