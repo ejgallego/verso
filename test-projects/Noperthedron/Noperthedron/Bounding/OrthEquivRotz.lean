@@ -100,25 +100,8 @@ lemma neg_Ry_mat_mul (θ : ℝ) : Ry_mat (-θ) * Ry_mat θ = 1 := by
 
 /-- Rz(α) * Rz(β) = Rz(α + β). -/
 lemma Rz_mat_mul_Rz_mat (α β : ℝ) : Rz_mat α * Rz_mat β = Rz_mat (α + β) := by
-  have hrz : ∀ v : Fin 3 → ℝ, Rz_mat α *ᵥ (Rz_mat β *ᵥ v) = Rz_mat (α + β) *ᵥ v := by
-    intro v
-    have h := AddChar.map_add_eq_mul RzC α β
-    have hcomp : (RzL α).comp (RzL β) = RzL (α + β) := by
-      rw [show RzC α * RzC β = (RzC α).comp (RzC β) from rfl] at h
-      exact h.symm
-    have := congrFun (congrArg DFunLike.coe hcomp) (WithLp.toLp 2 v)
-    simp only [RzL, LinearMap.coe_toContinuousLinearMap', Matrix.toEuclideanLin_apply] at this
-    exact congrArg (·.ofLp) this
-  have hmul : ∀ v, (Rz_mat α * Rz_mat β) *ᵥ v = Rz_mat (α + β) *ᵥ v := by
-    intro v
-    rw [← Matrix.mulVec_mulVec]
-    exact hrz v
   ext i j
-  have h := hmul (Pi.single j 1)
-  simp only [Matrix.mulVec_single] at h
-  have h' := congrFun h i
-  simp only [Pi.smul_apply, MulOpposite.op_one, one_smul, Matrix.col_apply] at h'
-  exact h'
+  fin_cases i <;> fin_cases j <;> simp [Rz_mat, cos_add, sin_add] <;> ring
 
 lemma SO3_fixing_z_is_Rz (A : Matrix (Fin 3) (Fin 3) ℝ) (hA : A ∈ Matrix.specialOrthogonalGroup (Fin 3) ℝ)
     (hAz : A.toEuclideanLin !₂[0, 0, 1] = !₂[0, 0, 1]) :
@@ -204,7 +187,7 @@ lemma SO3_ZYZ_decomposition (M : Matrix (Fin 3) (Fin 3) ℝ)
   have hv_norm : ‖v‖ = 1 := by
     have key : Mᵀ * M = 1 := by
       have h := hM.1.1; simp only [Matrix.star_eq_conjTranspose] at h; exact h
-    simp only [v, Matrix.toEuclideanLin_apply, EuclideanSpace.norm_eq]
+    simp only [v, Matrix.toLpLin_apply, EuclideanSpace.norm_eq]
     -- The calculation (M*ᵥe)·(M*ᵥe) = e·((MᵀM)*ᵥe) = e·e = 1
     have hdot : (M *ᵥ ![0, 0, 1]) ⬝ᵥ (M *ᵥ ![0, 0, 1]) = 1 := by
       have : (M *ᵥ ![0, 0, 1]) ⬝ᵥ (M *ᵥ ![0, 0, 1]) =
@@ -246,11 +229,11 @@ lemma SO3_ZYZ_decomposition (M : Matrix (Fin 3) (Fin 3) ℝ)
   have hN_SO3 : N ∈ Matrix.specialOrthogonalGroup (Fin 3) ℝ :=
     Submonoid.mul_mem _ (Submonoid.mul_mem _ (rot3_mat_mem_SO3 1 β) (rot3_mat_mem_SO3 2 (-α))) hM
   have hN_fixes_z : N.toEuclideanLin !₂[0, 0, 1] = !₂[0, 0, 1] := by
-    simp only [N, Matrix.mul_assoc, Matrix.toEuclideanLin_apply]
+    simp only [N, Matrix.mul_assoc, Matrix.toLpLin_apply]
     have hv_sph : M *ᵥ ![0, 0, 1] =
         ![Real.sin β * Real.cos α, Real.sin β * Real.sin α, Real.cos β] := by
       ext i
-      simp only [v, Matrix.toEuclideanLin_apply] at hv_eq
+      simp only [v, Matrix.toLpLin_apply] at hv_eq
       exact congrFun hv_eq i
     have h_calc : (Ry_mat β * (Rz_mat (-α) * M)) *ᵥ ![0, 0, 1] = ![0, 0, 1] := by
       calc (Ry_mat β * (Rz_mat (-α) * M)) *ᵥ ![0, 0, 1]
@@ -272,9 +255,8 @@ lemma SO3_ZYZ_decomposition (M : Matrix (Fin 3) (Fin 3) ℝ)
        _ = Rz_mat α * Ry_mat (-β) * Rz_mat γ := by rw [Matrix.mul_assoc]
 
 /-- Rz(0) = 1. -/
-lemma Rz_mat_zero : Rz_mat 0 = 1 := by
-  ext i j
-  fin_cases i <;> fin_cases j <;> simp [Rz_mat]
+@[simp]
+lemma Rz_mat_zero : Rz_mat 0 = 1 := by simp [Rz_mat, Matrix.one_fin_three]
 
 -- TODO something like this really ought to exist in mathlib.
 lemma specialOrthogonalGroup_mem_inv {n : ℕ} {U : Matrix (Fin n) (Fin n) ℝ}
@@ -295,7 +277,7 @@ lemma SO3_is_conj_Rz (A : Matrix (Fin 3) (Fin 3) ℝ) (hA : A ∈ Matrix.special
   let v := ‖w‖⁻¹ • w
   have A_fixes_v : A *ᵥ v = v := by
     have : (A.toEuclideanLin v).ofLp = v.ofLp := by simp_all [v]
-    simpa [Matrix.piLp_ofLp_toEuclideanLin, Matrix.toLin'_apply]
+    simpa [Matrix.ofLp_toLpLin, Matrix.toLin'_apply]
   obtain ⟨U, U_SO3, U_z_eq_v⟩ := exists_SO3_mulVec_ez_eq v (by simp_all [v, norm_smul])
   let B := U⁻¹ * A * U
   have B_in_SO3 : B ∈ Matrix.specialOrthogonalGroup (Fin 3) ℝ := by
@@ -345,36 +327,12 @@ lemma Matrix.orthogonalGroup.to_linear_equiv_apply {n : ℕ} (A : Matrix.orthogo
     Matrix.OrthogonalGroup.toLinearEquiv A x = A.1.mulVec x := by
   rfl
 
-lemma to_euc_mul {a b c : ℕ}
-    (u : Euc(a) →ₗ[ℝ] Euc(b)) (v : Euc(b) →ₗ[ℝ] Euc(c)) :
-    Matrix.toEuclideanLin.symm v * Matrix.toEuclideanLin.symm u =
-    Matrix.toEuclideanLin.symm (v ∘ₗ u) := by
-  refine LinearEquiv.injective Matrix.toEuclideanLin ?_
-  have (uu : Matrix (Fin b) (Fin a) ℝ) (vv : Matrix (Fin c) (Fin b) ℝ) :
-     Matrix.toEuclideanLin (vv * uu) = Matrix.toEuclideanLin vv ∘ₗ Matrix.toEuclideanLin uu := by
-    ext x
-    simp only [Matrix.toEuclideanLin_apply, LinearMap.coe_comp, Function.comp_apply,
-      Matrix.mulVec_mulVec]
-  rw [this]
-  simp
-
-lemma to_euc_one {n : ℕ} : Matrix.toEuclideanLin.symm (LinearMap.id (M := Euc(n))) = 1 := by
-  ext i j
-  rw [Matrix.toEuclideanLin]
-  simp only [LinearEquiv.trans_symm, Matrix.toLin'_symm, LinearEquiv.trans_apply,
-    LinearMap.toMatrix'_apply, LinearEquiv.arrowCongr_symm_apply, LinearEquiv.symm_symm,
-    WithLp.linearEquiv_symm_apply, AddEquiv.toEquiv_eq_coe, Equiv.invFun_as_coe,
-    AddEquiv.coe_toEquiv_symm, WithLp.addEquiv_symm_apply, EuclideanSpace.toLp_single,
-    LinearMap.id_coe, id_eq, WithLp.linearEquiv_apply, Equiv.toFun_as_coe, EquivLike.coe_coe,
-    WithLp.addEquiv_apply, EuclideanSpace.single_apply]
-  rfl
-
 lemma inv_euclidean_eq_euclidean_symm (u : Euc(3) ≃ₗ[ℝ] Euc(3)) :
     (Matrix.toEuclideanLin.symm u.toLinearMap)⁻¹ = Matrix.toEuclideanLin.symm u.symm.toLinearMap := by
   rw [Matrix.inv_eq_right_inv]
-  rw [to_euc_mul u.symm.toLinearMap u.toLinearMap]
+  rw [← Matrix.toLpLin_symm_comp]
   simp only [LinearEquiv.comp_coe, LinearEquiv.symm_trans_self, LinearEquiv.refl_toLinearMap]
-  exact to_euc_one
+  exact Matrix.toLpLin_symm_id 2
 
 lemma euclidean_linear_equiv_inverse (v : ℝ³) (u : Euc(3) ≃ₗ[ℝ] Euc(3)) (U : Matrix (Fin 3) (Fin 3) ℝ)
     (hu : U = Matrix.toEuclideanLin.symm u.toLinearMap) :

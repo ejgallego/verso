@@ -10,3 +10,8 @@ import Noperthedron.RationalApprox.RationalLocal
 import Noperthedron.RationalApprox.ApproximableMatrices
 import Noperthedron.RationalApprox.MatrixBounds
 import Noperthedron.RationalApprox.TrigLemmas
+import Noperthedron.RationalApprox.RationalGlobal
+import Noperthedron.RationalApprox.BoundsKappa
+import Noperthedron.RationalApprox.BoundsKappa3
+import Noperthedron.RationalApprox.BoundsKappa4
+import Noperthedron.RationalApprox.DeltaKappa

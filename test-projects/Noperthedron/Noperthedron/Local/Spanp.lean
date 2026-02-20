@@ -28,9 +28,12 @@ def mat (V : Vec3) : Matrix (Fin 3) (Fin 3) ℝ := fun i j => V j i
 end Vec3
 
 theorem V_apply (i : Fin 3) (V : Vec3) (X : Euc(3)): (V.matᵀ *ᵥ X) i = ⟪V i, X⟫ := by
-  simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_three, Fin.isValue, inner,
-    RCLike.inner_apply, Real.ringHom_apply, Matrix.transpose, Fin.isValue, Matrix.of_apply, Vec3.mat]
-  ring_nf
+  rw [PiLp.inner_apply]
+  simp only [Matrix.mulVec, dotProduct, Fin.sum_univ_three, Fin.isValue, Matrix.transpose,
+    Matrix.of_apply, Vec3.mat]
+  change (V i).ofLp 0 * X.ofLp 0 + (V i).ofLp 1 * X.ofLp 1 + (V i).ofLp 2 * X.ofLp 2 =
+      X.ofLp 0 * (V i).ofLp 0 + X.ofLp 1 * (V i).ofLp 1 + X.ofLp 2 * (V i).ofLp 2
+  ring
 
 instance : Coe (Matrix (Fin 1) (Fin 1) ℝ) ℝ where
   coe x := x 0 0
@@ -56,10 +59,13 @@ theorem pos_mul_lem (X : Fin 3 → ℝ) (M1 M2 : Matrix (Fin 3) (Fin 1) ℝ)
     (Mpos : ∀ (i : Fin 3), M1 i 0 < M2 i 0) :
     ((matOfVec X)ᵀ * M1) 0 0 < ((matOfVec X)ᵀ * M2) 0 0 := by
   simp [Matrix.mul_apply, Fin.sum_univ_three]
-  have (i : Fin 3) : 0 < matOfVec X i 0 := by simp only [matOfVec]; exact Xpos i
-  have (i : Fin 3) : matOfVec X i 0 * M1 i 0 < matOfVec X i 0 * M2 i 0  := by
-    simp_all only [Fin.isValue, mul_lt_mul_iff_right₀]
-  grind
+  have hmul (i : Fin 3) : matOfVec X i 0 * M1 i 0 < matOfVec X i 0 * M2 i 0 := by
+    have hXi : 0 < matOfVec X i 0 := by simpa [matOfVec] using Xpos i
+    nlinarith [Mpos i, hXi]
+  have h0 := hmul 0
+  have h1 := hmul 1
+  have h2 := hmul 2
+  linarith
 
 /-- [SY25] Lemma 23 -/
 theorem langles {Y Z : Euc(3)} {V : Vec3} (hYZ : ‖Y‖ = ‖Z‖)
