@@ -138,7 +138,7 @@ def RzC : AddChar ℝ (ℝ³ →L[ℝ] ℝ³) where
   map_add_eq_mul' a b := by
     ext v i
     fin_cases i <;> {
-      simp [RzL, Fin.sum_univ_succ, Matrix.toEuclideanLin_apply, Matrix.mulVec_eq_sum, Rz_mat, cos_add, sin_add];
+      simp [RzL, Fin.sum_univ_succ, Matrix.toLpLin_apply, Matrix.mulVec_eq_sum, Rz_mat, cos_add, sin_add];
       try ring_nf
     }
 
@@ -167,13 +167,13 @@ def rot2 : AddChar ℝ (ℝ² →L[ℝ] ℝ²) where
   toFun α := (rot2_mat α).toEuclideanLin.toContinuousLinearMap
   map_zero_eq_one' := by
     ext v i
-    fin_cases i <;> simp [Matrix.toEuclideanLin_apply, Matrix.mulVec]
+    fin_cases i <;> simp [Matrix.toLpLin_apply, Matrix.mulVec]
 
   map_add_eq_mul' := by
     intro α β
     ext v i
     fin_cases i <;> {
-      simp [Matrix.toEuclideanLin_apply, Matrix.mulVec_eq_sum, rot2_mat, cos_add, sin_add]
+      simp [Matrix.toLpLin_apply, Matrix.mulVec_eq_sum, rot2_mat, cos_add, sin_add]
       ring_nf
      }
 
@@ -213,7 +213,7 @@ def rotR : AddChar ℝ (ℝ² →L[ℝ] ℝ²) where
     intro α β
     ext v i
     fin_cases i <;> {
-      simp [Matrix.toEuclideanLin_apply, Matrix.mulVec_eq_sum, rotR_mat, cos_add, sin_add]
+      simp [Matrix.toLpLin_apply, Matrix.mulVec_eq_sum, rotR_mat, cos_add, sin_add]
       ring_nf
      }
 
@@ -247,17 +247,49 @@ def rotM (θ : ℝ) (φ : ℝ) : ℝ³ →L[ℝ] ℝ² :=
 
 -- Partial derivative of rotM with respect to θ
 noncomputable
+def rotMθ_mat (θ : ℝ) (φ : ℝ) : Matrix (Fin 2) (Fin 3) ℝ :=
+  !![-cos θ, -sin θ, 0; sin θ * cos φ, -cos θ * cos φ, 0]
+
+noncomputable
 def rotMθ (θ : ℝ) (φ : ℝ) : ℝ³ →L[ℝ] ℝ² :=
-  let A : Matrix (Fin 2) (Fin 3) ℝ :=
-    !![-cos θ, -sin θ, 0; sin θ * cos φ, -cos θ * cos φ, 0]
-  A.toEuclideanLin.toContinuousLinearMap
+  (rotMθ_mat θ φ).toEuclideanLin.toContinuousLinearMap
 
 -- Partial derivative of rotM with respect to φ
 noncomputable
+def rotMφ_mat (θ : ℝ) (φ : ℝ) : Matrix (Fin 2) (Fin 3) ℝ :=
+  !![0, 0, 0; cos θ * sin φ, sin θ * sin φ, cos φ]
+
+noncomputable
 def rotMφ (θ : ℝ) (φ : ℝ) : ℝ³ →L[ℝ] ℝ² :=
-  let A : Matrix (Fin 2) (Fin 3) ℝ :=
-    !![0, 0, 0; cos θ * sin φ, sin θ * sin φ, cos φ]
-  A.toEuclideanLin.toContinuousLinearMap
+  (rotMφ_mat θ φ).toEuclideanLin.toContinuousLinearMap
+
+-- Second partial derivatives of rotM
+-- ∂²rotM/∂θ² (derivative of rotMθ w.r.t. θ)
+noncomputable
+def rotMθθ_mat (θ : ℝ) (φ : ℝ) : Matrix (Fin 2) (Fin 3) ℝ :=
+  !![sin θ, -cos θ, 0; cos θ * cos φ, sin θ * cos φ, 0]
+
+noncomputable
+def rotMθθ (θ : ℝ) (φ : ℝ) : ℝ³ →L[ℝ] ℝ² :=
+  (rotMθθ_mat θ φ).toEuclideanLin.toContinuousLinearMap
+
+-- ∂²rotM/∂θ∂φ (derivative of rotMθ w.r.t. φ, or rotMφ w.r.t. θ)
+noncomputable
+def rotMθφ_mat (θ : ℝ) (φ : ℝ) : Matrix (Fin 2) (Fin 3) ℝ :=
+  !![0, 0, 0; -sin θ * sin φ, cos θ * sin φ, 0]
+
+noncomputable
+def rotMθφ (θ : ℝ) (φ : ℝ) : ℝ³ →L[ℝ] ℝ² :=
+  (rotMθφ_mat θ φ).toEuclideanLin.toContinuousLinearMap
+
+-- ∂²rotM/∂φ² (derivative of rotMφ w.r.t. φ)
+noncomputable
+def rotMφφ_mat (θ : ℝ) (φ : ℝ) : Matrix (Fin 2) (Fin 3) ℝ :=
+  !![0, 0, 0; cos θ * cos φ, sin θ * cos φ, -sin φ]
+
+noncomputable
+def rotMφφ (θ : ℝ) (φ : ℝ) : ℝ³ →L[ℝ] ℝ² :=
+  (rotMφφ_mat θ φ).toEuclideanLin.toContinuousLinearMap
 
 theorem sin_neg_pi_div_two : Real.sin (-(π / 2)) = -1 := by
   simp only [Real.sin_neg, Real.sin_pi_div_two]
@@ -288,13 +320,22 @@ lemma vecX_identity (θ φ : ℝ) :
   fin_cases i <;> simp [RyL, RzL, Matrix.vecHead, Matrix.vecTail, vecX]
 
 lemma vecX_norm_one (θ φ : ℝ) : ‖vecX θ φ‖ = 1 := by
-  simp only [vecX, ENNReal.toReal_ofNat, Nat.ofNat_pos, PiLp.norm_eq_sum, norm_eq_abs,
-    rpow_ofNat, sq_abs, Fin.sum_univ_three, Fin.isValue, Matrix.cons_val_zero,
-    Matrix.cons_val_one, Matrix.cons_val, one_div]
-  ring_nf
-  simp only [Real.sin_sq]
-  ring_nf
-  simp
+  have hsq : ‖vecX θ φ‖ ^ 2 = 1 := by
+    calc
+      ‖vecX θ φ‖ ^ 2 =
+          (Real.cos θ * Real.sin φ) ^ 2 + (Real.sin θ * Real.sin φ) ^ 2 + (Real.cos φ) ^ 2 := by
+            simpa [vecX, Fin.sum_univ_three] using (EuclideanSpace.norm_sq_eq (x := vecX θ φ))
+      _ = (Real.sin φ) ^ 2 * ((Real.cos θ) ^ 2 + (Real.sin θ) ^ 2) + (Real.cos φ) ^ 2 := by
+            ring
+      _ = (Real.sin φ) ^ 2 * 1 + (Real.cos φ) ^ 2 := by
+            rw [show (Real.cos θ) ^ 2 + (Real.sin θ) ^ 2 = 1 by
+              nlinarith [Real.sin_sq_add_cos_sq θ]]
+      _ = 1 := by
+            nlinarith [Real.sin_sq_add_cos_sq φ]
+  have hsq' : ‖vecX θ φ‖ ^ 2 = (1 : ℝ) ^ 2 := by simpa using hsq
+  rcases sq_eq_sq_iff_eq_or_eq_neg.mp hsq' with h | h
+  · exact h
+  · linarith [norm_nonneg (vecX θ φ)]
 
 lemma rotM_identity (θ φ : ℝ) : rotM θ φ = reduceL ∘L RyL φ ∘L RzL (-θ) := by
   ext v i
@@ -303,19 +344,33 @@ lemma rotM_identity (θ φ : ℝ) : rotM θ φ = reduceL ∘L RyL φ ∘L RzL (-
 lemma rotprojRM_identity (θ φ α : ℝ) : rotprojRM θ φ α = reduceL ∘L RzL α ∘L RyL φ ∘L RzL (-θ) := by
   simp only [rotprojRM]
   ext v i
-  fin_cases i <;>
+  fin_cases i
   · simp [RzL, RyL, rotR, rotM, rotM_mat, Matrix.vecHead, Matrix.vecTail]
-    ring_nf
+    ring
+  · simp [RzL, RyL, rotR, rotM, rotM_mat, Matrix.vecHead, Matrix.vecTail]
+    ring
 
 lemma projxy_rotRM_eq_rotprojRM (θ φ α : ℝ) : proj_xyL ∘ rotRM θ φ α = rotprojRM θ φ α := by
-  ext v i; fin_cases i <;>
-  · simp [proj_xyL, proj_xy_mat, RyL, RzL, rotprojRM, rotRM, rotR, rotM, rotM_mat, Matrix.vecHead, Matrix.vecTail]
-    ring_nf
+  ext v i
+  fin_cases i
+  · simp [proj_xyL, proj_xy_mat, RyL, RzL, rotprojRM, rotRM, rotR, rotM, rotM_mat,
+      Matrix.vecHead, Matrix.vecTail]
+    ring
+  · simp [proj_xyL, proj_xy_mat, RyL, RzL, rotprojRM, rotRM, rotR, rotM, rotM_mat,
+      Matrix.vecHead, Matrix.vecTail]
+    ring
 
 lemma reduce_identity : reduceL = proj_xyL ∘L RzL (-(π / 2)) := by
   ext v i
   simp only [RzL, proj_xyL, proj_xy_mat]
   fin_cases i <;> simp [Matrix.vecHead, Matrix.vecTail]
+
+/-- Projecting to xy after Rz rotation equals 2D rotation after projection. -/
+@[simp]
+lemma proj_xyL_comp_RzL (δ : ℝ) : proj_xyL ∘L RzL δ = rotR δ ∘L proj_xyL := by
+  ext v i
+  fin_cases i <;> simp [proj_xyL, proj_xy_mat, RzL, Rz_mat, rotR, rotR_mat,
+    Matrix.vecHead, Matrix.vecTail] <;> ring
 
 lemma rotR_add_pi_eq_neg_rotR {α : ℝ} :
     rotR (α + π) = -rotR α := by

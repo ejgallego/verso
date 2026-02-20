@@ -19,14 +19,12 @@ noncomputable def det2 (u v : EuclideanSpace ℝ (Fin 2)) : ℝ := u 0 * v 1 - u
 Relate determinant to inner product with rotated vector.
 -/
 lemma det2_eq_inner_rot (u v : EuclideanSpace ℝ (Fin 2)) : det2 u v = ⟪rotR (π/2) u, v⟫ := by
-  -- By definition of determinant, we know that
   simp only [det2, Fin.isValue, rotR, rotR_mat, AddChar.coe_mk, Real.cos_pi_div_two,
-    Real.sin_pi_div_two, LinearMap.coe_toContinuousLinearMap']
-  rw [EuclideanSpace.inner_eq_star_dotProduct]
-  simp only [Fin.isValue, Matrix.piLp_ofLp_toEuclideanLin, Matrix.toLin'_apply, Matrix.cons_mulVec,
-    Matrix.cons_dotProduct, zero_mul, neg_mul, one_mul, Matrix.dotProduct_of_isEmpty, add_zero,
-    zero_add, Matrix.empty_mulVec, star_trivial, Matrix.dotProduct_cons, mul_neg]
-  ring!
+    Real.sin_pi_div_two, LinearMap.coe_toContinuousLinearMap', PiLp.inner_apply, Fin.sum_univ_two,
+    Matrix.ofLp_toLpLin, Matrix.toLin'_apply, Matrix.cons_mulVec, Matrix.cons_dotProduct, zero_mul,
+    neg_mul, one_mul, Matrix.dotProduct_of_isEmpty, add_zero, zero_add, Matrix.empty_mulVec,
+    star_trivial, Matrix.dotProduct_cons, mul_neg]
+  ring
 
 /--
 Identity relating three 2D vectors via determinants.

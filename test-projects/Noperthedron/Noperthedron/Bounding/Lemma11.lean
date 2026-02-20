@@ -96,10 +96,14 @@ lemma convexOn_cos_sqrt : ConvexOn ℝ (Set.Icc 0 (π^2)) (cos ∘ sqrt) := by
     intro x x_pos x_lt
     rw [(Set.EqOn.deriv (_ : Set.EqOn (deriv (cos ∘ sqrt)) (fun y => -sin √y / (2 * √y)) (Set.Ioo 0 (π^2))) (by simp [Ioo_eq_ball] : IsOpen (Set.Ioo 0 (π^2))))]
     · rw [deriv_fun_div]
-      · simp only [deriv.fun_neg', neg_mul, deriv_const_mul_field', sub_neg_eq_add]
+      · simp only [deriv.fun_neg', neg_mul, sub_neg_eq_add]
         conv in (fun y => sin √y) =>
           change (sin ∘ sqrt)
-        rw [sin_sqrt_deriv ⟨x_pos, x_lt⟩, deriv_sqrt differentiableAt_fun_id x_pos.ne.symm, deriv_id'']
+        have hderiv :
+            deriv (fun y => (2 : ℝ) * √y) x = (2 : ℝ) * deriv (fun y => √y) x := by
+          exact deriv_const_mul_field (x := x) (v := fun y => √y) (u := (2 : ℝ))
+        rw [sin_sqrt_deriv ⟨x_pos, x_lt⟩, hderiv, deriv_sqrt differentiableAt_fun_id x_pos.ne.symm,
+          deriv_id'']
         simp only [one_div, mul_inv_rev]
         field_simp; ring_nf
         rw [add_comm]
@@ -107,16 +111,9 @@ lemma convexOn_cos_sqrt : ConvexOn ℝ (Set.Icc 0 (π^2)) (cos ∘ sqrt) := by
         simp only [Set.mem_Icc, sqrt_nonneg, sqrt_le_iff, true_and]
         refine ⟨pi_nonneg, ?_⟩
         linarith
-      · simp only [differentiableAt_fun_neg_iff]
-        apply DifferentiableAt.fun_comp'
-        · simp
-        apply DifferentiableAt.sqrt
-        · simp
-        linarith
-      · apply DifferentiableAt.const_mul
-        apply DifferentiableAt.sqrt
-        · simp
-        · linarith
+      · exact ((Real.differentiableAt_sin.comp x
+          (DifferentiableAt.sqrt differentiableAt_fun_id x_pos.ne.symm))).neg
+      · exact (DifferentiableAt.sqrt differentiableAt_fun_id x_pos.ne.symm).const_mul (2 : ℝ)
       · positivity
     · grind
     · intro x; apply cos_sqrt_deriv
@@ -129,41 +126,47 @@ theorem one_plus_cos_mul_one_plus_cos_ge'' {a b : ℝ} (a_nonneg : 0 ≤ a) (a_l
   calc
     2 * cos √(x ^ 2 + y ^ 2) = _ := by rfl
     _ = 2 * f (x ^ 2 + y ^ 2) := by rfl
-    _ = 2 * f (1/2 * (x - y)^2 + 1/2 * (x + y)^2) := by ring_nf
+    _ = 2 * f (1 / 2 * (x - y)^2 + 1 / 2 * (x + y)^2) := by
+      have hxy : x ^ 2 + y ^ 2 = 1 / 2 * (x - y)^2 + 1 / 2 * (x + y)^2 := by ring
+      rw [hxy]
     _ ≤ 2 * (1/2 * f ((x - y)^2) + 1/2 * f ((x + y)^2)) := by
       subst ha hb
-      simp only [mul_le_mul_iff_right₀, Nat.ofNat_pos]
-      apply convexOn_cos_sqrt.2
-      · simp
-        constructor
-        · positivity
-        · apply sq_le_sq.mpr
-          field_simp
-          simp only [abs_div, Nat.abs_ofNat]
-          field_simp
-          apply le_of_lt
-          calc
-            |a - b| = _ := by rfl
-            _ ≤ |a| + |b| := by apply abs_sub
-            _ ≤ 2 * 3 := by (repeat rw [abs_of_nonneg]) <;> linarith
-            _ < 2 * π := by simp [pi_gt_three]
-            _ = 2 * |π| := by rw [abs_of_nonneg] ; positivity
-      · simp
-        constructor
-        · positivity
-        · apply sq_le_sq.mpr
-          repeat rw [abs_of_nonneg]
-          · field_simp
+      have hconv :
+          f (1 / 2 * (a / 2 - b / 2)^2 + 1 / 2 * (a / 2 + b / 2)^2) ≤
+            1 / 2 * f ((a / 2 - b / 2)^2) + 1 / 2 * f ((a / 2 + b / 2)^2) := by
+        apply convexOn_cos_sqrt.2
+        · simp
+          constructor
+          · positivity
+          · apply sq_le_sq.mpr
+            field_simp
+            simp only [abs_div, Nat.abs_ofNat]
+            field_simp
             apply le_of_lt
             calc
-              a + b = _ := by rfl
-              _ ≤ 2 * 3 := by linarith
-              _ < 2 * π := by simp [pi_gt_three]
+              |a - b| = _ := by rfl
+              _ ≤ |a| + |b| := by apply abs_sub
+              _ ≤ 2 * 3 := by (repeat rw [abs_of_nonneg]) <;> linarith
+              _ < 2 * π := by nlinarith [pi_gt_three]
+              _ = 2 * |π| := by rw [abs_of_nonneg] ; positivity
+        · simp
+          constructor
           · positivity
-          · positivity
-      · positivity
-      · positivity
-      · ring
+          · apply sq_le_sq.mpr
+            repeat rw [abs_of_nonneg]
+            · field_simp
+              apply le_of_lt
+              calc
+                a + b = _ := by rfl
+                _ ≤ 2 * 3 := by linarith
+                _ < 2 * π := by nlinarith [pi_gt_three]
+            · positivity
+            · positivity
+        · positivity
+        · positivity
+        · ring
+      have h2 : (0 : ℝ) ≤ 2 := by positivity
+      exact mul_le_mul_of_nonneg_left hconv h2
     _ = f ((x - y)^2) + f ((x + y)^2) := by field_simp
     _ = cos √((x - y)^2) + cos √((x + y)^2) := by simp [f]
     _ = cos |x - y| + cos |x + y| := by simp [sqrt_sq_eq_abs]
