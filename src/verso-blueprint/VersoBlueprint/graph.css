@@ -1,3 +1,32 @@
+.bp_graph_fullwidth {
+  position: relative;
+  box-sizing: border-box;
+  margin-top: 0.35rem;
+}
+
+#bp-toc-toggle {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 1000;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.45rem;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+html.bp-graph-toc-hidden .with-toc #toc {
+  display: none;
+}
+
+html.bp-graph-toc-hidden .with-toc > main {
+  padding-left: 0;
+}
+
 div#graph {
   width: 100%;
   height: 90vh;
@@ -7,10 +36,25 @@ div#graph {
 
 .bp_graph_legend {
   margin-top: 0.75rem;
+  display: grid;
+  gap: 0.65rem;
+  font-size: 0.88rem;
+}
+
+.bp_graph_legend_group {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem 1rem;
-  font-size: 0.92rem;
+  gap: 0.5rem 0.9rem;
+  align-items: center;
+}
+
+.bp_graph_legend_group_title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #334155;
+  margin-right: 0.25rem;
 }
 
 .bp_graph_legend_item {
@@ -25,6 +69,68 @@ div#graph {
   height: 0.9rem;
   border-radius: 0.2rem;
   border: 1px solid #6b7280;
+  background: #ffffff;
+}
+
+.bp_graph_legend_shape_box {
+  border-radius: 0.2rem;
+}
+
+.bp_graph_legend_shape_ellipse {
+  border-radius: 999px;
+}
+
+.bp_graph_legend_stmt_blocked {
+  border-color: #f59e0b;
+}
+
+.bp_graph_legend_stmt_ready {
+  border-color: #2563eb;
+}
+
+.bp_graph_legend_stmt_formalized {
+  border-color: #16a34a;
+}
+
+.bp_graph_legend_stmt_mathlib {
+  border-color: #14532d;
+}
+
+.bp_graph_legend_proof_none {
+  background: #f8fafc;
+}
+
+.bp_graph_legend_proof_ready {
+  background: #dbeafe;
+}
+
+.bp_graph_legend_proof_formalized {
+  background: #dcfce7;
+}
+
+.bp_graph_legend_proof_anc {
+  background: #166534;
+  border-color: #14532d;
+}
+
+.bp_graph_legend_warn_unknown {
+  background: #fee2e2;
+  border-color: #b91c1c;
+}
+
+.bp_graph_legend_warn_lean_only {
+  background: linear-gradient(180deg, #ffffff, #ede9fe);
+  border-color: #16a34a;
+}
+
+.bp_graph_legend_warn_local_sorries {
+  background: linear-gradient(180deg, #dbeafe, #fef3c7);
+  border-color: #2563eb;
+}
+
+.bp_graph_legend_warn_deps {
+  background: #dcfce7;
+  border: 3px double #16a34a;
 }
 
 .bp_summary {

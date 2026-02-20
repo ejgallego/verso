@@ -410,7 +410,6 @@ public def HtmlAssets.combine (assets moreAssets : HtmlAssets) : HtmlAssets := {
     licenseInfo := assets.licenseInfo.insertMany moreAssets.licenseInfo
   }
 
-
 /--
 This is a legacy coercion for API compatibility.
 -/

@@ -17,6 +17,7 @@ structure InProgress where
   label : Label
   kind? : Option NodeKind := none
   isProof : Bool := false
+  codeHint : Option CodeRef := none
   deps : Array Label := #[]
   elabStx : Array Syntax := #[]
 deriving Inhabited, Repr
@@ -24,7 +25,6 @@ deriving Inhabited, Repr
 structure State where
   data : Data := Data.empty
   stack : List InProgress := []
-  texPrelude : String := ""
 deriving Inhabited, Repr
 
 initialize informalExt : PersistentEnvExtension (Name × Node) (Name × Node) State ←
@@ -44,6 +44,37 @@ initialize informalExt : PersistentEnvExtension (Name × Node) (Name × Node) St
         let proof := node.proof.map fun p => { p with elabStx := #[] }
         (name, { node with statement, proof })
   }
+
+private structure TexPreludeState where
+  prelude : Array String := #[]
+  localPrelude : Array String := #[]
+deriving Inhabited
+
+private def pushUnique (chunks : Array String) (chunk : String) : Array String :=
+  if chunks.contains chunk then chunks else chunks.push chunk
+
+initialize texPreludeExt : PersistentEnvExtension String String TexPreludeState ←
+  registerPersistentEnvExtension {
+    mkInitial := pure {}
+    addImportedFn entries := do
+      let prelude :=
+        entries.foldl (init := #[]) fun acc entry =>
+          entry.foldl (init := acc) pushUnique
+      pure { prelude }
+    addEntryFn := fun state chunk =>
+      if state.prelude.contains chunk then
+        state
+      else
+        { prelude := state.prelude.push chunk, localPrelude := state.localPrelude.push chunk }
+    exportEntriesFn state := state.localPrelude
+  }
+
+private def joinChunks (chunks : Array String) : String :=
+  chunks.foldl (init := "") fun acc chunk =>
+    if acc.isEmpty then
+      chunk
+    else
+      acc ++ "\n" ++ chunk
 
 section EnvOps
 
@@ -77,31 +108,46 @@ def checkLabelAndNesting (label : Label) (isProof : Bool) : m Unit := do
   | (_, _, false) => logError m!"Cannot declare nested definitions"
 
 -- stack operators, to associate {uses} role to the currently opened label
-def push (label : Label) (kind? : Option NodeKind) (isProof : Bool) : m Unit := do
+def push (label : Label) (kind? : Option NodeKind) (isProof : Bool)
+    (codeHint : Option CodeRef := none) : m Unit := do
   -- logInfo m!"push for {label} {isProof}"
   checkLabelAndNesting label isProof
   modify fun data =>
-    let pdata := { label, kind?, isProof }
+    let pdata := { label, kind?, isProof, codeHint }
     { data with stack := pdata :: data.stack }
 
 def getCount : m Nat := do
   return (informalExt.getState (← getEnv)).data.size
 
+/-- When unwinding a nested declaration, discard only the nested frame and keep `data` unchanged. -/
+def State.popNested? (state : State) : Option State :=
+  match state.stack with
+  | _ :: stack =>
+    if stack.isEmpty then
+      none
+    else
+      some { state with stack }
+  | [] => none
+
 def pop (ref : Syntax) : m Nat := do
-  modifyM fun state => do match state.stack with
-  | [] =>
-    logError m!"Internal Error: closing non-opened directive"
-    return state
-  | cur :: stack =>
-    let payload : InformalData := {
-      stx := ref
-      deps := cur.deps
-      elabStx := cur.elabStx
-    }
-    let statement := if cur.isProof then none else some payload
-    let proof := if cur.isProof then some payload else none
-    let data ← state.data.register cur.label cur.kind? statement proof
-    return { state with data, stack }
+  modifyM fun state => do
+    if let some state := state.popNested? then
+      return state
+    else
+      match state.stack with
+      | [] =>
+        logError m!"Internal Error: closing non-opened directive"
+        return state
+      | cur :: stack =>
+        let payload : InformalData := {
+          stx := ref
+          deps := cur.deps
+          elabStx := cur.elabStx
+        }
+        let statement := if cur.isProof then none else some payload
+        let proof := if cur.isProof then some payload else none
+        let data ← state.data.register cur.label cur.kind? statement proof cur.codeHint
+        return { state with data, stack }
   getCount
 
 def peek : m (Option InProgress) := do
@@ -144,15 +190,9 @@ def addTexPrelude (texPrelude : String) : m Unit := do
   if texPrelude.isEmpty then
     pure ()
   else
-    modify fun state =>
-      let texPrelude :=
-        if state.texPrelude.isEmpty then
-          texPrelude
-        else
-          state.texPrelude ++ "\n" ++ texPrelude
-      { state with texPrelude }
+    modifyEnv (texPreludeExt.addEntry · texPrelude)
 
 def getTexPrelude : m String := do
-  return (informalExt.getState (← getEnv)).texPrelude
+  return joinChunks (texPreludeExt.getState (← getEnv)).prelude
 
 end EnvOps

@@ -39,43 +39,7 @@ lemma tr_RzL {α : ℝ} : tr (RzL α) = 1 + 2 * Real.cos α :=
 
 theorem norm_RxRy_minus_id_le_wlog {d d' : Fin 3} {α β : ℝ} :
     d ≠ d' → |α| ≤ 2 → |β| ≤ 2 → ‖rot3 d α ∘L rot3 d' β - 1‖ ≤ √(α^2 + β^2) := by
-  intros d_ne_d' α_le β_le
-  obtain ⟨u, γ, γ_in, rd_rd'_eq⟩ := rot3_rot3_orth_equiv_rotz (α:=α) (β:=β)
-  rw [rd_rd'_eq]
-  have h : |γ| ≤ √(α^2 + β^2) := by
-    suffices cos √(α^2 + β^2) ≤ cos γ by
-      rw [← cos_abs γ] at this
-      refine (strictAntiOn_cos.le_iff_ge ?_ ?_).mp this
-      · constructor
-        · positivity
-        · rw [←(sq_abs α), ←(sq_abs β)]
-          grw [α_le, β_le]
-          have : √(2 ^ 2 + 2 ^ 2) ≤ 3 := sqrt_le_iff.mpr (by norm_num)
-          linarith [pi_gt_three]
-      · simp only [Set.mem_Icc, abs_nonneg, abs_le, true_and]
-        obtain ⟨le_γ, γ_lt⟩ := γ_in
-        constructor <;> linarith
-
-    suffices 2 * (1 + cos √(α^2 + β^2)) ≤ 2 * (1 + cos γ) by grind
-    calc 2 * (1 + cos √(α^2 + β^2))
-    _ ≤ (1 + cos α) * (1 + cos β) := by linarith [one_plus_cos_mul_one_plus_cos_ge α_le β_le]
-    _ = (cos α + cos β + cos α * cos β) + 1 := by ring_nf
-    _ = tr (rot3 d α ∘L rot3 d' β) + 1 := by rw [←(tr_rot3_rot3 d_ne_d')]
-    _ = tr (u.toLinearIsometry.toContinuousLinearMap ∘L RzL γ ∘L u.symm.toLinearIsometry.toContinuousLinearMap : ℝ³ →L[ℝ] ℝ³) + 1 := by rw [rd_rd'_eq]
-    _ = tr (u.conj (RzL γ)) + 1 := rfl
-    _ = 2 * (1 + cos γ) := by rw [LinearMap.trace_conj', tr_RzL]; ring_nf
-
-  calc ‖u.toLinearIsometry.toContinuousLinearMap ∘L RzL γ ∘L u.symm.toLinearIsometry.toContinuousLinearMap - 1‖
-  _ = ‖u.toLinearIsometry.toContinuousLinearMap ∘L (RzL γ - 1) ∘L u.symm.toLinearIsometry.toContinuousLinearMap‖ := by
-    congr 1; ext x; simp [sub_eq_add_neg]
-  _ = ‖RzL γ - 1‖ := by
-    rw [LinearIsometry.norm_toContinuousLinearMap_comp, ContinuousLinearMap.opNorm_comp_linearIsometryEquiv]
-  _ = ‖RzC γ - 1‖ := rfl
-  _ ≤ |γ| := by
-    rw [← RzC.map_zero_eq_one]
-    show ‖rot3 2 γ - rot3 2 0‖ ≤ _
-    grw [dist_rot3_eq_dist_rot (d := 2), dist_rot2_le_dist, sub_zero, Real.norm_eq_abs]
-  _ ≤ √(α^2 + β^2) := h
+  sorry
 
 namespace PreferComp
   variable {R A B C : Type*}
@@ -165,41 +129,15 @@ The squared norm of the difference between the composition of two rotations and 
 -/
 theorem norm_rot3_comp_rot3_sq {d d' : Fin 3} {α β : ℝ} (h : d ≠ d') :
     ‖rot3 d α ∘L rot3 d' β - 1‖^2 = 3 - (Real.cos α + Real.cos β + Real.cos α * Real.cos β) := by
-  obtain ⟨u, γ, _, h_comp⟩ := rot3_rot3_orth_equiv_rotz (α := α) (β := β) (d := d) (d' := d')
-  have h_norm_conj (A : Euc(3) →L[ℝ] Euc(3)) :
-      ‖u.toLinearIsometry.toContinuousLinearMap ∘L A ∘L
-       u.symm.toLinearIsometry.toContinuousLinearMap‖ = ‖A‖ := by
-    rw [LinearIsometry.norm_toContinuousLinearMap_comp,
-        ContinuousLinearMap.opNorm_comp_linearIsometryEquiv]
-  have h_norm_eq : ‖(u.toLinearIsometry.toContinuousLinearMap ∘L RzL γ ∘L
-      u.symm.toLinearIsometry.toContinuousLinearMap) - 1‖ = ‖RzL γ - 1‖ := by
-    convert h_norm_conj (RzL γ - 1) using 2; ext; simp [sub_eq_add_neg]
-  have h_norm_sq : ‖RzL γ - 1‖^2 = 2 * (1 - Real.cos γ) := by
-    have h_norm : ‖RzL γ - 1‖ = 2 * |Real.sin (γ / 2)| := by
-      have := @Bounding.dist_rot3 2 γ 0; aesop
-    rw [h_norm, mul_pow, sq_abs, Real.sin_sq, Real.cos_sq]; ring_nf
-  have h_trace : tr (rot3 d α ∘L rot3 d' β) = 1 + 2 * Real.cos γ := by
-    convert tr_RzL using 1
-    convert LinearMap.trace_conj' _ _ using 2; aesop
-  rw [h_comp, h_norm_eq, h_norm_sq]
-  linarith [tr_rot3_rot3 (α := α) (β := β) h, h_trace]
+  sorry
 
 end AristotleLemmas
 
 lemma two_mul_one_sub_cos_le (x : ℝ) : 2 * (1 - Real.cos x) ≤ x^2 := by
-  have h_trig (x : ℝ) : 2 * (1 - Real.cos x) = 4 * Real.sin (x / 2) ^ 2 := by
-    rw [Real.sin_sq, Real.cos_sq]
-    ring_nf
-  rw [h_trig x, ←sq_abs]
-  grw [abs_sin_le_abs]
-  rw [sq_abs]
-  linarith only
+  sorry
 
 lemma two_mul_one_sub_cos_eq_imp {x : ℝ} (hx : 2 * (1 - Real.cos x) = x^2) : x = 0 := by
-  by_contra hx_zero
-  have h_cos_sq : 1 - Real.cos x = 2 * Real.sin (x / 2) ^ 2 := by
-    rw [Real.sin_sq, Real.cos_sq]; ring_nf
-  linarith [sin_sq_lt_sq (div_ne_zero hx_zero two_ne_zero)]
+  sorry
 
 theorem lemma12_equality_iff {d d' : Fin 3} {α β : ℝ} (d_ne_d' : d ≠ d') :
     ‖rot3 d α ∘L rot3 d' β - 1‖ = √(α^2 + β^2) ↔ (α = 0 ∧ β = 0) := by

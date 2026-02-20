@@ -7,6 +7,7 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
+import Chapters.Macros
 import VersoBlueprint.Commands
 import VersoBlueprint.Widget
 
@@ -18,7 +19,9 @@ import Bibliography
 
 --set_option trace.Elab.info true
 
-open Verso.Genre Manual Informal
+open Verso.Genre
+open Verso.Genre.Manual hiding citep citet citehere
+open Informal
 
 -- EJGA: Seems like a good idea for hybrid setups
 set_option doc.verso true
@@ -35,20 +38,12 @@ set_option verso.blueprint.foldProofs true
 -- Look at ref manual, global options
 set_option verso.code.warnLineLength 0
 
--- Example of a Lean-only blueprint node registered via the attribute.
-@[blueprint "example:lean_only_node"] def blueprintLeanOnlyNodeExample : Nat := 42
-
 #doc (Manual) "The Noperthedron" =>
 
 ```internal
 open scoped Matrix
 namespace Nopert
 open Real
-```
-
-```texPrelude
-\newcommand{\PPP}{\operatorname{\mathbf{P}}}
-\newcommand{\NOP}{\operatorname{\mathbf{NOP}}}
 ```
 
 # Definition of the Noperthedron
@@ -74,7 +69,6 @@ $$`
         8193990033 \\ 5298215096 \\ 1230614493
         \end{pmatrix}.
 `
-and we {uses "example:lean_only_node"}[link to a lean-only def] as an example.
 :::
 
 ```lean "def:noperthedron_main"
@@ -93,7 +87,6 @@ def C3R : EuclideanSpace ℝ (Fin 3) := WithLp.toLp 2 (fun i => C3 i)
 ```
 
 :::lemma_ "c1_c2_c3_norms"
-
 $`\| C_1 \| = 1`,
 $`{98 \over 100} < \| C_2 \| < {99 \over 100}`, and
 $`{98 \over 100} < \| C_3 \| < {99 \over 100}`.
@@ -118,6 +111,7 @@ theorem c1_norm_one : ‖C1R‖ = 1 := by
   unfold C1R C1
   simp only [Fin.sum_univ_three, Pi.mul_apply, Matrix.cons_val]
   norm_num
+  grind
 
 theorem c2_norm_bound : ‖C2R‖ ∈ Set.Ioo (98/100) (99/100) := by
   rw [EuclideanSpace.norm_eq]
@@ -169,6 +163,7 @@ lemma C15_nonempty (pt : ℝ³) : (C15 pt).Nonempty := by
   simp only [C15, Finset.mem_image, Finset.mem_range]
   use 0
   simp only [Nat.ofNat_pos, CharP.cast_eq_zero, mul_zero, zero_div, and_self]
+  simp
 
 lemma C15_pres_norm (pt v : ℝ³) (hv : v ∈ C15 pt) : ‖v‖ = ‖pt‖ := by
   simp only [C15, Finset.mem_image, Finset.mem_range] at hv
@@ -183,7 +178,6 @@ The radius of the Noperthedron is one.
 :::
 
 :::proof "lem:radius_noperthedron_one"
-
 By {uses "c1_c2_c3_norms"}[], {uses "thm:pointsymmetrize_pres_radius"}[],
 {uses "thm:polyhedron_radius_def"}[], and {uses "lemma:half_nopert_verts_norm_le_one"}[].
 :::
@@ -379,7 +373,7 @@ Where Steininger and Yurkevich define a 30-element set $`C_{30}`:
 `
 of rotations, we instead define
 
-:::definition "def:C15" (lean := "Nopert.C15")
+:::definition "def:C15" (lean := "Nopert.C15") (leanok := true)
 $$`
     \mathcal{C}_{15} \coloneqq \left\{ R_z\left(\frac{2\pi k}{15}\right) \colon k=0,\dots,14 \right\}.
 `
@@ -387,11 +381,11 @@ $$`
 
 without point-symmetricness "baked in" as it is in $`C_{30}`. It's more convenient for the formalization to apply $`C_{15}` to the points $`C_1, C_2, C_3`, and then point-symmetrize that set afterwards.
 
-:::definition "def:pointsymmetric" (lean := "PointSym")
+:::definition "def:pointsymmetric" (lean := "PointSym") (leanok := true)
 A set $`S \subseteq \R^3` is _point-symmetric_ if $`x \in S` implies $`-x \in S`.
 :::
 
-:::definition "def:pointsymmetrize" (lean := "pointsymmetrize")
+:::definition "def:pointsymmetrize" (lean := "pointsymmetrize") (leanok := true)
 
 The _pointsymmetrization_ of a collection of vertices $`v_1, \ldots, v_n \in \R^3`
 is $`v_1, \ldots, v_n, -v_1, \ldots, -v_n`.
@@ -399,42 +393,44 @@ is $`v_1, \ldots, v_n, -v_1, \ldots, -v_n`.
 
 We write $`\mathcal{C}_{15} \cdot P = \{c P \,\text{ for } \, c \in \mathcal{C}_{15}\}` for the orbit of $`P` under the action of $`\mathcal{C}_{15}`.
 
-:::definition "def:noperthedron" (lean := "halfNopertVerts, nopertVerts, nopert")
+:::definition "def:noperthedron" (lean := "halfNopertVerts, nopertVerts, nopert") (leanok := true)
 
-The {uses "def:C15"}[Noperthedron] is polyhedron given by the vertex set that is the
+Using {uses "def:C15"}[].
+
+The Noperthedron is the polyhedron given by the vertex set that is the
 {uses "def:pointsymmetrize"}[pointsymmetrization] of
 $$`
 \mathcal{C}_{15} \cdot C_1 \cup \mathcal{C}_{15} \cdot C_2 \cup \mathcal{C}_{15} \cdot C_3
 `
 :::
 
-:::lemma_ "lemma:half_nopert_verts_norm_le_one" (lean := "half_nopert_verts_norm_le_one")
+:::lemma_ "lemma:half_nopert_verts_norm_le_one" (lean := "half_nopert_verts_norm_le_one") (leanok := true)
 The norm of any vertex in the prepointsymmetrized version of the Noperthedron is no more than 1.
 :::
 
-:::proof "lemma:half_nopert_verts_norm_le_one"
+:::proof "lemma:half_nopert_verts_norm_le_one" (leanok := true)
 Evident from definitions.
 :::
 
-:::lemma_ "lemma:pointsymmetrization_is_pointsym" (lean := "pointsymmetrize_is_pointsym")
+:::lemma_ "lemma:pointsymmetrization_is_pointsym" (lean := "pointsymmetrize_is_pointsym") (leanok := true)
 The pointsymmetrization of any set is point-symmetric.
 :::
 
-:::proof "lemma:pointsymmetrization_is_pointsym"
+:::proof "lemma:pointsymmetrization_is_pointsym" (leanok := true)
 Evident from definitions.
 :::
 
-:::lemma_ "lemma:nopert_point_symmetric" (lean := "nopert_point_symmetric")
+:::lemma_ "lemma:nopert_point_symmetric" (lean := "nopert_point_symmetric") (leanok := true)
 The {uses "def:noperthedron"}[noperthedron] is {uses "def:pointsymmetric"}[point-symmetric].
 :::
 
-:::proof "lemma:nopert_point_symmetric"
+:::proof "lemma:nopert_point_symmetric" (leanok := true)
 Follows from {uses "lemma:pointsymmetrization_is_pointsym"}[]
 :::
 
 # Refined Rupert's property for the Noperthedron
 
-:::lemma_ "lem:symmetries" (lean := "Tightening.lemma7_1,Tightening.lemma7_2,Tightening.lemma7_3")
+:::lemma_ "lem:symmetries" (lean := "Tightening.lemma7_1,Tightening.lemma7_2,Tightening.lemma7_3") (leanok := true)
 
 Let $`\PPP = \NOP`, then for all $`\theta, \varphi, \alpha \in \R`, the following three identities hold (as sets):
 
@@ -452,11 +448,11 @@ $$`
 `
 :::
 
-:::proof "lem:symmetries"
-See {citet polyhedron.without.rupert}[], Lemma 7.
+:::proof "lem:symmetries" (leanok := true)
+See {citet polyhedron.without.rupert (kind := lemma) (index := 7)}[].
 :::
 
-:::corollary "cor:rupert_tightening" (lean := "Tightening.rupert_tightening")
+:::corollary "cor:rupert_tightening" (lean := "Tightening.rupert_tightening") (leanok := true)
 
 If the noperthedron is Rupert, then there exists a solution with
 
@@ -470,9 +466,8 @@ $$`
 `
 :::
 
-:::proof "cor:rupert_tightening"
+:::proof "cor:rupert_tightening" (leanok := true)
+Using {uses "lem:symmetries"}[].
 
-{uses "lem:symmetries"}[]
-
-See {citep polyhedron.without.rupert}[], Lemma 8.
+See {citep polyhedron.without.rupert (kind := lemma) (index := 8)}[].
 :::

@@ -7,68 +7,207 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
+import Chapters.Macros
+import Bibliography
 
-open Verso.Genre Manual
+open Verso.Genre
+open Verso.Genre.Manual hiding citep citet citehere
+open Informal
 
-/-
-
-TODO:
-
-Blocks:
-
-:::prelude
-
-:::theorem
-   :::proof (nested)
-
-:::definition
-
-Roles:
-
-{uses } / {ref }
-
--/
-
--- EJGA: Seems like a good idea for hybrid setups
 set_option doc.verso true
-
 set_option pp.rawOnError true
+set_option verso.code.warnLineLength 0
 
-#doc (Manual) "Noperthedron" =>
+#doc (Manual) "The Local Theorem" =>
 
-# Main Theorems
+:::lemma_ "lem:pythagoras" (lean := "Local.pythagoras") (leanok := true)
+For any $`P \in \mathbb{R}^3` one has
+$`\|M(\theta, \phi) P\|^2=\|P\|^2-\langle X(\theta,\varphi),P\rangle^2`.
+:::
 
--- Infer automatically
-:::theorem "no_nopert_tight_view_pose"
+:::proof "lem:pythagoras" (leanok := true)
+See {citet polyhedron.without.rupert}[], Lemma 21.
+:::
 
-There does not in fact exist a `{ref "noperthedron"}[noperthedron]` Rupert solution with
+:::definition "def:spanp" (lean := "Local.Spanp") (leanok := true)
+Given $`v_1, \dots, v_n \in \mathbb{R}^n`, define
+$`\mathrm{span}^+(v_1,\dots,v_n)` to be the simplicial cone
 
 $$`
-\begin{align*}
-\theta_1,\theta_2&\in[0,2\pi/15] \subset [0,0.42], \\
-\varphi_1&\in [0,\pi] \subset [0,3.15],\\
-\varphi_2&\in [0,\pi/2] \subset [0,1.58],\\
-\alpha &\in [-\pi/2,\pi/2] \subset [-1.58,1.58].
-\end{align*}
+\left\{ w \in \mathbb{R}^n \mid \exists \lambda_1,\dots,\lambda_n > 0,
+\; w = \sum_{i=1}^n \lambda_i v_i \right\}.
 `
 :::
 
-:::proof "no_nopert_tight_view_pose"
+:::lemma_ "lem:langles" (lean := "Local.langles") (leanok := true)
+Let $`V_1,V_2,V_3,Y,Z \in \mathbb{R}^3` with $`\|Y \|=\| Z \|` and
+$`Y,Z \in \mathrm{span}^+(V_1,V_2,V_3)`.
+Then at least one of the following inequalities fails:
 
-`{uses "thm:exists_solution_table" "thm:row_valid_imp_not_rupert"}[`todo`]`
-
-By `{ref "thm:exists_solution_table"}[todo]`, there is a valid solution table
-containing a valid row whose pose interval is a superset of
-the 5-d interval above. By `{ref "thm:row_valid_imp_not_rupert"}[todo]`, this means
-there is no Rupert solution in that interval.
+- $`\langle V_1, Y \rangle > \langle V_1, Z \rangle`
+- $`\langle V_2, Y \rangle > \langle V_2, Z \rangle`
+- $`\langle V_3, Y \rangle > \langle V_3, Z \rangle`
 :::
 
-- Big string literal
+:::proof "lem:langles" (leanok := true)
+See {citet polyhedron.without.rupert}[], Lemma 23.
+:::
 
-```lean "no_nopert_tight_view_pose"
--- Insert code for formal version of the proof above.
--- Challenge, how to separate the proof and statement of the theorem!
-def a := 3
+:::lemma_ "lem:scalarprodbars" (lean := "Local.abs_sub_inner_bars_le") (leanok := true)
+For $`A,\overline{A},B,\overline{B}\in \mathbb{R}^{n\times n}` and $`P_1,P_2\in \mathbb{R}^n` it holds that
 
-#eval a
-```
+$$`
+|\langle AP_1,BP_2\rangle-\langle \overline{A}P_1,\overline{B}P_2\rangle|
+\leq \|P_1\|\,\|P_2\|\,\big( \|A-\overline{A}\|\,\|\overline{B}\| + \|\overline{A}\|\,\|B-\overline{B}\|+\|A-\overline{A}\|\,\|B-\overline{B}\|\big).
+`
+:::
+
+:::proof "lem:scalarprodbars" (leanok := true)
+See {citet polyhedron.without.rupert}[], Lemma 24.
+:::
+
+:::lemma_ "lem:absscalar" (lean := "Local.abs_sub_inner_le") (leanok := true)
+For $`A,B\in \mathbb{R}^{n\times n}` and $`P_1,P_2\in \mathbb{R}^n` one has
+
+$$`
+|\langle AP_1,AP_2\rangle-\langle BP_1,BP_2\rangle|
+\leq \|P_1\|\,\|P_2\|\,\|A-B\|\,(\|A\|+\|B\| + \|A-B\|).
+`
+:::
+
+:::proof "lem:absscalar" (leanok := true)
+See {citet polyhedron.without.rupert}[], Lemma 25.
+:::
+
+:::lemma_ "lem:origintriangle" (lean := "Local.origin_in_triangle") (leanok := true)
+Let $`A,B,C\in \mathbb{R}^2` be such that
+$`\langle R(\pi/2) A,B\rangle`,
+$`\langle R(\pi/2) B,C\rangle`,
+$`\langle R(\pi/2) C,A\rangle > 0`.
+Then the origin lies strictly in triangle $`ABC`.
+:::
+
+:::proof "lem:origintriangle" (leanok := true)
+See {citet polyhedron.without.rupert}[], Lemma 26.
+:::
+
+:::definition "def:eps-spanning" (lean := "Local.Triangle.Spanning") (leanok := true)
+Let $`\theta, \varphi \in \mathbb{R}`, $`\varepsilon > 0`, and set $`M := M(\theta, \varphi)`.
+Three points $`P_1, P_2, P_3 \in \mathbb{R}^3` with $`\|P_1\|, \|P_2\|, \|P_3\| \leq 1`
+are called $`\varepsilon`-spanning for $`(\theta, \varphi)` if:
+
+- $`\langle R(\pi/2) M P_1,M P_{2}\rangle > 2 \epsilon(\sqrt{2} + \varepsilon)`
+- $`\langle R(\pi/2) M P_2,M P_{3}\rangle > 2 \epsilon(\sqrt{2} + \varepsilon)`
+- $`\langle R(\pi/2) M P_3,M P_{1}\rangle > 2 \epsilon(\sqrt{2} + \varepsilon)`
+:::
+
+:::lemma_ "lem:eps-spanning" (lean := "Local.vecX_spanning") (leanok := true)
+Using {uses "def:eps-spanning"}[] and {uses "def:spanp"}[].
+
+Let $`P_1, P_2, P_3 \in \mathbb{R}^3` with $`\|P_1\|,\|P_2\|,\|P_3\| \leq 1` be
+$`\epsilon`-spanning for $`(\bar\theta, \bar\phi)` and let
+$`\theta, \phi \in \mathbb{R}` satisfy
+$`|\theta - \bar{\theta}|, |\phi - \bar{\phi}| \leq \epsilon`.
+If $`\langle X(\theta, \phi), P_i \rangle > 0` for $`i=1,2,3`, then
+$`X(\theta, \phi) \in \spanp(P_1, P_2, P_3)`.
+:::
+
+:::proof "lem:eps-spanning" (leanok := true)
+Using {uses "lem:scalarprodbars"}[], {uses "lem:origintriangle"}[], and {uses "lem:sqrt2"}[].
+See {citet polyhedron.without.rupert}[], Lemma 28.
+:::
+
+:::lemma_ "lem:inCirc" (lean := "Local.inCirc") (leanok := true)
+Let $`P, Q \in \mathbb{R}^3` with $`\|P\|, \|Q\| \leq 1`, and let
+$`\epsilon>0`, $`\bar\theta_1,\bar\phi_1,\bar\theta_2,\bar\phi_2,\bar\alpha \in \mathbb{R}`.
+Set
+
+$$`
+T := \left(R(\bar\alpha) M(\bar\theta_1, \bar\phi_1) P + M(\bar\theta_2, \bar\phi_2) Q\right)/2 \in \mathbb{R}^2,
+`
+
+and assume $`\delta \geq \|T - M(\bar\theta_2, \bar\phi_2) Q\|`.
+If $`|\bar\theta_1-\theta_1|, |\bar\phi_1-\phi_1|, |\bar\theta_2-\theta_2|, |\bar\phi_2-\phi_2|, |\bar\alpha - \alpha| \leq \epsilon`,
+then $`R(\alpha)M(\theta_1, \phi_1) P` and $`M(\theta_2, \phi_2) Q` lie in
+$`\mathrm{Circ}_{\delta + \sqrt{5} \epsilon}(T)`.
+:::
+
+:::proof "lem:inCirc" (leanok := true)
+Using {uses "lem:sqrt2"}[] and {uses "lem:sqrt5"}[].
+See {citet polyhedron.without.rupert}[], Lemma 30.
+:::
+
+:::definition "def:LMD" (lean := "Local.LocallyMaximallyDistant") (leanok := true)
+Let $`\mathbf{P} \subset \mathbb{R}^2` be a convex polygon and $`Q \in \mathbf{P}` a vertex.
+Assume $`Q \in \mathrm{Circ}_{\delta}(\overline{Q})` for some $`\overline{Q} \in \mathbb{R}^2`.
+Define
+$`\mathrm{Sect}_\delta(\overline{Q}) := \mathrm{Circ}_{\delta}(\overline{Q}) \cap \mathbf{P}^\circ`.
+Then $`Q` is called $`\delta`-locally maximally distant (with respect to $`\overline{Q}`)
+if for all $`A \in \mathrm{Sect}_\delta(\overline{Q})` one has $`\|Q\| > \|A\|`.
+:::
+
+:::lemma_ "lem:LMD" (lean := "Local.inner_ge_implies_LMD") (leanok := true)
+Using {uses "def:LMD"}[].
+
+Let $`\mathbf{P}` be a convex polygon and $`Q \in \mathbf{P}` a vertex.
+Let $`\overline{Q} \in \mathbb{R}^2` with $`\|Q - \overline{Q}\| < \delta` for some $`\delta>0`.
+Assume there exists $`r > 0` with $`\|Q\| > r` such that
+
+$$`
+\frac{\langle Q, Q - P_j \rangle}{\|Q\|\|Q - P_j\|} \geq \delta/r
+`
+
+for all other vertices $`P_j \in \mathbf{P} \setminus Q`.
+Then $`Q` is $`\delta`-locally maximally distant with respect to $`\overline{Q}`.
+:::
+
+:::proof "lem:LMD" (leanok := true)
+See {citet polyhedron.without.rupert}[], Lemma 32.
+:::
+
+:::lemma_ "lem:coss" (lean := "Local.coss") (leanok := true)
+Let $`\epsilon>0` and $`\theta,\bar\theta, \phi, \bar\phi \in \mathbb{R}` with
+$`|\theta - \bar{\theta}|, |\phi - \bar{\phi}| \leq \epsilon`.
+Define $`M = M(\theta, \phi)` and $`\overline{M} = M(\bar\theta, \bar\phi)`,
+and let $`P, Q \in \mathbb{R}^3` with $`\|P\|, \|Q\| \leq 1`.
+If the rational expression from Lemma 33 is positive, then
+
+$$`
+\frac{\langle MP,M(P-Q)\rangle}{\|MP\|\,\|M(P-Q)\|}
+\geq
+\frac{\langle \overline{M} P,\overline{M} (P-Q)\rangle - 2 \epsilon \|P-Q\| \cdot (\sqrt{2}+\varepsilon)}{ (\|\overline{M} P\|+\sqrt{2} \varepsilon ) \cdot (\|\overline{M}(P-Q)\|+2 \sqrt{2} \varepsilon)}.
+`
+:::
+
+:::proof "lem:coss" (leanok := true)
+Using {uses "lem:absscalar"}[] and {uses "lem:sqrt2"}[].
+See {citet polyhedron.without.rupert}[], Lemma 33.
+:::
+
+:::lemma_ "lem:congruent" (lean := "Local.congruent_iff_sym_matrix_eq") (leanok := true)
+Let $`P_1,P_2,P_3, Q_1,Q_2,Q_3 \in \mathbb{R}^3`.
+Define $`P := (P_1|P_2|P_3)` and $`Q := (Q_1|Q_2|Q_3)` and assume $`Q` is invertible.
+Then $`P_1, P_2, P_3` and $`Q_1, Q_2, Q_3` are congruent iff $`P^t P = Q^t Q`.
+:::
+
+:::proof "lem:congruent" (leanok := true)
+From {citet polyhedron.without.rupert}[], Lemma 35.
+:::
+
+:::theorem "thm:local" (lean := "Local.local_theorem") (leanok := true)
+Let $`\mathbf{P}` be a polyhedron of radius $`\rho=1`.
+Assume triangles $`P_1,P_2,P_3` and $`Q_1,Q_2,Q_3` in $`\mathbf{P}` are congruent,
+assume the sign conditions $`(A_\epsilon)`, the spanning hypotheses, and the quantitative
+bound $`(B_\epsilon)` from the paper. Then there is no Rupert solution in the interval
+
+$$`
+(\theta_1, \phi_1, \theta_2, \phi_2, \alpha) \in
+[\bar\theta_1\pm\epsilon,\bar\phi_1\pm\epsilon,\bar\theta_2\pm\epsilon,\bar\phi_2\pm\epsilon,\bar\alpha\pm\epsilon].
+`
+:::
+
+:::proof "thm:local" (leanok := true)
+Using {uses "lem:langles"}[], {uses "lem:XPgt0"}[], {uses "lem:eps-spanning"}[],
+{uses "lem:MPgtr"}[], {uses "lem:inCirc"}[], {uses "lem:coss"}[], {uses "lem:LMD"}[], and {uses "lem:pythagoras"}[].
+See {citet polyhedron.without.rupert}[], Theorem 36.
+:::

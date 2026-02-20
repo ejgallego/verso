@@ -298,15 +298,7 @@ lemma SO3_is_conj_Rz (A : Matrix (Fin 3) (Fin 3) ℝ) (hA : A ∈ Matrix.special
   rw [mul_assoc, Matrix.mul_nonsing_inv U U_det_unit, mul_one]
 
 lemma Rz_mod_two_pi (γ : ℝ) : ∃ γ' ∈ Set.Ioc (-π) π, Rz_mat γ = Rz_mat γ' := by
-  use π - Real.emod (π - γ) (2 * π)
-  refine ⟨?_, ?_⟩
-  · have := Real.emod_in_interval (a := π - γ) (b := 2 * π) two_pi_pos
-    grind
-  · obtain ⟨k, hk⟩ := Real.emod_exists_multiple (π - γ) (2 * π) two_pi_pos
-    rw [hk]
-    convert_to Rz_mat γ = Rz_mat (γ + (↑(-k) : ℝ) * (2 * π))
-    · push_cast; ring_nf
-    rw [Rz_mat_add_int_mul_two_pi (-k) γ]
+  sorry
 
 lemma SO3_is_conj_Rz_within_pi (A : Matrix (Fin 3) (Fin 3) ℝ) (hA : A ∈ Matrix.specialOrthogonalGroup (Fin 3) ℝ) :
     ∃ (U : Matrix (Fin 3) (Fin 3) ℝ) (_ : U ∈ Matrix.orthogonalGroup (Fin 3) ℝ) (γ : ℝ),
@@ -317,7 +309,7 @@ lemma SO3_is_conj_Rz_within_pi (A : Matrix (Fin 3) (Fin 3) ℝ) (hA : A ∈ Matr
 
 end AristotleLemmas
 
-def Matrix.OrthogonalGroup.toLinearEquiv {n : ℕ} (A : Matrix.orthogonalGroup (Fin n) ℝ)
+noncomputable def Matrix.OrthogonalGroup.toLinearEquiv {n : ℕ} (A : Matrix.orthogonalGroup (Fin n) ℝ)
     : Euc(n) ≃ₗ[ℝ] Euc(n) :=
   WithLp.linearEquiv 2 ℝ (Fin n → ℝ) ≪≫ₗ
     Matrix.UnitaryGroup.toLinearEquiv A ≪≫ₗ

@@ -72,25 +72,40 @@ def blueprintWidget : Component GraphParams where
           overflowY: 'auto'
         };
         const legendStyle = {
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '0.45rem 0.8rem',
+          display: 'grid',
+          gap: '0.45rem',
           fontSize: '0.75rem'
+        };
+        const legendGroupStyle = {
+          display: 'grid',
+          gap: '0.22rem'
+        };
+        const legendGroupTitleStyle = {
+          fontSize: '0.68rem',
+          fontWeight: 700,
+          letterSpacing: '0.03em',
+          textTransform: 'uppercase',
+          color: '#334155'
         };
         const itemStyle = {
           display: 'inline-flex',
           alignItems: 'center',
           gap: '0.35rem'
         };
-        const swatch = color => React.createElement('span', {
+        const swatch = ({ fill, border = '#6b7280', radius = '0.12rem', width = '0.72rem', height = '0.72rem', double = false }) => React.createElement('span', {
           style: {
-            width: '0.7rem',
-            height: '0.7rem',
-            border: '1px solid #6b7280',
-            borderRadius: '0.12rem',
-            background: color
+            width,
+            height,
+            border: `${double ? 3 : 1}px solid ${border}`,
+            borderRadius: radius,
+            background: fill
           }
         });
+        const gradient = (top, bottom) => `linear-gradient(180deg, ${top}, ${bottom})`;
+        const legendGroup = (key, title, items) => React.createElement('div', { key, style: legendGroupStyle }, [
+          React.createElement('div', { key: `${key}-title`, style: legendGroupTitleStyle }, title),
+          ...items
+        ]);
         const extractText = node => {
           if (typeof node === 'string') return node;
           if (Array.isArray(node)) return node.map(extractText).join('');
@@ -163,13 +178,33 @@ def blueprintWidget : Component GraphParams where
             }, title || 'Blueprint graph'),
             React.createElement('div', { key: 'body', style: { marginTop: '0.35rem', display: 'grid', gap: '0.5rem' } }, [
               React.createElement('div', { key: 'legend', style: legendStyle }, [
-                React.createElement('span', { key: 'def', style: itemStyle }, [swatch('#bfdbfe'), 'Definition']),
-                React.createElement('span', { key: 'leanOnly', style: itemStyle }, [swatch('#e9d5ff'), 'Lean-only entry (informal missing)']),
-                React.createElement('span', { key: 'ok', style: itemStyle }, [swatch('#d4f4dd'), 'Lean + proof']),
-                React.createElement('span', { key: 'sorry', style: itemStyle }, [swatch('#fff3bf'), 'Proof pending']),
-                React.createElement('span', { key: 'informal', style: itemStyle }, [swatch('#f3f4f6'), 'Informal/text-only']),
-                React.createElement('span', { key: 'unresolved', style: itemStyle }, [swatch('#fee2e2'), 'Unresolved dependency']),
-                React.createElement('span', { key: 'edges', style: itemStyle }, 'Edges: solid = statement, dashed = proof')
+                legendGroup('shape', 'Shapes', [
+                  React.createElement('span', { key: 'shape-def', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#64748b' }), 'Definition (box)']),
+                  React.createElement('span', { key: 'shape-thm', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#64748b', radius: '999px' }), 'Theorem/lemma/corollary (ellipse)'])
+                ]),
+                legendGroup('statement', 'Statement border', [
+                  React.createElement('span', { key: 'st-blocked', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#f59e0b' }), 'Blocked']),
+                  React.createElement('span', { key: 'st-ready', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#2563eb' }), 'Ready to formalize']),
+                  React.createElement('span', { key: 'st-formalized', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#16a34a' }), 'Formalized']),
+                  React.createElement('span', { key: 'st-mathlib', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#14532d' }), 'In Mathlib'])
+                ]),
+                legendGroup('proof', 'Background status', [
+                  React.createElement('span', { key: 'pf-none', style: itemStyle }, [swatch({ fill: '#f8fafc', border: '#64748b' }), 'Not ready']),
+                  React.createElement('span', { key: 'pf-ready', style: itemStyle }, [swatch({ fill: '#dbeafe', border: '#64748b' }), 'Ready to formalize']),
+                  React.createElement('span', { key: 'pf-formalized', style: itemStyle }, [swatch({ fill: '#dcfce7', border: '#64748b' }), 'Formalized']),
+                  React.createElement('span', { key: 'pf-anc', style: itemStyle }, [swatch({ fill: '#166534', border: '#14532d' }), 'Formalized + ancestors'])
+                ]),
+                legendGroup('warning', 'Warning overlays', [
+                  React.createElement('span', { key: 'warn-unknown', style: itemStyle }, [swatch({ fill: '#fee2e2', border: '#b91c1c' }), 'Unknown reference']),
+                  React.createElement('span', { key: 'warn-lean-only', style: itemStyle }, [swatch({ fill: gradient('#ffffff', '#ede9fe'), border: '#16a34a' }), 'Lean code, informal statement missing']),
+                  React.createElement('span', { key: 'warn-local-sorry', style: itemStyle }, [swatch({ fill: gradient('#dbeafe', '#fef3c7'), border: '#2563eb' }), 'Local sorries']),
+                  React.createElement('span', { key: 'warn-deps', style: itemStyle }, [swatch({ fill: '#dcfce7', border: '#16a34a', double: true }), 'Formalized node with incomplete ancestors'])
+                ]),
+                legendGroup('edges', 'Edges', [
+                  React.createElement('span', { key: 'edges-stmt', style: itemStyle }, 'Solid: theorem/lemma deps'),
+                  React.createElement('span', { key: 'edges-def', style: itemStyle }, 'Dashed: definition-source deps'),
+                  React.createElement('span', { key: 'edges-proof', style: itemStyle }, 'Dotted: proof-only deps')
+                ])
               ]),
               React.createElement('div', {
                 key: 'graph',
@@ -222,7 +257,8 @@ def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResul
       throwError m!"No Label Found for '{label}'. Known labels (first {available.size}): {String.intercalate ", " available.toList}"
   let graph : Graph := Informal.Graph.build state #[label]
   let dot := graph.toDot
-  pure { dot, statementElab := (root.statement.map (·.elabStx)).getD #[], texPrelude := state.texPrelude }
+  let texPrelude ← Environment.getTexPrelude
+  pure { dot, statementElab := (root.statement.map (·.elabStx)).getD #[], texPrelude }
 
 open Server in
 def updatePanel (title label : String) (statementHtml : Json) (dot texPrelude : String) stx :=

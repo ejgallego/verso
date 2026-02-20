@@ -13,8 +13,11 @@ import VersoManual
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
 import VersoBlueprint.Attribute
+import VersoBlueprint.Cite
 import VersoBlueprint.Commands
 import VersoBlueprint.Lean
+import VersoBlueprint.Resolve
+import VersoBlueprint.StyleSwitcher
 import VersoBlueprint.Widget
 -- import DevWidgets.DHover
 -- import DevWidgets.InfoViewExplorer
@@ -75,6 +78,8 @@ structure Config where
   label : Data.Label
   labelSyntax : Syntax := Syntax.missing
   lean : Option String := none
+  leanok : Option Bool := none
+  externalCode : Array Data.ExternalRef := #[]
 --  hide : Bool := false
 
 section
@@ -85,23 +90,72 @@ variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadErr
 --   signature := { ident := false, string := false, num := false }
 --   get := sorry
 
+private def parseDottedName (s : String) : Option Name :=
+  let parts := s.splitOn "." |>.map (fun p => p.trimAscii.toString)
+  if parts.isEmpty || parts.any (·.isEmpty) then
+    none
+  else
+    some <| parts.foldl (init := Name.anonymous) Name.str
+
+private def parseExternalCodeList (lean : Option String) : Array Data.ExternalRef :=
+  match lean with
+  | none => #[]
+  | some s =>
+    let refs :=
+      s.splitOn ","
+      |>.map (fun p => p.trimAscii.toString)
+      |>.filter (fun p => !p.isEmpty)
+    refs.foldl (init := #[]) fun acc ref =>
+      match parseDottedName ref with
+      | some name =>
+        let extRef := Data.ExternalRef.ofName name .directiveLean
+        if acc.any (fun entry => entry.canonical == extRef.canonical) then
+          acc
+        else
+          acc.push extRef
+      | none => acc
+
 def Config.parse  : ArgParse m Config :=
-  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean =>
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok =>
     {
       label := Name.mkSimple labelArg.val
       labelSyntax := labelArg.syntax
       lean := lean
+      leanok := leanok
+      externalCode := parseExternalCodeList lean
     }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true
+        <*> .named `leanok .bool true
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
 
 end
 
+structure ExternalDeclStatus where
+  decl : Name
+  present : Bool := false
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+inductive BlockCodeStatus where
+  | none
+  | userOk
+  | external (decls : Array ExternalDeclStatus)
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.CodeRef) : BlockCodeStatus :=
+  match codeRef? with
+  | some .userOk => .userOk
+  | some (.external decls) =>
+    .external <| decls.map fun decl =>
+      { decl := decl.written, present := (env.find? decl.canonical).isSome }
+  | _ => .none
+
 structure BlockData where
   kind : Data.NodeKind
   label : Data.Label
   count : Nat
+  codeStatus : BlockCodeStatus := .none
+  texPrelude : String := ""
 deriving FromJson, ToJson, Quote
 
 structure CodeDeclData where
@@ -134,6 +188,70 @@ structure TexPreludeData where
   prelude : String
 deriving FromJson, ToJson, Quote
 
+def texPreludeInjectorJs : String := r##"
+(() => {
+  const script = document.currentScript;
+  const carrier = script && script.previousElementSibling;
+  if (!carrier || !carrier.classList || !carrier.classList.contains('verso-tex-prelude')) return;
+
+  const prelude = (carrier.textContent || '').trim();
+  if (!window.__versoTexPreludeBlocks) window.__versoTexPreludeBlocks = [];
+  if (prelude.length > 0 && !window.__versoTexPreludeBlocks.includes(prelude)) {
+    window.__versoTexPreludeBlocks.push(prelude);
+  }
+
+  if (window.__versoTexPreludePatched) return;
+
+  const injectPrelude = (tex) => {
+    const blocks = window.__versoTexPreludeBlocks || [];
+    const fullPrelude = blocks.join('\n').trim();
+    const base = tex == null ? '' : String(tex);
+    return fullPrelude.length > 0 ? `${fullPrelude}\n${base}` : base;
+  };
+
+  const patchKaTeX = () => {
+    if (!window.katex) return false;
+
+    if (typeof window.katex.render === 'function' && !window.__versoTexPreludeRenderPatched) {
+      const originalRender = window.katex.render.bind(window.katex);
+      window.katex.render = (tex, ...args) => originalRender(injectPrelude(tex), ...args);
+      window.__versoTexPreludeRenderPatched = true;
+    }
+
+    if (typeof window.katex.renderToString === 'function' && !window.__versoTexPreludeRenderToStringPatched) {
+      const originalRenderToString = window.katex.renderToString.bind(window.katex);
+      window.katex.renderToString = (tex, ...args) => originalRenderToString(injectPrelude(tex), ...args);
+      window.__versoTexPreludeRenderToStringPatched = true;
+    }
+
+    window.__versoTexPreludePatched =
+      !!window.__versoTexPreludeRenderPatched || !!window.__versoTexPreludeRenderToStringPatched;
+    return window.__versoTexPreludePatched;
+  };
+
+  if (patchKaTeX()) return;
+
+  const tryPatch = () => {
+    if (patchKaTeX() && window.__versoTexPreludePatchTimer) {
+      clearInterval(window.__versoTexPreludePatchTimer);
+      window.__versoTexPreludePatchTimer = null;
+    }
+  };
+
+  if (!window.__versoTexPreludePatchTimer) {
+    window.__versoTexPreludePatchTimer = setInterval(tryPatch, 50);
+    setTimeout(() => {
+      if (window.__versoTexPreludePatchTimer) {
+        clearInterval(window.__versoTexPreludePatchTimer);
+        window.__versoTexPreludePatchTimer = null;
+      }
+    }, 5000);
+  }
+
+  document.addEventListener('DOMContentLoaded', tryPatch, { once: true });
+})();
+"##
+
 register_option verso.blueprint.foldProofs : Bool := {
   defValue := true
   descr := "Enable proof folding in VersoBlueprint Lean code blocks (hide text after `by` behind a toggle)"
@@ -149,10 +267,17 @@ structure CodeHoverData where
   definedTheorems : Array CodeHoverDecl := #[]
   sorries : Array CodeHoverDecl := #[]
 
+structure ExternalHoverDecl where
+  decl : Name
+  href : Option String := none
+  present : Bool := false
+
 structure ComputedData where
   proved : Bool := false
   codeHref : Option String := none
   codeHover : Option CodeHoverData := none
+  manualStatus : Bool := false
+  externalDecls : Array ExternalHoverDecl := #[]
   hasStatementSorries : Bool := false
   hasProofSorries : Bool := false
 
@@ -411,6 +536,28 @@ details[open] > summary .bp_code_expand_hint::before {
   text-decoration: underline;
 }
 
+.bp_status_mark {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.bp_external_badge {
+  font-size: 0.74rem;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.3rem;
+  padding: 0.08rem 0.35rem;
+  background: #f8fafc;
+}
+
+.bp_external_decl_ok {
+  color: #166534;
+}
+
+.bp_external_decl_missing {
+  color: #b91c1c;
+}
+
 .bp_content {
   padding-left: 0.65rem;
 }
@@ -499,434 +646,9 @@ div.proof_content {
 }
 "##
 
-def blueprintStyleSwitcherCss : String := r##"
-#bp-style-switcher {
-  position: fixed;
-  right: 1rem;
-  bottom: 1rem;
-  z-index: 1000;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.45rem;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
-  padding: 0.4rem 0.55rem;
-  font-size: 0.82rem;
-}
+def blueprintStyleSwitcherCss : String := StyleSwitcher.css
 
-#bp-style-switcher label {
-  margin-right: 0.35rem;
-  font-weight: 600;
-}
-
-#bp-style-switcher select {
-  border: 1px solid #cbd5e1;
-  border-radius: 0.3rem;
-  background: #ffffff;
-  font-size: 0.82rem;
-  padding: 0.1rem 0.25rem;
-}
-
-html[data-bp-style="blueprint"] .bp_wrapper {
-  border: 1px solid #cbd5e1;
-  border-radius: 0.35rem;
-  padding: 0.45rem 0.6rem 0.55rem;
-  background: #ffffff;
-}
-
-html[data-bp-style="blueprint"] .bp_heading {
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 0.35rem;
-}
-
-html[data-bp-style="blueprint"] .bp_content {
-  margin-top: 0.35rem;
-  padding-left: 0.45rem;
-}
-
-html[data-bp-style="blueprint"] div.theorem_thmcontent,
-html[data-bp-style="blueprint"] div.proposition_thmcontent,
-html[data-bp-style="blueprint"] div.lemma_thmcontent,
-html[data-bp-style="blueprint"] div.corollary_thmcontent,
-html[data-bp-style="blueprint"] div.proof_content {
-  border-left-color: #334155;
-}
-
-html[data-bp-style="modern"] .bp_wrapper {
-  border: 1px solid #d6deea;
-  border-radius: 0.7rem;
-  padding: 0.6rem 0.7rem 0.68rem;
-  background: linear-gradient(180deg, #ffffff, #f8fbff);
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
-}
-
-html[data-bp-style="modern"] .bp_heading {
-  border-bottom: 1px solid #e2e8f0;
-  padding-bottom: 0.4rem;
-}
-
-html[data-bp-style="modern"] .bp_caption {
-  background: #e0ecff;
-  border-radius: 999px;
-  padding: 0.08rem 0.5rem;
-}
-
-html[data-bp-style="modern"] .bp_content {
-  margin-top: 0.45rem;
-  padding-left: 0.5rem;
-}
-
-html[data-bp-style="modern"] .bp_wrapper div.theorem_thmcontent,
-html[data-bp-style="modern"] .bp_wrapper div.proposition_thmcontent,
-html[data-bp-style="modern"] .bp_wrapper div.lemma_thmcontent,
-html[data-bp-style="modern"] .bp_wrapper div.corollary_thmcontent,
-html[data-bp-style="modern"] .bp_wrapper div.proof_content {
-  border-left-color: #64748b;
-}
-
-html[data-bp-style="bold"] .bp_wrapper {
-  border: 2px solid #0f172a;
-  border-radius: 0.85rem;
-  padding: 0.6rem 0.75rem 0.75rem;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.2), transparent 36%),
-    radial-gradient(circle at 0% 100%, rgba(16, 185, 129, 0.2), transparent 32%),
-    #ffffff;
-  box-shadow: 0 9px 0 #0f172a;
-}
-
-html[data-bp-style="bold"] .bp_heading {
-  border-bottom: 2px solid #0f172a;
-  padding-bottom: 0.45rem;
-  letter-spacing: 0.01em;
-}
-
-html[data-bp-style="bold"] .bp_caption {
-  background: #0f172a;
-  color: #f8fafc;
-  border-radius: 0.25rem;
-  padding: 0.08rem 0.45rem;
-  text-transform: uppercase;
-}
-
-html[data-bp-style="bold"] .bp_label {
-  background: #f59e0b;
-  color: #111827;
-  border-radius: 999px;
-  padding: 0.06rem 0.42rem;
-}
-
-html[data-bp-style="bold"] .bp_code_link {
-  color: #7c2d12;
-  font-weight: 700;
-}
-
-html[data-bp-style="bold"] .bp_code_hover {
-  border: 2px solid #0f172a;
-  border-radius: 0.55rem;
-  box-shadow: 0 8px 0 #0f172a;
-}
-
-html[data-bp-style="bold"] .bp_content {
-  margin-top: 0.5rem;
-  padding-left: 0.6rem;
-}
-
-html[data-bp-style="bold"] .bp_wrapper div.theorem_thmcontent,
-html[data-bp-style="bold"] .bp_wrapper div.proposition_thmcontent,
-html[data-bp-style="bold"] .bp_wrapper div.lemma_thmcontent,
-html[data-bp-style="bold"] .bp_wrapper div.corollary_thmcontent,
-html[data-bp-style="bold"] .bp_wrapper div.proof_content {
-  border-left: 0.2rem solid #0f172a;
-}
-  "##
-
-def blueprintStyleSwitcherJs : String := r##"(function () {
-  const storageKey = "verso-blueprint-style";
-  const switcherId = "bp-style-switcher";
-  const root = document.documentElement;
-  const targetClass = "bp_decl_target";
-  const targetBlockClass = "bp_decl_target_block";
-
-  function normalize(style) {
-    if (style === "blueprint" || style === "modern" || style === "bold") return style;
-    return "blueprint";
-  }
-
-  function applyStyle(style) {
-    root.setAttribute("data-bp-style", normalize(style));
-  }
-
-  function getSavedStyle() {
-    try {
-      return normalize(localStorage.getItem(storageKey));
-    } catch (_err) {
-      return "blueprint";
-    }
-  }
-
-  function saveStyle(style) {
-    try {
-      localStorage.setItem(storageKey, normalize(style));
-    } catch (_err) {}
-  }
-
-  function installSwitcher() {
-    if (document.getElementById(switcherId)) return;
-    if (!document.body) return;
-
-    const host = document.createElement("div");
-    host.id = switcherId;
-
-    const label = document.createElement("label");
-    label.setAttribute("for", "bp-style-select");
-    label.textContent = "Style";
-
-    const select = document.createElement("select");
-    select.id = "bp-style-select";
-    select.innerHTML = [
-      '<option value="blueprint">blueprint</option>',
-      '<option value="modern">modern</option>',
-      '<option value="bold">bold</option>'
-    ].join("");
-
-    const current = getSavedStyle();
-    select.value = current;
-    applyStyle(current);
-
-    select.addEventListener("change", function () {
-      const value = normalize(select.value);
-      applyStyle(value);
-      saveStyle(value);
-    });
-
-    host.appendChild(label);
-    host.appendChild(select);
-    document.body.appendChild(host);
-  }
-
-  function installProofHider() {
-    const blocks = document.querySelectorAll("details.bp_code_block code.hl.lean.block");
-    const declKeywords = new Set(["theorem", "lemma", "corollary", "example"]);
-    const commandStartKeywords = new Set([
-      "theorem", "lemma", "corollary", "example", "def", "abbrev", "instance",
-      "axiom", "constant", "opaque", "inductive", "structure", "class", "namespace",
-      "section", "end", "open", "local", "attribute", "set_option", "variable",
-      "variables", "notation", "infix", "infixl", "infixr", "prefix", "postfix",
-      "macro", "syntax", "elab", "initialize", "mutual"
-    ]);
-
-    function locateTextPosition(rootNode, absIndex) {
-      const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT);
-      let seen = 0;
-      while (true) {
-        const node = walker.nextNode();
-        if (!node) break;
-        const len = node.nodeValue ? node.nodeValue.length : 0;
-        if (absIndex <= seen + len) {
-          return { node, offset: absIndex - seen };
-        }
-        seen += len;
-      }
-      return null;
-    }
-
-    function toggleProof(toggleNode, proofTail, gapNode) {
-      const hidden = proofTail.classList.toggle("bp-proof-tail-hidden");
-      toggleNode.classList.toggle("bp-proof-open", !hidden);
-      toggleNode.setAttribute("aria-expanded", hidden ? "false" : "true");
-      if (gapNode) {
-        gapNode.classList.toggle("bp-proof-gap-hidden", !hidden);
-      }
-    }
-
-    function absIndexBeforeElement(rootNode, el) {
-      const r = document.createRange();
-      r.setStart(rootNode, 0);
-      r.setEndBefore(el);
-      return r.toString().length;
-    }
-
-    function lineIndent(text, idx) {
-      const lastNl = text.lastIndexOf("\n", Math.max(0, idx - 1));
-      const lineStart = lastNl + 1;
-      let i = lineStart;
-      while (i < idx && text[i] === " ") i++;
-      return i - lineStart;
-    }
-
-    function isFirstTokenOnLine(text, idx) {
-      const lastNl = text.lastIndexOf("\n", Math.max(0, idx - 1));
-      const lineStart = lastNl + 1;
-      return /^[ \t]*$/.test(text.slice(lineStart, idx));
-    }
-
-    function isCommandStartText(tokText) {
-      if (!tokText) return false;
-      if (tokText[0] === "#") return true;
-      return commandStartKeywords.has(tokText);
-    }
-
-    blocks.forEach((block) => {
-      if (!(block instanceof HTMLElement)) return;
-      const details = block.closest("details.bp_code_block");
-      if (details instanceof HTMLElement && details.dataset.bpProofFold === "off") return;
-      if (block.dataset.bpProofHider === "1") return;
-      block.dataset.bpProofHider = "1";
-
-      const text = block.textContent || "";
-      if (!text) return;
-
-      const tokenNodes = Array.from(block.querySelectorAll(".token"));
-      const keywordNodes = Array.from(block.querySelectorAll(".keyword.token"));
-
-      const allTokens = tokenNodes.map((el) => {
-        const tokText = (el.textContent || "").trim();
-        const start = absIndexBeforeElement(block, el);
-        const end = start + (el.textContent || "").length;
-        const firstOnLine = isFirstTokenOnLine(text, start);
-        const indent = lineIndent(text, start);
-        return { el, tokText, start, end, firstOnLine, indent };
-      });
-
-      const commandStarts = allTokens.filter((t) =>
-        t.firstOnLine && isCommandStartText(t.tokText)
-      );
-
-      const keywordTokens = keywordNodes.map((el) => {
-        const tokText = (el.textContent || "").trim();
-        const start = absIndexBeforeElement(block, el);
-        const end = start + (el.textContent || "").length;
-        const indent = lineIndent(text, start);
-        return { el, tokText, start, end, indent };
-      });
-
-      const declStarts = keywordTokens.filter((t) => declKeywords.has(t.tokText));
-      if (declStarts.length === 0) return;
-
-      const segments = [];
-      for (const decl of declStarts) {
-        const boundary = commandStarts.find((c) =>
-          c.start > decl.start && c.indent <= decl.indent
-        );
-        const segmentEnd = boundary ? boundary.start : text.length;
-        if (segmentEnd <= decl.start) continue;
-        const byTok = keywordTokens.find((t) =>
-          t.tokText === "by" && t.start > decl.start && t.end <= segmentEnd
-        );
-        if (!byTok) continue;
-        let hideStart = byTok.end;
-        if (hideStart >= segmentEnd) continue;
-        const gapText = text.slice(hideStart, segmentEnd).includes("\n") ? "\n" : "";
-        segments.push({
-          byEl: byTok.el,
-          byStart: byTok.start,
-          byEnd: byTok.end,
-          hideStart,
-          hideEnd: segmentEnd,
-          gapText
-        });
-      }
-      if (segments.length === 0) return;
-
-      for (let i = segments.length - 1; i >= 0; i--) {
-        const seg = segments[i];
-        const hideStartPos = locateTextPosition(block, seg.hideStart);
-        const hideEndPos = locateTextPosition(block, seg.hideEnd);
-        if (!hideStartPos || !hideEndPos) continue;
-        const hideRange = document.createRange();
-        hideRange.setStart(hideStartPos.node, hideStartPos.offset);
-        hideRange.setEnd(hideEndPos.node, hideEndPos.offset);
-        const fragment = hideRange.extractContents();
-        if (!fragment.textContent || fragment.textContent.length === 0) continue;
-
-        const proofTail = document.createElement("span");
-        proofTail.className = "bp-proof-tail bp-proof-tail-hidden";
-        proofTail.appendChild(fragment);
-        hideRange.insertNode(proofTail);
-        let gapNode = null;
-        if (seg.gapText) {
-          gapNode = document.createElement("span");
-          gapNode.textContent = seg.gapText;
-          proofTail.parentNode.insertBefore(gapNode, proofTail);
-        }
-
-        const toggle = seg.byEl;
-        if (!(toggle instanceof HTMLElement)) continue;
-        toggle.classList.add("bp-proof-by-toggle");
-        toggle.tabIndex = 0;
-        toggle.setAttribute("role", "button");
-        toggle.setAttribute("aria-expanded", "false");
-        toggle.setAttribute("aria-label", "Toggle proof");
-        toggle.addEventListener("click", function () {
-          toggleProof(toggle, proofTail, gapNode);
-        });
-        toggle.addEventListener("keydown", function (ev) {
-          if (!(ev instanceof KeyboardEvent)) return;
-          if (ev.key !== "Enter" && ev.key !== " ") return;
-          ev.preventDefault();
-          toggleProof(toggle, proofTail, gapNode);
-        });
-      }
-    });
-  }
-
-  function openDetailsAncestors(elem) {
-    let cur = elem && elem.parentElement;
-    while (cur) {
-      if (cur.tagName === "DETAILS") {
-        cur.setAttribute("open", "open");
-      }
-      cur = cur.parentElement;
-    }
-  }
-
-  function revealDeclFromHash() {
-    const hash = window.location.hash;
-    if (!hash || hash.length < 2) return;
-    const id = decodeURIComponent(hash.slice(1));
-    const target = document.getElementById(id);
-    if (!target) return;
-    openDetailsAncestors(target);
-    document.querySelectorAll("." + targetClass).forEach((el) => el.classList.remove(targetClass));
-    document.querySelectorAll("." + targetBlockClass).forEach((el) => el.classList.remove(targetBlockClass));
-    target.classList.remove(targetClass);
-    void target.offsetWidth;
-    target.classList.add(targetClass);
-    const block = target.closest("code.hl.lean.block, pre.hl.lean, .example-file");
-    if (block) {
-      block.classList.remove(targetBlockClass);
-      void block.offsetWidth;
-      block.classList.add(targetBlockClass);
-    }
-    target.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
-  }
-
-  applyStyle(getSavedStyle());
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function () {
-      installSwitcher();
-      installProofHider();
-      revealDeclFromHash();
-    });
-  } else {
-    installSwitcher();
-    installProofHider();
-    revealDeclFromHash();
-  }
-
-  window.addEventListener("hashchange", revealDeclFromHash);
-  document.addEventListener("click", function (ev) {
-    const target = ev.target;
-    if (!(target instanceof Element)) return;
-    const a = target.closest("a[href]");
-    if (!a) return;
-    const url = new URL(a.getAttribute("href"), window.location.href);
-    if (url.pathname !== window.location.pathname || !url.hash) return;
-    if (decodeURIComponent(url.hash) !== window.location.hash) return;
-    setTimeout(revealDeclFromHash, 0);
-  });
-})();"##
+def blueprintStyleSwitcherJs : String := StyleSwitcher.jsInteractive
 
 def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : Array (String × String))
     (content : Array Output.Html) : Output.Html :=
@@ -964,6 +686,34 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
         </div>
       </div>
     }}
+  let externalListItems (items : Array ExternalHoverDecl) : Output.Html :=
+    if items.isEmpty then
+      {{<li class="bp_code_hover_none">"none"</li>}}
+    else
+      .seq <| items.map fun item =>
+        let declTxt := {{<code>{{.text true s!"{item.decl}"}}</code>}}
+        let declNode :=
+          if let some href := item.href then
+            {{<a href={{href}}>{{declTxt}}</a>}}
+          else
+            declTxt
+        let statusTxt := if item.present then "(has Lean declaration)" else "(missing Lean declaration)"
+        let statusClass := if item.present then "bp_external_decl_ok" else "bp_external_decl_missing"
+        {{<li>{{declNode}} " " <span class={{statusClass}}>{{.text true statusTxt}}</span></li>}}
+  let externalHover : Output.Html :=
+    if cdata.externalDecls.isEmpty then
+      .empty
+    else
+      {{
+        <div class="bp_code_hover" role="tooltip">
+          <div class="bp_code_hover_title">"External Lean references"</div>
+          <div class="bp_code_hover_section">
+            <ul class="bp_code_hover_list">
+              {{externalListItems cdata.externalDecls}}
+            </ul>
+          </div>
+        </div>
+      }}
   let kindText := s!"{data.kind}"
   let labelTextNum := s!"{data.count}"
   let labelText := s!"{data.label}"
@@ -991,7 +741,19 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
   let labelClass := s!"bp_label {labelCss}"
   let contentClass := s!"bp_content {contentCss}"
   let statusMark : Output.Html :=
-    if cdata.codeHref.isNone then
+    if !cdata.externalDecls.isEmpty then
+      let total := cdata.externalDecls.size
+      let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
+      let missing := total - found
+      let title :=
+        if missing == 0 then
+          s!"External Lean names ({total}) are present"
+        else
+          s!"External Lean names: {found} present, {missing} missing"
+      {{<span class="bp_code_link_wrap"><span class="bp_external_badge" title={{title}}>s!"external ({found}/{total})"</span>{{externalHover}}</span>}}
+    else if cdata.manualStatus then
+      {{ <span class="bp_status_mark" title="Marked complete via (leanok := true)">"✓ (manually set)"</span> }}
+    else if cdata.codeHref.isNone then
       .empty
     else
       let (hasSorriesHere, whereTxt) :=
@@ -1001,7 +763,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
           (cdata.hasStatementSorries, "statement")
       let mark := if hasSorriesHere then "✗" else "✓"
       let title := if hasSorriesHere then s!"Contains sorries in {whereTxt}" else s!"No sorries in {whereTxt}"
-      {{ <span title={{title}}>{{.text true mark}}</span> }}
+      {{ <span class="bp_status_mark" title={{title}}>{{.text true mark}}</span> }}
   {{ <div class={{wrapperClass}} title={{labelText}} {{attrs}}>
        <div class={{headingClass}}>
          <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
@@ -1027,17 +789,20 @@ block_extension Block.informal (data : BlockData) where
   data := toJson data
   traverse id data _contents := do
     -- XXX: (maybe) lift the Except into the main monad error thread
-    let .ok blockData@{ kind := _, label, count := _ } := fromJson? (α := BlockData) data
-      | logError s!"Malformed data: {data}"
-        pure none
-    if let .some _d := (← get).getDomainObject? informalDomain label.toString then
-      return none
-    else
-      let path ← (·.path) <$> read
-      let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-{label}"
-      modify λ s => s.saveDomainObject informalDomain label.toString id
-      modify λ s => s.saveDomainObjectData informalDomain label.toString (toJson blockData)
-      return none
+    match fromJson? (α := BlockData) data with
+    | .error err =>
+      logError s!"Malformed data ({err}): {data}"
+      pure none
+    | .ok blockData =>
+      let label := blockData.label
+      if let .some _d := (← get).getDomainObject? informalDomain label.toString then
+        return none
+      else
+        let path ← (·.path) <$> read
+        let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-{label}"
+        modify λ s => s.saveDomainObject informalDomain label.toString id
+        modify λ s => s.saveDomainObjectData informalDomain label.toString (toJson blockData)
+        return none
   toTeX := none
   extraCss := ([blueprintCss, blueprintStyleSwitcherCss] : List String)
   extraJs := ([blueprintStyleSwitcherJs] : List String)
@@ -1045,66 +810,71 @@ block_extension Block.informal (data : BlockData) where
     open Verso.Doc.Html in
     open Verso.Output.Html in
     some <| fun _goI goB id data blocks => do
-      let .ok data := fromJson? (α := BlockData) data
-        | HtmlT.logError s!"Malformed data: {data}"
-          pure .empty
-      let s ← HtmlT.state
-      let attrs := s.htmlId id
-      let dentry : Json := ((s.getDomainObject? informalDomain data.label.toString).map (·.data)).getD (.str "")
-      let codeHref : Option String :=
-        match s.resolveDomainObject informalCodeDomain data.label.toString with
-        | .ok dest => some dest.relativeLink
-        | .error _ => none
-      let codeData? : Option CodeBlockData :=
-        match s.getDomainObject? informalCodeDomain data.label.toString with
-        | none => none
-        | some obj =>
-          match fromJson? (α := CodeBlockData) obj.data with
-          | .ok cdata => some cdata
+      match fromJson? (α := BlockData) data with
+      | .error err =>
+        HtmlT.logError s!"Malformed data ({err}): {data}"
+        pure .empty
+      | .ok data =>
+        let s ← HtmlT.state
+        let attrs := s.htmlId id
+        let dentry : Json := ((s.getDomainObject? informalDomain data.label.toString).map (·.data)).getD (.str "")
+        let codeHref : Option String :=
+          match s.resolveDomainObject informalCodeDomain data.label.toString with
+          | .ok dest => some dest.relativeLink
           | .error _ => none
-      let getDeclHref (decl : Name) : Option String :=
-        match s.resolveDomainObject ``Verso.Genre.Manual.example decl.toString with
-        | .ok dest => some dest.relativeLink
-        | .error _ =>
-          match s.domains.get? ``Verso.Genre.Manual.example with
+        let codeData? : Option CodeBlockData :=
+          match s.getDomainObject? informalCodeDomain data.label.toString with
           | none => none
-          | some dom =>
-            let pref := decl.toString ++ " (in "
-            let cands := dom.objects.foldl (init := #[]) fun acc key _obj =>
-              if key == decl.toString || key.startsWith pref then
-                acc.push key
-              else
-                acc
-            if cands.size = 1 then
-              match s.resolveDomainObject ``Verso.Genre.Manual.example cands[0]! with
-              | .ok dest => some dest.relativeLink
-              | .error _ => none
-            else
-              none
-      let codeHover : Option CodeHoverData := codeData?.map (fun cdata =>
-        mkCodeHoverData data.label cdata.definedDefs cdata.definedTheorems getDeclHref)
-      let hasSorries : Bool :=
-        match codeData? with
-        | none => false
-        | some cdata => (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasSorry)
-      let hasStatementSorries : Bool :=
-        match codeData? with
-        | none => false
-        | some cdata =>
-          (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasTypeSorry)
-      let hasProofSorries : Bool :=
-        match codeData? with
-        | none => false
-        | some cdata =>
-          (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasProofSorry)
-      let cdata := {
-        proved := codeData?.isSome && !hasSorries
-        codeHref
-        codeHover
-        hasStatementSorries
-        hasProofSorries
-      }
-      return toHtml data cdata dentry attrs (← blocks.mapM goB)
+          | some obj =>
+            match fromJson? (α := CodeBlockData) obj.data with
+            | .ok cdata => some cdata
+            | .error _ => none
+        let getDeclHref (decl : Name) : Option String :=
+          Resolve.resolveExampleDeclHref? s decl
+        let codeHover : Option CodeHoverData := codeData?.map (fun cdata =>
+          mkCodeHoverData data.label cdata.definedDefs cdata.definedTheorems getDeclHref)
+        let externalDecls : Array ExternalHoverDecl :=
+          match data.codeStatus with
+          | .external decls =>
+            decls.map fun decl => { decl := decl.decl, href := getDeclHref decl.decl, present := decl.present }
+          | _ => #[]
+        let manualStatus : Bool :=
+          match data.codeStatus with
+          | .userOk => true
+          | _ => false
+        let hasSorries : Bool :=
+          match codeData? with
+          | none => false
+          | some cdata => (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasSorry)
+        let hasStatementSorries : Bool :=
+          match codeData? with
+          | none => false
+          | some cdata =>
+            (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasTypeSorry)
+        let hasProofSorries : Bool :=
+          match codeData? with
+          | none => false
+          | some cdata =>
+            (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasProofSorry)
+        let cdata := {
+          proved := codeData?.isSome && !hasSorries
+          codeHref
+          codeHover
+          manualStatus
+          externalDecls
+          hasStatementSorries
+          hasProofSorries
+        }
+        let prelude := data.texPrelude.trimAscii.toString
+        let preludeHtml : Output.Html :=
+          if prelude.isEmpty then
+            .empty
+          else
+            {{
+              <script type="text/plain" class="verso-tex-prelude">{{.text false prelude}}</script>
+              <script>{{.text false texPreludeInjectorJs}}</script>
+            }}
+        return preludeHtml ++ (toHtml data cdata dentry attrs (← blocks.mapM goB))
 
 block_extension Block.informalCode (data : CodeBlockData) where
   data := toJson data
@@ -1182,40 +952,9 @@ block_extension Block.texPrelude (data : TexPreludeData) where
       let .ok { prelude } := fromJson? (α := TexPreludeData) data
         | HtmlT.logError s!"Malformed data: {data}"
           pure .empty
-      let injectorJs := r##"
-(() => {
-  const script = document.currentScript;
-  const carrier = script && script.previousElementSibling;
-  if (!carrier || !carrier.classList || !carrier.classList.contains('verso-tex-prelude')) return;
-
-  const prelude = carrier.textContent || '';
-  if (!window.__versoTexPreludeBlocks) window.__versoTexPreludeBlocks = [];
-  if (prelude.trim().length > 0) window.__versoTexPreludeBlocks.push(prelude);
-
-  if (window.__versoTexPreludePatched) return;
-
-  const patchKaTeX = () => {
-    if (!window.katex || typeof window.katex.render !== 'function') return false;
-    const originalRender = window.katex.render.bind(window.katex);
-    window.katex.render = (tex, ...args) => {
-      const blocks = window.__versoTexPreludeBlocks || [];
-      const fullPrelude = blocks.join('\n').trim();
-      const base = tex == null ? '' : String(tex);
-      const injected = fullPrelude.length > 0 ? `${fullPrelude}\n${base}` : base;
-      return originalRender(injected, ...args);
-    };
-    window.__versoTexPreludePatched = true;
-    return true;
-  };
-
-  if (!patchKaTeX()) {
-    document.addEventListener('DOMContentLoaded', () => { patchKaTeX(); }, { once: true });
-  }
-})();
-"##
       pure {{
         <script type="text/plain" class="verso-tex-prelude">{{.text false prelude}}</script>
-        <script>{{.text false injectorJs}}</script>
+        <script>{{.text false texPreludeInjectorJs}}</script>
       }}
 
 /-- Informal directives -/
@@ -1232,15 +971,28 @@ def expander (kind : Data.NodeKind) : DirectiveExpanderOf Config
     let label := cfg.label
     let isProof := (kind == .proof)
     let kind? := if isProof then none else some kind
+    let hasExternal := !cfg.externalCode.isEmpty
+    let hasLeanok := cfg.leanok.getD false
+    let codeHint : Option Data.CodeRef :=
+      if hasExternal then
+        some (.external cfg.externalCode)
+      else if hasLeanok then
+        some .userOk
+      else
+        none
     let blockRef ← getRef
-    Environment.push label kind? isProof
+    Environment.push label kind? isProof codeHint
     let contents ← contents.mapM elabBlock
     if !isProof then
       Environment.setStatementElab contents
     let count ← Environment.pop blockRef
+    let env ← getEnv
+    let nodeCodeRef? := (← Environment.getNode? label).bind (·.code)
+    let codeStatus := BlockCodeStatus.ofCodeRef env nodeCodeRef?
+    let texPrelude ← Environment.getTexPrelude
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := {kind, label, count}
+    let data : BlockData := { kind, label, count, codeStatus, texPrelude }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
 @[directive] def «definition» := expander .definition

@@ -36,6 +36,7 @@ theorem c1_norm_one : ‖C1R‖ = 1 := by
   unfold C1R C1
   simp only [Fin.sum_univ_three, Pi.mul_apply, Matrix.cons_val]
   norm_num
+  rfl
 
 theorem c2_norm_bound : ‖C2R‖ ∈ Set.Ioo (98/100) (99/100) := by
   rw [EuclideanSpace.norm_eq]
@@ -86,7 +87,8 @@ lemma C15_nonempty (pt : ℝ³) : (C15 pt).Nonempty := by
   have z : 0 ∈ Finset.range 15 := Finset.insert_eq_self.mp rfl
   simp only [C15, Finset.mem_image, Finset.mem_range]
   use 0
-  simp only [Nat.ofNat_pos, CharP.cast_eq_zero, mul_zero, zero_div, and_self]
+  simp only [CharP.cast_eq_zero, mul_zero, zero_div]
+  simp
 
 lemma C15_pres_norm (pt v : ℝ³) (hv : v ∈ C15 pt) : ‖v‖ = ‖pt‖ := by
   simp only [C15, Finset.mem_image, Finset.mem_range] at hv

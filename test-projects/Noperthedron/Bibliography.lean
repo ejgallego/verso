@@ -5,13 +5,14 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 -/
 
 import VersoManual.Bibliography
+import VersoBlueprint.Cite
 
 open Verso.Genre.Manual.Bibliography
 
+@[bib "polyhedron.without.rupert"]
 def polyhedron.without.rupert : Citable := .arXiv
     { title := inlines!"A convex polyhedron without Rupert's property"
     , authors := #[inlines!"Jakob Steininger", inlines!"Sergey Yurkevich"]
     , year := 2025
     , id := "polyhedron.without.rupert"
     }
-
