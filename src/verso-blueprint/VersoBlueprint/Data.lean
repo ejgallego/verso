@@ -53,6 +53,7 @@ structure DefinedDecl where
   name : Name
   commandStx : Syntax := .missing
   commandIndex : Nat := 0
+  commandLines : Nat := 1
   hasSorry : Bool := false
   hasTypeSorry : Bool := false
   hasProofSorry : Bool := false
@@ -66,10 +67,19 @@ structure Code where
   definedTheorems : Array DefinedDecl := #[]
 deriving Repr, Inhabited
 
+/-- coming from
+
+```
+:::theorem "foo"
+
+:::
+```
+-/
+
 structure InformalData where
   stx : Syntax
   deps : Array Label := #[]
-  elabStx : Array Syntax := #[]
+  elabStx : Array Syntax := #[] -- Syntax is going to have type Verso.Block ...
 deriving Repr, Inhabited
 
 structure Node where
