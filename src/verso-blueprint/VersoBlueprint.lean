@@ -117,7 +117,7 @@ def CodeDeclData.ofDefinedDecl (d : Data.DefinedDecl) : CodeDeclData :=
   {
     name := d.name
     commandIndex := d.commandIndex
-    weight := max (toString d.name).length 1
+    weight := max d.commandLines 1
     hasSorry := d.hasSorry
     hasTypeSorry := d.hasTypeSorry
     hasProofSorry := d.hasProofSorry
@@ -354,7 +354,7 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_code_progress_segment_sorry {
-  background: #dc2626;
+  background: #eab308;
 }
 
 .bp_code_expand_hint {

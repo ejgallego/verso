@@ -20,6 +20,7 @@ import Bibliography
 
 open Verso.Genre Manual Informal
 
+/-- hey -/
 @[blueprint "l3b"] def l3b := 3
 
 @[blueprint "l3"] def l3 := l3b
@@ -38,6 +39,9 @@ open Verso.Genre Manual Informal
 
 -- EJGA: Seems like a good idea for hybrid setups
 set_option doc.verso true
+
+/-- hey -/
+@[blueprint "l3c"] def l3db := 3
 
 set_option pp.rawOnError true
 
@@ -61,7 +65,9 @@ set_option verso.code.warnLineLength 0
 
 #doc (Manual) "Demo" =>
 
+:::proof "l3c"
 
+:::
 
 :::theorem "t1"
 Hello some math {uses "t1_aux"}[]

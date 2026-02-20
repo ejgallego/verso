@@ -101,7 +101,20 @@ private def toHighlightedLeanBlock (shouldShow : Bool) (hls : Highlighted) (str:
       (Verso.Genre.Manual.InlineLean.Block.lean $(← quoteHighlightViaSerialization hls) (some $(quote (← getFileName))) $(quote range))
       #[Block.code $(quote str.getString)])
 
-private def getDefinedDecls (before after : Environment) (sorryRefsByDecl : Lean.NameMap DeclSorryRefs)
+private def commandLineSpan (fileMap : FileMap) (stx : Syntax) : Nat :=
+  match stx.getRange? with
+  | none => 1
+  | some range =>
+    let endPos :=
+      if range.start < range.stop then
+        String.Pos.Raw.prev fileMap.source range.stop
+      else
+        range.stop
+    let startLine := (fileMap.utf8PosToLspPos range.start).line
+    let endLine := (fileMap.utf8PosToLspPos endPos).line
+    endLine - startLine + 1
+
+private def getDefinedDecls (fileMap : FileMap) (before after : Environment) (sorryRefsByDecl : Lean.NameMap DeclSorryRefs)
     (declCmdInfo : Lean.NameMap (Nat × Syntax)) :
     Array DefinedDecl × Array DefinedDecl :=
   Id.run <| do
@@ -117,6 +130,7 @@ private def getDefinedDecls (before after : Environment) (sorryRefsByDecl : Lean
       let hasSorry := hasTypeSorry || hasProofSorry
       let refs := (sorryRefsByDecl.find? name).getD {}
       let (commandIndex, commandStx) := (declCmdInfo.find? name).getD (0, .missing)
+      let commandLines := commandLineSpan fileMap commandStx
       let (typeSorryRefs, proofSorryRefs) :=
         if hasSorry then
           match info with
@@ -130,6 +144,7 @@ private def getDefinedDecls (before after : Environment) (sorryRefsByDecl : Lean
           name
           commandStx
           commandIndex
+          commandLines
           hasSorry
           hasTypeSorry
           hasProofSorry
@@ -141,6 +156,7 @@ private def getDefinedDecls (before after : Environment) (sorryRefsByDecl : Lean
           name
           commandStx
           commandIndex
+          commandLines
           hasSorry
           hasTypeSorry
           hasProofSorry
@@ -234,6 +250,8 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
     let mut pstate := {pos := 0, recovering := false}
     let mut cmds := #[]
     let mut sorryRefsByDecl : Lean.NameMap DeclSorryRefs := {}
+    let mut declCmdInfo : Lean.NameMap (Nat × Syntax) := {}
+    let mut cmdIndex := 0
 
     repeat
       let scope := cmdState.scopes.head!
@@ -250,10 +268,14 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
 
       let cmdEnvBefore := cmdState.env
       cmdState ← runCommand (Command.elabCommand cmd) cmd cctx cmdState
+      let newDecls := getNewPublicDecls cmdEnvBefore cmdState.env
+      for name in newDecls do
+        declCmdInfo := declCmdInfo.insert name (cmdIndex, cmd)
+      cmdIndex := cmdIndex + 1
       let cmdSorryRefs := getSorryRefs #[cmd]
       if !cmdSorryRefs.isEmpty then
         let (typeRefs, proofRefs) := splitRefsByAssignPos cmd cmdSorryRefs
-        for name in getNewPublicDecls cmdEnvBefore cmdState.env do
+        for name in newDecls do
           let prior := (sorryRefsByDecl.find? name).getD {}
           let refs : DeclSorryRefs := {
             allRefs := prior.allRefs ++ cmdSorryRefs
@@ -288,7 +310,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
       warnLongLines col? str
 
     let block ← toHighlightedLeanBlock config.show hls str
-    let (definedDefs, definedTheorems) := getDefinedDecls envBefore cmdState.env sorryRefsByDecl {}
+    let (definedDefs, definedTheorems) := getDefinedDecls cctx.fileMap envBefore cmdState.env sorryRefsByDecl declCmdInfo
     pure { block, definedDefs, definedTheorems }
 where
   runCommand (act : Command.CommandElabM Unit) (stx : Syntax)
