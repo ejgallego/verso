@@ -8,6 +8,7 @@ import Tests.Elab
 import Tests.GenericCode
 import Tests.Golden
 import Tests.CommentSkipping
+import Tests.DocPreview.Log
 import Tests.HighlightedToTeX
 import Tests.Html
 import Tests.HtmlEntities

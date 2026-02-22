@@ -12,6 +12,7 @@ import Verso.Doc
 public import Verso.Doc.Elab
 public meta import Verso.Doc.Elab.Monad
 import Verso.Doc.Concrete.InlineString
+public meta import Verso.Doc.Concrete.Preview
 import Verso.Doc.Lsp
 
 namespace Verso.Doc.Concrete
@@ -107,7 +108,10 @@ private meta def elabDoc (genre: Term) (title: StrLit) (topLevelBlocks : Array S
   let finished := partElabState.partContext.toPartFrame.close endPos
 
   pushInfoLeaf <| .ofCustomInfo {stx := (← getRef) , value := Dynamic.mk finished.toTOC}
-  finished.toVersoDoc genre ctx docElabState partElabState
+  let doc ← finished.toVersoDoc genre ctx docElabState partElabState
+  let part ← `(VersoDoc.toPart ($doc : VersoDoc $genre))
+  Verso.Doc.Concrete.Preview.emitHtmlPreview genre part
+  pure doc
 
 elab "#docs" "(" genre:term ")" n:ident title:str ":=" ":::::::" text:document ":::::::" : command => do
   findGenreCmd genre
@@ -354,6 +358,9 @@ private meta def finishDoc : Command.CommandElabM Unit:= do
 
   let ty ← ``(VersoDoc $versoEnv.genreSyntax)
   Command.elabCommand (← `(def $n : $ty := $doc))
+  Command.runTermElabM fun _ => do
+    let part ← `(VersoDoc.toPart ($n : $ty))
+    Verso.Doc.Concrete.Preview.emitHtmlPreview versoEnv.genreSyntax part
 
 syntax (name := replaceDoc) "#doc " "(" term ") " str " =>" : command
 elab_rules : command
