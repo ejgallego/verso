@@ -255,7 +255,20 @@ open Verso Doc Elab Genre Manual in
 inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyle := .parenthetical)
     (kind : Option CitePartKind := none) (index : Option String := none) where
   data := toJson ({ citations, style, kind, index } : CiteInlineData)
-  traverse _id _data _contents := pure none
+  traverse id data _contents := do
+    let .ok cfg := fromJson? (α := CiteInlineData) data
+      | logError "Malformed data in Inline.bpCite.traverse"
+        return none
+    let path ← (·.path) <$> read
+    let tagBase :=
+      match cfg.citations with
+      | [] => "--bp-cite"
+      | first :: _ => s!"--bp-cite-{citationAnchorId first.label}"
+    let _ ← Verso.Genre.Manual.externalTag id path tagBase
+    for item in cfg.citations do
+      modify fun st =>
+        st.saveDomainObject Resolve.citationUsageDomainName item.label id
+    pure none
   toTeX :=
     open Verso.Output.TeX in
     some <| fun go _id data content => do
@@ -290,11 +303,16 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
-    some <| fun goI _id data content => do
+    some <| fun goI id data content => do
       let .ok cfg := fromJson? (α := CiteInlineData) data
         | HtmlT.logError "Malformed data in Inline.bpCite.toHtml"
           pure .empty
       let st ← HtmlT.state
+      let citeAnchorId? := st.externalTags[id]? |>.map (·.htmlId.toString)
+      let wrapTarget (h : Output.Html) : Output.Html :=
+        match citeAnchorId? with
+        | some anchorId => {{<span id={{anchorId}}>{{h}}</span>}}
+        | Option.none => h
       let mkLink (item : CiteItem) : Output.Html :=
         let base? :=
           match Resolve.resolveDomainHref? st Verso.Genre.Manual.sectionDomain "Contents--Blueprint-Bibliography" with
@@ -325,16 +343,16 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
           | Option.none => body
           | some loc => {{<span>{{body}} ", " {{loc}}</span>}}
         match htmlNote? with
-        | Option.none => pure {{<span>"(" {{core}} ")"</span>}}
-        | some htmlNote => pure {{<span>"(" {{core}} ", " {{htmlNote}} ")"</span>}}
+        | Option.none => pure <| wrapTarget {{<span>"(" {{core}} ")"</span>}}
+        | some htmlNote => pure <| wrapTarget {{<span>"(" {{core}} ", " {{htmlNote}} ")"</span>}}
       | .textual | .here =>
         let core :=
           match locatorHtml? with
           | Option.none => body
           | some loc => {{<span>{{body}} ", " {{loc}}</span>}}
         match htmlNote? with
-        | Option.none => pure core
-        | some htmlNote => pure {{<span>{{core}} ", " {{htmlNote}}</span>}}
+        | Option.none => pure <| wrapTarget core
+        | some htmlNote => pure <| wrapTarget {{<span>{{core}} ", " {{htmlNote}}</span>}}
 
 end Informal.Cite
 

@@ -7,7 +7,6 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
-import Chapters.Macros
 import Bibliography
 
 open Verso.Genre
@@ -20,7 +19,41 @@ set_option verso.code.warnLineLength 0
 
 #doc (Manual) "Rational Versions" =>
 
-:::definition "dfn:sin_cos_approx" (lean := "RationalApprox.sinℚ,RationalApprox.cosℚ") (leanok := true)
+```texPrelude
+% These are defined by KaTeX already
+% \newcommand{\Q}{\mathbb{Q}}
+% \newcommand{\R}{\mathbb{R}}
+% \newcommand{\N}{\mathbb{N}}
+\newcommand{\PPP}{\mathbf{P}}
+\newcommand{\OOO}{\mathbf{O}}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\QQ}{\mathcal{Q}}
+\newcommand{\id}{\mathrm{Id}}
+\newcommand{\spanp}{\mathrm{span}^+}
+
+\newcommand{\NOP}{\mathbf{NOP}}
+\newcommand{\RUP}{\mathbf{RUP}}
+\newcommand{\RID}{\mathbf{RID}}
+
+\newcommand{\Circ}{\mathrm{Disc}}
+\newcommand{\Sect}{\mathrm{Sect}}
+
+\newcommand{\dd}{\mathrm{d}}
+
+\newcommand{\thetab}{\overline{\theta}}
+\newcommand{\phib}{\overline{\varphi}}
+\newcommand{\alphab}{\overline{\alpha}}
+\newcommand{\Mib}{\overline{M_1}}
+\newcommand{\Miib}{\overline{M_2}}
+\newcommand{\Xib}{\overline{X_1}}
+\newcommand{\Xiib}{\overline{X_2}}
+
+\newcommand{\ssin}{\sin_{\mathbb{Q}}}
+\newcommand{\scos}{\cos_{\mathbb{Q}}}
+
+```
+
+:::definition "dfn:sin_cos_approx" (lean := "RationalApprox.sinℚ,RationalApprox.cosℚ")
 Define $`\ssin, \scos : \mathbb{R} \to \mathbb{R}` by truncated Taylor series:
 
 - $`\ssin(x) := x-\frac{x^3}{3!}+\frac{x^5}{5!}\mp\dots+\frac{x^{25}}{25!}`
@@ -30,7 +63,7 @@ Replacing $`\sin,\cos` with $`\ssin,\scos` defines
 $`R_\mathbb{Q}(\alpha), R'_\mathbb{Q}(\alpha), X_\mathbb{Q}(\theta,\phi), M_\mathbb{Q}(\theta,\phi), M^\theta_\mathbb{Q}(\theta,\varphi), M^\phi_\mathbb{Q}(\theta,\varphi)`.
 :::
 
-:::lemma_ "lem:sin27cos26" (lean := "RationalApprox.sinℚ_approx,RationalApprox.cosℚ_approx") (leanok := true)
+:::lemma_ "lem:sin27cos26" (lean := "RationalApprox.sinℚ_approx,RationalApprox.cosℚ_approx")
 Using {uses "dfn:sin_cos_approx"}[].
 
 $$`
@@ -44,7 +77,7 @@ $$`
 Use Taylor-series remainder bounds and that all higher derivatives of sine/cosine have absolute value at most 1.
 :::
 
-:::lemma_ "lem:kappa7" (lean := "RationalApprox.sinℚ_approx',RationalApprox.cosℚ_approx'") (leanok := true)
+:::lemma_ "lem:kappa7" (lean := "RationalApprox.sinℚ_approx',RationalApprox.cosℚ_approx'")
 For every $`x\in [-4,4]`,
 $`|\ssin(x)-\sin(x)| \leq \kappa/7` and $`|\scos(x)-\cos(x)|\leq \kappa/7`.
 :::
@@ -54,7 +87,7 @@ Using {uses "lem:sin27cos26"}[].
 Straightforward numerical computation.
 :::
 
-:::lemma_ "lem:A_le_deltamn" (lean := "RationalApprox.norm_le_delta_sqrt_dims") (leanok := true)
+:::lemma_ "lem:A_le_deltamn" (lean := "RationalApprox.norm_le_delta_sqrt_dims")
 Let $`A = (a_{i,j})_{1 \leq i \leq m,\,1 \leq j \leq n} \in \mathbb{R}^{m \times n}` and $`\delta >0`.
 If $`|a_{i,j}| \leq \delta` for all entries, then $`\|A\| \leq \delta \sqrt{mn}`.
 :::
@@ -63,7 +96,7 @@ If $`|a_{i,j}| \leq \delta` for all entries, then $`\|A\| \leq \delta \sqrt{mn}`
 Standard norm estimate via Cauchy-Schwarz.
 :::
 
-:::lemma_ "lem:dist_le_kappa" (lean := "RationalApprox.norm_matrix_actual_approx_le_kappa") (leanok := true)
+:::lemma_ "lem:dist_le_kappa" (lean := "RationalApprox.norm_matrix_actual_approx_le_kappa")
 Let $`A(x,y)` be an $`m\times n` matrix ($`1\le m,n\le 3`) whose entries are products of terms in
 $`\{0,1,-1,\pm\sin(z),\pm\cos(z)\}`.
 Let $`A_\mathbb{Q}(x,y)` be obtained by replacing $`\sin,\cos` with $`\ssin,\scos`.
@@ -75,7 +108,7 @@ Using {uses "lem:kappa7"}[] and {uses "lem:A_le_deltamn"}[].
 See {citet polyhedron.without.rupert}[], Lemma 40.
 :::
 
-:::corollary "corr:kappa1kappa" (lean := "RationalApprox.R_difference_norm_bounded,RationalApprox.R'_difference_norm_bounded,RationalApprox.M_difference_norm_bounded,RationalApprox.Mθ_difference_norm_bounded,RationalApprox.Mφ_difference_norm_bounded,RationalApprox.X_difference_norm_bounded,RationalApprox.Rℚ_norm_bounded,RationalApprox.Mℚ_norm_bounded") (leanok := true)
+:::corollary "corr:kappa1kappa" (lean := "RationalApprox.R_difference_norm_bounded,RationalApprox.R'_difference_norm_bounded,RationalApprox.M_difference_norm_bounded,RationalApprox.Mθ_difference_norm_bounded,RationalApprox.Mφ_difference_norm_bounded,RationalApprox.X_difference_norm_bounded,RationalApprox.Rℚ_norm_bounded,RationalApprox.Mℚ_norm_bounded")
 Let $`\alpha,\theta,\phi\in[-4,4]`.
 Then
 $`\|R(\alpha)-R_\mathbb{Q}(\alpha)\|`,
@@ -92,7 +125,7 @@ Moreover $`\|R_\mathbb{Q}(\alpha)\|,\|M_\mathbb{Q}(\theta,\phi)\|\leq 1+\kappa`.
 Using {uses "lem:dist_le_kappa"}[] and {uses "lem:RaRalpha"}[].
 :::
 
-:::lemma_ "lem:A1AnB1Bn" (lean := "RationalApprox.norm_sub_le_prod") (leanok := true)
+:::lemma_ "lem:A1AnB1Bn" (lean := "RationalApprox.norm_sub_le_prod")
 Let $`(A_i,B_i)` for $`1\le i\le n` be pairs of same-size real matrices,
 with products $`A_1\cdots A_n` and $`B_1\cdots B_n` defined.
 If $`\|A_i-B_i\|\leq \kappa` and
@@ -105,7 +138,7 @@ $`\|A_1\cdots A_n-B_1\cdots B_n\|\leq n\kappa\,\delta_1\cdots\delta_n`.
 See {citet polyhedron.without.rupert}[], Lemma 42.
 :::
 
-:::lemma_ "lem:boundskappa" (lean := "RationalApprox.bounds_kappa_M,RationalApprox.bounds_kappa_Mθ,RationalApprox.bounds_kappa_Mφ,RationalApprox.bounds_kappa_RM,RationalApprox.bounds_kappa_R'M,RationalApprox.bounds_kappa_RMθ,RationalApprox.bounds_kappa_RMφ") (leanok := true)
+:::lemma_ "lem:boundskappa" (lean := "RationalApprox.bounds_kappa_M,RationalApprox.bounds_kappa_Mθ,RationalApprox.bounds_kappa_Mφ,RationalApprox.bounds_kappa_RM,RationalApprox.bounds_kappa_R'M,RationalApprox.bounds_kappa_RMθ,RationalApprox.bounds_kappa_RMφ")
 Let $`\alpha,\theta,\phi \in [-4,4]`, $`P\in \mathbb{R}^3` with $`\|P\| \leq 1`,
 let $`\widetilde{P}` be a $`\kappa`-rational approximation, and let $`w \in \mathbb{R}^2` be unit.
 Then the seven quantitative bounds (equations (1)-(7) in Lemma 44 of the paper)
@@ -117,7 +150,7 @@ Using {uses "lem:A1AnB1Bn"}[] and {uses "corr:kappa1kappa"}[].
 See {citet polyhedron.without.rupert}[], Lemma 44.
 :::
 
-:::theorem "thm:global_rational" (lean := "RationalApprox.GlobalTheorem.rational_global") (leanok := true)
+:::theorem "thm:global_rational" (lean := "RationalApprox.GlobalTheorem.rational_global")
 Let $`\mathbf{P}` be a pointsymmetric convex polyhedron of radius 1,
 and $`\widetilde{\mathbf{P}}` a $`\kappa`-rational approximation.
 Define $`G^\mathbb{Q}` and $`H^\mathbb{Q}_P` as in the paper.
@@ -130,7 +163,7 @@ $`[\bar\theta_1\pm\epsilon,\bar\phi_1\pm\epsilon,\bar\theta_2\pm\epsilon,\bar\ph
 Using {uses "thm:global"}[] and {uses "lem:boundskappa"}[].
 :::
 
-:::definition "def:ekspanning" (lean := "Local.Triangle.κSpanning") (leanok := true)
+:::definition "def:ekspanning" (lean := "Local.Triangle.κSpanning")
 Let $`\theta, \phi \in \mathbb{Q} \cap [-4,4]` and
 $`M_\mathbb{Q} := M_\mathbb{Q}(\theta, \phi)`.
 Three points $`\widetilde{P}_1, \widetilde{P}_2, \widetilde{P}_3 \in \mathbb{Q}^3`
@@ -139,7 +172,7 @@ $`\epsilon`-$`\kappa`-spanning if the three inequalities in Definition 45 hold,
 i.e. the spanning lower bounds include the extra additive $`6\kappa` term.
 :::
 
-:::lemma_ "lem:ekspanningespanning" (lean := "RationalApprox.ek_spanning_imp_e_spanning") (leanok := true)
+:::lemma_ "lem:ekspanningespanning" (lean := "RationalApprox.ek_spanning_imp_e_spanning")
 Using {uses "def:ekspanning"}[].
 
 Let $`P_1,P_2,P_3\in\mathbb{R}^3` with $`\|P_i\|\le 1`,
@@ -153,7 +186,7 @@ Using {uses "lem:A1AnB1Bn"}[], {uses "lem:eps-spanning"}[], and {uses "corr:kapp
 See {citet polyhedron.without.rupert}[], Lemma 46.
 :::
 
-:::lemma_ "lem:boundskappa3" (lean := "RationalApprox.bounds_kappa3_X,RationalApprox.bounds_kappa3_M,RationalApprox.bounds_kappa3_MQ") (leanok := true)
+:::lemma_ "lem:boundskappa3" (lean := "RationalApprox.bounds_kappa3_X,RationalApprox.bounds_kappa3_M,RationalApprox.bounds_kappa3_MQ")
 Let $`P,Q \in \mathbb{R}^3` with $`\|P\|,\|Q\|\leq 1`,
 and let $`\widetilde{P},\widetilde{Q}` be $`\kappa`-approximations.
 Then, for parameters in $`[-4,4]`,
@@ -168,7 +201,7 @@ Using {uses "lem:A1AnB1Bn"}[].
 See {citet polyhedron.without.rupert}[], Lemma 49.
 :::
 
-:::corollary "corr:deltakappa" (lean := "RationalApprox.delta_kappa") (leanok := true)
+:::corollary "corr:deltakappa" (lean := "RationalApprox.delta_kappa")
 In the setting of {uses "lem:boundskappa3"}[], let additionally
 $`\bar\theta,\bar\phi \in [-4,4]` and define
 $`\overline{M} = M(\bar\theta, \bar\phi)`,
@@ -185,7 +218,7 @@ Using {uses "lem:boundskappa3"}[].
 See {citet polyhedron.without.rupert}[], Corollary 50.
 :::
 
-:::corollary "lem:boundskappa4" (lean := "RationalApprox.bounds_kappa4") (leanok := true)
+:::corollary "lem:boundskappa4" (lean := "RationalApprox.bounds_kappa4")
 In the setting of {uses "lem:boundskappa3"}[], define the real quantity $`A`
 and rational lower surrogate $`A_{\mathbb{Q}}` as in Corollary 51.
 Then $`A \geq A_{\mathbb{Q}}`.
@@ -196,7 +229,7 @@ Using {uses "lem:boundskappa3"}[].
 See {citet polyhedron.without.rupert}[], Corollary 51.
 :::
 
-:::theorem "thm:local_rational" (lean := "RationalApprox.LocalTheorem.rational_local") (leanok := true)
+:::theorem "thm:local_rational" (lean := "RationalApprox.LocalTheorem.rational_local")
 Using {uses "def:ekspanning"}[].
 
 Let $`\mathbf{P}` be a polyhedron with radius 1 and let

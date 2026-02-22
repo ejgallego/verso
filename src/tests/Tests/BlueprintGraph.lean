@@ -17,19 +17,24 @@ open Informal.Graph
 def mkInformal (deps : Array Name := #[]) : InformalData :=
   { stx := .missing, deps, elabStx := #[] }
 
-def mkDecl (name : Name) (typeSorry : Bool := false) (proofSorry : Bool := false) : DefinedDecl :=
+def mkDefDecl (name : Name) (typeSorry : Bool := false) : LiterateDef :=
   {
     name
-    hasSorry := typeSorry || proofSorry
-    hasTypeSorry := typeSorry
-    hasProofSorry := proofSorry
+    typeSorryRefs := if typeSorry then #[.missing] else #[]
   }
 
-def mkDefCode (decl : Name) (typeSorry : Bool := false) (proofSorry : Bool := false) : CodeRef :=
-  .literate { stx := .missing, definedDefs := #[mkDecl decl typeSorry proofSorry], definedTheorems := #[] }
+def mkThmDecl (name : Name) (typeSorry : Bool := false) (proofSorry : Bool := false) : LiterateThm :=
+  {
+    name
+    typeSorryRefs := if typeSorry then #[.missing] else #[]
+    proofSorryRefs := if proofSorry then #[.missing] else #[]
+  }
+
+def mkDefCode (decl : Name) (typeSorry : Bool := false) : CodeRef :=
+  .literate { stx := .missing, definedDefs := #[mkDefDecl decl typeSorry], definedTheorems := #[] }
 
 def mkTheoremCode (decl : Name) (typeSorry : Bool := false) (proofSorry : Bool := false) : CodeRef :=
-  .literate { stx := .missing, definedDefs := #[], definedTheorems := #[mkDecl decl typeSorry proofSorry] }
+  .literate { stx := .missing, definedDefs := #[], definedTheorems := #[mkThmDecl decl typeSorry proofSorry] }
 
 def mkState (entries : List (Name × Node)) : Environment.State :=
   let data : Data := entries.foldl (init := Data.empty) fun acc (label, node) => acc.insert label node
@@ -105,7 +110,7 @@ def graphStatus : Graph Unit := build stateStatus #[`def_formal, `def_ready, `de
   hasNodeWith graphStatus `def_formal (fun n =>
     n.shape == "box" &&
     n.color == statementBorderFormalizedColor &&
-    n.fillcolor == definitionBackgroundColor) &&
+    n.fillcolor == proofBackgroundFormalizedAncColor) &&
   hasNodeWith graphStatus `def_ready (fun n =>
     n.shape == "box" &&
     n.color == statementBorderReadyColor) &&
@@ -122,7 +127,7 @@ def graphStatus : Graph Unit := build stateStatus #[`def_formal, `def_ready, `de
   hasNodeWith graphStatus `lean_only (fun n =>
     n.color == statementBorderFormalizedColor &&
     n.gradientangle? == some "90" &&
-    n.fillcolor == s!"{definitionBackgroundColor}:{leanOnlyOverlayColor}") &&
+    n.fillcolor == s!"{proofBackgroundFormalizedAncColor}:{leanOnlyOverlayColor}") &&
   hasNodeWith graphStatus `local_sorry (fun n =>
     n.color == statementBorderFormalizedColor &&
     n.gradientangle? == some "90" &&

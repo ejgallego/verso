@@ -7,7 +7,6 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
-import Chapters.Macros
 import VersoBlueprint.Commands
 import VersoBlueprint.Widget
 
@@ -39,6 +38,39 @@ set_option verso.blueprint.foldProofs true
 set_option verso.code.warnLineLength 0
 
 #doc (Manual) "The Noperthedron" =>
+
+```texPrelude
+% These are defined by KaTeX already
+% \newcommand{\Q}{\mathbb{Q}}
+% \newcommand{\R}{\mathbb{R}}
+% \newcommand{\N}{\mathbb{N}}
+\newcommand{\PPP}{\mathbf{P}}
+\newcommand{\OOO}{\mathbf{O}}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\QQ}{\mathcal{Q}}
+\newcommand{\id}{\mathrm{Id}}
+\newcommand{\spanp}{\mathrm{span}^+}
+
+\newcommand{\NOP}{\mathbf{NOP}}
+\newcommand{\RUP}{\mathbf{RUP}}
+\newcommand{\RID}{\mathbf{RID}}
+
+\newcommand{\Circ}{\mathrm{Disc}}
+\newcommand{\Sect}{\mathrm{Sect}}
+
+\newcommand{\dd}{\mathrm{d}}
+
+\newcommand{\thetab}{\overline{\theta}}
+\newcommand{\phib}{\overline{\varphi}}
+\newcommand{\alphab}{\overline{\alpha}}
+\newcommand{\Mib}{\overline{M_1}}
+\newcommand{\Miib}{\overline{M_2}}
+\newcommand{\Xib}{\overline{X_1}}
+\newcommand{\Xiib}{\overline{X_2}}
+
+\newcommand{\ssin}{\sin_{\mathbb{Q}}}
+\newcommand{\scos}{\cos_{\mathbb{Q}}}
+```
 
 ```internal
 open scoped Matrix
@@ -373,7 +405,7 @@ Where Steininger and Yurkevich define a 30-element set $`C_{30}`:
 `
 of rotations, we instead define
 
-:::definition "def:C15" (lean := "Nopert.C15") (leanok := true)
+:::definition "def:C15" (lean := "Nopert.C15")
 $$`
     \mathcal{C}_{15} \coloneqq \left\{ R_z\left(\frac{2\pi k}{15}\right) \colon k=0,\dots,14 \right\}.
 `
@@ -381,11 +413,11 @@ $$`
 
 without point-symmetricness "baked in" as it is in $`C_{30}`. It's more convenient for the formalization to apply $`C_{15}` to the points $`C_1, C_2, C_3`, and then point-symmetrize that set afterwards.
 
-:::definition "def:pointsymmetric" (lean := "PointSym") (leanok := true)
+:::definition "def:pointsymmetric" (lean := "PointSym")
 A set $`S \subseteq \R^3` is _point-symmetric_ if $`x \in S` implies $`-x \in S`.
 :::
 
-:::definition "def:pointsymmetrize" (lean := "pointsymmetrize") (leanok := true)
+:::definition "def:pointsymmetrize" (lean := "pointsymmetrize")
 
 The _pointsymmetrization_ of a collection of vertices $`v_1, \ldots, v_n \in \R^3`
 is $`v_1, \ldots, v_n, -v_1, \ldots, -v_n`.
@@ -393,7 +425,7 @@ is $`v_1, \ldots, v_n, -v_1, \ldots, -v_n`.
 
 We write $`\mathcal{C}_{15} \cdot P = \{c P \,\text{ for } \, c \in \mathcal{C}_{15}\}` for the orbit of $`P` under the action of $`\mathcal{C}_{15}`.
 
-:::definition "def:noperthedron" (lean := "halfNopertVerts, nopertVerts, nopert") (leanok := true)
+:::definition "def:noperthedron" (lean := "halfNopertVerts, nopertVerts, nopert")
 
 Using {uses "def:C15"}[].
 
@@ -404,7 +436,7 @@ $$`
 `
 :::
 
-:::lemma_ "lemma:half_nopert_verts_norm_le_one" (lean := "half_nopert_verts_norm_le_one") (leanok := true)
+:::lemma_ "lemma:half_nopert_verts_norm_le_one" (lean := "half_nopert_verts_norm_le_one")
 The norm of any vertex in the prepointsymmetrized version of the Noperthedron is no more than 1.
 :::
 
@@ -412,7 +444,7 @@ The norm of any vertex in the prepointsymmetrized version of the Noperthedron is
 Evident from definitions.
 :::
 
-:::lemma_ "lemma:pointsymmetrization_is_pointsym" (lean := "pointsymmetrize_is_pointsym") (leanok := true)
+:::lemma_ "lemma:pointsymmetrization_is_pointsym" (lean := "pointsymmetrize_is_pointsym")
 The pointsymmetrization of any set is point-symmetric.
 :::
 
@@ -420,7 +452,7 @@ The pointsymmetrization of any set is point-symmetric.
 Evident from definitions.
 :::
 
-:::lemma_ "lemma:nopert_point_symmetric" (lean := "nopert_point_symmetric") (leanok := true)
+:::lemma_ "lemma:nopert_point_symmetric" (lean := "nopert_point_symmetric")
 The {uses "def:noperthedron"}[noperthedron] is {uses "def:pointsymmetric"}[point-symmetric].
 :::
 
@@ -430,7 +462,7 @@ Follows from {uses "lemma:pointsymmetrization_is_pointsym"}[]
 
 # Refined Rupert's property for the Noperthedron
 
-:::lemma_ "lem:symmetries" (lean := "Tightening.lemma7_1,Tightening.lemma7_2,Tightening.lemma7_3") (leanok := true)
+:::lemma_ "lem:symmetries" (lean := "Tightening.lemma7_1,Tightening.lemma7_2,Tightening.lemma7_3")
 
 Let $`\PPP = \NOP`, then for all $`\theta, \varphi, \alpha \in \R`, the following three identities hold (as sets):
 
@@ -452,7 +484,7 @@ $$`
 See {citet polyhedron.without.rupert (kind := lemma) (index := 7)}[].
 :::
 
-:::corollary "cor:rupert_tightening" (lean := "Tightening.rupert_tightening") (leanok := true)
+:::corollary "cor:rupert_tightening" (lean := "Tightening.rupert_tightening")
 
 If the noperthedron is Rupert, then there exists a solution with
 

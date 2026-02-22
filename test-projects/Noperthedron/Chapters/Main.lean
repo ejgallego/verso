@@ -7,7 +7,6 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
-import Chapters.Macros
 import Bibliography
 
 open Verso.Genre Manual Informal
@@ -18,7 +17,40 @@ set_option verso.code.warnLineLength 0
 
 #doc (Manual) "Main Theorems" =>
 
-:::theorem "thm:no_nopert_tight_pose" (lean := "no_nopert_tight_pose") (leanok := true)
+```texPrelude
+% These are defined by KaTeX already
+% \newcommand{\Q}{\mathbb{Q}}
+% \newcommand{\R}{\mathbb{R}}
+% \newcommand{\N}{\mathbb{N}}
+\newcommand{\PPP}{\mathbf{P}}
+\newcommand{\OOO}{\mathbf{O}}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\QQ}{\mathcal{Q}}
+\newcommand{\id}{\mathrm{Id}}
+\newcommand{\spanp}{\mathrm{span}^+}
+
+\newcommand{\NOP}{\mathbf{NOP}}
+\newcommand{\RUP}{\mathbf{RUP}}
+\newcommand{\RID}{\mathbf{RID}}
+
+\newcommand{\Circ}{\mathrm{Disc}}
+\newcommand{\Sect}{\mathrm{Sect}}
+
+\newcommand{\dd}{\mathrm{d}}
+
+\newcommand{\thetab}{\overline{\theta}}
+\newcommand{\phib}{\overline{\varphi}}
+\newcommand{\alphab}{\overline{\alpha}}
+\newcommand{\Mib}{\overline{M_1}}
+\newcommand{\Miib}{\overline{M_2}}
+\newcommand{\Xib}{\overline{X_1}}
+\newcommand{\Xiib}{\overline{X_2}}
+
+\newcommand{\ssin}{\sin_{\mathbb{Q}}}
+\newcommand{\scos}{\cos_{\mathbb{Q}}}
+```
+
+:::theorem "thm:no_nopert_tight_pose" (lean := "no_nopert_tight_pose")
 Using {uses "def:noperthedron"}[].
 
 There does not in fact exist a noperthedron Rupert solution with
@@ -42,7 +74,7 @@ the 5-dimensional interval above. By {uses "thm:row_valid_imp_not_rupert"}[this 
 there is no Rupert solution in that interval.
 :::
 
-:::theorem "thm:no_nopert_pose" (lean := "no_nopert_pose") (leanok := true)
+:::theorem "thm:no_nopert_pose" (lean := "no_nopert_pose")
 There is no 5-parameter pose that makes the noperthedron have the Rupert property.
 :::
 
@@ -53,7 +85,7 @@ Theorem {uses "thm:no_nopert_tight_pose"}[] rules out tight poses,
 and {uses "cor:rupert_tightening"}[] reduces the general case to the tight case.
 :::
 
-:::theorem "thm:no_nopert_rot_pose" (lean := "no_nopert_rot_pose") (leanok := true)
+:::theorem "thm:no_nopert_rot_pose" (lean := "no_nopert_rot_pose")
 There is no purely rotational pose that makes the noperthedron have the Rupert property.
 :::
 
@@ -64,7 +96,7 @@ A purely rotational pose can be converted to an equivalent 5-parameter pose
 via {uses "thm:pose_of_matrix_pose"}[], which contradicts {uses "thm:no_nopert_pose"}[].
 :::
 
-:::theorem "thm:no_nopert_matrix_pose" (lean := "no_nopert_matrix_pose") (leanok := true)
+:::theorem "thm:no_nopert_matrix_pose" (lean := "no_nopert_matrix_pose")
 There is no pose that makes the noperthedron have the Rupert property.
 :::
 
@@ -76,7 +108,7 @@ By {uses "lemma:nopert_point_symmetric"}[], the noperthedron is point symmetric.
 This would force a purely rotational Rupert pose, contradicting {uses "thm:no_nopert_rot_pose"}[].
 :::
 
-:::theorem "thm:nopert_not_rupert_set" (lean := "nopert_not_rupert_set") (leanok := true)
+:::theorem "thm:nopert_not_rupert_set" (lean := "nopert_not_rupert_set")
 Using {uses "def:noperthedron"}[].
 
 The noperthedron is not a Rupert set.
@@ -87,7 +119,7 @@ Using {uses "thm:no_nopert_matrix_pose"}[].
 By {uses "thm:no_nopert_matrix_pose"}[this theorem], no pose makes the noperthedron Rupert.
 :::
 
-:::theorem "thm:nopert_not_rupert" (lean := "nopert_not_rupert") (leanok := true)
+:::theorem "thm:nopert_not_rupert" (lean := "nopert_not_rupert")
 The noperthedron is not a Rupert polyhedron.
 :::
 

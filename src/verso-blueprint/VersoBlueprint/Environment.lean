@@ -25,6 +25,7 @@ deriving Inhabited, Repr
 structure State where
   data : Data := Data.empty
   stack : List InProgress := []
+  texPrelude : Array String := #[]
 deriving Inhabited, Repr
 
 initialize informalExt : PersistentEnvExtension (Name × Node) (Name × Node) State ←
@@ -44,37 +45,6 @@ initialize informalExt : PersistentEnvExtension (Name × Node) (Name × Node) St
         let proof := node.proof.map fun p => { p with elabStx := #[] }
         (name, { node with statement, proof })
   }
-
-private structure TexPreludeState where
-  prelude : Array String := #[]
-  localPrelude : Array String := #[]
-deriving Inhabited
-
-private def pushUnique (chunks : Array String) (chunk : String) : Array String :=
-  if chunks.contains chunk then chunks else chunks.push chunk
-
-initialize texPreludeExt : PersistentEnvExtension String String TexPreludeState ←
-  registerPersistentEnvExtension {
-    mkInitial := pure {}
-    addImportedFn entries := do
-      let prelude :=
-        entries.foldl (init := #[]) fun acc entry =>
-          entry.foldl (init := acc) pushUnique
-      pure { prelude }
-    addEntryFn := fun state chunk =>
-      if state.prelude.contains chunk then
-        state
-      else
-        { prelude := state.prelude.push chunk, localPrelude := state.localPrelude.push chunk }
-    exportEntriesFn state := state.localPrelude
-  }
-
-private def joinChunks (chunks : Array String) : String :=
-  chunks.foldl (init := "") fun acc chunk =>
-    if acc.isEmpty then
-      chunk
-    else
-      acc ++ "\n" ++ chunk
 
 section EnvOps
 
@@ -177,7 +147,7 @@ def setStatementElab (stxs : Array Syntax) : m Unit := do
       modify fun state => { state with stack := cur :: rest }
 
 def registerCode (label : Label) (code : Syntax)
-    (definedDefs : Array DefinedDecl := #[]) (definedTheorems : Array DefinedDecl := #[]) : m Unit := do
+    (definedDefs : Array LiterateDef := #[]) (definedTheorems : Array LiterateThm := #[]) : m Unit := do
   modifyM fun state => do
     let data ← state.data.registerCode label code definedDefs definedTheorems
     return { state with data }
@@ -190,9 +160,16 @@ def addTexPrelude (texPrelude : String) : m Unit := do
   if texPrelude.isEmpty then
     pure ()
   else
-    modifyEnv (texPreludeExt.addEntry · texPrelude)
+    modify fun state => { state with texPrelude := state.texPrelude.push texPrelude }
+
+private def joinChunks (chunks : Array String) : String :=
+  chunks.foldl (init := "") fun acc chunk =>
+    if acc.isEmpty then
+      chunk
+    else
+      acc ++ "\n" ++ chunk
 
 def getTexPrelude : m String := do
-  return joinChunks (texPreludeExt.getState (← getEnv)).prelude
+  return joinChunks (informalExt.getState (← getEnv)).texPrelude
 
 end EnvOps

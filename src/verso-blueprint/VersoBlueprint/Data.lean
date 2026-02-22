@@ -28,7 +28,6 @@ inductive NodeKind where
   | lemma
   | theorem
   | corollary
-  | proof
 deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
 
 instance : ToString NodeKind where
@@ -36,7 +35,6 @@ instance : ToString NodeKind where
     | .definition => "Definition"
     | .lemma => "Lemma"
     | .theorem => "Theorem"
-    | .proof => "Proof"
     | .corollary => "Corollary"
 
 open Syntax in
@@ -45,26 +43,40 @@ instance : Quote NodeKind where
     | .definition => mkCApp ``NodeKind.definition #[]
     | .lemma => mkCApp ``NodeKind.lemma #[]
     | .theorem => mkCApp ``NodeKind.theorem #[]
-    | .proof => mkCApp ``NodeKind.proof #[]
     | .corollary => mkCApp ``NodeKind.corollary #[]
 
 /-- Information about a code block, including Lean-level analysis -/
-structure DefinedDecl where
+structure LiterateDef where
   name : Name
   commandStx : Syntax := .missing
   commandIndex : Nat := 0
   commandLines : Nat := 1
-  hasSorry : Bool := false
-  hasTypeSorry : Bool := false
-  hasProofSorry : Bool := false
   typeSorryRefs : Array Syntax := #[]
+deriving Repr, Inhabited
+
+structure LiterateThm extends LiterateDef where
   proofSorryRefs : Array Syntax := #[]
 deriving Repr, Inhabited
 
+def LiterateDef.hasTypeSorry (d : LiterateDef) : Bool :=
+  !d.typeSorryRefs.isEmpty
+
+def LiterateDef.hasSorry (d : LiterateDef) : Bool :=
+  d.hasTypeSorry
+
+def LiterateThm.hasTypeSorry (d : LiterateThm) : Bool :=
+  !d.typeSorryRefs.isEmpty
+
+def LiterateThm.hasProofSorry (d : LiterateThm) : Bool :=
+  !d.proofSorryRefs.isEmpty
+
+def LiterateThm.hasSorry (d : LiterateThm) : Bool :=
+  d.hasTypeSorry || d.hasProofSorry
+
 structure Code where
   stx : Syntax
-  definedDefs : Array DefinedDecl := #[]
-  definedTheorems : Array DefinedDecl := #[]
+  definedDefs : Array LiterateDef := #[]
+  definedTheorems : Array LiterateThm := #[]
 deriving Repr, Inhabited
 
 inductive ExternalOrigin where
@@ -72,6 +84,11 @@ inductive ExternalOrigin where
   | blueprintAttr
 deriving Repr, Inhabited, DecidableEq
 
+/--
+Reference to an external declaration mentioned by a blueprint node.
+{lit}`written` preserves the user spelling, while {lit}`canonical` is scope-erased for
+environment lookup and deduplication.
+-/
 structure ExternalRef where
   written : Name
   canonical : Name
@@ -112,7 +129,6 @@ section
 
 variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
--- XXX: needs: test
 /-- registers an informal definition, will error if already existing -/
 private def mergeExternalRefs (xs ys : Array ExternalRef) : Array ExternalRef :=
   ys.foldl (init := xs) fun acc y =>
@@ -163,6 +179,7 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
       return { node with code }
   let nextCount := data.size + 1
   match data.get? label, statement, proof with
+  -- First statement for a fresh label.
   | none, some statement, none =>
     let count := nextCount
     let node ← applyCodeHint {
@@ -171,9 +188,11 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
       kind := kind?.getD .lemma
     }
     return data.insert label node
+  -- Proof without a corresponding statement is weird, ignore?
   | none, none, some _ =>
-    -- logError m!"No statement for proof with label {label}"
+    logError m!"No statement for proof with label {label}"
     return data
+  -- Late statement fill for an existing placeholder node.
   | some node, some statement, none =>
     if node.statement.isNone then
       let count := if node.count == 0 then nextCount else node.count
@@ -187,6 +206,7 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
     else
       -- logError m!"Duplicated entry for {label}"
       return data
+  -- Register proof for an existing statement.
   | some node, none, some proof =>
     if node.proof.isSome then
       -- logError m!"{label} already has a proof"
@@ -200,11 +220,22 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
           proof := some proof
       }
       return data.insert label node
-  | _, _, _ => return data
+  | none, none, none =>
+    logError m!"Invalid registration state for {label}: missing both statement and proof for a new label"
+    return data
+  | none, some _, some _ =>
+    logError m!"Invalid registration state for {label}: cannot register statement and proof simultaneously for a new label"
+    return data
+  | some _, none, none =>
+    logError m!"Invalid registration state for {label}: update must provide either statement or proof"
+    return data
+  | some _, some _, some _ =>
+    logError m!"Invalid registration state for {label}: cannot register statement and proof simultaneously"
+    return data
 
 /-- Register Lean code and code metadata for an informal object label. -/
 def Data.registerCode (data : Data) (label : Label) (code : Syntax)
-    (definedDefs : Array DefinedDecl := #[]) (definedTheorems : Array DefinedDecl := #[]) : m Data := do
+    (definedDefs : Array LiterateDef := #[]) (definedTheorems : Array LiterateThm := #[]) : m Data := do
   let literate : CodeRef := .literate { stx := code, definedDefs, definedTheorems }
   match data.get? label with
   | none =>

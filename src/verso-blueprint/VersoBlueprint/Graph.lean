@@ -109,8 +109,7 @@ def nodeHasTypeSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool
   let localHas :=
     match node.code with
     | some (.literate code) =>
-      let decls := code.definedDefs ++ code.definedTheorems
-      decls.any (·.hasTypeSorry)
+      code.definedDefs.any (·.hasTypeSorry) || code.definedTheorems.any (·.hasTypeSorry)
     | _ => false
   localHas || (nodeExternalDecls node).any external.hasTypeSorry
 
@@ -118,8 +117,7 @@ def nodeHasProofSorries (external : ExternalCodeStatus) (node : Data.Node) : Boo
   let localHas :=
     match node.code with
     | some (.literate code) =>
-      let decls := code.definedDefs ++ code.definedTheorems
-      decls.any (·.hasProofSorry)
+      code.definedTheorems.any (·.hasProofSorry)
     | _ => false
   localHas || (nodeExternalDecls node).any external.hasProofSorry
 

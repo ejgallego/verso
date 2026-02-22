@@ -544,13 +544,24 @@ block_extension Block.bibliography (biblio : BibliographyData) where
       let .ok data := fromJson? (α := BibliographyData) data
         | HtmlT.logError "Malformed data in Block.bibliography.toHtml"
           pure .empty
+      let st ← HtmlT.state
       let entries := data.entries.toArray.qsort (fun a b => a.citation.sortKey < b.citation.sortKey)
       let rows ← entries.mapM fun entry => do
         let rendered ← entry.citation.bibHtml goI
         let itemId := s!"bp-bib-{Informal.Cite.citationAnchorId entry.label}"
+        let usageHrefs := Resolve.resolveDomainHrefs st Resolve.citationUsageDomainName entry.label
+        let usageRows : Array Output.Html :=
+          usageHrefs.foldl (init := #[]) fun out href =>
+            out.push {{<li><a href={{href}}>s!"Citation use {out.size + 1}"</a></li>}}
         pure {{
           <li id={{itemId}}>
             {{rendered}}
+            <details class="bp_summary_decls">
+              <summary>s!"Cited from ({usageHrefs.size})"</summary>
+              <ul class="bp_summary_decl_list">
+                {{if usageRows.isEmpty then {{<li class="bp_summary_empty">"No citation uses recorded."</li>}} else usageRows}}
+              </ul>
+            </details>
           </li>
         }}
       pure {{
@@ -589,10 +600,28 @@ def buildAll : CoreM Graph := do
   }
   return Informal.Graph.buildWithExternal state roots external (resolveRef? := some)
 
-def countSorries (decls : Array Data.DefinedDecl) : Nat :=
+def countDefSorries (decls : Array Data.LiterateDef) : Nat :=
   decls.foldl (init := 0) fun acc decl => acc + (if decl.hasSorry then 1 else 0)
 
-def collectSorries (label : Name) (kind : String) (decls : Array Data.DefinedDecl) (theoremNames : NameSet) :
+def countThmSorries (decls : Array Data.LiterateThm) : Nat :=
+  decls.foldl (init := 0) fun acc decl => acc + (if decl.hasSorry then 1 else 0)
+
+def collectDefSorries (label : Name) (kind : String) (decls : Array Data.LiterateDef) (theoremNames : NameSet) :
+    List SorryItem :=
+  decls.foldl (init := []) fun acc decl =>
+    if decl.hasSorry then
+      {
+        label
+        kind
+        decl := decl.name
+        isTheorem := theoremNames.contains decl.name
+        typeSorryRefs := decl.typeSorryRefs.size
+        proofSorryRefs := 0
+      } :: acc
+    else
+      acc
+
+def collectThmSorries (label : Name) (kind : String) (decls : Array Data.LiterateThm) (theoremNames : NameSet) :
     List SorryItem :=
   decls.foldl (init := []) fun acc decl =>
     if decl.hasSorry then
@@ -624,12 +653,13 @@ def buildSummary : CoreM Summary := do
       | some (.external decls) =>
         (decls.size, 0, (decls.map (·.canonical)).toList, ([] : List SorryItem))
       | some (.literate code) =>
-        let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.DefinedDecl) => acc.insert d.name
-        let leanObjects := (code.definedDefs ++ code.definedTheorems).map (fun d : Data.DefinedDecl => d.name) |>.toList
+        let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.LiterateThm) => acc.insert d.name
+        let leanObjects := (code.definedDefs.map (·.name) ++ code.definedTheorems.map (·.name)).toList
         let leanDecls := code.definedDefs.size + code.definedTheorems.size
-        let allDecls := code.definedDefs ++ code.definedTheorems
-        let sorries := countSorries allDecls
-        let sorryDetails := collectSorries label (toString node.kind) allDecls theoremNames
+        let sorries := countDefSorries code.definedDefs + countThmSorries code.definedTheorems
+        let sorryDetails :=
+          collectDefSorries label (toString node.kind) code.definedDefs theoremNames ++
+          collectThmSorries label (toString node.kind) code.definedTheorems theoremNames
         (leanDecls, sorries, leanObjects, sorryDetails)
     let pendingInformalProofEntries : List PendingProofItem :=
       if hasCode && ((kindNeedsInformalProof node.kind && !hasProof) || !hasStatement) then
@@ -662,7 +692,6 @@ def buildSummary : CoreM Summary := do
     | Data.NodeKind.lemma => { acc with lemmas := acc.lemmas + 1 }
     | Data.NodeKind.theorem => { acc with theorems := acc.theorems + 1 }
     | Data.NodeKind.corollary => { acc with corollaries := acc.corollaries + 1 }
-    | _ => acc
 
 open Verso.ArgParse
 
