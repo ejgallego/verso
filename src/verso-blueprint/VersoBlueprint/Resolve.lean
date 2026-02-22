@@ -14,6 +14,7 @@ open Lean
 def informalDomainName : Name := Name.mkSimple "Informal.Block.informal"
 def informalCodeDomainName : Name := Name.mkSimple "Informal.Block.informalCode"
 def bibliographyDomainName : Name := Name.mkSimple "Informal.Block.bpCitations"
+def citationUsageDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.usages"
 def exampleDomainName : Name := ``Verso.Genre.Manual.example
 
 def resolveDomainHref? (s : Verso.Genre.Manual.TraverseState) (domain : Name) (label : String) :
@@ -21,6 +22,15 @@ def resolveDomainHref? (s : Verso.Genre.Manual.TraverseState) (domain : Name) (l
   match s.resolveDomainObject domain label with
   | .ok dest => some dest.relativeLink
   | .error _ => none
+
+def resolveDomainHrefs (s : Verso.Genre.Manual.TraverseState) (domain : Name) (label : String) :
+    Array String :=
+  match s.getDomainObject? domain label with
+  | none => #[]
+  | some obj =>
+    let hrefs := obj.ids.toArray.filterMap fun id =>
+      (s.externalTags[id]?).map (·.relativeLink)
+    hrefs.qsort (fun a b => a < b)
 
 def resolveExampleDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : Name) : Option String :=
   match resolveDomainHref? s exampleDomainName decl.toString with

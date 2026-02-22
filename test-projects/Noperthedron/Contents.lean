@@ -7,7 +7,6 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
-import Chapters.Macros
 import VersoBlueprint.Commands
 
 import Bibliography
@@ -47,7 +46,6 @@ We follow for the most part the structure of {citet polyhedron.without.rupert}[]
 {include 0 Chapters.LocalTheorem}
 {include 0 Chapters.Rational}
 {include 0 Chapters.Computational}
-{include 0 Chapters.Main}
 
 {blueprint_graph}
 

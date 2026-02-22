@@ -10,7 +10,6 @@ import Lean.Elab.InfoTree
 import SubVerso.Highlighting
 
 import Verso
-import VersoBlueprint.Data
 
 import VersoManual.Basic
 import VersoManual.HighlightedCode
@@ -18,6 +17,9 @@ import VersoManual.InlineLean.Block
 import VersoManual.InlineLean.LongLines
 import VersoManual.InlineLean.Outputs
 import VersoManual.InlineLean.Scopes
+
+import VersoBlueprint.Data
+import VersoBlueprint.Profiling
 
 open Verso Doc Elab Genre.Manual
 open Lean Elab
@@ -34,17 +36,24 @@ structure LeanBlockConfig where
   «show» : Bool
   name : Option Lean.Name
 
-abbrev DefinedDecl := Data.DefinedDecl
+abbrev LiterateDef := Data.LiterateDef
+abbrev LiterateThm := Data.LiterateThm
 
 structure ElabCommandResult where
   block : Term
-  definedDefs : Array DefinedDecl := #[]
-  definedTheorems : Array DefinedDecl := #[]
+  definedDefs : Array LiterateDef := #[]
+  definedTheorems : Array LiterateThm := #[]
 
 private structure DeclSorryRefs where
   allRefs : Array Syntax := #[]
   typeRefs : Array Syntax := #[]
   proofRefs : Array Syntax := #[]
+
+private structure CmdAnalysis where
+  commandStx : Syntax := .missing
+  commandIndex : Nat := 0
+  commandRange? : Option Syntax.Range := none
+  refs : DeclSorryRefs := {}
 
 def LeanBlockConfig.outlineMeta (cfg : LeanBlockConfig) : String :=
   if cfg.show then " " else " (hidden)"
@@ -114,71 +123,76 @@ private def commandLineSpan (fileMap : FileMap) (stx : Syntax) : Nat :=
     let endLine := (fileMap.utf8PosToLspPos endPos).line
     endLine - startLine + 1
 
-private def getDefinedDecls (fileMap : FileMap) (before after : Environment) (sorryRefsByDecl : Lean.NameMap DeclSorryRefs)
-    (declCmdInfo : Lean.NameMap (Nat × Syntax)) :
-    Array DefinedDecl × Array DefinedDecl :=
-  Id.run <| do
-    let mut defs := #[]
-    let mut theorems := #[]
-    for (name, info) in after.constants do
-      if (before.find? name).isSome then
-        continue
-      if name.isInternalOrNum || name.hasMacroScopes then
-        continue
-      let hasTypeSorry := info.type.hasSorry
-      let hasProofSorry := info.value?.map (·.hasSorry) |>.getD false
-      let hasSorry := hasTypeSorry || hasProofSorry
-      let refs := (sorryRefsByDecl.find? name).getD {}
-      let (commandIndex, commandStx) := (declCmdInfo.find? name).getD (0, .missing)
-      let commandLines := commandLineSpan fileMap commandStx
-      let (typeSorryRefs, proofSorryRefs) :=
-        if hasSorry then
-          match info with
-          | .thmInfo _ => (refs.typeRefs, refs.proofRefs)
-          | _ => (if hasTypeSorry then refs.allRefs else #[], if hasProofSorry then refs.allRefs else #[])
-        else
-          (#[], #[])
-      match info with
-      | .thmInfo _ =>
-        theorems := theorems.push ({
-          name
-          commandStx
-          commandIndex
-          commandLines
-          hasSorry
-          hasTypeSorry
-          hasProofSorry
-          typeSorryRefs
-          proofSorryRefs
-        } : DefinedDecl)
-      | _ =>
-        defs := defs.push ({
-          name
-          commandStx
-          commandIndex
-          commandLines
-          hasSorry
-          hasTypeSorry
-          hasProofSorry
-          typeSorryRefs
-          proofSorryRefs
-        } : DefinedDecl)
-    let cmp (a b : DefinedDecl) :=
-      a.commandIndex < b.commandIndex ||
-      (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString)
-    (defs.qsort cmp, theorems.qsort cmp)
+private def commandOwnsPos (cmd : CmdAnalysis) (pos : String.Pos.Raw) : Bool :=
+  match cmd.commandRange? with
+  | none => false
+  | some range =>
+    if range.start < range.stop then
+      range.start <= pos && pos < range.stop
+    else
+      pos == range.start
 
-private def getNewPublicDecls (before after : Environment) : Array Name :=
-  Id.run <| do
-    let mut out := #[]
-    for (name, _) in after.constants do
-      if (before.find? name).isSome then
-        continue
-      if name.isInternalOrNum || name.hasMacroScopes then
-        continue
-      out := out.push name
-    out
+private def findDeclCommand? (fileMap : FileMap) (cmdAnalyses : Array CmdAnalysis) (declName : Name) :
+    DocElabM (Option CmdAnalysis) := do
+  let some declRanges ← findDeclarationRanges? declName | return none
+  let declPos := fileMap.ofPosition declRanges.selectionRange.pos
+  return cmdAnalyses.findRev? (fun cmd => commandOwnsPos cmd declPos)
 
+private def getDefinedDeclsImpl (fileMap : FileMap) (before after : Environment) (cmdAnalyses : Array CmdAnalysis) :
+    DocElabM (Array LiterateDef × Array LiterateThm) := do
+  let mut defs := #[]
+  let mut theorems := #[]
+  for (name, info) in after.constants do
+    if (before.find? name).isSome then
+      continue
+    if name.isInternalOrNum || name.hasMacroScopes then
+      continue
+    let hasTypeSorry := info.type.hasSorry
+    let hasProofSorry := info.value?.map (·.hasSorry) |>.getD false
+    let hasSorry := hasTypeSorry || hasProofSorry
+    let cmdInfo? ← findDeclCommand? fileMap cmdAnalyses name
+    let refs := cmdInfo?.map (·.refs) |>.getD {}
+    let commandStx := cmdInfo?.map (·.commandStx) |>.getD .missing
+    let commandIndex := cmdInfo?.map (·.commandIndex) |>.getD 0
+    let commandLines := commandLineSpan fileMap commandStx
+    let (typeSorryRefs, proofSorryRefs) :=
+      if hasSorry then
+        match info with
+        | .thmInfo _ => (refs.typeRefs, refs.proofRefs)
+        | _ => (if hasTypeSorry then refs.allRefs else #[], if hasProofSorry then refs.allRefs else #[])
+      else
+        (#[], #[])
+    match info with
+    | .thmInfo _ =>
+      theorems := theorems.push ({
+        name
+        commandStx
+        commandIndex
+        commandLines
+        typeSorryRefs
+        proofSorryRefs
+      } : LiterateThm)
+    | _ =>
+      defs := defs.push ({
+        name
+        commandStx
+        commandIndex
+        commandLines
+        typeSorryRefs
+      } : LiterateDef)
+  let cmpDef (a b : LiterateDef) :=
+    a.commandIndex < b.commandIndex ||
+    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString)
+  let cmpThm (a b : LiterateThm) :=
+    a.commandIndex < b.commandIndex ||
+    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString)
+  pure (defs.qsort cmpDef, theorems.qsort cmpThm)
+
+private def getDefinedDecls (fileMap : FileMap) (before after : Environment) (cmdAnalyses : Array CmdAnalysis) :=
+  Profile.withDocElab "lean" "getDefinedDecls" <|
+    getDefinedDeclsImpl fileMap before after cmdAnalyses
+
+-- Needs to improve
 private partial def collectSorryRefs (stx : Syntax) : Array Syntax :=
   let fromChildren := stx.getArgs.foldl (init := #[]) fun acc arg =>
     acc ++ collectSorryRefs arg
@@ -222,6 +236,25 @@ private def splitRefsByAssignPos (cmd : Syntax) (refs : Array Syntax) : Array Sy
         if p < pivot then (ty.push ref, pr) else (ty, pr.push ref)
       | none => (ty, pr.push ref)
 
+private def cmdAnalysis (cmd : Syntax) (cmdIndex : Nat) : CmdAnalysis :=
+  let cmdSorryRefs := getSorryRefs #[cmd]
+  let refs : DeclSorryRefs :=
+    if cmdSorryRefs.isEmpty then
+      {}
+    else
+      let (typeRefs, proofRefs) := splitRefsByAssignPos cmd cmdSorryRefs
+      {
+        allRefs := cmdSorryRefs
+        typeRefs
+        proofRefs
+      }
+  {
+    commandStx := cmd
+    commandIndex := cmdIndex
+    commandRange? := cmd.getRange?
+    refs
+  }
+
 def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabCommandResult :=
   withoutAsync <| do
     PointOfInterest.save (← getRef) ((config.name.map (·.toString)).getD (abbrevFirstLine 20 str.getString))
@@ -249,8 +282,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
     }
     let mut pstate := {pos := 0, recovering := false}
     let mut cmds := #[]
-    let mut sorryRefsByDecl : Lean.NameMap DeclSorryRefs := {}
-    let mut declCmdInfo : Lean.NameMap (Nat × Syntax) := {}
+    let mut cmdAnalyses : Array CmdAnalysis := #[]
     let mut cmdIndex := 0
 
     repeat
@@ -266,23 +298,12 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
       pstate := ps'
       cmdState := { cmdState with messages := messages }
 
-      let cmdEnvBefore := cmdState.env
-      cmdState ← runCommand (Command.elabCommand cmd) cmd cctx cmdState
-      let newDecls := getNewPublicDecls cmdEnvBefore cmdState.env
-      for name in newDecls do
-        declCmdInfo := declCmdInfo.insert name (cmdIndex, cmd)
+      cmdState ← Profile.withDocElab "lean" "runCommand" <| runCommand (Command.elabCommand cmd) cmd cctx cmdState
       cmdIndex := cmdIndex + 1
-      let cmdSorryRefs := getSorryRefs #[cmd]
-      if !cmdSorryRefs.isEmpty then
-        let (typeRefs, proofRefs) := splitRefsByAssignPos cmd cmdSorryRefs
-        for name in newDecls do
-          let prior := (sorryRefsByDecl.find? name).getD {}
-          let refs : DeclSorryRefs := {
-            allRefs := prior.allRefs ++ cmdSorryRefs
-            typeRefs := prior.typeRefs ++ typeRefs
-            proofRefs := prior.proofRefs ++ proofRefs
-          }
-          sorryRefsByDecl := sorryRefsByDecl.insert name refs
+
+      let analysis := cmdAnalysis cmd cmdIndex
+      cmdAnalyses := cmdAnalyses.push analysis
+
       if Parser.isTerminalCommand cmd then break
 
     setEnv cmdState.env
@@ -310,7 +331,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
       warnLongLines col? str
 
     let block ← toHighlightedLeanBlock config.show hls str
-    let (definedDefs, definedTheorems) := getDefinedDecls cctx.fileMap envBefore cmdState.env sorryRefsByDecl declCmdInfo
+    let (definedDefs, definedTheorems) ← getDefinedDecls cctx.fileMap envBefore cmdState.env cmdAnalyses
     pure { block, definedDefs, definedTheorems }
 where
   runCommand (act : Command.CommandElabM Unit) (stx : Syntax)

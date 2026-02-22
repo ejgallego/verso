@@ -7,7 +7,6 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
-import Chapters.Macros
 
 open Verso.Genre Manual Informal
 
@@ -18,11 +17,44 @@ set_option pp.rawOnError true
 
 #doc (Manual) "Preliminaries" =>
 
+```texPrelude
+% These are defined by KaTeX already
+% \newcommand{\Q}{\mathbb{Q}}
+% \newcommand{\R}{\mathbb{R}}
+% \newcommand{\N}{\mathbb{N}}
+\newcommand{\PPP}{\mathbf{P}}
+\newcommand{\OOO}{\mathbf{O}}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\QQ}{\mathcal{Q}}
+\newcommand{\id}{\mathrm{Id}}
+\newcommand{\spanp}{\mathrm{span}^+}
+
+\newcommand{\NOP}{\mathbf{NOP}}
+\newcommand{\RUP}{\mathbf{RUP}}
+\newcommand{\RID}{\mathbf{RID}}
+
+\newcommand{\Circ}{\mathrm{Disc}}
+\newcommand{\Sect}{\mathrm{Sect}}
+
+\newcommand{\dd}{\mathrm{d}}
+
+\newcommand{\thetab}{\overline{\theta}}
+\newcommand{\phib}{\overline{\varphi}}
+\newcommand{\alphab}{\overline{\alpha}}
+\newcommand{\Mib}{\overline{M_1}}
+\newcommand{\Miib}{\overline{M_2}}
+\newcommand{\Xib}{\overline{X_1}}
+\newcommand{\Xiib}{\overline{X_2}}
+
+\newcommand{\ssin}{\sin_{\mathbb{Q}}}
+\newcommand{\scos}{\cos_{\mathbb{Q}}}
+```
+
 TODO: This whole chapter needs organization, it's just a grab bag of miscellaneous results for now.
 
 # Rupert Sets
 
-:::theorem "thm:rupert_iff_rupert_set" (lean := "rupert_iff_rupert_set") (leanok := true)
+:::theorem "thm:rupert_iff_rupert_set" (lean := "rupert_iff_rupert_set")
 The following are equivalent:
 - The convex polyhedron with vertex set $`v` is Rupert.
 - The convex closure of $`v` is a Rupert set.
@@ -36,7 +68,7 @@ TODO: import this from the other repo
 
 TODO
 
-:::theorem "thm:pose_of_matrix_pose" (lean := "pose_of_matrix_pose,converted_pose_rupert_iff") (leanok := true)
+:::theorem "thm:pose_of_matrix_pose" (lean := "pose_of_matrix_pose,converted_pose_rupert_iff")
 Given a pose with zero offset, there exists a 5-parameter pose that is equivalent to it.
 :::
 
@@ -46,7 +78,7 @@ By putting the pose into a canonical form as a Z rotation followed by a Y follow
 
 # Pointsymmetry and Rupertness
 
-:::theorem "thm:rupert_implies_rot_rupert" (lean := "rupert_implies_rot_rupert") (leanok := true)
+:::theorem "thm:rupert_implies_rot_rupert" (lean := "rupert_implies_rot_rupert")
 If a set is point symmetric and convex, then it being Rupert implies
 it being purely rotationally Rupert.
 :::
@@ -55,7 +87,7 @@ it being purely rotationally Rupert.
 TODO: informalize proof
 :::
 
-:::theorem "thm:polyhedron_radius_iff" (lean := "polyhedron_radius_iff") (leanok := true)
+:::theorem "thm:polyhedron_radius_iff" (lean := "polyhedron_radius_iff")
 Suppose $`S` is a finite set of points in $`\mathbb{R}^n`.
 The radius of the polyhedron $`S` is $`r` iff:
 - there is a vector $`v \in S` with $`\|v\| = r`
@@ -66,7 +98,7 @@ The radius of the polyhedron $`S` is $`r` iff:
 Immediate from definition.
 :::
 
-:::theorem "thm:polyhedron_radius_def" (lean := "polyhedron_radius_iff") (leanok := true)
+:::theorem "thm:polyhedron_radius_def" (lean := "polyhedron_radius_iff")
 Alias of {uses "thm:polyhedron_radius_iff"}[] used in the original TeX source.
 :::
 
@@ -74,7 +106,7 @@ Alias of {uses "thm:polyhedron_radius_iff"}[] used in the original TeX source.
 Immediate from {uses "thm:polyhedron_radius_iff"}[].
 :::
 
-:::theorem "thm:pointsymmetrize_pres_radius" (lean := "pointsymmetrize_pres_radius") (leanok := true)
+:::theorem "thm:pointsymmetrize_pres_radius" (lean := "pointsymmetrize_pres_radius")
 Pointsymmetrization preserves radius.
 :::
 

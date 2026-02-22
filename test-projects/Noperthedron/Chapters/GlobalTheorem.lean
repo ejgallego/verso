@@ -7,7 +7,6 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
-import Chapters.Macros
 import Bibliography
 
 open Verso.Genre
@@ -20,7 +19,41 @@ set_option verso.code.warnLineLength 0
 
 #doc (Manual) "The Global Theorem" =>
 
-:::lemma_ "lem:hullscalarprod" (lean := "GlobalTheorem.hull_scalar_prod") (leanok := true)
+```texPrelude
+% These are defined by KaTeX already
+% \newcommand{\Q}{\mathbb{Q}}
+% \newcommand{\R}{\mathbb{R}}
+% \newcommand{\N}{\mathbb{N}}
+\newcommand{\PPP}{\mathbf{P}}
+\newcommand{\OOO}{\mathbf{O}}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\QQ}{\mathcal{Q}}
+\newcommand{\id}{\mathrm{Id}}
+\newcommand{\spanp}{\mathrm{span}^+}
+
+\newcommand{\NOP}{\mathbf{NOP}}
+\newcommand{\RUP}{\mathbf{RUP}}
+\newcommand{\RID}{\mathbf{RID}}
+
+\newcommand{\Circ}{\mathrm{Disc}}
+\newcommand{\Sect}{\mathrm{Sect}}
+
+\newcommand{\dd}{\mathrm{d}}
+
+\newcommand{\thetab}{\overline{\theta}}
+\newcommand{\phib}{\overline{\varphi}}
+\newcommand{\alphab}{\overline{\alpha}}
+\newcommand{\Mib}{\overline{M_1}}
+\newcommand{\Miib}{\overline{M_2}}
+\newcommand{\Xib}{\overline{X_1}}
+\newcommand{\Xiib}{\overline{X_2}}
+
+\newcommand{\ssin}{\sin_{\mathbb{Q}}}
+\newcommand{\scos}{\cos_{\mathbb{Q}}}
+\newcommand{\hull}[1]{\mathsf{Co}(#1)}
+```
+
+:::lemma_ "lem:hullscalarprod" (lean := "GlobalTheorem.hull_scalar_prod")
 Suppose $`V = V_1, \ldots, V_m \subseteq \mathbb{R}^n` is a finite sequence of points,
 and let $`\hull V` be its convex hull.
 If $`S \in \hull V` and $`w \in \mathbb{R}^n`, then
@@ -34,7 +67,7 @@ $$`
 This is a mild generalization of {citet polyhedron.without.rupert}[], Lemma 18.
 :::
 
-:::lemma_ "lem:leq1" (lean := "GlobalTheorem.rotation_partials_bounded") (leanok := true)
+:::lemma_ "lem:leq1" (lean := "GlobalTheorem.rotation_partials_bounded")
 Let $`S \in \mathbb{R}^3` and $`w \in \mathbb{R}^2` be unit vectors, and set
 $`f(x_1,x_2,x_3) = \langle R(x_3) M(x_1,x_2)S,w \rangle`.
 Then for all $`x_1,x_2,x_3 \in \mathbb{R}` and any $`i,j \in \{1,2,3\}` it holds that
@@ -48,7 +81,7 @@ $$`
 See {citet polyhedron.without.rupert}[], Lemma 19.
 :::
 
-:::lemma_ "lem:n2" (lean := "GlobalTheorem.bounded_partials_control_difference") (leanok := true)
+:::lemma_ "lem:n2" (lean := "GlobalTheorem.bounded_partials_control_difference")
 Let $`f:\mathbb{R}^n\to \mathbb{R}` be a $`C^2`-function and
 $`x_1,\dots,x_n,y_1,\dots,y_n \in \mathbb{R}` such that
 $`|x_1-y_1|,\dots,|x_n-y_n|\leq \varepsilon`.
@@ -66,7 +99,7 @@ $$`
 See {citet polyhedron.without.rupert}[], Lemma 20.
 :::
 
-:::lemma_ "lem:rotation_derivatives" (lean := "GlobalTheorem.rotation_partials_exist,GlobalTheorem.rotation_partials_exist_outer,GlobalTheorem.partials_helper0,GlobalTheorem.partials_helper1,GlobalTheorem.partials_helper2,GlobalTheorem.partials_helper3,GlobalTheorem.partials_helper4") (leanok := true)
+:::lemma_ "lem:rotation_derivatives" (lean := "GlobalTheorem.rotation_partials_exist,GlobalTheorem.rotation_partials_exist_outer,GlobalTheorem.partials_helper0,GlobalTheorem.partials_helper1,GlobalTheorem.partials_helper2,GlobalTheorem.partials_helper3,GlobalTheorem.partials_helper4")
 The partial derivatives of all relevant rotations, projections, and inner products
 used in the Global Theorem are as expected. Specifically:
 
@@ -86,7 +119,7 @@ $`g(\theta,\phi) =  \langle M(\theta,\phi) P / \|P\|, w\rangle`.
 By basic properties of derivatives.
 :::
 
-:::theorem "thm:global" (lean := "GlobalTheorem.global_theorem") (leanok := true)
+:::theorem "thm:global" (lean := "GlobalTheorem.global_theorem")
 Let $`\mathbf{P}` be a pointsymmetric convex polyhedron with radius $`\rho = 1`,
 let $`S \in \mathbf{P}`, and let
 $`\bar\theta_1,\bar\phi_1,\bar\theta_2,\bar\phi_2,\bar\alpha \in \mathbb{R}`.

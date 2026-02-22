@@ -7,7 +7,6 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
-import Chapters.Macros
 import Bibliography
 
 open Verso.Genre Manual Informal
@@ -18,7 +17,40 @@ set_option verso.code.warnLineLength 0
 
 #doc (Manual) "Computational Step" =>
 
-:::theorem "thm:exists_solution_table" (lean := "exists_solution_table") (leanok := true)
+```texPrelude
+% These are defined by KaTeX already
+% \newcommand{\Q}{\mathbb{Q}}
+% \newcommand{\R}{\mathbb{R}}
+% \newcommand{\N}{\mathbb{N}}
+\newcommand{\PPP}{\mathbf{P}}
+\newcommand{\OOO}{\mathbf{O}}
+\newcommand{\PP}{\mathcal{P}}
+\newcommand{\QQ}{\mathcal{Q}}
+\newcommand{\id}{\mathrm{Id}}
+\newcommand{\spanp}{\mathrm{span}^+}
+
+\newcommand{\NOP}{\mathbf{NOP}}
+\newcommand{\RUP}{\mathbf{RUP}}
+\newcommand{\RID}{\mathbf{RID}}
+
+\newcommand{\Circ}{\mathrm{Disc}}
+\newcommand{\Sect}{\mathrm{Sect}}
+
+\newcommand{\dd}{\mathrm{d}}
+
+\newcommand{\thetab}{\overline{\theta}}
+\newcommand{\phib}{\overline{\varphi}}
+\newcommand{\alphab}{\overline{\alpha}}
+\newcommand{\Mib}{\overline{M_1}}
+\newcommand{\Miib}{\overline{M_2}}
+\newcommand{\Xib}{\overline{X_1}}
+\newcommand{\Xiib}{\overline{X_2}}
+
+\newcommand{\ssin}{\sin_{\mathbb{Q}}}
+\newcommand{\scos}{\cos_{\mathbb{Q}}}
+```
+
+:::theorem "thm:exists_solution_table" (lean := "exists_solution_table")
 There exists a valid solution table whose zeroth row covers
 
 $$`
@@ -35,7 +67,7 @@ $$`
 By exhibiting the table and running the validity checking algorithm.
 :::
 
-:::theorem "thm:solution_global" (lean := "Solution.valid_global_imp_no_rupert") (leanok := true)
+:::theorem "thm:solution_global" (lean := "Solution.valid_global_imp_no_rupert")
 If a global node in the solution tree is valid, then there is no Rupert solution for its interval.
 :::
 
@@ -43,7 +75,7 @@ If a global node in the solution tree is valid, then there is no Rupert solution
 Using {uses "thm:global_rational"}[].
 :::
 
-:::theorem "thm:solution_local" (lean := "Solution.valid_local_imp_no_rupert") (leanok := true)
+:::theorem "thm:solution_local" (lean := "Solution.valid_local_imp_no_rupert")
 If a local node in the solution tree is valid, then there is no Rupert solution for its interval.
 :::
 
@@ -51,7 +83,7 @@ If a local node in the solution tree is valid, then there is no Rupert solution 
 Using {uses "thm:local_rational"}[], {uses "lem:radius_noperthedron_one"}[], and {uses "lem:congruent"}[].
 :::
 
-:::theorem "thm:row_valid_imp_not_rupert_ix" (lean := "Solution.Row.valid_imp_not_rupert_ix,Solution.valid_split_imp_no_rupert,Solution.valid_binary_split_imp_no_rupert,Solution.valid_full_split_imp_no_rupert,Solution.valid_param_split_imp_no_rupert") (leanok := true)
+:::theorem "thm:row_valid_imp_not_rupert_ix" (lean := "Solution.Row.valid_imp_not_rupert_ix,Solution.valid_split_imp_no_rupert,Solution.valid_binary_split_imp_no_rupert,Solution.valid_full_split_imp_no_rupert,Solution.valid_param_split_imp_no_rupert")
 Using {uses "def:noperthedron"}[].
 
 If we have a valid solution table, and in particular its $`i`th row is valid,
@@ -67,7 +99,7 @@ Appeal inductively to this same theorem if the row splits into other nodes in
 the tree, or appeal to {uses "thm:solution_global"}[Theorem] or {uses "thm:solution_local"}[Theorem] at the leaves.
 :::
 
-:::corollary "thm:row_valid_imp_not_rupert" (lean := "Solution.Row.valid_imp_not_rupert") (leanok := true)
+:::corollary "thm:row_valid_imp_not_rupert" (lean := "Solution.Row.valid_imp_not_rupert")
 Using {uses "def:noperthedron"}[].
 
 If we have a valid solution table, then there is no Rupert solution of the interval of its zeroth row.

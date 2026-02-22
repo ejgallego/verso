@@ -62,6 +62,20 @@ def blueprintWidget : Component GraphParams where
         }, [dot]);
 
         const prelude = typeof texPrelude === 'string' ? texPrelude.trim() : '';
+        const debug = (() => {
+          if (window.__versoTexPreludeDebug) return true;
+          try {
+            return window.localStorage && window.localStorage.getItem('verso.texPrelude.debug') === '1';
+          } catch (_err) {
+            return false;
+          }
+        })();
+        const log = (...args) => {
+          if (debug && window.console && typeof window.console.log === 'function') {
+            window.console.log('[bp widget texPrelude]', ...args);
+          }
+        };
+        log('widget mounted', { preludeLen: prelude.length });
 
         const rootStyle = { display: 'grid', gap: '0.6rem', fontSize: '0.9rem', lineHeight: 1.45 };
         const statementStyle = {
@@ -138,10 +152,21 @@ def blueprintWidget : Component GraphParams where
               const tex = extractText(node.content);
               const displayMode = classes.includes('display');
               let rendered = tex;
-              const renderInput = prelude.length > 0 ? `${prelude}\n${tex}` : tex;
+              const renderToStringWrapped =
+                !!(katex && typeof katex.renderToString === 'function' && katex.renderToString.__versoTexPreludeWrapped);
+              const renderInput = (prelude.length > 0 && !renderToStringWrapped) ? `${prelude}\n${tex}` : tex;
+              log('math render input', {
+                texLen: tex.length,
+                renderInputLen: renderInput.length,
+                displayMode,
+                renderToStringWrapped,
+                prependedHere: prelude.length > 0 && !renderToStringWrapped
+              });
               try {
                 rendered = katex.renderToString(renderInput, { throwOnError: false, displayMode });
-              } catch (_err) {}
+              } catch (err) {
+                log('renderToString error', err);
+              }
               return React.createElement(displayMode ? 'div' : 'span', {
                 key,
                 dangerouslySetInnerHTML: { __html: rendered }

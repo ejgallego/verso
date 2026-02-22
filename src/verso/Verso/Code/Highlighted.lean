@@ -1407,7 +1407,12 @@ window.onload = () => {
         /* ignoreAttributes: true, */
         followCursor: 'initial',
         onShow(inst) {
-          if (inst.reference.className == 'tactic') {
+          const isTactic = !!(inst.reference.classList && inst.reference.classList.contains('tactic'));
+          if (isTactic) {
+            const state = inst.reference.querySelector(\".tactic-state\");
+            if (!state) {
+              return false;
+            }
 
             const toggle = inst.reference.querySelector(\"input.tactic-toggle\");
             if (toggle && toggle.checked) {
@@ -1425,8 +1430,13 @@ window.onload = () => {
         },
         content (tgt) {
           const content = document.createElement(\"span\");
-          if (tgt.className == 'tactic') {
-            const state = tgt.querySelector(\".tactic-state\").cloneNode(true);
+          const isTactic = !!(tgt.classList && tgt.classList.contains('tactic'));
+          if (isTactic) {
+            const stateSrc = tgt.querySelector(\".tactic-state\");
+            if (!stateSrc) {
+              return content;
+            }
+            const state = stateSrc.cloneNode(true);
             state.style.display = \"block\";
             content.appendChild(state);
             content.style.display = \"block\";
@@ -1465,7 +1475,8 @@ window.onload = () => {
             } else if (hoverInfo) { // The inline info, still used for compiler messages
               content.appendChild(hoverInfo.cloneNode(true));
             }
-            const extraLinks = tgt.parentElement.dataset['versoLinks'];
+            const parent = tgt.parentElement;
+            const extraLinks = parent ? parent.dataset['versoLinks'] : null;
             if (extraLinks) {
               try {
                 const extras = JSON.parse(extraLinks);

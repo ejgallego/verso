@@ -4,6 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: Emilio J. Gallego Arias, David Thrane Christiansen
 -/
 
+-- XXX VersoManual is not module yet
+-- module
+
 -- Blueprint library extending the Verso `Manual` genre.
 
 import Lean.Elab.InfoTree.Types
@@ -18,9 +21,9 @@ import VersoBlueprint.Commands
 import VersoBlueprint.Lean
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
+import VersoBlueprint.TexPrelude
 import VersoBlueprint.Widget
--- import DevWidgets.DHover
--- import DevWidgets.InfoViewExplorer
+import VersoBlueprint.Profiling
 
 set_option doc.verso true
 
@@ -31,27 +34,6 @@ open Lean.Doc.Syntax
 open Lean Elab
 
 namespace Informal
-
-namespace Internal
-
-def ppBlock (b : TSyntax `term) : Format := b.raw.formatStx
-
-instance : ToString PartFrame where
-  toString p :=
-    let ⟨titleSyntax, expandedTitle, metadata, blocks, priorParts⟩ := p
-    s!"[title: {titleSyntax.formatStx}
-        - has_expended_title: {expandedTitle.isSome}
-        - has_metadata: {metadata.isSome}
-        - blocks: {blocks.size} where {Array.map ppBlock blocks}
-        - prior: {priorParts.size}
-    ]"
-
-instance : ToString PartContext where
-  toString p :=
-    let ⟨frame, parents⟩ := p
-    s!"{frame} with {parents.size} parents: {parents}"
-
-end Internal
 
 /- "Informal" Verso objects:
 
@@ -66,10 +48,11 @@ Elaboration, traversal, and rendering are standard, using {ref VersoManual} help
 
 /-- Domain for informal-like objects; each informal object is
   characterized by its canonical name declared by the user. -/
-def informal : Domain := {}
+def _informal : Domain := {}
 
 /-- Name used in {name}`TraverseState.domains` for informal objects. -/
 def informalDomain : Name := Name.mkSimple "Informal.Block.informal"
+
 /-- Name used in {name}`TraverseState.domains` for informal Lean code blocks. -/
 def informalCodeDomain : Name := Name.mkSimple "Informal.Block.informalCode"
 
@@ -84,11 +67,6 @@ structure Config where
 
 section
 variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadError m] [MonadFileMap m]
-
--- def _root_.Verso.ArgParse.ValDesc.array (elem : ValDesc m e) : ValDesc m (Array e) where
---   description := .text "array parser, using list syntax"
---   signature := { ident := false, string := false, num := false }
---   get := sorry
 
 private def parseDottedName (s : String) : Option Name :=
   let parts := s.splitOn "." |>.map (fun p => p.trimAscii.toString)
@@ -154,8 +132,8 @@ structure BlockData where
   kind : Data.NodeKind
   label : Data.Label
   count : Nat
+  isProof : Bool := false
   codeStatus : BlockCodeStatus := .none
-  texPrelude : String := ""
 deriving FromJson, ToJson, Quote
 
 structure CodeDeclData where
@@ -167,7 +145,17 @@ structure CodeDeclData where
   hasProofSorry : Bool := false
 deriving FromJson, ToJson, Quote
 
-def CodeDeclData.ofDefinedDecl (d : Data.DefinedDecl) : CodeDeclData :=
+def CodeDeclData.ofLiterateDef (d : Data.LiterateDef) : CodeDeclData :=
+  {
+    name := d.name
+    commandIndex := d.commandIndex
+    weight := max d.commandLines 1
+    hasSorry := d.hasSorry
+    hasTypeSorry := d.hasTypeSorry
+    hasProofSorry := false
+  }
+
+def CodeDeclData.ofLiterateThm (d : Data.LiterateThm) : CodeDeclData :=
   {
     name := d.name
     commandIndex := d.commandIndex
@@ -183,74 +171,6 @@ structure CodeBlockData where
   definedTheorems : Array CodeDeclData := #[]
   foldProofs : Bool := true
 deriving FromJson, ToJson, Quote
-
-structure TexPreludeData where
-  prelude : String
-deriving FromJson, ToJson, Quote
-
-def texPreludeInjectorJs : String := r##"
-(() => {
-  const script = document.currentScript;
-  const carrier = script && script.previousElementSibling;
-  if (!carrier || !carrier.classList || !carrier.classList.contains('verso-tex-prelude')) return;
-
-  const prelude = (carrier.textContent || '').trim();
-  if (!window.__versoTexPreludeBlocks) window.__versoTexPreludeBlocks = [];
-  if (prelude.length > 0 && !window.__versoTexPreludeBlocks.includes(prelude)) {
-    window.__versoTexPreludeBlocks.push(prelude);
-  }
-
-  if (window.__versoTexPreludePatched) return;
-
-  const injectPrelude = (tex) => {
-    const blocks = window.__versoTexPreludeBlocks || [];
-    const fullPrelude = blocks.join('\n').trim();
-    const base = tex == null ? '' : String(tex);
-    return fullPrelude.length > 0 ? `${fullPrelude}\n${base}` : base;
-  };
-
-  const patchKaTeX = () => {
-    if (!window.katex) return false;
-
-    if (typeof window.katex.render === 'function' && !window.__versoTexPreludeRenderPatched) {
-      const originalRender = window.katex.render.bind(window.katex);
-      window.katex.render = (tex, ...args) => originalRender(injectPrelude(tex), ...args);
-      window.__versoTexPreludeRenderPatched = true;
-    }
-
-    if (typeof window.katex.renderToString === 'function' && !window.__versoTexPreludeRenderToStringPatched) {
-      const originalRenderToString = window.katex.renderToString.bind(window.katex);
-      window.katex.renderToString = (tex, ...args) => originalRenderToString(injectPrelude(tex), ...args);
-      window.__versoTexPreludeRenderToStringPatched = true;
-    }
-
-    window.__versoTexPreludePatched =
-      !!window.__versoTexPreludeRenderPatched || !!window.__versoTexPreludeRenderToStringPatched;
-    return window.__versoTexPreludePatched;
-  };
-
-  if (patchKaTeX()) return;
-
-  const tryPatch = () => {
-    if (patchKaTeX() && window.__versoTexPreludePatchTimer) {
-      clearInterval(window.__versoTexPreludePatchTimer);
-      window.__versoTexPreludePatchTimer = null;
-    }
-  };
-
-  if (!window.__versoTexPreludePatchTimer) {
-    window.__versoTexPreludePatchTimer = setInterval(tryPatch, 50);
-    setTimeout(() => {
-      if (window.__versoTexPreludePatchTimer) {
-        clearInterval(window.__versoTexPreludePatchTimer);
-        window.__versoTexPreludePatchTimer = null;
-      }
-    }, 5000);
-  }
-
-  document.addEventListener('DOMContentLoaded', tryPatch, { once: true });
-})();
-"##
 
 register_option verso.blueprint.foldProofs : Bool := {
   defValue := true
@@ -714,27 +634,28 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
           </div>
         </div>
       }}
-  let kindText := s!"{data.kind}"
+  let kindText := if data.isProof then "Proof" else s!"{data.kind}"
   let labelTextNum := s!"{data.count}"
   let labelText := s!"{data.label}"
-  let showLabel := data.kind != .proof
+  let showLabel := !data.isProof
   let (kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
-    match data.kind with
-    | .definition =>
-      ("definition", "definition_thmwrapper theorem-style-definition bp_kind_definition",
-        "definition_thmheading", "definition_thmcaption", "definition_thmlabel", "definition_thmcontent")
-    | .theorem =>
-      ("theorem", "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
-        "theorem_thmheading", "theorem_thmcaption", "theorem_thmlabel", "theorem_thmcontent")
-    | .lemma =>
-      ("lemma", "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
-        "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
-    | .corollary =>
-      ("corollary", "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
-        "corollary_thmheading", "corollary_thmcaption", "corollary_thmlabel", "corollary_thmcontent")
-    | .proof =>
+    if data.isProof then
       ("proof", "proof_wrapper bp_kind_proof",
         "proof_heading", "proof_caption", "proof_label", "proof_content")
+    else
+      match data.kind with
+      | .definition =>
+        ("definition", "definition_thmwrapper theorem-style-definition bp_kind_definition",
+          "definition_thmheading", "definition_thmcaption", "definition_thmlabel", "definition_thmcontent")
+      | .theorem =>
+        ("theorem", "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
+          "theorem_thmheading", "theorem_thmcaption", "theorem_thmlabel", "theorem_thmcontent")
+      | .lemma =>
+        ("lemma", "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
+          "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
+      | .corollary =>
+        ("corollary", "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
+          "corollary_thmheading", "corollary_thmcaption", "corollary_thmlabel", "corollary_thmcontent")
   let wrapperClass := s!"bp_wrapper {kindCss}_thmwrapper {wrapperCss}"
   let headingClass := s!"bp_heading {headingCss}"
   let captionClass := s!"bp_caption {captionCss}"
@@ -757,7 +678,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
       .empty
     else
       let (hasSorriesHere, whereTxt) :=
-        if data.kind == .proof then
+        if data.isProof then
           (cdata.hasProofSorries, "proof")
         else
           (cdata.hasStatementSorries, "statement")
@@ -865,16 +786,7 @@ block_extension Block.informal (data : BlockData) where
           hasStatementSorries
           hasProofSorries
         }
-        let prelude := data.texPrelude.trimAscii.toString
-        let preludeHtml : Output.Html :=
-          if prelude.isEmpty then
-            .empty
-          else
-            {{
-              <script type="text/plain" class="verso-tex-prelude">{{.text false prelude}}</script>
-              <script>{{.text false texPreludeInjectorJs}}</script>
-            }}
-        return preludeHtml ++ (toHtml data cdata dentry attrs (← blocks.mapM goB))
+        return toHtml data cdata dentry attrs (← blocks.mapM goB)
 
 block_extension Block.informalCode (data : CodeBlockData) where
   data := toJson data
@@ -940,39 +852,15 @@ block_extension Block.informalCode (data : CodeBlockData) where
         </details>
       }}
 
-block_extension Block.texPrelude (data : TexPreludeData) where
-  data := toJson data
-  traverse _id _data _contents := do
-    pure none
-  toTeX := none
-  toHtml :=
-    open Verso.Doc.Html in
-    open Verso.Output.Html in
-    some <| fun _goI _goB _id data _blocks => do
-      let .ok { prelude } := fromJson? (α := TexPreludeData) data
-        | HtmlT.logError s!"Malformed data: {data}"
-          pure .empty
-      pure {{
-        <script type="text/plain" class="verso-tex-prelude">{{.text false prelude}}</script>
-        <script>{{.text false texPreludeInjectorJs}}</script>
-      }}
-
-/-- Informal directives -/
-@[code_block]
-def texPrelude : CodeBlockExpanderOf Unit
-  | _, contents => do
-    let prelude := contents.getString
-    Environment.addTexPrelude prelude
-    let data : TexPreludeData := { prelude }
-    ``(Block.other (Block.texPrelude $(quote data)) #[])
-
-def expander (kind : Data.NodeKind) : DirectiveExpanderOf Config
+private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
   | cfg, contents => do
+    let blockRef ← getRef
     let label := cfg.label
-    let isProof := (kind == .proof)
     let kind? := if isProof then none else some kind
     let hasExternal := !cfg.externalCode.isEmpty
     let hasLeanok := cfg.leanok.getD false
+    if hasExternal && hasLeanok then
+      logError m!"Label {label} cannot use '(leanok := true)' together with '(lean := ...)'"
     let codeHint : Option Data.CodeRef :=
       if hasExternal then
         some (.external cfg.externalCode)
@@ -980,40 +868,44 @@ def expander (kind : Data.NodeKind) : DirectiveExpanderOf Config
         some .userOk
       else
         none
-    let blockRef ← getRef
     Environment.push label kind? isProof codeHint
     let contents ← contents.mapM elabBlock
     if !isProof then
       Environment.setStatementElab contents
     let count ← Environment.pop blockRef
+    let node? ← Environment.getNode? label
     let env ← getEnv
-    let nodeCodeRef? := (← Environment.getNode? label).bind (·.code)
+    let nodeCodeRef? := node?.bind (·.code)
+    let nodeKind := node?.map (·.kind) |>.getD kind
     let codeStatus := BlockCodeStatus.ofCodeRef env nodeCodeRef?
-    let texPrelude ← Environment.getTexPrelude
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := { kind, label, count, codeStatus, texPrelude }
+    let data : BlockData := { kind := nodeKind, label, count, isProof, codeStatus }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
+
+private def directiveName (kind : Data.NodeKind) (isProof : Bool): String :=
+  if isProof then "proof" else (toString kind).toLower
+
+private def expander (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
+  | cfg, contents => do
+    let label := (directiveName kind isProof)
+    Profile.withDocElab "directive" label <|
+      (expanderImpl kind isProof) cfg contents
 
 @[directive] def «definition» := expander .definition
 @[directive] def «lemma_» := expander .lemma
 @[directive] def «theorem» := expander .theorem
 @[directive] def «corollary» := expander .corollary
-@[directive] def «proof» := expander .proof
-
--- Have a look to MonadQuotation ()
-
--- Formal (lean) code blocks.
+@[directive] def «proof» := expander .lemma (isProof := true)
 
 /-- Interpreting Embedded Lean Code blocks -/
-@[code_block]
-def lean : CodeBlockExpanderOf Config
+private def leanImpl : CodeBlockExpanderOf Config
   | cfg, contents => do
     let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some (cfg.label : Lean.Name) }
     let res ← Lean.elabCommands leanCfg contents
     let codeBlock := res.block
-    let definedDefs := res.definedDefs.map CodeDeclData.ofDefinedDecl
-    let definedTheorems := res.definedTheorems.map CodeDeclData.ofDefinedDecl
+    let definedDefs := res.definedDefs.map CodeDeclData.ofLiterateDef
+    let definedTheorems := res.definedTheorems.map CodeDeclData.ofLiterateThm
     let data : CodeBlockData := {
       label := cfg.label
       definedDefs
@@ -1025,22 +917,28 @@ def lean : CodeBlockExpanderOf Config
     activateForLabelDoc cfg.label codeRef
     ``(Block.other (Block.informalCode $(quote data)) #[$codeBlock])
 
+@[code_block]
+def lean : CodeBlockExpanderOf Config
+  | cfg, contents => do
+    Profile.withDocElab "code_block" "lean" <| leanImpl cfg contents
+
 /-- Internal Lean setup blocks:
 executed but not rendered and not tracked as blueprint code blocks. -/
-@[code_block]
-def internal : CodeBlockExpanderOf Unit
+private def internalImpl : CodeBlockExpanderOf Unit
   | _, contents => do
     let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with «show» := false, name := none }
     let _ ← Lean.elabCommands leanCfg contents
     ``(Block.concat #[])
 
+@[code_block]
+def internal : CodeBlockExpanderOf Unit
+  | cfg, contents => do
+    Profile.withDocElab "code_block" "internal" <| internalImpl cfg contents
+
 structure InlineData where
   label : Data.Label
   block : Option BlockData
 deriving FromJson, ToJson, Quote
-
-def Data.Node.toBlockInfo (node : Data.Node) (label : Data.Label) : BlockData :=
-  { kind := node.kind, label, count := node.count }
 
 inline_extension Inline.informal (data : InlineData) where
   data := toJson data
@@ -1099,23 +997,35 @@ inline_extension Inline.informal (data : InlineData) where
           return {{ <span> {{ ← inlines.mapM goI }} </span> }}
   toTeX := none
 
-@[role]
-def uses : RoleExpanderOf Config
+private def Data.Node.toBlockInfo (node : Data.Node) (label : Data.Label) : BlockData :=
+  { kind := node.kind, label, count := node.count }
+
+private def usesImpl : RoleExpanderOf Config
   | cfg, contents => do
     let contents ← contents.mapM elabInline
     let label := cfg.label
     let node ← Environment.getNode? label
     let useRef ← getRef
     Environment.addDep useRef label
+    -- Activate the widget if we can resolve the reference
     if node.isSome then
       activateForLabelDoc label useRef
     let data : InlineData := { label, block := node.map (fun n => n.toBlockInfo label) }
     ``(Inline.other (Inline.informal $(quote data)) #[$contents,*])
 
+@[role]
+def uses : RoleExpanderOf Config
+  | cfg, contents => do
+    Profile.withDocElab "role" "uses" <| usesImpl cfg contents
+
 -- Extra stuff
-@[code_block]
-def rocq : CodeBlockExpanderOf Unit
+private def rocqImpl : CodeBlockExpanderOf Unit
   | _cfg, contents => do
     ``(Block.code $contents)
+
+@[code_block]
+def rocq : CodeBlockExpanderOf Unit
+  | cfg, contents => do
+    Profile.withDocElab "code_block" "rocq" <| rocqImpl cfg contents
 
 end Informal
