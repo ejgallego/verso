@@ -31,7 +31,11 @@ namespace Verso.Doc.Concrete.Preview
 
 open Lean Verso Doc Elab Term
 
-public abbrev PreviewRenderer := TSyntax `term → TSyntax `term → TermElabM Output.Html
+public structure PreviewOutput where
+  html : Output.Html
+  hoverDocs : Json := .mkObj []
+
+public abbrev PreviewRenderer := TSyntax `term → TSyntax `term → TermElabM PreviewOutput
 
 initialize previewRendererAttr : KeyedDeclsAttribute PreviewRenderer ←
   Verso.Doc.Elab.mkDocExpanderAttribute
@@ -62,7 +66,7 @@ private def getRegisteredRenderer (genre : TSyntax `term) : TermElabM PreviewRen
     | throwError m!"No HTML preview renderer registered for genre '{genreConst}'. Register one with @[doc_preview_renderer {genreConst}]."
   pure renderer
 
-private def renderHtml (genre : TSyntax `term) (part : TSyntax `term) : TermElabM Output.Html := do
+private def renderHtml (genre : TSyntax `term) (part : TSyntax `term) : TermElabM PreviewOutput := do
   let renderer ← getRegisteredRenderer genre
   renderer genre part
 
@@ -72,12 +76,12 @@ public def emitHtmlPreview (genre : TSyntax `term) (part : TSyntax `term) (widge
   if !logForTest && !showWidget then
     pure ()
   else
-    let html ← renderHtml genre part
+    let out ← renderHtml genre part
     if logForTest then
-      logInfo html.asString
+      logInfo out.html.asString
     if showWidget then
       match widgetAnchor? with
-      | some stx => Verso.Doc.Concrete.PreviewWidget.saveHtmlPreviewWidgetAt stx html.asString
-      | none => Verso.Doc.Concrete.PreviewWidget.saveHtmlPreviewWidget html.asString
+      | some stx => Verso.Doc.Concrete.PreviewWidget.saveHtmlPreviewWidgetAt stx out.html.asString out.hoverDocs
+      | none => Verso.Doc.Concrete.PreviewWidget.saveHtmlPreviewWidget out.html.asString out.hoverDocs
 
 end Verso.Doc.Concrete.Preview

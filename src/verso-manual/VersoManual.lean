@@ -364,12 +364,15 @@ meta unsafe def manualPreviewRenderer : Verso.Doc.Concrete.Preview.PreviewRender
     let linkTargets := traverseState.localTargets
     let codeOptions : Verso.Code.HighlightHtmlM.Options := {}
     let render := Manual.toHtml options traverseContext traverseState definitionIds linkTargets codeOptions traversedPart
-    let (html, _) ← monadLift <| ReaderT.run
+    let (html, hoverState) ← monadLift <| ReaderT.run
       (ReaderT.run
         (StateT.run render {})
         ({ } : Verso.Multi.AllRemotes))
       extensionImpls
-    pure html
+    pure {
+      html := html
+      hoverDocs := hoverState.dedup.docJson
+    }
 
 
 structure DividedDoc where

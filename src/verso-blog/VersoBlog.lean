@@ -911,4 +911,4 @@ meta unsafe def postPreviewRenderer : Verso.Doc.Concrete.Preview.PreviewRenderer
     let render := Post.toHtml options traverseContext traverseState {} {} codeOptions traversedPart
     let ((html, _), _) ←
       monadLift <| StateT.run (ReaderT.run (StateT.run render {}) components) {}
-    pure html
+    pure { html := html }
