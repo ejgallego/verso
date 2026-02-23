@@ -334,6 +334,43 @@ def traverse (logError : String → IO Unit) (text : Part Manual) (config : Conf
       text := text'
   return (text, state)
 
+open Lean Elab Term in
+@[doc_preview_renderer Verso.Genre.Manual]
+meta unsafe def manualPreviewRenderer : Verso.Doc.Concrete.Preview.PreviewRenderer
+  | _, part => do
+    let partTy ← Term.elabType (← `(Part Manual))
+    let partExpr ← Term.elabTermAndSynthesize part (some partTy)
+    let partValue ← Meta.evalExpr (Part Manual) partTy partExpr
+
+    let extensionImplsTy ← Term.elabType (← `(ExtensionImpls))
+    let extensionImplsExpr ← Term.elabTermAndSynthesize (← `(extension_impls%)) (some extensionImplsTy)
+    let extensionImpls ← Meta.evalExpr ExtensionImpls extensionImplsTy extensionImplsExpr
+
+    let config : Config := { features := {} }
+    let (traversedPart, traverseState) ←
+      monadLift <| ReaderT.run
+        (traverse (logError := fun _ => pure ()) partValue config)
+        extensionImpls
+
+    let options : Doc.Html.Options (ReaderT Verso.Multi.AllRemotes (ReaderT ExtensionImpls IO)) := {
+      headerLevel := 1
+      logError := fun _ => pure ()
+    }
+    let traverseContext : TraverseContext := {
+      logError := fun _ => pure ()
+      draft := false
+    }
+    let definitionIds := traverseState.definitionIds traverseContext
+    let linkTargets := traverseState.localTargets
+    let codeOptions : Verso.Code.HighlightHtmlM.Options := {}
+    let render := Manual.toHtml options traverseContext traverseState definitionIds linkTargets codeOptions traversedPart
+    let (html, _) ← monadLift <| ReaderT.run
+      (ReaderT.run
+        (StateT.run render {})
+        ({ } : Verso.Multi.AllRemotes))
+      extensionImpls
+    pure html.asString
+
 
 structure DividedDoc where
   /-- Start text and leading unnumbered parts -/
