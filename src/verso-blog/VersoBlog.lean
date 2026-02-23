@@ -17,6 +17,7 @@ import VersoBlog.Template
 import VersoBlog.Theme
 import VersoBlog.Traverse
 import Verso.Doc.ArgParse
+import Verso.Doc.Concrete.Preview
 import Verso.Doc.Lsp
 import Verso.Doc.Suggestion
 import Verso.Hover
@@ -525,7 +526,7 @@ def lean : CodeBlockExpanderOf LeanBlockConfig
       if config.show then
         `(Block.other (Blog.BlockExt.highlightedCode { contextName := $(quote x.getId), showProofStates := $(quote config.showProofStates) } $(quote hls)) #[Block.code $(quote str.getString)])
       else
-        ``(Block.concat [])
+        ``(Block.concat #[])
 
 
 structure LeanInlineConfig where
@@ -885,3 +886,29 @@ instance [bg : BlogGenre genre] : ExternalCode genre where
     leanOutputInline message plain (expandTraces := expandTraces)
   leanOutputBlock message (summarize := false) (expandTraces : List Name := []) :=
     leanOutputBlock message (summarize := summarize) (expandTraces := expandTraces)
+
+open Lean Elab Term in
+@[doc_preview_renderer Verso.Genre.Blog.Post]
+meta unsafe def postPreviewRenderer : Verso.Doc.Concrete.Preview.PreviewRenderer
+  | _, part => do
+    let partTy ← Term.elabType (← `(Part Post))
+    let partExpr ← Term.elabTermAndSynthesize part (some partTy)
+    let partValue ← Meta.evalExpr (Part Post) partTy partExpr
+
+    let components : Components := {}
+
+    let config : Config := { logError := fun _ => pure (), showDrafts := true }
+    let traverseContext : TraverseContext := { path := .root, config, components }
+    let initialTraverseState : TraverseState := { remoteContent := {} }
+    let (traversedPart, traverseState) ←
+      monadLift <| StateT.run (ReaderT.run (Post.traverse partValue) traverseContext) initialTraverseState
+
+    let options : Doc.Html.Options ComponentM := {
+      headerLevel := 1
+      logError := fun _ => pure ()
+    }
+    let codeOptions : Verso.Code.HighlightHtmlM.Options := {}
+    let render := Post.toHtml options traverseContext traverseState {} {} codeOptions traversedPart
+    let ((html, _), _) ←
+      monadLift <| StateT.run (ReaderT.run (StateT.run render {}) components) {}
+    pure html

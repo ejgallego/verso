@@ -1,4 +1,5 @@
 import Verso
+import VersoBlog
 import VersoManual
 import Verso.Doc.Concrete.Preview
 
@@ -108,3 +109,21 @@ info: <section>
 :::::::
 Inline Lean sample: {lean}`Nat.succ 0`.
 :::::::
+
+/--
+info: <section>
+  <h1>
+    Preview post</h1>
+  <p>
+    Blog paragraph.</p>
+  </section>
+-/
+#guard_msgs in
+#docs (Verso.Genre.Blog.Post) previewPost "Preview post" :=
+:::::::
+Blog paragraph.
+:::::::
+
+-- Smoke test for incremental `#doc` command path.
+#doc (Manual) "Incremental preview command" =>
+Incremental command paragraph.

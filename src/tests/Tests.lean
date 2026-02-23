@@ -9,6 +9,7 @@ import Tests.GenericCode
 import Tests.Golden
 import Tests.CommentSkipping
 import Tests.DocPreview.Log
+import Tests.DocPreview.Widget
 import Tests.HighlightedToTeX
 import Tests.Html
 import Tests.HtmlEntities
