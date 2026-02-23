@@ -17,6 +17,14 @@ public def htmlPreviewWidget : Lean.Widget.Module where
 import { createElement } from 'react';
 
 export default function ({ html }) {
+  const style = createElement(
+    'style',
+    null,
+    '.verso-preview-html h1{font-size:1.15em;margin:0.4em 0 0.35em 0;}' +
+    '.verso-preview-html h2{font-size:1.05em;margin:0.35em 0 0.3em 0;}' +
+    '.verso-preview-html p{margin:0.3em 0;line-height:1.45;}'
+  );
+
   const header = createElement(
     'div',
     {
@@ -32,6 +40,7 @@ export default function ({ html }) {
   );
 
   const rendered = createElement('div', {
+    className: 'verso-preview-html',
     style: {
       marginTop: '0.25em',
       padding: '0.5em',
@@ -50,7 +59,7 @@ export default function ({ html }) {
     ]
   );
 
-  return createElement('div', null, [header, rendered, raw]);
+  return createElement('div', null, [style, header, rendered, raw]);
 }
 "
 
