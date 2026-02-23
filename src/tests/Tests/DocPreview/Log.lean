@@ -8,12 +8,7 @@ set_option guard_msgs.diff true
 set_option verso.doc.preview.logForTest true
 
 /--
-info: <section>
-  <h1>
-    Preview none</h1>
-  <p>
-    None paragraph.</p>
-  </section>
+error: No HTML preview renderer registered for genre 'Verso.Doc.Genre.none'. Register one with @[doc_preview_renderer Verso.Doc.Genre.none].
 -/
 #guard_msgs in
 #docs (.none) previewNone "Preview none" :=

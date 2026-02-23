@@ -6,12 +6,11 @@ Author: Emilio J. Gallego Arias
 module
 public import Lean.Data.Options
 public import Lean.KeyedDeclsAttribute
+public import Lean.Elab.Term.TermElabM
 import Lean.Meta.Eval
 import Verso.Doc.Elab.ExpanderAttribute
 import Verso.Doc
-import Verso.Doc.Html
-public meta import Verso.Doc.Html
-public meta import Verso.Output.Html
+public import Verso.Output.Html
 
 public section
 
@@ -24,9 +23,9 @@ end
 
 namespace Verso.Doc.Concrete.Preview
 
-open Lean Verso Doc Elab
+open Lean Verso Doc Elab Term
 
-public abbrev PreviewRenderer := TSyntax `term → TSyntax `term → TermElabM String
+public abbrev PreviewRenderer := TSyntax `term → TSyntax `term → TermElabM Output.Html
 
 initialize previewRendererAttr : KeyedDeclsAttribute PreviewRenderer ←
   Verso.Doc.Elab.mkDocExpanderAttribute
@@ -52,64 +51,27 @@ private unsafe def genreConstName? (genre : TSyntax `term) : TermElabM (Option N
   catch _ =>
     pure none
 
-private def eraseGenreInline {g : Genre} : Inline g → Inline Genre.none :=
-  Inline.rewriteOther fun recur _ content => .concat <| content.map recur
-
-private def eraseGenreBlock {g : Genre} : Block g → Block Genre.none :=
-  Block.rewriteOther
-    (fun recur _ content => .concat <| content.map recur)
-    (fun _ recur _ content => .concat <| content.map recur)
-
-private partial def eraseGenrePart {g : Genre} (p : Part g) : Part Genre.none :=
-  .mk
-    (p.title.map eraseGenreInline)
-    p.titleString
-    none
-    (p.content.map eraseGenreBlock)
-    (p.subParts.map eraseGenrePart)
-
-private unsafe def renderHtmlWithRegisteredRenderer? (genre : TSyntax `term) (part : TSyntax `term) : TermElabM (Option String) := do
+private unsafe def getRegisteredRenderer (genre : TSyntax `term) : TermElabM PreviewRenderer := do
   let some genreConst ← genreConstName? genre
-    | return none
+    | throwError "Couldn't resolve #doc preview genre to a constant name"
   let renderers ← previewRenderersFor genreConst
   let some renderer := renderers.back?
-    | return none
-  try
-    return some (← renderer genre part)
-  catch _ =>
-    return none
+    | throwError m!"No HTML preview renderer registered for genre '{genreConst}'. Register one with @[doc_preview_renderer {genreConst}]."
+  pure renderer
 
-private unsafe def renderHtmlGenericUnsafe (genre : TSyntax `term) (part : TSyntax `term) : TermElabM String := do
-  let erasedPartTy ← Term.elabType (← `(Part Genre.none))
-  let erasedPartExpr ← Term.elabTermAndSynthesize
-    (← `(eraseGenrePart (g := $genre) ($part : Part $genre)))
-    (some erasedPartTy)
-  let erasedPart ← Meta.evalExpr (Part Genre.none) erasedPartTy erasedPartExpr
-  let opts : Verso.Doc.Html.Options Id := {
-    headerLevel := 1
-    logError := fun _ => pure ()
-  }
-  let (html, _) := (Genre.none.toHtml (m := Id) opts () () {} {} {} erasedPart).run {}
-  pure html.asString
-
-private unsafe def renderHtmlUnsafe (genre : TSyntax `term) (part : TSyntax `term) : TermElabM String := do
-  if let some html ← renderHtmlWithRegisteredRenderer? genre part then
-    pure html
-  else
-    renderHtmlGenericUnsafe genre part
+private unsafe def renderHtmlUnsafe (genre : TSyntax `term) (part : TSyntax `term) : TermElabM Output.Html := do
+  let renderer ← getRegisteredRenderer genre
+  renderer genre part
 
 @[implemented_by renderHtmlUnsafe]
-private opaque renderHtml (genre : TSyntax `term) (part : TSyntax `term) : TermElabM String
+private opaque renderHtml (genre : TSyntax `term) (part : TSyntax `term) : TermElabM Output.Html
 
 private unsafe def emitHtmlPreviewUnsafe (genre : TSyntax `term) (part : TSyntax `term) : TermElabM Unit := do
   let logForTest : Bool := (← getOptions).get `verso.doc.preview.logForTest false
   if !logForTest then
     pure ()
   else
-    try
-      logInfo (← renderHtml genre part)
-    catch _ =>
-      pure ()
+    logInfo (← renderHtml genre part).asString
 
 @[implemented_by emitHtmlPreviewUnsafe]
 public opaque emitHtmlPreview (genre : TSyntax `term) (part : TSyntax `term) : TermElabM Unit

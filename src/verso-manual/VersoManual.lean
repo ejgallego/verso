@@ -369,7 +369,7 @@ meta unsafe def manualPreviewRenderer : Verso.Doc.Concrete.Preview.PreviewRender
         (StateT.run render {})
         ({ } : Verso.Multi.AllRemotes))
       extensionImpls
-    pure html.asString
+    pure html
 
 
 structure DividedDoc where
