@@ -13,6 +13,8 @@ set_option verso.doc.preview.widget true
 This extended manual example is intended to stress preview rendering with several block kinds.
 It links to a declaration using a manual role: {ref "Nat.succ"}[`Nat.succ`], and it includes
 inline Lean syntax for hover metadata: {lean}`Nat.succ 0`.
+It also references {ref "Nat.add"}[`Nat.add`] and {ref "Nat.mul"}[`Nat.mul`]
+while interleaving `inline code` fragments such as `Nat.add_assoc`.
 
 :::paragraph
 Paragraph directive content can include _emphasis_, *bold text*, and `inline code`
@@ -25,6 +27,7 @@ This section mixes lists and prose to make sure numbering and paragraph breaks l
 * First bullet with a short sentence.
 * Second bullet that references {ref "Nat.zero"}[`Nat.zero`] for role expansion.
 * Third bullet with inline Lean: {lean}`Nat.succ (Nat.succ 0)`.
+* Fourth bullet that includes a role reference to {ref "Nat.add_assoc"}[`Nat.add_assoc`].
 
 1. Ordered item one.
 2. Ordered item two with `code`.
@@ -41,6 +44,7 @@ Final subsection paragraph to exercise nested heading sizing and permalink rende
 :::::::
 This blog post preview is intentionally richer, with multiple paragraphs and diverse syntax.
 It contains _emphasis_, *bold text*, and a short `inline code` span.
+The first paragraph also includes extra inline snippets: `#check Nat.succ` and `Nat.succ 41`.
 
 The second paragraph is longer so we can observe line wrapping and spacing inside the widget
 container, especially in conjunction with heading blocks and list elements below.
@@ -59,7 +63,8 @@ In the follow-up section we include mixed content:
 > Quoted blog text to test blockquote rendering in post previews.
 
 ## Closing notes
-Closing paragraph with punctuation, symbols, and another `inline code` sample.
+Closing paragraph with punctuation, symbols, another `inline code` sample,
+and a second one: `example : Nat := 42`.
 :::::::
 
 #doc (Manual) "Widget preview command: manual" =>

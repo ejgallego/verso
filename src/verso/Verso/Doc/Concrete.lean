@@ -358,9 +358,10 @@ private meta def finishDoc : Command.CommandElabM Unit:= do
 
   let ty ← ``(VersoDoc $versoEnv.genreSyntax)
   Command.elabCommand (← `(def $n : $ty := $doc))
+  let previewRef ← Command.getRef
   Command.runTermElabM fun _ => do
     let part ← `(VersoDoc.toPart ($n : $ty))
-    Verso.Doc.Concrete.Preview.emitHtmlPreview versoEnv.genreSyntax part
+    Verso.Doc.Concrete.Preview.emitHtmlPreview versoEnv.genreSyntax part (widgetAnchor? := some previewRef)
 
 syntax (name := replaceDoc) "#doc " "(" term ") " str " =>" : command
 elab_rules : command

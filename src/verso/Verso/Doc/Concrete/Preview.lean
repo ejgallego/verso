@@ -66,7 +66,7 @@ private def renderHtml (genre : TSyntax `term) (part : TSyntax `term) : TermElab
   let renderer ← getRegisteredRenderer genre
   renderer genre part
 
-public def emitHtmlPreview (genre : TSyntax `term) (part : TSyntax `term) : TermElabM Unit := do
+public def emitHtmlPreview (genre : TSyntax `term) (part : TSyntax `term) (widgetAnchor? : Option Syntax := none) : TermElabM Unit := do
   let logForTest : Bool := (← getOptions).get `verso.doc.preview.logForTest false
   let showWidget : Bool := (← getOptions).get `verso.doc.preview.widget false
   if !logForTest && !showWidget then
@@ -76,6 +76,8 @@ public def emitHtmlPreview (genre : TSyntax `term) (part : TSyntax `term) : Term
     if logForTest then
       logInfo html.asString
     if showWidget then
-      Verso.Doc.Concrete.PreviewWidget.saveHtmlPreviewWidget html.asString
+      match widgetAnchor? with
+      | some stx => Verso.Doc.Concrete.PreviewWidget.saveHtmlPreviewWidgetAt stx html.asString
+      | none => Verso.Doc.Concrete.PreviewWidget.saveHtmlPreviewWidget html.asString
 
 end Verso.Doc.Concrete.Preview

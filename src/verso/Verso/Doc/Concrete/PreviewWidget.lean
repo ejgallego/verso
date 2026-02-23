@@ -63,10 +63,13 @@ export default function ({ html }) {
 }
 "
 
-public def saveHtmlPreviewWidget (html : String) : TermElabM Unit := do
+public def saveHtmlPreviewWidgetAt (stx : Syntax) (html : String) : TermElabM Unit := do
   Lean.Widget.savePanelWidgetInfo
     htmlPreviewWidget.javascriptHash
     (pure <| .mkObj [("html", .str html)])
-    (← getRef)
+    stx
+
+public def saveHtmlPreviewWidget (html : String) : TermElabM Unit := do
+  saveHtmlPreviewWidgetAt (← getRef) html
 
 end Verso.Doc.Concrete.PreviewWidget
