@@ -2,7 +2,7 @@ import Verso
 import VersoManual
 import Verso.Doc.Concrete.Preview
 
-open Verso Genre Manual
+open Verso Genre Manual InlineLean
 
 set_option guard_msgs.diff true
 set_option verso.doc.preview.logForTest true
@@ -98,4 +98,18 @@ First paragraph.
 
 ## Second
 Second paragraph with {ref "Preview-nested--First--Second"}[self ref].
+:::::::
+
+/--
+info: <section>
+  <h1 id="Preview-inline-lean">
+     Preview inline lean<span class="permalink-widget inline"><a href="/find/?domain=Verso.Genre.Manual.section&amp;name=Preview-inline-lean" title="Permalink">🔗</a></span></h1>
+  <p>
+    Inline Lean sample: <code class="hl lean inline" data-lean-context="examples"><span class="const token" data-binding="const-Nat.succ" data-verso-hover="0">Nat.succ</span><span class="inter-text"> </span><span class="typed token" data-binding="" data-verso-hover="1">0</span></code>.</p>
+  </section>
+-/
+#guard_msgs in
+#docs (Manual) previewInlineLean "Preview inline lean" :=
+:::::::
+Inline Lean sample: {lean}`Nat.succ 0`.
 :::::::
