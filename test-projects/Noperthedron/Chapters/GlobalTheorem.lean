@@ -8,6 +8,7 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Bibliography
+import Noperthedron.Global
 
 open Verso.Genre
 open Verso.Genre.Manual hiding citep citet citehere

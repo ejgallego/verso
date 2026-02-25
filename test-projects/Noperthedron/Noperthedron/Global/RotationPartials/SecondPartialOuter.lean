@@ -135,9 +135,9 @@ theorem second_partial_inner_rotM_outer (S : ℝ³) {w : ℝ²} (w_unit : ‖w�
   have hscale : nth_partial j (nth_partial i (rotproj_outer_unit S w)) y =
       nth_partial j (nth_partial i f) y / ‖S‖ := by
     simpa using nth_partial_nth_partial_div_const i j f ‖S‖ y
-      (hf_smooth.differentiable (by decide))
-      ((hf_smooth.fderiv_right (by decide : (1 : WithTop ℕ∞) + 1 ≤ 2) |>.clm_apply
-        contDiff_const).differentiable (by decide))
+      (hf_smooth.differentiable (by norm_num))
+      ((hf_smooth.fderiv_right (by norm_num : (1 : WithTop ℕ∞) + 1 ≤ 2) |>.clm_apply
+        contDiff_const).differentiable (by norm_num))
   obtain ⟨A, hAnorm, hAeq⟩ := second_partial_rotM_outer_eq S w y j i
   simpa [hscale, f, hAeq] using inner_bound_helper A S w w_unit hAnorm
 

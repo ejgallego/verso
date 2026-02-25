@@ -14,6 +14,12 @@
 - Avoid duplication
 - One one single source of truth
 
+## Important Information about Mathlib project
+
+In the folder `test-projects/Noperthedron/` we have a mathlib project. This needs to be handled with care, due to dependencies. In particular, it will be hard to slice code examples there if they depend on mathlib, but of course YMMV.
+
+When we create a worktree, it is possible that `lake` makes a choice to setup their artifacts there. Try always to copy the `.lake` directory from root when setting the worktree, and also run once `lake exe cache get` so we get a mathlib cache.
+
 ## Worktree Layout (Parallel Features + Sub-Agents)
 
 - Keep the main checkout at:
