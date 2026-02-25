@@ -145,6 +145,7 @@ end
 
 structure ExternalDeclStatus where
   decl : Name
+  canonical : Name
   present : Bool := false
 deriving Repr, Inhabited, FromJson, ToJson, Quote
 
@@ -159,7 +160,7 @@ def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.C
   | some .userOk => .userOk
   | some (.external decls) =>
     .external <| decls.map fun decl =>
-      { decl := decl.written, present := (env.find? decl.canonical).isSome }
+      { decl := decl.written, canonical := decl.canonical, present := (env.find? decl.canonical).isSome }
   | _ => .none
 
 structure BlockData where
@@ -668,6 +669,52 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
           </div>
         </div>
       }}
+  let manualHover : Output.Html :=
+    if cdata.manualStatus then
+      {{
+        <div class="bp_code_hover" role="tooltip">
+          <div class="bp_code_hover_title">"Lean status"</div>
+          <div class="bp_code_hover_section">
+            <span class="bp_code_hover_none">"Marked complete via (leanok := true)."</span>
+          </div>
+        </div>
+      }}
+    else
+      .empty
+  let hasExternal := !cdata.externalDecls.isEmpty
+  let hasInline := cdata.codeHref.isSome || cdata.codeHover.isSome
+  let hasCodeEntry := hasExternal || hasInline || cdata.manualStatus
+  let codeEntryHover : Output.Html :=
+    if hasExternal then
+      externalHover
+    else if cdata.codeHover.isSome then
+      codeHover
+    else if cdata.manualStatus then
+      manualHover
+    else
+      .empty
+  let codeEntryTitle : String :=
+    if hasExternal then
+      let total := cdata.externalDecls.size
+      let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
+      if found == total then
+        s!"External Lean references (all present: {found}/{total})"
+      else
+        s!"External Lean references ({found}/{total} present)"
+    else if cdata.manualStatus then
+      "Marked complete via (leanok := true)"
+    else
+      "Lean declarations"
+  let codeEntry : Output.Html :=
+    if !hasCodeEntry then
+      .empty
+    else
+      let linkNode : Output.Html :=
+        if let some href := cdata.codeHref then
+          {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
+        else
+          {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
+      {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryHover}}</span>}}
   let kindText := if data.isProof then "Proof" else s!"{data.kind}"
   let labelTextNum := s!"{data.count}"
   let labelText := s!"{data.label}"
@@ -696,7 +743,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
   let labelClass := s!"bp_label {labelCss}"
   let contentClass := s!"bp_content {contentCss}"
   let statusMark : Output.Html :=
-    if !cdata.externalDecls.isEmpty then
+    if hasExternal then
       let total := cdata.externalDecls.size
       let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
       let missing := total - found
@@ -705,7 +752,8 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
           s!"External Lean names ({total}) are present"
         else
           s!"External Lean names: {found} present, {missing} missing"
-      {{<span class="bp_code_link_wrap"><span class="bp_external_badge" title={{title}}>s!"external ({found}/{total})"</span>{{externalHover}}</span>}}
+      let mark := if missing == 0 then "✓" else "✗"
+      {{ <span class="bp_status_mark" title={{title}}>{{.text true mark}}</span> }}
     else if cdata.manualStatus then
       {{ <span class="bp_status_mark" title="Marked complete via (leanok := true)">"✓ (manually set)"</span> }}
     else if cdata.codeHref.isNone then
@@ -725,11 +773,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
          {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
          <div class="bp_extras thm_header_extras">
            {{statusMark}}
-           {{
-             if let some href := cdata.codeHref then
-               {{<span class="bp_code_link_wrap"><a class="bp_code_link" href={{href}}>"L∃∀N"</a>{{codeHover}}</span>}}
-             else .empty
-           }}
+           {{codeEntry}}
          </div>
          <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
        </div>
@@ -791,7 +835,16 @@ block_extension Block.informal (data : BlockData) where
         let externalDecls : Array ExternalHoverDecl :=
           match data.codeStatus with
           | .external decls =>
-            decls.map fun decl => { decl := decl.decl, href := getDeclHref decl.decl, present := decl.present }
+            decls.map fun decl =>
+              let href :=
+                match getDeclHref decl.canonical with
+                | some href => some href
+                | none => getDeclHref decl.decl
+              {
+                decl := decl.decl
+                href
+                present := decl.present
+              }
           | _ => #[]
         let manualStatus : Bool :=
           match data.codeStatus with
