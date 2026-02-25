@@ -14,6 +14,7 @@ import VersoBlueprint.Widget
 import Noperthedron.Basic
 import Noperthedron.Bounding
 import Noperthedron.PointSym
+import Noperthedron.Tightening
 import Bibliography
 
 --set_option trace.Elab.info true
@@ -74,7 +75,7 @@ set_option verso.code.warnLineLength 0
 
 ```internal
 open scoped Matrix
-namespace Nopert
+namespace NopertInline
 open Real
 ```
 
@@ -130,7 +131,7 @@ Trivial arithmetic.
 
 ```lean "c1_c2_c3_norms"
 
--- expose: {Nopert.c1_norm_one, Nopert.c2_norm_bound, Nopert.c3_norm_bound, Nopert.C15}
+-- expose: {NopertInline.c1_norm_one, NopertInline.c2_norm_bound, NopertInline.c3_norm_bound, NopertInline.C15}
 
 theorem c1_norm_one : ‖C1R‖ = 1 := by
   rw [EuclideanSpace.norm_eq]
@@ -202,7 +203,7 @@ lemma C15_pres_norm (pt v : ℝ³) (hv : v ∈ C15 pt) : ‖v‖ = ‖pt‖ := b
   obtain ⟨a, ⟨ha, ha'⟩⟩ := hv
   rw [← ha', Bounding.Rz_preserves_norm _]
 
-end Nopert
+end NopertInline
 ```
 
 :::lemma_ "lem:radius_noperthedron_one"
@@ -215,6 +216,7 @@ By {uses "c1_c2_c3_norms"}[], {uses "thm:pointsymmetrize_pres_radius"}[],
 :::
 
 ```lean "lem:radius_noperthedron_one"
+namespace NopertInline
 
 /--
 Half of the vertices of the noperthedron
@@ -370,6 +372,8 @@ The radius of the noperthedron is 1.
 theorem Nopert.noperthedron_radius_one : polyhedronRadius nopertVerts nopert_verts_nonempty = 1 := by
   simp only [nopertVerts, pointsymmetrize_pres_radius half_nopert_verts_nonempty]
   exact half_nopert_radius_one
+
+end NopertInline
 ```
 
 Rotations about the $`x, y, z` axes $`R_x,R_y,R_z:`  $`\mathbb{R}\to \mathbb{R}^{3\times 3}`

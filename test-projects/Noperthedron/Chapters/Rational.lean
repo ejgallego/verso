@@ -8,6 +8,8 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Bibliography
+import Noperthedron.RationalApprox
+import Noperthedron.Local
 
 open Verso.Genre
 open Verso.Genre.Manual hiding citep citet citehere

@@ -8,6 +8,8 @@ import Verso
 import VersoManual
 import VersoBlueprint
 import Bibliography
+import Noperthedron.ComputationalStep
+import Noperthedron.SolutionTable
 
 open Verso.Genre Manual Informal
 
