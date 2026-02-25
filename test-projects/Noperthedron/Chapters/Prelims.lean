@@ -10,7 +10,6 @@ import VersoBlueprint
 import Noperthedron.Rupert.Equivalences.RupertEquivRupertSet
 import Noperthedron.ConvertPose
 import Noperthedron.CommonCenter
-import Noperthedron.Nopert
 
 open Verso.Genre Manual Informal
 

@@ -17,7 +17,6 @@ import Chapters.GlobalTheorem
 import Chapters.LocalTheorem
 import Chapters.Rational
 import Chapters.Computational
-import Chapters.Main
 
 open Verso.Genre
 open Verso.Genre.Manual hiding citep citet citehere
