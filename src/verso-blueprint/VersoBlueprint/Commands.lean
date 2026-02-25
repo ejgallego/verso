@@ -547,14 +547,27 @@ block_extension Block.bibliography (biblio : BibliographyData) where
         let rendered ← entry.citation.bibHtml goI
         let itemId := s!"bp-bib-{Informal.Cite.citationAnchorId entry.label}"
         let usageHrefs := Resolve.resolveDomainHrefs st Resolve.citationUsageDomainName entry.label
+        let usageData : Informal.Cite.CitationUsageData :=
+          match st.getDomainObject? Resolve.citationUsageDomainName entry.label with
+          | some obj =>
+            match fromJson? (α := Informal.Cite.CitationUsageData) obj.data with
+            | .ok data => data
+            | .error _ => {}
+          | Option.none => {}
+        let usageDetails := usageData.uses.toArray.qsort (fun a b => a.href < b.href)
         let usageRows : Array Output.Html :=
-          usageHrefs.foldl (init := #[]) fun out href =>
-            out.push {{<li><a href={{href}}>s!"Citation use {out.size + 1}"</a></li>}}
+          if usageDetails.isEmpty then
+            usageHrefs.foldl (init := #[]) fun out href =>
+              out.push {{<li><a href={{href}}>s!"Citation use {out.size + 1}"</a></li>}}
+          else
+            usageDetails.map fun use =>
+              {{<li><a href={{use.href}}>{{.text true use.summary}}</a></li>}}
+        let usageCount := if usageDetails.isEmpty then usageHrefs.size else usageDetails.size
         pure {{
           <li id={{itemId}}>
             {{rendered}}
             <details class="bp_summary_decls">
-              <summary>s!"Cited from ({usageHrefs.size})"</summary>
+              <summary>s!"Cited from ({usageCount})"</summary>
               <ul class="bp_summary_decl_list">
                 {{if usageRows.isEmpty then {{<li class="bp_summary_empty">"No citation uses recorded."</li>}} else usageRows}}
               </ul>

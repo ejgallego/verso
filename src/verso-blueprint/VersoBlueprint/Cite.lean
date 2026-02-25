@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean
 import VersoManual.Bibliography
+import VersoBlueprint.Data
 import VersoBlueprint.Resolve
 
 open Lean Elab Command
@@ -208,6 +209,101 @@ structure CiteInlineData where
   index : Option String := none
 deriving Inhabited, FromJson, ToJson
 
+structure CitationUse where
+  href : String
+  summary : String
+deriving Inhabited, FromJson, ToJson
+
+structure CitationUsageData where
+  uses : List CitationUse := []
+deriving Inhabited, FromJson, ToJson
+
+private def CitationUsageData.insertUnique (d : CitationUsageData) (u : CitationUse) : CitationUsageData :=
+  if d.uses.any (fun e => e.href == u.href && e.summary == u.summary) then
+    d
+  else
+    { d with uses := d.uses ++ [u] }
+
+private def updateCitationUsageData (u : CitationUse) (j : Json) : Json :=
+  let d : CitationUsageData :=
+    match fromJson? (α := CitationUsageData) j with
+    | .ok data => data
+    | .error _ => {}
+  toJson (d.insertUnique u)
+
+private structure HeaderLocation where
+  title : String
+  number : Option String := none
+
+private structure InformalBlockUsage where
+  kind : Data.NodeKind
+  count : Nat
+  isProof : Bool := false
+deriving Inhabited, FromJson
+
+private def headerTitle (h : PartHeader) : String :=
+  (h.metadata.bind (·.shortContextTitle) <|> h.metadata.bind (·.shortTitle)).getD h.titleString
+
+private def headerLocations (headers : Array PartHeader) : Array HeaderLocation := Id.run do
+  let mut out : Array HeaderLocation := #[]
+  let mut nums : Array String := #[]
+  for h in headers[1:] do
+    if let some n := h.metadata.bind (·.assignedNumber) then
+      nums := nums.push (toString n)
+    let number? :=
+      if nums.isEmpty then
+        none
+      else
+        some (String.intercalate "." nums.toList)
+    out := out.push { title := headerTitle h, number := number? }
+  out
+
+private def chapterText (h : HeaderLocation) : String :=
+  match h.number with
+  | some n => s!"Chapter {n}: {h.title}"
+  | none => s!"Chapter: {h.title}"
+
+private def sectionText (h : HeaderLocation) : String :=
+  match h.number with
+  | some n => s!"Section {n}: {h.title}"
+  | none => s!"Section: {h.title}"
+
+private def theoremContext? (ctxt : TraverseContext) : Option String :=
+  let rec go (ctx : List BlockContext) : Option String :=
+    match ctx with
+    | [] => none
+    | .other b :: rest =>
+      if b.name.toString == "Informal.Block.informal" then
+        match fromJson? (α := InformalBlockUsage) b.data with
+        | .ok d =>
+          let base := s!"{d.kind} {d.count}"
+          if d.isProof then
+            some s!"Proof of {base}"
+          else
+            some base
+        | .error _ => go rest
+      else
+        go rest
+    | _ :: rest => go rest
+  go ctxt.blockContext.toList.reverse
+
+private def usageSummary (ctxt : TraverseContext) : String := Id.run do
+  let hs := headerLocations ctxt.headers
+  let mut parts : Array String := #[]
+  if let some chapter := hs[0]? then
+    parts := parts.push (chapterText chapter)
+  if hs.size > 1 then
+    if let some sec := hs.back? then
+      parts := parts.push (sectionText sec)
+  if let some thm := theoremContext? ctxt then
+    parts := parts.push s!"{thm}"
+  if parts.isEmpty then
+    match ctxt.path.back? with
+    | some file => s!"Document: {file}"
+    | Option.none => "Document root"
+  else
+    String.intercalate ", " parts.toList
+
 private partial def inlineToPlain : Doc.Inline Manual → String
   | .text s | .code s | .math _ s => s
   | .bold xs | .emph xs | .concat xs | .other _ xs | .link xs _ =>
@@ -257,15 +353,25 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
     let .ok cfg := fromJson? (α := CiteInlineData) data
       | logError "Malformed data in Inline.bpCite.traverse"
         return none
-    let path ← (·.path) <$> read
+    let ctxt ← read
+    let path := ctxt.path
     let tagBase :=
       match cfg.citations with
       | [] => "--bp-cite"
       | first :: _ => s!"--bp-cite-{citationAnchorId first.label}"
     let _ ← Verso.Genre.Manual.externalTag id path tagBase
+    let href? := (← get).externalTags[id]? |>.map (·.relativeLink)
+    let summary := usageSummary ctxt
     for item in cfg.citations do
       modify fun st =>
-        st.saveDomainObject Resolve.citationUsageDomainName item.label id
+        let st := st.saveDomainObject Resolve.citationUsageDomainName item.label id
+        match href? with
+        | some href =>
+          st.modifyDomainObjectData
+            Resolve.citationUsageDomainName
+            item.label
+            (updateCitationUsageData { href, summary })
+        | Option.none => st
     pure none
   toTeX :=
     open Verso.Output.TeX in
