@@ -11,6 +11,7 @@ import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.Cite
 import VersoBlueprint.Graph
+import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
 
@@ -186,6 +187,112 @@ def loadD3Dot :=
       });
     }
 
+    function collectPreviewTemplates() {
+      const map = new Map();
+      const templates = document.querySelectorAll("template.bp_graph_preview_tpl[data-bp-preview-label]");
+      templates.forEach(function (tpl) {
+        const label = tpl.getAttribute("data-bp-preview-label") || "";
+        const html = (tpl.innerHTML || "").trim();
+        if (label && html) {
+          map.set(label, html);
+        }
+      });
+      return map;
+    }
+
+    function renderMath(root) {
+      if (!root) return;
+      if (typeof katex !== "object" || typeof katex.render !== "function") return;
+      const renderAll = function (selector, displayMode) {
+        root.querySelectorAll(selector).forEach(function (m) {
+          if (!(m instanceof Element)) return;
+          if (m.getAttribute("data-bp-math-rendered") === "1") return;
+          try {
+            katex.render(m.textContent || "", m, { throwOnError: false, displayMode: displayMode });
+            m.setAttribute("data-bp-math-rendered", "1");
+          } catch (_err) {}
+        });
+      };
+      renderAll(".math.inline", false);
+      renderAll(".math.display", true);
+    }
+
+    function attachPreviewHandlers(graphContainer, previewMap) {
+      const panel = document.getElementById("bp-graph-preview");
+      if (!panel) return;
+      const title = panel.querySelector(".bp_graph_preview_title");
+      const body = panel.querySelector(".bp_graph_preview_body");
+      const hide = function () {
+        panel.hidden = true;
+        if (title) title.textContent = "";
+        if (body) body.innerHTML = "";
+      };
+      if (!title || !body || previewMap.size === 0) {
+        hide();
+        return;
+      }
+      const svg = graphContainer.select("svg").node();
+      if (!svg) {
+        hide();
+        return;
+      }
+      const labelFromNode = function (node) {
+        if (!node) return "";
+        const titleNode = node.querySelector("title");
+        const titleTxt =
+          titleNode && typeof titleNode.textContent === "string" ? titleNode.textContent.trim() : "";
+        if (titleTxt && previewMap.has(titleTxt)) return titleTxt;
+        const textNode = node.querySelector("text");
+        const textTxt =
+          textNode && typeof textNode.textContent === "string" ? textNode.textContent.trim() : "";
+        if (textTxt && previewMap.has(textTxt)) return textTxt;
+        return "";
+      };
+      const show = function (label) {
+        const html = previewMap.get(label);
+        if (!html) return;
+        title.textContent = label;
+        body.innerHTML = html;
+        renderMath(body);
+        panel.hidden = false;
+      };
+      const nodes = svg.querySelectorAll("g.node");
+      nodes.forEach(function (node) {
+        const label = labelFromNode(node);
+        if (!label) return;
+        node.style.cursor = "pointer";
+        node.setAttribute("tabindex", "0");
+        const titleNode = node.querySelector("title");
+        if (titleNode) titleNode.remove();
+        const all = [node].concat(Array.from(node.querySelectorAll("*")));
+        all.forEach(function (el) {
+          if (el.hasAttribute && el.hasAttribute("title")) {
+            el.removeAttribute("title");
+          }
+          if (el.hasAttribute && el.hasAttribute("xlink:title")) {
+            el.removeAttribute("xlink:title");
+          }
+          if (el.removeAttributeNS) {
+            el.removeAttributeNS("http://www.w3.org/1999/xlink", "title");
+          }
+        });
+      });
+      const showFromTarget = function (target) {
+        if (!(target instanceof Element)) return;
+        const node = target.closest("g.node");
+        if (!node) return;
+        const label = labelFromNode(node);
+        if (label) show(label);
+      };
+      svg.addEventListener("mouseover", function (ev) {
+        showFromTarget(ev.target);
+      });
+      svg.addEventListener("focusin", function (ev) {
+        showFromTarget(ev.target);
+      });
+      svg.addEventListener("mouseleave", hide);
+    }
+
     Promise.resolve()
       .then(() => load("https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"))
       .then(() => load("https://cdn.jsdelivr.net/npm/d3-graphviz@5.6.0/build/d3-graphviz.min.js"))
@@ -195,6 +302,7 @@ def loadD3Dot :=
 
   const graphContainer = d3.select("#graph");
   if (graphContainer.empty()) return;
+  const previewMap = collectPreviewTemplates();
 
   const dotTxt = graphContainer
     .select("script.dot-source")
@@ -207,12 +315,20 @@ def loadD3Dot :=
     const height = graphContainer.node().clientHeight;
 
     // graphContainer.graphviz({useWorker: true})
-    graphContainer.graphviz()
+    const gv = graphContainer.graphviz()
       .width(width)
       .height(height)
       .fit(true)
-      .renderDot(dotTxt)
-      // .on("end", interactive);
+      .on("end", function () {
+        attachPreviewHandlers(graphContainer, previewMap);
+      });
+    gv.renderDot(dotTxt);
+    // TODO: remove fallback once graphviz `end` is confirmed stable on our
+    // supported browser/runtime matrix.
+    // Fallback for runtimes where the graphviz `end` event is unreliable.
+    setTimeout(function () {
+      attachPreviewHandlers(graphContainer, previewMap);
+    }, 120);
   }
 
   renderGraph();
@@ -306,7 +422,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
-    some <| fun _goI _goB _id data _blocks => do
+    some <| fun _goI goB _id data _blocks => do
       let graphData : GraphBlockData ←
         match fromJson? (α := GraphBlockData) data with
         | .ok gd => pure gd
@@ -319,6 +435,46 @@ block_extension Block.graph (graphData : GraphBlockData) where
       let s ← HtmlT.state
       let resolveHref : Name → Option String := fun ref =>
         Resolve.resolveDomainHref? s Resolve.informalDomainName ref.toString
+      -- TODO: factor preview-domain decoding into a shared helper used by both
+      -- graph and summary rendering paths.
+      let previewBlocks? (label : Name) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) :=
+        let decode (facet : PreviewCache.Facet) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) := do
+          let key := PreviewCache.key label facet
+          let obj ← s.getDomainObject? Resolve.informalPreviewDomainName key
+          let entry ← (fromJson? (α := PreviewCache.Entry) obj.data).toOption
+          return entry.blocks
+        match decode .statement with
+        | some blocks => some blocks
+        | Option.none => decode .proof
+      let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
+        let some blocks := previewBlocks? node.label
+          | pure acc
+        let renderedBlocks ← blocks.mapM goB
+        let tpl : Output.Html := {{
+          <template class="bp_graph_preview_tpl" "data-bp-preview-label"={{s!"{node.label}"}}>
+            {{renderedBlocks}}
+          </template>
+        }}
+        pure <| acc.push tpl
+      let previewStore : Output.Html :=
+        if previewTemplates.isEmpty then
+          .empty
+        else
+          {{
+            <div class="bp_graph_preview_store" hidden>
+              {{previewTemplates}}
+            </div>
+          }}
+      let previewPanel : Output.Html :=
+        if previewTemplates.isEmpty then
+          .empty
+        else
+          {{
+            <aside id="bp-graph-preview" class="bp_graph_preview" hidden>
+              <div class="bp_graph_preview_title"></div>
+              <div class="bp_graph_preview_body"></div>
+            </aside>
+          }}
       return {{
         <div class="bp_graph_fullwidth">
           <div class="bp_graph_legend">
@@ -361,6 +517,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
               s!"{graphToDot graphData.graph graphData.direction resolveHref}"
             </script>
           </div>
+          {{previewStore}}
+          {{previewPanel}}
         </div>
       }}
   extraCss := ([d3DotCss, blueprintStyleSwitcherCss] : List String)
@@ -375,46 +533,78 @@ block_extension Block.summary (summary : Summary) where
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
-    some <| fun _goI _goB _id data _blocks => do
+    some <| fun _goI goB _id data _blocks => do
       let .ok data := fromJson? (α := Summary) data
         | HtmlT.logError "Malformed data in Block.summary.toHtml"
           pure .empty
       let s ← HtmlT.state
+      -- TODO: factor preview-domain decoding into a shared helper used by both
+      -- graph and summary rendering paths.
+      let previewBlocks? (label : Name) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) :=
+        let decode (facet : PreviewCache.Facet) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) := do
+          let key := PreviewCache.key label facet
+          let obj ← s.getDomainObject? Resolve.informalPreviewDomainName key
+          let entry ← (fromJson? (α := PreviewCache.Entry) obj.data).toOption
+          return entry.blocks
+        match decode .statement with
+        | some blocks => some blocks
+        | Option.none => decode .proof
       let getEntryHref (label : Name) : Option String :=
         Resolve.resolveDomainHref? s Resolve.informalDomainName label.toString
       let getCodeHref (label : Name) : Option String :=
         Resolve.resolveDomainHref? s Resolve.informalCodeDomainName label.toString
       let getDeclHref (decl : Name) : Option String :=
         Resolve.resolveExampleDeclHref? s decl
-      let mkEntryRef (label : Name) :=
-        match getEntryHref label with
-        | Option.some href => {{ <a href={{href}}> <code>s!"{label}"</code> </a> }}
-        | Option.none => {{ <code>s!"{label}"</code> }}
+      let mkEntryRef (label : Name) := do
+        -- TODO: unify preview UI behavior between graph and summary pages.
+        let preview? : Option Output.Html ←
+          match previewBlocks? label with
+          | Option.none => pure none
+          | some blocks =>
+            let rendered ← blocks.mapM goB
+            pure <| some {{
+              <div class="bp_summary_preview" role="tooltip">
+                <div class="bp_summary_preview_title"><code>s!"{label}"</code></div>
+                <div class="bp_summary_preview_body">{{rendered}}</div>
+              </div>
+            }}
+        let labelNode : Output.Html :=
+          match getEntryHref label with
+          | Option.some href => {{ <a href={{href}}> <code>s!"{label}"</code> </a> }}
+          | Option.none => {{ <code>s!"{label}"</code> }}
+        pure {{
+          <span class="bp_summary_preview_wrap">
+            {{labelNode}}
+            {{if let some preview := preview? then preview else .empty}}
+          </span>
+        }}
       let mkDeclItems (decls : List Name) :=
         decls.toArray.map fun decl =>
           match getDeclHref decl with
           | Option.some href => {{ <li><a href={{href}}> <code>s!"{decl}"</code> </a></li> }}
           | Option.none => {{ <li><code>s!"{decl}"</code></li> }}
-      let mkLeanRow (label : Name) (kind : String) (leanObjects : List Name) : Output.Html :=
+      let mkLeanRow (label : Name) (kind : String) (leanObjects : List Name) := do
+        let entryRef ← mkEntryRef label
         let codeHref := getCodeHref label
         let associatedDecls := !leanObjects.isEmpty
-        {{ <li>
-             <span class="bp_summary_item_head">{{mkEntryRef label}}</span>
-             <span class="bp_summary_item_meta">s!"({kind})"</span>
-             {{if associatedDecls then
-                {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems leanObjects}}</ul></details>}}
-               else
-                {{<span></span>}}}}
-             {{if let some href := codeHref then
-                {{<div class="bp_summary_item_body">"Lean code: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
-               else
-                {{<span></span>}}}}
-           </li> }}
-      let pendingProofRows :=
-        data.pendingInformalProofEntries.toArray.map fun item =>
+        pure {{ <li>
+                  <span class="bp_summary_item_head">{{entryRef}}</span>
+                  <span class="bp_summary_item_meta">s!"({kind})"</span>
+                  {{if associatedDecls then
+                     {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems leanObjects}}</ul></details>}}
+                    else
+                     {{<span></span>}}}}
+                  {{if let some href := codeHref then
+                     {{<div class="bp_summary_item_body">"Lean code: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
+                    else
+                     {{<span></span>}}}}
+                </li> }}
+      let pendingProofRows ←
+        data.pendingInformalProofEntries.toArray.mapM fun item =>
           mkLeanRow item.label item.kind item.leanObjects
-      let sorryRows :=
-        data.sorryDetails.toArray.map fun item =>
+      let sorryRows ←
+        data.sorryDetails.toArray.mapM fun item => do
+          let entryRef ← mkEntryRef item.label
           let codeHref := getCodeHref item.label
           let declLink :=
             match getDeclHref item.decl with
@@ -449,25 +639,25 @@ block_extension Block.summary (summary : Summary) where
                 #[{{ <a class="bp_code_link" href={{href}}>s!"in code ({sorryRefs})"</a> }}]
               else
                 links
-          {{ <li>
-               <span class="bp_summary_item_head">{{mkEntryRef item.label}}</span>
-               <span class="bp_summary_item_meta">s!"({item.kind})"</span>
-               <div class="bp_summary_item_body">
-                 "Declaration with sorry: " {{declLink}} " "
-                 <span class="bp_summary_badge">
-                   s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {whereTxt}; refs: {sorryRefs}]"
-                 </span>
-               </div>
-               {{if Array.isEmpty sorryLinks then
-                  {{<span></span>}}
-                 else
-                  {{<div class="bp_summary_item_body">"Jump: " {{(sorryLinks.toList.intersperse {{<span>" | "</span>}}).toArray}}</div>}}}}
-             </li> }}
-      let definitionRows :=
-        data.definitionIndex.toArray.map fun item =>
+          pure {{ <li>
+                    <span class="bp_summary_item_head">{{entryRef}}</span>
+                    <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+                    <div class="bp_summary_item_body">
+                      "Declaration with sorry: " {{declLink}} " "
+                      <span class="bp_summary_badge">
+                        s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {whereTxt}; refs: {sorryRefs}]"
+                      </span>
+                    </div>
+                    {{if Array.isEmpty sorryLinks then
+                       {{<span></span>}}
+                      else
+                       {{<div class="bp_summary_item_body">"Jump: " {{(sorryLinks.toList.intersperse {{<span>" | "</span>}}).toArray}}</div>}}}}
+                  </li> }}
+      let definitionRows ←
+        data.definitionIndex.toArray.mapM fun item =>
           mkLeanRow item.label item.kind item.leanObjects
-      let theoremLikeRows :=
-        data.theoremLikeIndex.toArray.map fun item =>
+      let theoremLikeRows ←
+        data.theoremLikeIndex.toArray.mapM fun item =>
           mkLeanRow item.label item.kind item.leanObjects
       return {{
         <div class="bp_summary">

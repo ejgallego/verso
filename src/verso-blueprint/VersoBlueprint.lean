@@ -20,6 +20,7 @@ import VersoBlueprint.Cite
 import VersoBlueprint.Commands
 import VersoBlueprint.Lean
 import VersoBlueprint.NameParsing
+import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
 import VersoBlueprint.TexPrelude
@@ -56,6 +57,9 @@ def informalDomain : Name := Resolve.informalDomainName
 
 /-- Name used in {name}`TraverseState.domains` for informal Lean code blocks. -/
 def informalCodeDomain : Name := Resolve.informalCodeDomainName
+
+/-- Name used in {name}`TraverseState.domains` for informal preview payloads. -/
+def informalPreviewDomain : Name := Resolve.informalPreviewDomainName
 
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
@@ -794,6 +798,15 @@ block_extension Block.informal (data : BlockData) where
       pure none
     | .ok blockData =>
       let label := blockData.label
+      let previewKey := PreviewCache.keyOf label blockData.isProof
+      let previewData := toJson (PreviewCache.Entry.ofBlocks label blockData.isProof _contents)
+      if let .some _d := (← get).getDomainObject? informalPreviewDomain previewKey then
+        modify λ s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
+      else
+        let path ← (·.path) <$> read
+        let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
+        modify λ s => s.saveDomainObject informalPreviewDomain previewKey id
+        modify λ s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
       if let .some _d := (← get).getDomainObject? informalDomain label.toString then
         return none
       else
@@ -961,6 +974,8 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     Environment.push label kind? isProof codeHint
     let contents ← contents.mapM elabBlock
     if !isProof then
+      -- TODO: consolidate this widget-oriented elaboration cache with the traversal preview cache
+      -- once we have a phase-safe representation that can serve both pipelines.
       Environment.setStatementElab contents
     let count ← Environment.pop blockRef
     let node? ← Environment.getNode? label

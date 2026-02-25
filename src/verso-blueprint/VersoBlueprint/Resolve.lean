@@ -13,6 +13,7 @@ open Lean
 
 def informalDomainName : Name := Name.mkSimple "Informal.Block.informal"
 def informalCodeDomainName : Name := Name.mkSimple "Informal.Block.informalCode"
+def informalPreviewDomainName : Name := Name.mkSimple "Informal.Block.informalPreview"
 def bibliographyDomainName : Name := Name.mkSimple "Informal.Block.bpCitations"
 def citationUsageDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.usages"
 def exampleDomainName : Name := ``Verso.Genre.Manual.example
