@@ -3,10 +3,16 @@
 - Primary work areas:
   - `src/verso-blueprint`
   - `test-projects/Noperthedron` (core example project)
+- Primary work branch, at root `bp`
 - Main validation command:
   - `lake exe noperthedron`
 - Validation output:
   - Generated website is written to `_out/`
+
+## General recommendations:
+
+- Avoid duplication
+- One one single source of truth
 
 ## Worktree Layout (Parallel Features + Sub-Agents)
 
@@ -15,6 +21,7 @@
 - Put feature worktrees under:
   - `/home/egallego/lean/verso/.worktrees/<feature>`
 - This keeps all worktrees under the same writable root, so Codex sub-agents can edit without sandbox path issues.
+- When we need to preview the noperthedron artifact, and we are in a worktree, please launch a websever pointint out to the right `_out` directory under the worktree, generate a link I can click.
 
 ### One-time setup
 

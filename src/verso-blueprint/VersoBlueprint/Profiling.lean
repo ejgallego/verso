@@ -14,7 +14,7 @@ open Verso.Doc.Elab
 namespace Informal.Profile
 
 -- XXX: Turn into an option?
-initialize bp_profile : IO.Ref Bool ← IO.mkRef true
+initialize bp_profile : IO.Ref Bool ← IO.mkRef false
 
 private def leftPad (s : String) (width : Nat) : String :=
   if s.length >= width then
