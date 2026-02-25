@@ -67,6 +67,7 @@ structure Config where
   labelSyntax : Syntax := Syntax.missing
   lean : Option String := none
   leanok : Option Bool := none
+  parent : Option Data.Parent := none
   externalCode : Array Data.ExternalRef := #[]
   invalidExternalCode : Array String := #[]
 --  hide : Bool := false
@@ -130,27 +131,89 @@ private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m]
       return pushExternalRefDedup acc (parsedExternalRef ref)
 
 def Config.parse  : ArgParse m Config :=
-  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok =>
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent =>
     let (externalCode, invalidExternalCode) := parseExternalCodeList lean
     {
       label := Name.mkSimple labelArg.val
       labelSyntax := labelArg.syntax
       lean := lean
       leanok := leanok
+      parent := parent.map Name.mkSimple
       externalCode := externalCode
       invalidExternalCode := invalidExternalCode
     }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true
-        <*> .named `leanok .bool true
+        <*> .named `leanok .bool true <*> .named `parent .string true
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
 
+structure GroupConfig where
+  label : Data.Label
+  labelSyntax : Syntax := Syntax.missing
+
+def GroupConfig.parse : ArgParse m GroupConfig :=
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) =>
+    {
+      label := Name.mkSimple labelArg.val
+      labelSyntax := labelArg.syntax
+    }) <$> .positional `label (.withSyntax .string)
+
+instance : FromArgs GroupConfig m where
+  fromArgs := GroupConfig.parse
+
 end
+
+structure SourceLoc where
+  line : Nat
+  column : Nat
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+def SourceLoc.ofPosition (pos : Lean.Position) : SourceLoc :=
+  { line := pos.line, column := pos.column }
+
+structure SourceRange where
+  start : SourceLoc
+  «end» : SourceLoc
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+def SourceRange.ofDeclarationRange (range : Lean.DeclarationRange) : SourceRange :=
+  { start := SourceLoc.ofPosition range.pos, «end» := SourceLoc.ofPosition range.endPos }
+
+inductive ExternalDeclProvenance where
+  | inWorkspace (moduleName : Name) (sourcePath : String)
+  | outWorkspace (moduleName : Name) (sourcePath? : Option String := none)
+  | unknown
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+def ExternalDeclProvenance.moduleName? : ExternalDeclProvenance → Option Name
+  | .inWorkspace moduleName _ => some moduleName
+  | .outWorkspace moduleName _ => some moduleName
+  | .unknown => none
+
+def ExternalDeclProvenance.sourcePath? : ExternalDeclProvenance → Option String
+  | .inWorkspace _ sourcePath => some sourcePath
+  | .outWorkspace _ sourcePath? => sourcePath?
+  | .unknown => none
+
+def ExternalDeclProvenance.label : ExternalDeclProvenance → String
+  | .inWorkspace _ _ => "in workspace"
+  | .outWorkspace _ _ => "out workspace"
+  | .unknown => "unknown provenance"
 
 structure ExternalDeclStatus where
   decl : Name
   canonical : Name
   present : Bool := false
+  provenance : ExternalDeclProvenance := .unknown
+  range? : Option SourceRange := none
+  selectionRange? : Option SourceRange := none
+  kind? : Option String := none
+  typePretty? : Option String := none
+  valuePretty? : Option String := none
+  sourceDeclPretty? : Option String := none
+  sourceBodyPretty? : Option String := none
+  hasTypeSorry : Bool := false
+  hasProofSorry : Bool := false
 deriving Repr, Inhabited, FromJson, ToJson, Quote
 
 inductive BlockCodeStatus where
@@ -159,13 +222,147 @@ inductive BlockCodeStatus where
   | external (decls : Array ExternalDeclStatus)
 deriving Repr, Inhabited, FromJson, ToJson, Quote
 
-def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.CodeRef) : BlockCodeStatus :=
+private def truncatePreview (limit : Nat) (s : String) : String :=
+  if s.length <= limit then
+    s
+  else
+    (s.take limit).toString ++ "…"
+
+private def externalDeclKindText (info : ConstantInfo) : String :=
+  match info with
+  | .defnInfo _ => "definition"
+  | .thmInfo _ => "theorem"
+  | .axiomInfo _ => "axiom"
+  | .opaqueInfo _ => "opaque"
+  | .quotInfo _ => "quotient"
+  | .inductInfo _ => "inductive"
+  | .ctorInfo _ => "constructor"
+  | .recInfo _ => "recursor"
+
+private def moduleNameForDecl? (env : Lean.Environment) (decl : Name) : Option Name := do
+  let moduleIdx ← env.getModuleIdxFor? decl
+  env.allImportedModuleNames[moduleIdx.toNat]?
+
+private def sourcePathForModule? (moduleName : Name) : IO (Option System.FilePath) := do
+  let srcSearchPath ← Lean.getSrcSearchPath
+  srcSearchPath.findModuleWithExt "lean" moduleName
+
+private def workspacePathPrefix (workspaceRoot : System.FilePath) : String :=
+  let root := workspaceRoot.toString
+  let sep := System.FilePath.pathSeparator.toString
+  if root.endsWith sep then root else root ++ sep
+
+private def isPathInWorkspace (workspaceRoot sourcePath : System.FilePath) : Bool :=
+  let root := workspaceRoot.toString
+  let rootPrefix := workspacePathPrefix workspaceRoot
+  let src := sourcePath.toString
+  src == root || src.startsWith rootPrefix
+
+private def mkProvenance (workspaceRoot : System.FilePath)
+    (moduleName? : Option Name) (sourcePath? : Option System.FilePath) : ExternalDeclProvenance :=
+  match moduleName? with
+  | none => .unknown
+  | some moduleName =>
+    match sourcePath? with
+    | some sourcePath =>
+      if isPathInWorkspace workspaceRoot sourcePath then
+        .inWorkspace moduleName sourcePath.toString
+      else
+        .outWorkspace moduleName (some sourcePath.toString)
+    | none =>
+      .outWorkspace moduleName none
+
+private def readDeclarationSource? (sourcePath : System.FilePath)
+    (range : Lean.DeclarationRange) : IO (Option String) := do
+  try
+    if !(← sourcePath.pathExists) then
+      return none
+    let source ← IO.FS.readFile sourcePath
+    let fileMap := source.toFileMap
+    let start := fileMap.ofPosition range.pos
+    let stop := fileMap.ofPosition range.endPos
+    if stop < start then
+      return none
+    let snippet := (String.Pos.Raw.extract fileMap.source start stop).trimAscii.toString
+    if snippet.isEmpty then
+      return none
+    return some snippet
+  catch _ =>
+    return none
+
+private def rhsFromDeclarationSource? (declSrc : String) : Option String :=
+  match declSrc.splitOn ":=" with
+  | [] => none
+  | [_] => none
+  | _ :: rhsParts =>
+    let rhs := (String.intercalate ":=" rhsParts).trimAscii.toString
+    if rhs.isEmpty then
+      none
+    else
+      some rhs
+
+private def prettyExprPreview (env : Lean.Environment) (opts : Lean.Options) (expr : Lean.Expr)
+    (limit : Nat := 1200) : CoreM String := do
+  if expr.approxDepth.toNat > 220 then
+    return "<omitted: expression too large for preview>"
+  try
+    let fmt ← liftM <| Lean.PrettyPrinter.ppExprLegacy env {} {} opts expr
+    return truncatePreview limit ((toString fmt).trimAscii.toString)
+  catch _ =>
+    return truncatePreview limit (toString expr)
+
+private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
+    (workspaceRoot : System.FilePath)
+    (decl : Data.ExternalRef) : CoreM ExternalDeclStatus := do
+  let canonical := decl.canonical
+  match env.find? canonical with
+  | none =>
+    return { decl := decl.written, canonical, present := false }
+  | some info =>
+    let ranges? ← findDeclarationRanges? canonical
+    let moduleName? := moduleNameForDecl? env canonical
+    let sourcePath? ←
+      match moduleName? with
+      | some moduleName => liftM <| sourcePathForModule? moduleName
+      | none => pure none
+    let provenance := mkProvenance workspaceRoot moduleName? sourcePath?
+    let sourceDecl? ←
+      match sourcePath?, ranges? with
+      | some sourcePath, some ranges =>
+        liftM <| readDeclarationSource? sourcePath ranges.range
+      | _, _ => pure none
+    let sourceDeclPretty? := sourceDecl?.map (truncatePreview 1600)
+    let sourceBodyPretty? := (rhsFromDeclarationSource? =<< sourceDecl?) |>.map (truncatePreview 1200)
+    let typePretty ← prettyExprPreview env opts info.type
+    let valuePretty? ←
+      match info.value? (allowOpaque := true) with
+      | none => pure none
+      | some value => some <$> prettyExprPreview env opts value
+    return {
+      decl := decl.written
+      canonical
+      present := true
+      provenance
+      range? := ranges?.map (fun ranges => SourceRange.ofDeclarationRange ranges.range)
+      selectionRange? := ranges?.map (fun ranges => SourceRange.ofDeclarationRange ranges.selectionRange)
+      kind? := some (externalDeclKindText info)
+      typePretty? := some typePretty
+      valuePretty?
+      sourceDeclPretty?
+      sourceBodyPretty?
+      hasTypeSorry := info.type.hasSorry
+      hasProofSorry := info.value? (allowOpaque := true) |>.map (·.hasSorry) |>.getD false
+    }
+
+def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.CodeRef) : CoreM BlockCodeStatus := do
   match codeRef? with
-  | some .userOk => .userOk
+  | some .userOk => return .userOk
   | some (.external decls) =>
-    .external <| decls.map fun decl =>
-      { decl := decl.written, canonical := decl.canonical, present := (env.find? decl.canonical).isSome }
-  | _ => .none
+    let opts ← getOptions
+    let workspaceRoot ← liftM <| IO.FS.realPath (← IO.currentDir)
+    let decls ← decls.mapM (externalDeclStatus env opts workspaceRoot)
+    return .external decls
+  | _ => return .none
 
 structure BlockData where
   kind : Data.NodeKind
@@ -230,6 +427,16 @@ structure ExternalHoverDecl where
   decl : Name
   href : Option String := none
   present : Bool := false
+  provenance : ExternalDeclProvenance := .unknown
+  range? : Option SourceRange := none
+  selectionRange? : Option SourceRange := none
+  kind? : Option String := none
+  typePretty? : Option String := none
+  valuePretty? : Option String := none
+  sourceDeclPretty? : Option String := none
+  sourceBodyPretty? : Option String := none
+  hasTypeSorry : Bool := false
+  hasProofSorry : Bool := false
 
 structure ComputedData where
   proved : Bool := false
@@ -517,6 +724,54 @@ details[open] > summary .bp_code_expand_hint::before {
   color: #b91c1c;
 }
 
+.bp_external_decl_meta {
+  margin-top: 0.12rem;
+  color: #334155;
+  font-size: 0.72rem;
+}
+
+.bp_external_decl_item {
+  margin-top: 0.18rem;
+}
+
+.bp_external_decl_head {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.bp_external_decl_details {
+  margin-top: 0.12rem;
+}
+
+.bp_external_decl_details summary {
+  cursor: pointer;
+  font-size: 0.72rem;
+  color: #334155;
+}
+
+.bp_external_decl_preview {
+  margin-top: 0.2rem;
+  border-left: 2px solid #e2e8f0;
+  padding-left: 0.45rem;
+}
+
+.bp_external_decl_preview summary {
+  cursor: pointer;
+  font-size: 0.72rem;
+  color: #1e293b;
+}
+
+.bp_external_decl_preview pre {
+  margin: 0.2rem 0 0;
+  max-height: 8.5rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
 .bp_content {
   padding-left: 0.65rem;
 }
@@ -612,6 +867,10 @@ def blueprintStyleSwitcherJs : String := StyleSwitcher.jsInteractive
 def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : Array (String × String))
     (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
+  let sourcePosText (pos : SourceLoc) : String :=
+    s!"{pos.line}:{pos.column}"
+  let sourceRangeText (range : SourceRange) : String :=
+    s!"{sourcePosText range.start}-{sourcePosText range.end}"
   let listItems (items : Array CodeHoverDecl) : Output.Html :=
     if items.isEmpty then
       {{<li class="bp_code_hover_none">"none"</li>}}
@@ -656,9 +915,84 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
             {{<a href={{href}}>{{declTxt}}</a>}}
           else
             declTxt
-        let statusTxt := if item.present then "(has Lean declaration)" else "(missing Lean declaration)"
+        let statusTxt := if item.present then "(Lean declaration found)" else "(missing Lean declaration)"
         let statusClass := if item.present then "bp_external_decl_ok" else "bp_external_decl_missing"
-        {{<li>{{declNode}} " " <span class={{statusClass}}>{{.text true statusTxt}}</span></li>}}
+        let hasProvenanceDetails : Bool :=
+          match item.provenance with
+          | .unknown => false
+          | _ => true
+        let provenanceLabel := item.provenance.label
+        let moduleName? := item.provenance.moduleName?
+        let sourcePath? := item.provenance.sourcePath?
+        let sourceInfo? : Option String :=
+          match moduleName?, (item.selectionRange?.map sourceRangeText <|> item.range?.map sourceRangeText) with
+          | some moduleName, some rangeTxt => some s!"{moduleName} @ {rangeTxt}"
+          | some moduleName, none => some s!"{moduleName}"
+          | none, some rangeTxt => some s!"{rangeTxt}"
+          | none, none => none
+        let sorryInfo? : Option String :=
+          if item.hasTypeSorry || item.hasProofSorry then
+            let whereTxt :=
+              if item.hasTypeSorry && item.hasProofSorry then
+                "statement and proof"
+              else if item.hasTypeSorry then
+                "statement"
+              else
+                "proof"
+            some s!"Contains sorry ({whereTxt})"
+          else
+            none
+        let isDefinition : Bool := item.kind? == some "definition"
+        let definitionBodyPreview? : Option String :=
+          if isDefinition then
+            item.sourceBodyPretty? <|> item.valuePretty?
+          else
+            none
+        let showProofSourcePreview : Bool := (!isDefinition) && item.sourceBodyPretty?.isSome
+        let hasDetails : Bool :=
+          hasProvenanceDetails || item.kind?.isSome || sourceInfo?.isSome || sorryInfo?.isSome ||
+            sourcePath?.isSome || item.typePretty?.isSome || item.sourceDeclPretty?.isSome ||
+            definitionBodyPreview?.isSome || item.valuePretty?.isSome || showProofSourcePreview
+        {{
+          <li class="bp_external_decl_item">
+            <div class="bp_external_decl_head">
+              {{declNode}}
+              <span class={{statusClass}}>{{.text true statusTxt}}</span>
+              {{if hasProvenanceDetails then {{<span class="bp_external_badge">{{.text true provenanceLabel}}</span>}} else .empty}}
+            </div>
+            {{if hasDetails then
+                {{<details class="bp_external_decl_details">
+                    <summary>"details"</summary>
+                    {{if let some kind := item.kind? then {{<div class="bp_external_decl_meta">"kind: " <code>{{.text true kind}}</code></div>}} else .empty}}
+                    {{if let some sourceInfo := sourceInfo? then {{<div class="bp_external_decl_meta">"source: " <code>{{.text true sourceInfo}}</code></div>}} else .empty}}
+                    {{if let some sourcePath := sourcePath? then {{<div class="bp_external_decl_meta">"source path: " <code>{{.text true sourcePath}}</code></div>}} else .empty}}
+                    {{if let some sorryInfo := sorryInfo? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true sorryInfo}}</div>}} else .empty}}
+                    {{if let some typePretty := item.typePretty? then
+                        {{<details class="bp_external_decl_preview"><summary>"Type"</summary><pre>{{.text true typePretty}}</pre></details>}}
+                      else
+                        .empty}}
+                    {{if let some sourceDeclPretty := item.sourceDeclPretty? then
+                        {{<details class="bp_external_decl_preview"><summary>"Source declaration"</summary><pre>{{.text true sourceDeclPretty}}</pre></details>}}
+                      else
+                        .empty}}
+                    {{if let some definitionBody := definitionBodyPreview? then
+                          {{<details class="bp_external_decl_preview"><summary>"Body"</summary><pre>{{.text true definitionBody}}</pre></details>}}
+                      else
+                        if showProofSourcePreview then
+                          if let some proofSource := item.sourceBodyPretty? then
+                            {{<details class="bp_external_decl_preview"><summary>"Proof source"</summary><pre>{{.text true proofSource}}</pre></details>}}
+                          else
+                            .empty
+                        else
+                          if !isDefinition && item.valuePretty?.isSome then
+                            {{<div class="bp_external_decl_meta bp_code_hover_none">"Elaborated proof bodies are hidden for theorem-like declarations."</div>}}
+                          else
+                            .empty}}
+                  </details>}}
+              else
+                .empty}}
+          </li>
+        }}
   let externalHover : Output.Html :=
     if cdata.externalDecls.isEmpty then
       .empty
@@ -857,6 +1191,16 @@ block_extension Block.informal (data : BlockData) where
                 decl := decl.decl
                 href
                 present := decl.present
+                provenance := decl.provenance
+                range? := decl.range?
+                selectionRange? := decl.selectionRange?
+                kind? := decl.kind?
+                typePretty? := decl.typePretty?
+                valuePretty? := decl.valuePretty?
+                sourceDeclPretty? := decl.sourceDeclPretty?
+                sourceBodyPretty? := decl.sourceBodyPretty?
+                hasTypeSorry := decl.hasTypeSorry
+                hasProofSorry := decl.hasProofSorry
               }
           | _ => #[]
         let manualStatus : Bool :=
@@ -971,7 +1315,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         some .userOk
       else
         none
-    Environment.push label kind? isProof codeHint
+    Environment.push label kind? isProof codeHint cfg.parent
     let contents ← contents.mapM elabBlock
     if !isProof then
       -- TODO: consolidate this widget-oriented elaboration cache with the traversal preview cache
@@ -982,7 +1326,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let env ← getEnv
     let nodeCodeRef? := node?.bind (·.code)
     let nodeKind := node?.map (·.kind) |>.getD kind
-    let codeStatus := BlockCodeStatus.ofCodeRef env nodeCodeRef?
+    let codeStatus ← BlockCodeStatus.ofCodeRef env nodeCodeRef?
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
     let data : BlockData := { kind := nodeKind, label, count, isProof, codeStatus }
@@ -997,11 +1341,49 @@ private def expander (kind : Data.NodeKind) (isProof : Bool := false) : Directiv
     Profile.withDocElab "directive" label <|
       (expanderImpl kind isProof) cfg contents
 
+private def collapseWhitespace (s : String) : String :=
+  let s := s.replace "\n" " "
+  let s := s.replace "\r" " "
+  let s := s.replace "\t" " "
+  String.intercalate " " <| (s.splitOn " ").filter (fun chunk => !chunk.isEmpty)
+
+private def normalizeGroupChunk (s : String) : String :=
+  let s := s.trimAscii.toString
+  let s := s.replace "para{\"" ""
+  let s := s.replace "para{" ""
+  let s := s.replace "\"}" ""
+  let s := s.replace "}" ""
+  let s := s.replace "\"" ""
+  s.trimAscii.toString
+
+private def groupHeaderFromContents (contents : Array (TSyntax `block)) : String :=
+  let raw := contents.foldl (init := "") fun acc block =>
+    let chunk := normalizeGroupChunk <| (Syntax.reprint block.raw).getD ""
+    if chunk.isEmpty then
+      acc
+    else if acc.isEmpty then
+      chunk
+    else
+      acc ++ "\n" ++ chunk
+  collapseWhitespace raw
+
+private def groupExpanderImpl : DirectiveExpanderOf GroupConfig
+  | cfg, contents => do
+    let header := groupHeaderFromContents contents
+    if header.isEmpty then
+      logWarning m!"Group {cfg.label} has an empty body; using the group label as header text"
+    Environment.registerGroup cfg.label (if header.isEmpty then cfg.label.toString else header)
+    ``(Block.concat #[])
+
 @[directive] def «definition» := expander .definition
 @[directive] def «lemma_» := expander .lemma
 @[directive] def «theorem» := expander .theorem
 @[directive] def «corollary» := expander .corollary
 @[directive] def «proof» := expander .lemma (isProof := true)
+@[directive] def «group» : DirectiveExpanderOf GroupConfig
+  | cfg, contents => do
+    Profile.withDocElab "directive" "group" <|
+      groupExpanderImpl cfg contents
 
 /-- Interpreting Embedded Lean Code blocks -/
 private def leanImpl : CodeBlockExpanderOf Config

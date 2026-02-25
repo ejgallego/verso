@@ -73,6 +73,22 @@ set_option verso.code.warnLineLength 0
 \newcommand{\scos}{\cos_{\mathbb{Q}}}
 ```
 
+:::group "nopert_construction"
+Noperthedron construction and core definitions.
+:::
+
+:::group "nopert_radius"
+Radius and norm control for noperthedron vertices.
+:::
+
+:::group "nopert_pointsymmetry"
+Pointsymmetry properties of the construction.
+:::
+
+:::group "nopert_rupert_tightening"
+Rupert-tightening reduction lemmas.
+:::
+
 ```internal
 open scoped Matrix
 namespace NopertInline
@@ -81,7 +97,7 @@ open Real
 
 # Definition of the Noperthedron
 
-:::definition "def:noperthedron_main"
+:::definition "def:noperthedron_main" (parent := "nopert_construction")
 We define three points $`C_1,C_2,C_3\in \mathbb{Q}^3`.
 $$`
     C_1\coloneqq
@@ -119,7 +135,7 @@ noncomputable
 def C3R : EuclideanSpace ℝ (Fin 3) := WithLp.toLp 2 (fun i => C3 i)
 ```
 
-:::lemma_ "c1_c2_c3_norms"
+:::lemma_ "c1_c2_c3_norms" (parent := "nopert_radius")
 $`\| C_1 \| = 1`,
 $`{98 \over 100} < \| C_2 \| < {99 \over 100}`, and
 $`{98 \over 100} < \| C_3 \| < {99 \over 100}`.
@@ -206,7 +222,7 @@ lemma C15_pres_norm (pt v : ℝ³) (hv : v ∈ C15 pt) : ‖v‖ = ‖pt‖ := b
 end NopertInline
 ```
 
-:::lemma_ "lem:radius_noperthedron_one"
+:::lemma_ "lem:radius_noperthedron_one" (parent := "nopert_radius")
 The radius of the Noperthedron is one.
 :::
 
@@ -409,7 +425,7 @@ Where Steininger and Yurkevich define a 30-element set $`C_{30}`:
 `
 of rotations, we instead define
 
-:::definition "def:C15" (lean := "Nopert.C15")
+:::definition "def:C15" (lean := "Nopert.C15") (parent := "nopert_construction")
 $$`
     \mathcal{C}_{15} \coloneqq \left\{ R_z\left(\frac{2\pi k}{15}\right) \colon k=0,\dots,14 \right\}.
 `
@@ -417,11 +433,11 @@ $$`
 
 without point-symmetricness "baked in" as it is in $`C_{30}`. It's more convenient for the formalization to apply $`C_{15}` to the points $`C_1, C_2, C_3`, and then point-symmetrize that set afterwards.
 
-:::definition "def:pointsymmetric" (lean := "PointSym")
+:::definition "def:pointsymmetric" (lean := "PointSym") (parent := "nopert_construction")
 A set $`S \subseteq \R^3` is _point-symmetric_ if $`x \in S` implies $`-x \in S`.
 :::
 
-:::definition "def:pointsymmetrize" (lean := "pointsymmetrize")
+:::definition "def:pointsymmetrize" (lean := "pointsymmetrize") (parent := "nopert_construction")
 
 The _pointsymmetrization_ of a collection of vertices $`v_1, \ldots, v_n \in \R^3`
 is $`v_1, \ldots, v_n, -v_1, \ldots, -v_n`.
@@ -429,7 +445,7 @@ is $`v_1, \ldots, v_n, -v_1, \ldots, -v_n`.
 
 We write $`\mathcal{C}_{15} \cdot P = \{c P \,\text{ for } \, c \in \mathcal{C}_{15}\}` for the orbit of $`P` under the action of $`\mathcal{C}_{15}`.
 
-:::definition "def:noperthedron" (lean := "halfNopertVerts, nopertVerts, nopert")
+:::definition "def:noperthedron" (lean := "halfNopertVerts, nopertVerts, nopert") (parent := "nopert_construction")
 
 Using {uses "def:C15"}[].
 
@@ -440,7 +456,7 @@ $$`
 `
 :::
 
-:::lemma_ "lemma:half_nopert_verts_norm_le_one" (lean := "half_nopert_verts_norm_le_one")
+:::lemma_ "lemma:half_nopert_verts_norm_le_one" (lean := "half_nopert_verts_norm_le_one") (parent := "nopert_radius")
 The norm of any vertex in the prepointsymmetrized version of the Noperthedron is no more than 1.
 :::
 
@@ -448,7 +464,7 @@ The norm of any vertex in the prepointsymmetrized version of the Noperthedron is
 Evident from definitions.
 :::
 
-:::lemma_ "lemma:pointsymmetrization_is_pointsym" (lean := "pointsymmetrize_is_pointsym")
+:::lemma_ "lemma:pointsymmetrization_is_pointsym" (lean := "pointsymmetrize_is_pointsym") (parent := "nopert_pointsymmetry")
 The pointsymmetrization of any set is point-symmetric.
 :::
 
@@ -456,7 +472,7 @@ The pointsymmetrization of any set is point-symmetric.
 Evident from definitions.
 :::
 
-:::lemma_ "lemma:nopert_point_symmetric" (lean := "nopert_point_symmetric")
+:::lemma_ "lemma:nopert_point_symmetric" (lean := "nopert_point_symmetric") (parent := "nopert_pointsymmetry")
 The {uses "def:noperthedron"}[noperthedron] is {uses "def:pointsymmetric"}[point-symmetric].
 :::
 
@@ -466,7 +482,7 @@ Follows from {uses "lemma:pointsymmetrization_is_pointsym"}[]
 
 # Refined Rupert's property for the Noperthedron
 
-:::lemma_ "lem:symmetries" (lean := "Tightening.lemma7_1,Tightening.lemma7_2,Tightening.lemma7_3")
+:::lemma_ "lem:symmetries" (lean := "Tightening.lemma7_1,Tightening.lemma7_2,Tightening.lemma7_3") (parent := "nopert_rupert_tightening")
 
 Let $`\PPP = \NOP`, then for all $`\theta, \varphi, \alpha \in \R`, the following three identities hold (as sets):
 
@@ -488,7 +504,7 @@ $$`
 See {citet polyhedron.without.rupert (kind := lemma) (index := 7)}[].
 :::
 
-:::corollary "cor:rupert_tightening" (lean := "Tightening.rupert_tightening")
+:::corollary "cor:rupert_tightening" (lean := "Tightening.rupert_tightening") (parent := "nopert_rupert_tightening")
 
 If the noperthedron is Rupert, then there exists a solution with
 

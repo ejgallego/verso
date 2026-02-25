@@ -53,7 +53,27 @@ set_option verso.code.warnLineLength 0
 \newcommand{\scos}{\cos_{\mathbb{Q}}}
 ```
 
-:::lemma_ "lem:pythagoras" (lean := "Local.pythagoras")
+:::group "local_linear_algebra"
+Linear-algebra lemmas for local geometry.
+:::
+
+:::group "local_spanning"
+Spanning criteria for projected triples.
+:::
+
+:::group "local_distance_sector"
+Distance and local-maximality sector estimates.
+:::
+
+:::group "local_congruence"
+Congruence characterization tools.
+:::
+
+:::group "local_main"
+Assembly of the local no-Rupert theorem.
+:::
+
+:::lemma_ "lem:pythagoras" (lean := "Local.pythagoras") (parent := "local_linear_algebra")
 For any $`P \in \mathbb{R}^3` one has
 $`\|M(\theta, \phi) P\|^2=\|P\|^2-\langle X(\theta,\varphi),P\rangle^2`.
 :::
@@ -62,7 +82,7 @@ $`\|M(\theta, \phi) P\|^2=\|P\|^2-\langle X(\theta,\varphi),P\rangle^2`.
 See {citet polyhedron.without.rupert}[], Lemma 21.
 :::
 
-:::definition "def:spanp" (lean := "Local.Spanp")
+:::definition "def:spanp" (lean := "Local.Spanp") (parent := "local_linear_algebra")
 Given $`v_1, \dots, v_n \in \mathbb{R}^n`, define
 $`\mathrm{span}^+(v_1,\dots,v_n)` to be the simplicial cone
 
@@ -72,7 +92,7 @@ $$`
 `
 :::
 
-:::lemma_ "lem:langles" (lean := "Local.langles")
+:::lemma_ "lem:langles" (lean := "Local.langles") (parent := "local_linear_algebra")
 Let $`V_1,V_2,V_3,Y,Z \in \mathbb{R}^3` with $`\|Y \|=\| Z \|` and
 $`Y,Z \in \mathrm{span}^+(V_1,V_2,V_3)`.
 Then at least one of the following inequalities fails:
@@ -86,7 +106,7 @@ Then at least one of the following inequalities fails:
 See {citet polyhedron.without.rupert}[], Lemma 23.
 :::
 
-:::lemma_ "lem:scalarprodbars" (lean := "Local.abs_sub_inner_bars_le")
+:::lemma_ "lem:scalarprodbars" (lean := "Local.abs_sub_inner_bars_le") (parent := "local_linear_algebra")
 For $`A,\overline{A},B,\overline{B}\in \mathbb{R}^{n\times n}` and $`P_1,P_2\in \mathbb{R}^n` it holds that
 
 $$`
@@ -99,7 +119,7 @@ $$`
 See {citet polyhedron.without.rupert}[], Lemma 24.
 :::
 
-:::lemma_ "lem:absscalar" (lean := "Local.abs_sub_inner_le")
+:::lemma_ "lem:absscalar" (lean := "Local.abs_sub_inner_le") (parent := "local_linear_algebra")
 For $`A,B\in \mathbb{R}^{n\times n}` and $`P_1,P_2\in \mathbb{R}^n` one has
 
 $$`
@@ -112,7 +132,7 @@ $$`
 See {citet polyhedron.without.rupert}[], Lemma 25.
 :::
 
-:::lemma_ "lem:origintriangle" (lean := "Local.origin_in_triangle")
+:::lemma_ "lem:origintriangle" (lean := "Local.origin_in_triangle") (parent := "local_linear_algebra")
 Let $`A,B,C\in \mathbb{R}^2` be such that
 $`\langle R(\pi/2) A,B\rangle`,
 $`\langle R(\pi/2) B,C\rangle`,
@@ -124,7 +144,7 @@ Then the origin lies strictly in triangle $`ABC`.
 See {citet polyhedron.without.rupert}[], Lemma 26.
 :::
 
-:::definition "def:eps-spanning" (lean := "Local.Triangle.Spanning")
+:::definition "def:eps-spanning" (lean := "Local.Triangle.Spanning") (parent := "local_spanning")
 Let $`\theta, \varphi \in \mathbb{R}`, $`\varepsilon > 0`, and set $`M := M(\theta, \varphi)`.
 Three points $`P_1, P_2, P_3 \in \mathbb{R}^3` with $`\|P_1\|, \|P_2\|, \|P_3\| \leq 1`
 are called $`\varepsilon`-spanning for $`(\theta, \varphi)` if:
@@ -134,7 +154,7 @@ are called $`\varepsilon`-spanning for $`(\theta, \varphi)` if:
 - $`\langle R(\pi/2) M P_3,M P_{1}\rangle > 2 \epsilon(\sqrt{2} + \varepsilon)`
 :::
 
-:::lemma_ "lem:eps-spanning" (lean := "Local.vecX_spanning")
+:::lemma_ "lem:eps-spanning" (lean := "Local.vecX_spanning") (parent := "local_spanning")
 Using {uses "def:eps-spanning"}[] and {uses "def:spanp"}[].
 
 Let $`P_1, P_2, P_3 \in \mathbb{R}^3` with $`\|P_1\|,\|P_2\|,\|P_3\| \leq 1` be
@@ -150,7 +170,7 @@ Using {uses "lem:scalarprodbars"}[], {uses "lem:origintriangle"}[], and {uses "l
 See {citet polyhedron.without.rupert}[], Lemma 28.
 :::
 
-:::lemma_ "lem:inCirc" (lean := "Local.inCirc")
+:::lemma_ "lem:inCirc" (lean := "Local.inCirc") (parent := "local_distance_sector")
 Let $`P, Q \in \mathbb{R}^3` with $`\|P\|, \|Q\| \leq 1`, and let
 $`\epsilon>0`, $`\bar\theta_1,\bar\phi_1,\bar\theta_2,\bar\phi_2,\bar\alpha \in \mathbb{R}`.
 Set
@@ -170,7 +190,7 @@ Using {uses "lem:sqrt2"}[] and {uses "lem:sqrt5"}[].
 See {citet polyhedron.without.rupert}[], Lemma 30.
 :::
 
-:::definition "def:LMD" (lean := "Local.LocallyMaximallyDistant")
+:::definition "def:LMD" (lean := "Local.LocallyMaximallyDistant") (parent := "local_distance_sector")
 Let $`\mathbf{P} \subset \mathbb{R}^2` be a convex polygon and $`Q \in \mathbf{P}` a vertex.
 Assume $`Q \in \mathrm{Circ}_{\delta}(\overline{Q})` for some $`\overline{Q} \in \mathbb{R}^2`.
 Define
@@ -179,7 +199,7 @@ Then $`Q` is called $`\delta`-locally maximally distant (with respect to $`\over
 if for all $`A \in \mathrm{Sect}_\delta(\overline{Q})` one has $`\|Q\| > \|A\|`.
 :::
 
-:::lemma_ "lem:LMD" (lean := "Local.inner_ge_implies_LMD")
+:::lemma_ "lem:LMD" (lean := "Local.inner_ge_implies_LMD") (parent := "local_distance_sector")
 Using {uses "def:LMD"}[].
 
 Let $`\mathbf{P}` be a convex polygon and $`Q \in \mathbf{P}` a vertex.
@@ -198,7 +218,7 @@ Then $`Q` is $`\delta`-locally maximally distant with respect to $`\overline{Q}`
 See {citet polyhedron.without.rupert}[], Lemma 32.
 :::
 
-:::lemma_ "lem:coss" (lean := "Local.coss")
+:::lemma_ "lem:coss" (lean := "Local.coss") (parent := "local_distance_sector")
 Let $`\epsilon>0` and $`\theta,\bar\theta, \phi, \bar\phi \in \mathbb{R}` with
 $`|\theta - \bar{\theta}|, |\phi - \bar{\phi}| \leq \epsilon`.
 Define $`M = M(\theta, \phi)` and $`\overline{M} = M(\bar\theta, \bar\phi)`,
@@ -217,7 +237,7 @@ Using {uses "lem:absscalar"}[] and {uses "lem:sqrt2"}[].
 See {citet polyhedron.without.rupert}[], Lemma 33.
 :::
 
-:::lemma_ "lem:congruent" (lean := "Local.congruent_iff_sym_matrix_eq")
+:::lemma_ "lem:congruent" (lean := "Local.congruent_iff_sym_matrix_eq") (parent := "local_congruence")
 Let $`P_1,P_2,P_3, Q_1,Q_2,Q_3 \in \mathbb{R}^3`.
 Define $`P := (P_1|P_2|P_3)` and $`Q := (Q_1|Q_2|Q_3)` and assume $`Q` is invertible.
 Then $`P_1, P_2, P_3` and $`Q_1, Q_2, Q_3` are congruent iff $`P^t P = Q^t Q`.
@@ -227,7 +247,7 @@ Then $`P_1, P_2, P_3` and $`Q_1, Q_2, Q_3` are congruent iff $`P^t P = Q^t Q`.
 From {citet polyhedron.without.rupert}[], Lemma 35.
 :::
 
-:::theorem "thm:local" (lean := "Local.local_theorem")
+:::theorem "thm:local" (lean := "Local.local_theorem") (parent := "local_main")
 Let $`\mathbf{P}` be a polyhedron of radius $`\rho=1`.
 Assume triangles $`P_1,P_2,P_3` and $`Q_1,Q_2,Q_3` in $`\mathbf{P}` are congruent,
 assume the sign conditions $`(A_\epsilon)`, the spanning hypotheses, and the quantitative

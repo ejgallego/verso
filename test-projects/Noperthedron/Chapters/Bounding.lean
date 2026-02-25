@@ -57,7 +57,19 @@ set_option verso.code.warnLineLength 0
 \newcommand{\scos}{\cos_{\mathbb{Q}}}
 ```
 
-:::lemma_ "lem:RaRalpha"
+:::group "bounding_rotation_norms"
+Rotation and norm control inequalities.
+:::
+
+:::group "bounding_trig_ineq"
+Trigonometric inequality reductions.
+:::
+
+:::group "bounding_perturbation"
+Perturbation bounds for projected points.
+:::
+
+:::lemma_ "lem:RaRalpha" (parent := "bounding_rotation_norms")
 For any $`\alpha, \theta,\varphi \in \mathbb{R}` and $`a \in \{x,y,z\}` one has
 $`\| R(\alpha)\| = \| R_a(\alpha)\| =\| M(\theta, \phi)\| = 1`.
 :::
@@ -83,7 +95,7 @@ theorem bp_rotM_norm_one (θ φ : ℝ) : ‖rotM θ φ‖ = 1 := by
   simpa using Bounding.rotM_norm_one θ φ
 ```
 
-:::lemma_ "lem:RaRa"
+:::lemma_ "lem:RaRa" (parent := "bounding_rotation_norms")
 Let $`\epsilon>0`, $`|\alpha-\alphab|\leq\varepsilon` and $`a \in \{x,y,z\}` then
 $`\|R_a(\alpha)-R_a({\alphab})\|=\|R(\alpha)-R(\alphab)\| < \varepsilon`.
 :::
@@ -110,7 +122,7 @@ theorem bp_norm_RzL_sub_RzL_eq {α α_ : ℝ} :
   simpa using Bounding.norm_RzL_sub_RzL_eq (α := α) (α_ := α_)
 ```
 
-:::lemma_ "lem:jensen"
+:::lemma_ "lem:jensen" (parent := "bounding_trig_ineq")
 For all $`a,b \in \mathbb{R}` with $`|a|,|b|\leq 2` the following inequality holds:
 $`(1+\cos(a))(1+\cos(b))\geq 2+2\cos\Big(\sqrt{a^2+b^2}\Big)`,
 with equality only for $`a=0` or $`b=0`.
@@ -126,7 +138,7 @@ theorem bp_one_plus_cos_mul_one_plus_cos_ge {a b : ℝ} (ha : |a| ≤ 2) (hb : |
   simpa using Bounding.one_plus_cos_mul_one_plus_cos_ge ha hb
 ```
 
-:::lemma_ "lem:RxRy_wlog"
+:::lemma_ "lem:RxRy_wlog" (parent := "bounding_trig_ineq")
 For any $`|\alpha|,|\beta| \le 2` and any distinct coordinate axes
 $`d_1, d_2 \in \{x,y,z\}` one has
 $`\|R_{d_1}(\alpha)R_{d_2}(\beta)-\mathrm{id}\| \leq \sqrt{\alpha^2+\beta^2}`
@@ -144,7 +156,7 @@ theorem bp_norm_RxRy_minus_id_le_wlog {d d' : Fin 3} {α β : ℝ} (hd : d ≠ d
   simpa using Bounding.norm_RxRy_minus_id_le_wlog hd hα hβ
 ```
 
-:::lemma_ "lem:RxRy"
+:::lemma_ "lem:RxRy" (parent := "bounding_trig_ineq")
 For any $`\alpha,\beta\in \mathbb{R}` one has
 $`\|R_x(\alpha)R_y(\beta)-\mathrm{id}\| \leq \sqrt{\alpha^2+\beta^2}`
 with equality only for $`\alpha = \beta = 0`.
@@ -165,7 +177,7 @@ theorem bp_lemma12_equality_iff {d d' : Fin 3} {α β : ℝ} (hd : d ≠ d') :
   simpa using Bounding.lemma12_equality_iff (d := d) (d' := d') (α := α) (β := β) hd
 ```
 
-:::lemma_ "lem:sqrt2"
+:::lemma_ "lem:sqrt2" (parent := "bounding_perturbation")
 Let $`\epsilon>0` and $`|\theta-\thetab|,|\varphi-\phib| \leq \varepsilon` then
 $`\|M(\theta, \phi)-M(\thetab,\phib)\|, \|X(\theta, \varphi)-X(\thetab,\phib)\| < \sqrt{2}\varepsilon`.
 :::
@@ -191,7 +203,7 @@ theorem bp_norm_X_sub_lt {ε θ θ_ φ φ_ : ℝ} (hε : 0 < ε) (hθ : |θ - θ
   simpa using Bounding.norm_X_sub_lt hε hθ hφ
 ```
 
-:::lemma_ "lem:XPgt0"
+:::lemma_ "lem:XPgt0" (parent := "bounding_perturbation")
 Let $`P \in \mathbb{R}^3` with $`\|P\| \leq 1`. Further, let $`\epsilon>0` and
 $`\thetab,\phib, \theta, \phi \in \mathbb{R}` such that
 $`|\thetab-\theta|, |\phib - \phi| \leq \epsilon`.
@@ -214,7 +226,7 @@ theorem bp_XPgt0 {P : ℝ³} {ε θ θ_ φ φ_ : ℝ} (hP : ‖P‖ ≤ 1) (hε 
   simpa using Bounding.XPgt0 hP hε hθ hφ hX
 ```
 
-:::lemma_ "lem:MPgtr"
+:::lemma_ "lem:MPgtr" (parent := "bounding_perturbation")
 Let $`P \in \mathbb{R}^3` with $`\|P\| \leq 1`. Further, let $`\epsilon, r>0` and
 $`\thetab,\phib, \theta, \phi \in \mathbb{R}` such that
 $`|\thetab-\theta|, |\phib - \phi| \leq \epsilon`.
@@ -238,7 +250,7 @@ theorem bp_norm_M_apply_gt {ε r θ θ_ φ φ_ : ℝ} {P : ℝ³} (hP : ‖P‖ 
   simpa using Bounding.norm_M_apply_gt hP hε hθ hφ hM
 ```
 
-:::lemma_ "lem:sqrt5"
+:::lemma_ "lem:sqrt5" (parent := "bounding_perturbation")
 Let $`\epsilon>0` and
 $`|\theta-\thetab|,|\varphi-\phib|,|\alpha-\alphab|\leq\varepsilon` then
 $`\|R(\alpha) M(\theta, \phi)-R(\alphab)M(\thetab,\phib)\| < \sqrt{5} \varepsilon`.

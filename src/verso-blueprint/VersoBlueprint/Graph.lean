@@ -44,6 +44,7 @@ structure GraphNode (Ref : Type) where
   label : Name
   deps : Array Name
   proofDeps : Array Name := #[]
+  parent? : Option Name := none
   shape : String := "box"
   style : String := "filled"
   fillcolor : String
@@ -59,7 +60,7 @@ deriving Inhabited, Repr, ToJson, FromJson
 instance [Quote Ref] : Quote (GraphNode Ref) where
   quote n := Syntax.mkCApp ``GraphNode.mk
     #[
-      quote n.label, quote n.deps, quote n.proofDeps, quote n.shape, quote n.style, quote n.fillcolor,
+      quote n.label, quote n.deps, quote n.proofDeps, quote n.parent?, quote n.shape, quote n.style, quote n.fillcolor,
       quote n.color, quote n.penwidth, quote n.fontcolor, quote n.peripheries, quote n.gradientangle?,
       quote n.tooltip?, quote n.ref?
     ]
@@ -265,6 +266,7 @@ def warningTooltipParts (warnings : WarningFlags) : List String :=
   (if warnings.depsWithSorries then [warningDepsText] else [])
 
 def mkStyledNode (kind : Data.NodeKind) (label : Name) (deps proofDeps : Array Name)
+    (parent? : Option Name)
     (statement : StatementStatus) (proof : ProofStatus) (warnings : WarningFlags)
     (ref? : Option Ref) : GraphNode Ref :=
   if warnings.unknownRef then
@@ -272,6 +274,7 @@ def mkStyledNode (kind : Data.NodeKind) (label : Name) (deps proofDeps : Array N
       label
       deps
       proofDeps
+      parent?
       shape := "box"
       style := "filled"
       fillcolor := unresolvedFillColor
@@ -305,6 +308,7 @@ def mkStyledNode (kind : Data.NodeKind) (label : Name) (deps proofDeps : Array N
       label
       deps
       proofDeps
+      parent?
       shape
       style := "filled"
       fillcolor
@@ -348,10 +352,10 @@ def mkNode (external : ExternalCodeStatus) (state : Environment.State)
     let proof := proofStatus external state label node
     let warnings := nodeWarnings external state label node
     let ref? := resolveRef? label
-    mkStyledNode node.kind label deps nodeProofDeps statement proof warnings ref?
+    mkStyledNode node.kind label deps nodeProofDeps node.parent statement proof warnings ref?
   | none =>
     let unresolvedWarnings : WarningFlags := { unknownRef := true }
-    mkStyledNode Data.NodeKind.definition label #[] #[] .blocked .none unresolvedWarnings none
+    mkStyledNode Data.NodeKind.definition label #[] #[] none .blocked .none unresolvedWarnings none
 
 def build (state : Environment.State) (roots : Array Name) (resolveRef? : Name → Option Ref := fun _ => none) :
     Graph Ref :=
@@ -366,66 +370,174 @@ def buildWithExternal (state : Environment.State) (roots : Array Name)
 
 def escapeDotString (s : String) : String :=
   let s := s.replace "\\" "\\\\"
-  s.replace "\"" "\\\""
+  let s := s.replace "\"" "\\\""
+  let s := s.replace "\n" "\\n"
+  s.replace "\r" ""
+
+def dotIndent (n : Nat) : String := String.ofList (List.replicate n ' ')
+
+partial def emitGroupClusterLines (nodeDefs : NameMap String) (groupMembers : NameMap (Array Name))
+    (groupChildren : NameMap (Array Name)) (groupIds : NameMap Nat)
+    (groupLabel? : Name → Option String) (group : Name) (level fuel : Nat)
+    (visited : NameSet) : Array String × NameSet :=
+  if fuel == 0 || visited.contains group then
+    (#[], visited)
+  else
+    let visited := visited.insert group
+    let pad := dotIndent level
+    let pad2 := dotIndent (level + 2)
+    let clusterName := s!"cluster_{groupIds.getD group 0}"
+    let groupLabel :=
+      match groupLabel? group with
+      | some label =>
+        let label := label.trimAscii.toString
+        if label.isEmpty then toString group else label
+      | none => toString group
+    let openLine := pad ++ s!"subgraph \"{escapeDotString clusterName}\" " ++ "{"
+    let clusterMeta : Array String := #[
+      s!"{pad2}label=\"{escapeDotString groupLabel}\";",
+      s!"{pad2}style=\"rounded,dashed\";",
+      s!"{pad2}color=\"#cbd5e1\";",
+      s!"{pad2}penwidth=1.2;"
+    ]
+    let memberLines := (groupMembers.getD group #[]).foldl (init := (#[] : Array String)) fun acc label =>
+      match nodeDefs.get? label with
+      | some line => acc.push s!"{pad2}{line}"
+      | none => acc
+    let (childLines, visited) :=
+      (groupChildren.getD group #[]).foldl (init := ((#[] : Array String), visited)) fun (acc, visited) child =>
+        let (lines, visited) := emitGroupClusterLines nodeDefs groupMembers groupChildren groupIds groupLabel? child (level + 2) (fuel - 1) visited
+        (acc ++ lines, visited)
+    let closeLine := pad ++ "}"
+    ((#[openLine] ++ clusterMeta ++ memberLines ++ childLines).push closeLine, visited)
 
 def Graph.toDot (g : Graph Ref) (header : String)
+    (groupLabel? : Option (Name → Option String) := none)
     (refAttrs? : Option (Ref → Option String) := none) : String :=
   let known : NameSet := g.foldl (init := {}) fun acc node => acc.insert node.label
   let defLike : NameSet := g.foldl (init := {}) fun acc node =>
     if node.shape == "box" then acc.insert node.label else acc
-  let lines :=
-    g.foldl (init := #[header]) fun acc node =>
-      let attrs :=
-        let base : Array String := #[
-          s!"label=\"{escapeDotString (toString node.label)}\"",
-          s!"shape=\"{escapeDotString node.shape}\"",
-          s!"style=\"{escapeDotString node.style}\"",
-          s!"fillcolor=\"{escapeDotString node.fillcolor}\"",
-          s!"color=\"{escapeDotString node.color}\"",
-          s!"penwidth=\"{escapeDotString node.penwidth}\"",
-          s!"fontcolor=\"{escapeDotString node.fontcolor}\"",
-          s!"peripheries={node.peripheries}"
-        ]
-        let base :=
-          match node.gradientangle? with
-          | some gradientangle => base.push s!"gradientangle={gradientangle}"
-          | none => base
-        let base :=
-          match node.tooltip? with
-          | some tooltip => base.push s!"tooltip=\"{escapeDotString tooltip}\""
-          | none => base
-        match node.ref?, refAttrs? with
-        | some ref, some mkAttrs =>
-          match mkAttrs ref with
-          | some extra => (String.intercalate ", " base.toList) ++ ", " ++ extra
-          | none => String.intercalate ", " base.toList
-        | _, _ => String.intercalate ", " base.toList
-      let (stmtDeps, seenDeps) :=
-        node.deps.foldl (init := ((#[] : Array Name), ({} : NameSet))) fun (deps, seen) dep =>
-          if seen.contains dep then
-            (deps, seen)
+  let nodeByLabel : NameMap (GraphNode Ref) :=
+    g.foldl (init := ({} : NameMap (GraphNode Ref))) fun acc node => acc.insert node.label node
+  let (nodeDefs, groupMembers, edges) :=
+    g.foldl
+      (init := (({} : NameMap String), ({} : NameMap (Array Name)), (#[] : Array String)))
+      fun (nodeDefs, groupMembers, edges) node =>
+        let attrs :=
+          let base : Array String := #[
+            s!"label=\"{escapeDotString (toString node.label)}\"",
+            s!"shape=\"{escapeDotString node.shape}\"",
+            s!"style=\"{escapeDotString node.style}\"",
+            s!"fillcolor=\"{escapeDotString node.fillcolor}\"",
+            s!"color=\"{escapeDotString node.color}\"",
+            s!"penwidth=\"{escapeDotString node.penwidth}\"",
+            s!"fontcolor=\"{escapeDotString node.fontcolor}\"",
+            s!"peripheries={node.peripheries}"
+          ]
+          let base :=
+            match node.gradientangle? with
+            | some gradientangle => base.push s!"gradientangle={gradientangle}"
+            | none => base
+          let base :=
+            match node.tooltip? with
+            | some tooltip => base.push s!"tooltip=\"{escapeDotString tooltip}\""
+            | none => base
+          match node.ref?, refAttrs? with
+          | some ref, some mkAttrs =>
+            match mkAttrs ref with
+            | some extra => (String.intercalate ", " base.toList) ++ ", " ++ extra
+            | none => String.intercalate ", " base.toList
+          | _, _ => String.intercalate ", " base.toList
+        let nodeDefs := nodeDefs.insert node.label s!"\"{node.label}\" [{attrs}];"
+        let groupMembers :=
+          match node.parent? with
+          | none => groupMembers
+          | some parent =>
+            let members := groupMembers.getD parent #[]
+            groupMembers.insert parent (members.push node.label)
+        let (stmtDeps, seenDeps) :=
+          node.deps.foldl (init := ((#[] : Array Name), ({} : NameSet))) fun (deps, seen) dep =>
+            if seen.contains dep then
+              (deps, seen)
+            else
+              (deps.push dep, seen.insert dep)
+        let (proofDeps, _seenAllDeps) :=
+          node.proofDeps.foldl (init := ((#[] : Array Name), seenDeps)) fun (deps, seen) dep =>
+            if seen.contains dep then
+              (deps, seen)
+            else
+              (deps.push dep, seen.insert dep)
+        let edges := stmtDeps.foldl (init := edges) fun edges dep =>
+          if known.contains dep then
+            if defLike.contains dep then
+              edges.push s!"  \"{dep}\" -> \"{node.label}\" [style=dashed, penwidth=1.2];"
+            else
+              edges.push s!"  \"{dep}\" -> \"{node.label}\";"
           else
-            (deps.push dep, seen.insert dep)
-      let (proofDeps, _seenAllDeps) :=
-        node.proofDeps.foldl (init := ((#[] : Array Name), seenDeps)) fun (deps, seen) dep =>
-          if seen.contains dep then
-            (deps, seen)
+            edges
+        let edges := proofDeps.foldl (init := edges) fun edges dep =>
+          if known.contains dep then
+            edges.push s!"  \"{dep}\" -> \"{node.label}\" [style=dotted, penwidth=1.2];"
           else
-            (deps.push dep, seen.insert dep)
-      let acc := acc.push s!"  \"{node.label}\" [{attrs}];"
-      let acc := stmtDeps.foldl (init := acc) fun acc dep =>
-        if known.contains dep then
-          if defLike.contains dep then
-            acc.push s!"  \"{dep}\" -> \"{node.label}\" [style=dashed, penwidth=1.2];"
+            edges
+        (nodeDefs, groupMembers, edges)
+  let groupMembers :=
+    groupMembers.foldl (init := ({} : NameMap (Array Name))) fun acc parent members =>
+      if members.size > 1 then
+        acc.insert parent members
+      else
+        acc
+  let groupedLabels : NameSet :=
+    groupMembers.foldl (init := ({} : NameSet)) fun acc _parent members =>
+      members.foldl (init := acc) fun acc label => acc.insert label
+  let groups : Array Name := groupMembers.toArray.map (·.1)
+  let groupSet : NameSet := groups.foldl (init := ({} : NameSet)) fun acc group => acc.insert group
+  let groupParent : NameMap Name :=
+    groups.foldl (init := ({} : NameMap Name)) fun acc group =>
+      match nodeByLabel.get? group with
+      | some node =>
+        match node.parent? with
+        | some parent =>
+          if groupSet.contains parent then
+            acc.insert group parent
           else
-            acc.push s!"  \"{dep}\" -> \"{node.label}\";"
-        else
-          acc
-      proofDeps.foldl (init := acc) fun acc dep =>
-        if known.contains dep then
-          acc.push s!"  \"{dep}\" -> \"{node.label}\" [style=dotted, penwidth=1.2];"
-        else
-          acc
+            acc
+        | none => acc
+      | none => acc
+  let groupChildren : NameMap (Array Name) :=
+    groupParent.toArray.foldl (init := ({} : NameMap (Array Name))) fun acc (child, parent) =>
+      let children := acc.getD parent #[]
+      if children.contains child then
+        acc
+      else
+        acc.insert parent (children.push child)
+  let (groupIds, _nextId) :=
+    groups.foldl (init := (({} : NameMap Nat), 0)) fun (acc, i) group =>
+      (acc.insert group i, i + 1)
+  let rootGroups :=
+    let roots := groups.filter (fun group => !(groupParent.contains group))
+    if roots.isEmpty then groups else roots
+  let groupLabel? := groupLabel?.getD (fun _ => none)
+  let (clusterLines, visitedGroups) :=
+    rootGroups.foldl (init := ((#[] : Array String), ({} : NameSet))) fun (acc, visited) group =>
+      let (lines, visited) := emitGroupClusterLines nodeDefs groupMembers groupChildren groupIds groupLabel? group 2 (groups.size + 1) visited
+      (acc ++ lines, visited)
+  let (clusterLines, _visitedGroups) :=
+    groups.foldl (init := (clusterLines, visitedGroups)) fun (acc, visited) group =>
+      if visited.contains group then
+        (acc, visited)
+      else
+        let (lines, visited) := emitGroupClusterLines nodeDefs groupMembers groupChildren groupIds groupLabel? group 2 (groups.size + 1) visited
+        (acc ++ lines, visited)
+  let ungroupedNodeLines :=
+    g.foldl (init := (#[] : Array String)) fun acc node =>
+      if groupedLabels.contains node.label then
+        acc
+      else
+        match nodeDefs.get? node.label with
+        | some line => acc.push s!"  {line}"
+        | none => acc
+  let lines := #[header] ++ ungroupedNodeLines ++ clusterLines ++ edges
   let lines := lines.push "}"
   lines.foldl (init := "") fun acc line =>
     if acc.isEmpty then line else acc ++ "\n" ++ line

@@ -50,7 +50,19 @@ set_option verso.code.warnLineLength 0
 \newcommand{\scos}{\cos_{\mathbb{Q}}}
 ```
 
-:::theorem "thm:no_nopert_tight_pose" (lean := "no_nopert_tight_pose")
+:::group "main_tight_interval"
+No Rupert solution on the certified tight interval.
+:::
+
+:::group "main_pose_reductions"
+Reductions from general poses to certified subcases.
+:::
+
+:::group "main_final_nonrupert"
+Final non-Rupert conclusions for the noperthedron.
+:::
+
+:::theorem "thm:no_nopert_tight_pose" (lean := "no_nopert_tight_pose") (parent := "main_tight_interval")
 Using {uses "def:noperthedron"}[].
 
 There does not in fact exist a noperthedron Rupert solution with
@@ -74,7 +86,7 @@ the 5-dimensional interval above. By {uses "thm:row_valid_imp_not_rupert"}[this 
 there is no Rupert solution in that interval.
 :::
 
-:::theorem "thm:no_nopert_pose" (lean := "no_nopert_pose")
+:::theorem "thm:no_nopert_pose" (lean := "no_nopert_pose") (parent := "main_pose_reductions")
 There is no 5-parameter pose that makes the noperthedron have the Rupert property.
 :::
 
@@ -85,7 +97,7 @@ Theorem {uses "thm:no_nopert_tight_pose"}[] rules out tight poses,
 and {uses "cor:rupert_tightening"}[] reduces the general case to the tight case.
 :::
 
-:::theorem "thm:no_nopert_rot_pose" (lean := "no_nopert_rot_pose")
+:::theorem "thm:no_nopert_rot_pose" (lean := "no_nopert_rot_pose") (parent := "main_pose_reductions")
 There is no purely rotational pose that makes the noperthedron have the Rupert property.
 :::
 
@@ -96,7 +108,7 @@ A purely rotational pose can be converted to an equivalent 5-parameter pose
 via {uses "thm:pose_of_matrix_pose"}[], which contradicts {uses "thm:no_nopert_pose"}[].
 :::
 
-:::theorem "thm:no_nopert_matrix_pose" (lean := "no_nopert_matrix_pose")
+:::theorem "thm:no_nopert_matrix_pose" (lean := "no_nopert_matrix_pose") (parent := "main_pose_reductions")
 There is no pose that makes the noperthedron have the Rupert property.
 :::
 
@@ -108,7 +120,7 @@ By {uses "lemma:nopert_point_symmetric"}[], the noperthedron is point symmetric.
 This would force a purely rotational Rupert pose, contradicting {uses "thm:no_nopert_rot_pose"}[].
 :::
 
-:::theorem "thm:nopert_not_rupert_set" (lean := "nopert_not_rupert_set")
+:::theorem "thm:nopert_not_rupert_set" (lean := "nopert_not_rupert_set") (parent := "main_final_nonrupert")
 Using {uses "def:noperthedron"}[].
 
 The noperthedron is not a Rupert set.
@@ -119,7 +131,7 @@ Using {uses "thm:no_nopert_matrix_pose"}[].
 By {uses "thm:no_nopert_matrix_pose"}[this theorem], no pose makes the noperthedron Rupert.
 :::
 
-:::theorem "thm:nopert_not_rupert" (lean := "nopert_not_rupert")
+:::theorem "thm:nopert_not_rupert" (lean := "nopert_not_rupert") (parent := "main_final_nonrupert")
 The noperthedron is not a Rupert polyhedron.
 :::
 

@@ -17,11 +17,14 @@ set_option doc.verso true
 -- informal object labels are names for now, but that could change
 @[expose]
 def Label := Name
-deriving Repr, Inhabited, ToString, ToMessageData, ToJson, FromJson, Quote
+deriving Repr, Inhabited, DecidableEq, ToString, ToMessageData, ToJson, FromJson, Quote
 
 @[expose] def LabelMap A := NameMap A
 
 instance [Repr A] : Repr (LabelMap A) := inferInstanceAs <| Repr (NameMap A)
+
+@[expose]
+abbrev Parent := Label
 
 inductive NodeKind where
   | definition
@@ -125,6 +128,7 @@ structure Node where
   statement : Option InformalData := none -- Informal Object statement
   proof : Option InformalData := none -- Informal Object proof
   code : Option CodeRef := none -- Informal Object associated code status
+  parent : Option Parent := none -- Optional parent group for summaries/graphs
 deriving Repr, Inhabited
 
 /-- Map of labels to Node data -/
@@ -133,6 +137,14 @@ deriving Repr, Inhabited
 
 /-- We can state a theorem if all its deps are done, and the theorem isn't "not ready" -/
 def Data.empty : Data := Std.TreeMap.empty
+
+def Data.parentChildren (data : Data) : LabelMap (Array Label) :=
+  data.foldl (init := (Std.TreeMap.empty : LabelMap (Array Label))) fun acc child node =>
+    match node.parent with
+    | none => acc
+    | some parent =>
+      let children := acc.getD parent #[]
+      acc.insert parent (children.push child)
 
 section
 
@@ -169,6 +181,19 @@ private def mergeCodeRef (label : Label) (current : Option CodeRef) (incoming : 
     logError m!"Label {label} cannot use '(lean := ...)' because it already has an associated Lean code block"
     return current
 
+private def mergeParent (label : Label) (current incoming : Option Parent) : m (Option Parent) := do
+  match current, incoming with
+  | none, none => return none
+  | some parent, none => return some parent
+  | none, some parent => return some parent
+  | some currentParent, some incomingParent =>
+    if currentParent = incomingParent then
+      logWarning m!"Label {label} repeats '(parent := \"{currentParent}\")'; keeping the same parent"
+      return some currentParent
+    else
+      logError m!"Label {label} declares conflicting parents: existing '{currentParent}', new '{incomingParent}'"
+      return some currentParent
+
 def Data.registerCodeRef (data : Data) (label : Label) (codeRef : CodeRef) : m Data := do
   match data.get? label with
   | none =>
@@ -179,19 +204,22 @@ def Data.registerCodeRef (data : Data) (label : Label) (codeRef : CodeRef) : m D
 
 def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
     (statement : Option InformalData) (proof : Option InformalData)
-    (codeHint : Option CodeRef := none) : m Data := do
-  let applyCodeHint (node : Node) : m Node := do
+    (codeHint : Option CodeRef := none) (parent : Option Parent := none) : m Data := do
+  let applyHints (node : Node) : m Node := do
     match codeHint with
-    | none => return node
+    | none =>
+      let parent ← mergeParent label node.parent parent
+      return { node with parent }
     | some hint =>
       let code ← mergeCodeRef label node.code hint
-      return { node with code }
+      let parent ← mergeParent label node.parent parent
+      return { node with code, parent }
   let nextCount := data.size + 1
   match data.get? label, statement, proof with
   -- First statement for a fresh label.
   | none, some statement, none =>
     let count := nextCount
-    let node ← applyCodeHint {
+    let node ← applyHints {
       statement := some statement
       count
       kind := kind?.getD .lemma
@@ -205,7 +233,7 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
   | some node, some statement, none =>
     if node.statement.isNone then
       let count := if node.count == 0 then nextCount else node.count
-      let node ← applyCodeHint {
+      let node ← applyHints {
         node with
           kind := kind?.getD node.kind
           count
@@ -224,7 +252,7 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
       logError m!"Cannot register proof for {label}: statement dependencies are missing"
       return data
     else
-      let node ← applyCodeHint {
+      let node ← applyHints {
         node with
           proof := some proof
       }
