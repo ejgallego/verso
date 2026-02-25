@@ -7,6 +7,10 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
+import Noperthedron.Rupert.Equivalences.RupertEquivRupertSet
+import Noperthedron.ConvertPose
+import Noperthedron.CommonCenter
+import Noperthedron.Nopert
 
 open Verso.Genre Manual Informal
 

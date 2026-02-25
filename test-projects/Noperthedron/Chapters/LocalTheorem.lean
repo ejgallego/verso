@@ -7,6 +7,8 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
+import Noperthedron.Local
+import Noperthedron.Local.Congruent
 import Bibliography
 
 open Verso.Genre
