@@ -14,7 +14,6 @@ import VersoBlueprint.Widget
 import Noperthedron.Basic
 import Noperthedron.Bounding
 import Noperthedron.PointSym
-import Noperthedron.Tightening
 import Bibliography
 
 --set_option trace.Elab.info true
