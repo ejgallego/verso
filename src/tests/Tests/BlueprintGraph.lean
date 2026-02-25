@@ -99,10 +99,16 @@ def stateStatus : Environment.State := mkState [
       kind := .theorem
       statement := some (mkInformal #[])
       code := some (mkTheoremCode `local_sorry_decl false true)
+    }),
+  (`thm_type_sorry,
+    {
+      kind := .theorem
+      statement := some (mkInformal #[])
+      code := some (mkTheoremCode `thm_type_sorry_decl true false)
     })
 ]
 
-def graphStatus : Graph Unit := build stateStatus #[`def_formal, `def_ready, `def_blocked, `thm_ready, `lean_only, `local_sorry]
+def graphStatus : Graph Unit := build stateStatus #[`def_formal, `def_ready, `def_blocked, `thm_ready, `lean_only, `local_sorry, `thm_type_sorry]
 
 /-- info: true -/
 #guard_msgs in
@@ -130,6 +136,10 @@ def graphStatus : Graph Unit := build stateStatus #[`def_formal, `def_ready, `de
     n.fillcolor == s!"{proofBackgroundFormalizedAncColor}:{leanOnlyOverlayColor}") &&
   hasNodeWith graphStatus `local_sorry (fun n =>
     n.color == statementBorderFormalizedColor &&
+    n.gradientangle? == some "90" &&
+    n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}") &&
+  hasNodeWith graphStatus `thm_type_sorry (fun n =>
+    n.color == statementBorderReadyColor &&
     n.gradientangle? == some "90" &&
     n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}")
 
@@ -216,15 +226,22 @@ def stateExternalCode : Environment.State := mkState [
       kind := .definition
       statement := some (mkInformal #[])
       code := some (.external #[Data.ExternalRef.ofName `Ext.bad])
+    }),
+  (`def_ext_missing,
+    {
+      kind := .definition
+      statement := some (mkInformal #[])
+      code := some (.external #[Data.ExternalRef.ofName `Ext.missing])
     })
 ]
 
 def externalStatus : ExternalCodeStatus := {
+  isMissing := fun n => n == `Ext.missing
   hasTypeSorry := fun n => n == `Ext.bad
   hasProofSorry := fun n => n == `Ext.bad
 }
 
-def graphExternalCode : Graph Unit := buildWithExternal stateExternalCode #[`def_ext_ok, `def_ext_bad] externalStatus
+def graphExternalCode : Graph Unit := buildWithExternal stateExternalCode #[`def_ext_ok, `def_ext_bad, `def_ext_missing] externalStatus
 
 /-- info: true -/
 #guard_msgs in
@@ -232,6 +249,30 @@ def graphExternalCode : Graph Unit := buildWithExternal stateExternalCode #[`def
   hasNodeWith graphExternalCode `def_ext_ok (fun n =>
     n.color == statementBorderFormalizedColor) &&
   hasNodeWith graphExternalCode `def_ext_bad (fun n =>
-    n.color == statementBorderReadyColor)
+    n.color == statementBorderReadyColor &&
+    n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}") &&
+  hasNodeWith graphExternalCode `def_ext_missing (fun n =>
+    n.color == statementBorderReadyColor &&
+    n.fillcolor == s!"{proofBackgroundReadyColor}:{missingExternalOverlayColor}" &&
+    n.gradientangle? == some "90")
+
+def stateLeanOnlyExternalMissing : Environment.State := mkState [
+  (`lean_only_ext_missing,
+    {
+      kind := .definition
+      code := some (.external #[Data.ExternalRef.ofName `Ext.missing])
+    })
+]
+
+def warningLeanOnlyExternalMissing : WarningFlags :=
+  match stateLeanOnlyExternalMissing.data.get? `lean_only_ext_missing with
+  | some node => nodeWarnings externalStatus stateLeanOnlyExternalMissing `lean_only_ext_missing node
+  | none => {}
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  warningLeanOnlyExternalMissing.leanOnlyNoStatement &&
+  warningLeanOnlyExternalMissing.missingExternalDecl
 
 end Verso.Tests.BlueprintGraph

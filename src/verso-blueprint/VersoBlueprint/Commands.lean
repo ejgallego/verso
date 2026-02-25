@@ -345,6 +345,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
               <span class="bp_graph_legend_group_title">"Warning Overlays"</span>
               <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_unknown"></span>"Unknown reference"</span>
               <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_lean_only"></span>"Lean code, informal statement missing"</span>
+              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_missing_external"></span>"External Lean declaration missing"</span>
               <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_local_sorries"></span>"Local sorries"</span>
               <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_deps"></span>"Formalized node with incomplete ancestors"</span>
             </div>
@@ -574,16 +575,20 @@ block_extension Block.bibliography (biblio : BibliographyData) where
   extraJs := singleton ⟨openTargetDetailsJs⟩
 --
 open Informal Data Environment
+def externalDeclMissing (env : Lean.Environment) (decl : Name) : Bool :=
+  let decl := decl.eraseMacroScopes
+  (env.find? decl).isNone
+
 def externalDeclHasTypeSorry (env : Lean.Environment) (decl : Name) : Bool :=
   let decl := decl.eraseMacroScopes
   match env.find? decl with
-  | none => true
+  | none => false
   | some info => info.type.hasSorry
 
 def externalDeclHasProofSorry (env : Lean.Environment) (decl : Name) : Bool :=
   let decl := decl.eraseMacroScopes
   match env.find? decl with
-  | none => true
+  | none => false
   | some info => info.value?.map (·.hasSorry) |>.getD false
 
 def buildAll : CoreM Graph := do
@@ -591,6 +596,7 @@ def buildAll : CoreM Graph := do
   let state := informalExt.getState env
   let roots : Array Name := state.data.toArray.map (·.1)
   let external : Informal.Graph.ExternalCodeStatus := {
+    isMissing := externalDeclMissing env
     hasTypeSorry := externalDeclHasTypeSorry env
     hasProofSorry := externalDeclHasProofSorry env
   }

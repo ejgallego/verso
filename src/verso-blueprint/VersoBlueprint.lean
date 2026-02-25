@@ -88,6 +88,43 @@ private def parseExternalCodeList (lean : Option String) : Array Data.ExternalRe
       | .error err =>
         (acc, invalid.push s!"{ref} ({err})")
 
+private def pushExternalRefDedup (acc : Array Data.ExternalRef) (ref : Data.ExternalRef) : Array Data.ExternalRef :=
+  if acc.any (fun entry => entry.canonical == ref.canonical) then
+    acc
+  else
+    acc.push ref
+
+private def parsedExternalRef (ref : Data.ExternalRef) : Data.ExternalRef :=
+  { ref with canonical := ref.written.eraseMacroScopes }
+
+private def resolvedExternalRef (ref : Data.ExternalRef) (resolved : Name) : Data.ExternalRef :=
+  { written := ref.written, canonical := resolved.eraseMacroScopes, origin := ref.origin }
+
+private def resolveExternalNameCandidates [MonadResolveName m] [MonadOptions m]
+    [MonadLog m] [AddMessageContext m]
+    (name : Name) : m (Array Name) := do
+  let resolved ← Lean.resolveGlobalName name (enableLog := false)
+  return resolved.foldl (init := #[]) fun acc (candidate, fieldList) =>
+    if fieldList.isEmpty && !acc.contains candidate then
+      acc.push candidate
+    else
+      acc
+
+private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m]
+    [MonadLog m] [AddMessageContext m]
+    (label : Name) (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
+  refs.foldlM (init := #[]) fun acc ref => do
+    let candidates ← resolveExternalNameCandidates ref.written
+    match candidates.toList with
+    | [] =>
+      logWarning m!"Label {label}: external Lean name '{ref.written}' could not be resolved in current namespace/open declarations; keeping parsed name"
+      return pushExternalRefDedup acc (parsedExternalRef ref)
+    | [resolved] =>
+      return pushExternalRefDedup acc (resolvedExternalRef ref resolved)
+    | many =>
+      logWarning m!"Label {label}: external Lean name '{ref.written}' is ambiguous ({String.intercalate ", " (many.map toString)}); keeping parsed name"
+      return pushExternalRefDedup acc (parsedExternalRef ref)
+
 def Config.parse  : ArgParse m Config :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok =>
     let (externalCode, invalidExternalCode) := parseExternalCodeList lean
@@ -854,7 +891,8 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let blockRef ← getRef
     let label := cfg.label
     let kind? := if isProof then none else some kind
-    let hasExternal := !cfg.externalCode.isEmpty
+    let resolvedExternalCode ← resolveExternalCodeList label cfg.externalCode
+    let hasExternal := !resolvedExternalCode.isEmpty
     let hasLeanok := cfg.leanok.getD false
     if !cfg.invalidExternalCode.isEmpty then
       logWarning m!"Label {label}: ignoring malformed names in '(lean := ...)' ({String.intercalate ", " cfg.invalidExternalCode.toList})"
@@ -862,7 +900,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       logError m!"Label {label} cannot use '(leanok := true)' together with '(lean := ...)'"
     let codeHint : Option Data.CodeRef :=
       if hasExternal then
-        some (.external cfg.externalCode)
+        some (.external resolvedExternalCode)
       else if hasLeanok then
         some .userOk
       else

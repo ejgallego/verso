@@ -222,6 +222,7 @@ def blueprintWidget : Component GraphParams where
                 legendGroup('warning', 'Warning overlays', [
                   React.createElement('span', { key: 'warn-unknown', style: itemStyle }, [swatch({ fill: '#fee2e2', border: '#b91c1c' }), 'Unknown reference']),
                   React.createElement('span', { key: 'warn-lean-only', style: itemStyle }, [swatch({ fill: gradient('#ffffff', '#ede9fe'), border: '#16a34a' }), 'Lean code, informal statement missing']),
+                  React.createElement('span', { key: 'warn-missing-ext', style: itemStyle }, [swatch({ fill: gradient('#dbeafe', '#fee2e2'), border: '#2563eb' }), 'External Lean declaration missing']),
                   React.createElement('span', { key: 'warn-local-sorry', style: itemStyle }, [swatch({ fill: gradient('#dbeafe', '#fef3c7'), border: '#2563eb' }), 'Local sorries']),
                   React.createElement('span', { key: 'warn-deps', style: itemStyle }, [swatch({ fill: '#dcfce7', border: '#16a34a', double: true }), 'Formalized node with incomplete ancestors'])
                 ]),
