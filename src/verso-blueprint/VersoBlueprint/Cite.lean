@@ -19,15 +19,13 @@ open Verso.Genre.Manual.Bibliography
 
 syntax (name := bib) "bib" ppSpace str : attr
 
+private def parseNameOrSimple (s : String) : Name :=
+  let s := s.trimAscii.toString
+  let n := s.toName
+  if n.isAnonymous then Name.mkSimple s else n
+
 private def parseBibLabel (s : String) : Name :=
-  let parts :=
-    s.splitOn "."
-    |>.map (fun p => p.trimAscii.toString)
-    |>.filter (fun p => !p.isEmpty)
-  if parts.isEmpty then
-    Name.mkSimple s.trimAscii.toString
-  else
-    parts.foldl (init := Name.anonymous) Name.str
+  parseNameOrSimple s
 
 def normalizeLabel (label : String) : String :=
   (parseBibLabel label).toString

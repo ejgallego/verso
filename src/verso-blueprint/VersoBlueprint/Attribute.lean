@@ -32,15 +32,6 @@ private def classifyDeclKind (decl : Name) (info : ConstantInfo) : CoreM Data.No
   | _ =>
     throwError "invalid '[blueprint]' target '{decl}': expected a definition or theorem, got {constantInfoKind info}"
 
-private def logDocstringIfPresent (decl : Name) : CoreM Unit := do
-  let env ← getEnv
-  let internalDoc? ← liftM <| findInternalDocString? env decl
-  if let some doc := internalDoc? then
-    let asText? ← liftM <| findSimpleDocString? env decl
-    let isVerso : Bool := match doc with | Sum.inl _ => false | Sum.inr _ => true
-    let rendered := asText?.getD "<unable to render docstring text>"
-    logInfo m!"[blueprint] docstring for '{decl}' (isVerso := {isVerso}):\n{rendered}"
-
 mutual
 
 private partial def inlineToManualStx (inl : Lean.Doc.Inline Lean.ElabInline) : CoreM (TSyntax `term) := do
@@ -163,7 +154,6 @@ private def registerLeanOnlyDecl (decl label : Name) (ref : Syntax) : CoreM Unit
     | throwError "unknown declaration '{decl}'"
   let declKind ← classifyDeclKind decl info
   let statement? ← statementFromDocstring? decl ref
-  -- logDocstringIfPresent decl
 
   Environment.modifyM fun state => do
     let data ← state.data.registerCodeRef label (.external #[Data.ExternalRef.ofName decl .blueprintAttr])

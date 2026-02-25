@@ -38,7 +38,6 @@ def elabGraph : CommandElab := fun _stx => do
   logInfo m!"Generating BP graph"
   let state := informalExt.getState (← getEnv)
   logInfo m!"{repr state}"
-  dbg_trace s!"{repr state}"
 
 /- Blueprint summary commands, Verso -/
 
@@ -271,9 +270,6 @@ def graphTocToggleJs : String := r##"(function () {
 })();"##
 
 def d3DotCss := include_str "graph.css"
-
-def joinNames (xs : List Name) : String :=
-  if xs.isEmpty then "none" else String.intercalate ", " (xs.map toString)
 
 def openTargetDetailsJs : String := r##"(function () {
   function openFromHash() {
