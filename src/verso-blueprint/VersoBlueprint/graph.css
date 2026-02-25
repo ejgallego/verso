@@ -123,6 +123,11 @@ div#graph {
   border-color: #16a34a;
 }
 
+.bp_graph_legend_warn_missing_external {
+  background: linear-gradient(180deg, #dbeafe, #fee2e2);
+  border-color: #2563eb;
+}
+
 .bp_graph_legend_warn_local_sorries {
   background: linear-gradient(180deg, #dbeafe, #fef3c7);
   border-color: #2563eb;

@@ -11,6 +11,11 @@ namespace Informal.Graph
 open Lean
 open Informal Data Environment
 
+/-!
+See `GRAPH_COLORING_SPEC.md` in this directory for a human-readable spec of the
+status and warning/color mapping implemented below.
+-/
+
 /-- Upstream-compatible statement-track status (node border). -/
 inductive StatementStatus where
   | blocked
@@ -30,6 +35,7 @@ deriving Inhabited, Repr, DecidableEq, ToJson, FromJson
 structure WarningFlags where
   unknownRef : Bool := false
   leanOnlyNoStatement : Bool := false
+  missingExternalDecl : Bool := false
   localSorries : Bool := false
   depsWithSorries : Bool := false
 deriving Inhabited, Repr, ToJson, FromJson
@@ -73,6 +79,7 @@ def proofBackgroundFormalizedAncColor : String := "#166534"
 def definitionBackgroundColor : String := "#ffffff"
 
 def leanOnlyOverlayColor : String := "#ede9fe"
+def missingExternalOverlayColor : String := "#fee2e2"
 def localSorriesOverlayColor : String := "#fef3c7"
 
 def unresolvedFillColor : String := "#fee2e2"
@@ -94,6 +101,7 @@ def isTheoremLikeKind (kind : Data.NodeKind) : Bool :=
   kind == Data.NodeKind.lemma || kind == Data.NodeKind.theorem || kind == Data.NodeKind.corollary
 
 structure ExternalCodeStatus where
+  isMissing : Name → Bool := fun _ => false
   hasTypeSorry : Name → Bool := fun _ => false
   hasProofSorry : Name → Bool := fun _ => false
 
@@ -104,6 +112,9 @@ def nodeExternalDecls (node : Data.Node) : Array Name :=
 
 def nodeHasAssociatedCode (node : Data.Node) : Bool :=
   node.code.isSome
+
+def nodeHasMissingExternalDecls (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
+  (nodeExternalDecls node).any external.isMissing
 
 def nodeHasTypeSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   let localHas :=
@@ -125,10 +136,10 @@ def nodeHasSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   nodeHasTypeSorries external node || nodeHasProofSorries external node
 
 def nodeLocalStatementFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  nodeHasAssociatedCode node && !nodeHasTypeSorries external node
+  nodeHasAssociatedCode node && !nodeHasMissingExternalDecls external node && !nodeHasTypeSorries external node
 
 def nodeLocalProofFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  nodeHasAssociatedCode node && !nodeHasProofSorries external node
+  nodeHasAssociatedCode node && !nodeHasMissingExternalDecls external node && !nodeHasSorries external node
 
 def nodeLocalFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   if isTheoremLikeKind node.kind then
@@ -206,9 +217,11 @@ def nodeWarnings (external : ExternalCodeStatus) (state : Environment.State) (_l
     (node : Data.Node) : WarningFlags :=
   let localProofDone := nodeLocalProofFormalized external node
   let ancestorDepsDone := nodeAncestorsFormalized external state node
+  let missingExternal := nodeHasMissingExternalDecls external node
   {
     unknownRef := false
     leanOnlyNoStatement := nodeHasAssociatedCode node && node.statement.isNone
+    missingExternalDecl := nodeHasAssociatedCode node && missingExternal
     localSorries := nodeHasAssociatedCode node && node.statement.isSome && nodeHasSorries external node
     depsWithSorries := isTheoremLikeKind node.kind && localProofDone && !ancestorDepsDone
   }
@@ -247,6 +260,7 @@ def ProofStatus.toText : ProofStatus → String
 
 def warningTooltipParts (warnings : WarningFlags) : List String :=
   (if warnings.leanOnlyNoStatement then ["Lean code present but informal statement is missing"] else []) ++
+  (if warnings.missingExternalDecl then ["Associated Lean declaration is missing from the current environment"] else []) ++
   (if warnings.localSorries then ["Associated Lean code still contains sorries"] else []) ++
   (if warnings.depsWithSorries then [warningDepsText] else [])
 
@@ -274,6 +288,7 @@ def mkStyledNode (kind : Data.NodeKind) (label : Name) (deps proofDeps : Array N
     let baseFill := proofStatusFillColor kind proof
     let overlayColor? :=
       if warnings.leanOnlyNoStatement then some leanOnlyOverlayColor
+      else if warnings.missingExternalDecl then some missingExternalOverlayColor
       else if warnings.localSorries then some localSorriesOverlayColor
       else none
     let fillcolor :=
