@@ -19,6 +19,7 @@ import VersoBlueprint.Attribute
 import VersoBlueprint.Cite
 import VersoBlueprint.Commands
 import VersoBlueprint.Lean
+import VersoBlueprint.NameParsing
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
 import VersoBlueprint.TexPrelude
@@ -51,10 +52,10 @@ Elaboration, traversal, and rendering are standard, using {ref VersoManual} help
 def _informal : Domain := {}
 
 /-- Name used in {name}`TraverseState.domains` for informal objects. -/
-def informalDomain : Name := Name.mkSimple "Informal.Block.informal"
+def informalDomain : Name := Resolve.informalDomainName
 
 /-- Name used in {name}`TraverseState.domains` for informal Lean code blocks. -/
-def informalCodeDomain : Name := Name.mkSimple "Informal.Block.informalCode"
+def informalCodeDomain : Name := Resolve.informalCodeDomainName
 
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
@@ -63,44 +64,40 @@ structure Config where
   lean : Option String := none
   leanok : Option Bool := none
   externalCode : Array Data.ExternalRef := #[]
+  invalidExternalCode : Array String := #[]
 --  hide : Bool := false
 
 section
 variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadError m] [MonadFileMap m]
 
-private def parseDottedName (s : String) : Option Name :=
-  let parts := s.splitOn "." |>.map (fun p => p.trimAscii.toString)
-  if parts.isEmpty || parts.any (·.isEmpty) then
-    none
-  else
-    some <| parts.foldl (init := Name.anonymous) Name.str
+private def splitExternalCodeRefs (s : String) : Array String :=
+  NameParsing.splitCsvNormalized s
 
-private def parseExternalCodeList (lean : Option String) : Array Data.ExternalRef :=
+private def parseExternalCodeList (lean : Option String) : Array Data.ExternalRef × Array String :=
   match lean with
-  | none => #[]
+  | none => (#[], #[])
   | some s =>
-    let refs :=
-      s.splitOn ","
-      |>.map (fun p => p.trimAscii.toString)
-      |>.filter (fun p => !p.isEmpty)
-    refs.foldl (init := #[]) fun acc ref =>
-      match parseDottedName ref with
-      | some name =>
+    (splitExternalCodeRefs s).foldl (init := (#[], #[])) fun (acc, invalid) ref =>
+      match NameParsing.parseNameE ref with
+      | .ok name =>
         let extRef := Data.ExternalRef.ofName name .directiveLean
         if acc.any (fun entry => entry.canonical == extRef.canonical) then
-          acc
+          (acc, invalid)
         else
-          acc.push extRef
-      | none => acc
+          (acc.push extRef, invalid)
+      | .error err =>
+        (acc, invalid.push s!"{ref} ({err})")
 
 def Config.parse  : ArgParse m Config :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok =>
+    let (externalCode, invalidExternalCode) := parseExternalCodeList lean
     {
       label := Name.mkSimple labelArg.val
       labelSyntax := labelArg.syntax
       lean := lean
       leanok := leanok
-      externalCode := parseExternalCodeList lean
+      externalCode := externalCode
+      invalidExternalCode := invalidExternalCode
     }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true
         <*> .named `leanok .bool true
 
@@ -859,6 +856,8 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let kind? := if isProof then none else some kind
     let hasExternal := !cfg.externalCode.isEmpty
     let hasLeanok := cfg.leanok.getD false
+    if !cfg.invalidExternalCode.isEmpty then
+      logWarning m!"Label {label}: ignoring malformed names in '(lean := ...)' ({String.intercalate ", " cfg.invalidExternalCode.toList})"
     if hasExternal && hasLeanok then
       logError m!"Label {label} cannot use '(leanok := true)' together with '(lean := ...)'"
     let codeHint : Option Data.CodeRef :=
