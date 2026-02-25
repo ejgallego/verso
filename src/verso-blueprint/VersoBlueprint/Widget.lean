@@ -263,8 +263,8 @@ def graphDotHeader : String := r##"strict digraph "" {
   edge [color="#6b7280", arrowhead=vee, arrowsize=0.5, penwidth=0.9];
   graph [fontname="Helvetica"];"##
 
-def Graph.toDot (g : Graph) : String :=
-  Informal.Graph.Graph.toDot g graphDotHeader
+def Graph.toDot (g : Graph) (resolveGroupTitle : Name → Option String := fun _ => none) : String :=
+  Informal.Graph.Graph.toDot g graphDotHeader (groupLabel? := some resolveGroupTitle)
 
 open Informal Data Environment
 structure BuildResult where
@@ -282,7 +282,7 @@ def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResul
           |>.take 12
       throwError m!"No Label Found for '{label}'. Known labels (first {available.size}): {String.intercalate ", " available.toList}"
   let graph : Graph := Informal.Graph.build state #[label]
-  let dot := graph.toDot
+  let dot := graph.toDot (fun group => state.groups.get? group)
   let texPrelude ← Environment.getTexPrelude
   pure { dot, statementElab := (root.statement.map (·.elabStx)).getD #[], texPrelude }
 

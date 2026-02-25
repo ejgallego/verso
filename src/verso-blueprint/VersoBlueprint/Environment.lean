@@ -18,32 +18,45 @@ structure InProgress where
   kind? : Option NodeKind := none
   isProof : Bool := false
   codeHint : Option CodeRef := none
+  parent : Option Parent := none
   deps : Array Label := #[]
   elabStx : Array Syntax := #[]
 deriving Inhabited, Repr
 
 structure State where
   data : Data := Data.empty
+  groups : NameMap String := {}
   stack : List InProgress := []
   texPrelude : Array String := #[]
 deriving Inhabited, Repr
 
-initialize informalExt : PersistentEnvExtension (Name × Node) (Name × Node) State ←
+inductive Entry where
+  | node (label : Name) (node : Node)
+  | group (label : Name) (header : String)
+deriving Inhabited, Repr
+
+initialize informalExt : PersistentEnvExtension Entry Entry State ←
   registerPersistentEnvExtension {
     mkInitial := pure {}
-    -- we should merge
-    addEntryFn state := fun (label, node) => { state with data := state.data.insert label node }
+    addEntryFn state := fun
+      | .node label node => { state with data := state.data.insert label node }
+      | .group label header => { state with groups := state.groups.insert label header }
     addImportedFn entries := do
-      let data := entries.foldl (init := Std.TreeMap.empty) fun acc entry =>
-        entry.foldl (init := acc) fun acc (name, node) =>
-           acc.insert name node
-      pure $ { data }
+      let (data, groups) := entries.foldl (init := (({} : NameMap Node), ({} : NameMap String))) fun acc entry =>
+        entry.foldl (init := acc) fun (dataAcc, groupAcc) item =>
+          match item with
+          | .node label node => (dataAcc.insert label node, groupAcc)
+          | .group label header => (dataAcc, groupAcc.insert label header)
+      pure { data, groups }
     -- Strip transient elaboration cache before exporting nodes to the environment.
     exportEntriesFnEx env := fun state _level =>
-      state.data.toArray.map fun (name, node) =>
+      let nodeEntries := state.data.toArray.map fun (name, node) =>
         let statement := node.statement.map fun s => { s with elabStx := #[] }
         let proof := node.proof.map fun p => { p with elabStx := #[] }
-        (name, { node with statement, proof })
+        Entry.node name { node with statement, proof }
+      let groupEntries := state.groups.toArray.map fun (label, header) =>
+        Entry.group label header
+      nodeEntries ++ groupEntries
   }
 
 section EnvOps
@@ -79,11 +92,11 @@ def checkLabelAndNesting (label : Label) (isProof : Bool) : m Unit := do
 
 -- stack operators, to associate {uses} role to the currently opened label
 def push (label : Label) (kind? : Option NodeKind) (isProof : Bool)
-    (codeHint : Option CodeRef := none) : m Unit := do
+    (codeHint : Option CodeRef := none) (parent : Option Parent := none) : m Unit := do
   -- logInfo m!"push for {label} {isProof}"
   checkLabelAndNesting label isProof
   modify fun data =>
-    let pdata := { label, kind?, isProof, codeHint }
+    let pdata := { label, kind?, isProof, codeHint, parent }
     { data with stack := pdata :: data.stack }
 
 def getCount : m Nat := do
@@ -116,7 +129,7 @@ def pop (ref : Syntax) : m Nat := do
         }
         let statement := if cur.isProof then none else some payload
         let proof := if cur.isProof then some payload else none
-        let data ← state.data.register cur.label cur.kind? statement proof cur.codeHint
+        let data ← state.data.register cur.label cur.kind? statement proof cur.codeHint cur.parent
         return { state with data, stack }
   getCount
 
@@ -154,6 +167,19 @@ def registerCode (label : Label) (code : Syntax)
 
 def getNode? (label : Label) : m (Option Node) := do
   return (informalExt.getState (← getEnv)).data.get? label
+
+def registerGroup (label : Label) (header : String) : m Unit := do
+  let header := header.trimAscii.toString
+  modifyM fun state => do
+    match state.groups.get? label with
+    | none =>
+      return { state with groups := state.groups.insert label header }
+    | some currentHeader =>
+      if currentHeader = header then
+        logWarning m!"Group {label} is declared multiple times with the same header; keeping '{currentHeader}'"
+      else
+        logError m!"Group {label} has conflicting headers: existing '{currentHeader}', new '{header}'"
+      return state
 
 def addTexPrelude (texPrelude : String) : m Unit := do
   let texPrelude := texPrelude.trimAscii.toString

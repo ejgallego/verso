@@ -56,9 +56,25 @@ set_option pp.rawOnError true
 
 TODO: This whole chapter needs organization, it's just a grab bag of miscellaneous results for now.
 
+:::group "prelims_rupert_equiv"
+Equivalence between Rupert polyhedra and Rupert sets.
+:::
+
+:::group "prelims_pose_reduction"
+Pose normalization and reduction lemmas.
+:::
+
+:::group "prelims_pointsymmetry_reduction"
+Pointsymmetry reduction to rotational Rupert poses.
+:::
+
+:::group "prelims_radius_tools"
+Radius characterization and preservation tools.
+:::
+
 # Rupert Sets
 
-:::theorem "thm:rupert_iff_rupert_set" (lean := "rupert_iff_rupert_set")
+:::theorem "thm:rupert_iff_rupert_set" (lean := "rupert_iff_rupert_set") (parent := "prelims_rupert_equiv")
 The following are equivalent:
 - The convex polyhedron with vertex set $`v` is Rupert.
 - The convex closure of $`v` is a Rupert set.
@@ -72,7 +88,7 @@ TODO: import this from the other repo
 
 TODO
 
-:::theorem "thm:pose_of_matrix_pose" (lean := "pose_of_matrix_pose,converted_pose_rupert_iff")
+:::theorem "thm:pose_of_matrix_pose" (lean := "pose_of_matrix_pose,converted_pose_rupert_iff") (parent := "prelims_pose_reduction")
 Given a pose with zero offset, there exists a 5-parameter pose that is equivalent to it.
 :::
 
@@ -82,7 +98,7 @@ By putting the pose into a canonical form as a Z rotation followed by a Y follow
 
 # Pointsymmetry and Rupertness
 
-:::theorem "thm:rupert_implies_rot_rupert" (lean := "rupert_implies_rot_rupert")
+:::theorem "thm:rupert_implies_rot_rupert" (lean := "rupert_implies_rot_rupert") (parent := "prelims_pointsymmetry_reduction")
 If a set is point symmetric and convex, then it being Rupert implies
 it being purely rotationally Rupert.
 :::
@@ -91,7 +107,7 @@ it being purely rotationally Rupert.
 TODO: informalize proof
 :::
 
-:::theorem "thm:polyhedron_radius_iff" (lean := "polyhedron_radius_iff")
+:::theorem "thm:polyhedron_radius_iff" (lean := "polyhedron_radius_iff") (parent := "prelims_radius_tools")
 Suppose $`S` is a finite set of points in $`\mathbb{R}^n`.
 The radius of the polyhedron $`S` is $`r` iff:
 - there is a vector $`v \in S` with $`\|v\| = r`
@@ -102,7 +118,7 @@ The radius of the polyhedron $`S` is $`r` iff:
 Immediate from definition.
 :::
 
-:::theorem "thm:polyhedron_radius_def" (lean := "polyhedron_radius_iff")
+:::theorem "thm:polyhedron_radius_def" (lean := "polyhedron_radius_iff") (parent := "prelims_radius_tools")
 Alias of {uses "thm:polyhedron_radius_iff"}[] used in the original TeX source.
 :::
 
@@ -110,7 +126,7 @@ Alias of {uses "thm:polyhedron_radius_iff"}[] used in the original TeX source.
 Immediate from {uses "thm:polyhedron_radius_iff"}[].
 :::
 
-:::theorem "thm:pointsymmetrize_pres_radius" (lean := "pointsymmetrize_pres_radius")
+:::theorem "thm:pointsymmetrize_pres_radius" (lean := "pointsymmetrize_pres_radius") (parent := "prelims_radius_tools")
 Pointsymmetrization preserves radius.
 :::
 

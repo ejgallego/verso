@@ -66,6 +66,12 @@ structure IndexItem where
   leanObjects : List Name := []
 deriving Inhabited, FromJson, ToJson, Quote
 
+structure ParentTheoremGroup where
+  parent : Name
+  header : String := ""
+  entries : List IndexItem := []
+deriving Inhabited, FromJson, ToJson, Quote
+
 structure Summary where
   totalEntries : Nat := 0
   definitions : Nat := 0
@@ -80,6 +86,7 @@ structure Summary where
   sorryDetails : List SorryItem := []
   definitionIndex : List IndexItem := []
   theoremLikeIndex : List IndexItem := []
+  theoremLikeByParent : List ParentTheoremGroup := []
 deriving Inhabited, FromJson, ToJson, Quote
 
 open Verso.Genre.Manual.Bibliography
@@ -117,6 +124,7 @@ def GraphDirection.parse? (s : String) : Option GraphDirection :=
 structure GraphBlockData where
   graph : Graph
   direction : GraphDirection := .TB
+  groupTitles : Array (Name × String) := #[]
 deriving Inhabited, FromJson, ToJson, Quote
 
 def graphDotHeader (rankdir : String) : String :=
@@ -131,8 +139,12 @@ def graphDotHeader (rankdir : String) : String :=
   "    graph [fontname=\"Helvetica\"];\n" ++
   "  "
 
-def graphToDot (g : Graph) (direction : GraphDirection := .TB) (resolveHref : Name → Option String := fun _ => none) : String :=
-  Informal.Graph.Graph.toDot g (graphDotHeader direction.rankdir) (refAttrs? := some fun ref =>
+def graphToDot (g : Graph) (direction : GraphDirection := .TB)
+    (resolveHref : Name → Option String := fun _ => none)
+    (resolveGroupTitle : Name → Option String := fun _ => none) : String :=
+  Informal.Graph.Graph.toDot g (graphDotHeader direction.rankdir)
+    (groupLabel? := some resolveGroupTitle)
+    (refAttrs? := some fun ref =>
     (resolveHref ref).map (fun href => s!"URL=\"{href}\", target=\"_self\""))
 
 def loadD3Dot :=
@@ -435,6 +447,11 @@ block_extension Block.graph (graphData : GraphBlockData) where
       let s ← HtmlT.state
       let resolveHref : Name → Option String := fun ref =>
         Resolve.resolveDomainHref? s Resolve.informalDomainName ref.toString
+      let groupTitles : Lean.NameMap String :=
+        graphData.groupTitles.foldl (init := ({} : Lean.NameMap String)) fun acc (group, title) =>
+          acc.insert group title
+      let resolveGroupTitle : Name → Option String := fun group =>
+        groupTitles.get? group
       -- TODO: factor preview-domain decoding into a shared helper used by both
       -- graph and summary rendering paths.
       let previewBlocks? (label : Name) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) :=
@@ -514,7 +531,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
           </div>
           <div id="graph">
             <script type="text/plain" class="dot-source">
-              s!"{graphToDot graphData.graph graphData.direction resolveHref}"
+              s!"{graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle}"
             </script>
           </div>
           {{previewStore}}
@@ -659,6 +676,18 @@ block_extension Block.summary (summary : Summary) where
       let theoremLikeRows ←
         data.theoremLikeIndex.toArray.mapM fun item =>
           mkLeanRow item.label item.kind item.leanObjects
+      let theoremLikeByParentRows ←
+        data.theoremLikeByParent.toArray.mapM fun group => do
+          let rows ← group.entries.toArray.mapM fun item =>
+            mkLeanRow item.label item.kind item.leanObjects
+          pure {{
+            <details class="bp_summary_subsection">
+              <summary>s!"{group.header} ({group.entries.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if rows.isEmpty then {{<li class="bp_summary_empty">"No theorem/lemma/corollary entries in this parent group."</li>}} else rows}}
+              </ul>
+            </details>
+          }}
       return {{
         <div class="bp_summary">
           <details class="bp_summary_section" open>
@@ -683,6 +712,13 @@ block_extension Block.summary (summary : Summary) where
               <ul class="bp_summary_list">
                 {{if theoremLikeRows.isEmpty then {{<li class="bp_summary_empty">"No theorem/lemma/corollary entries registered."</li>}} else theoremLikeRows}}
               </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"Theorem / Lemma / Corollary by Parent ({data.theoremLikeByParent.length})"</summary>
+              {{if theoremLikeByParentRows.isEmpty then
+                 {{<div class="bp_summary_empty">"No parent groups declared for theorem-like entries."</div>}}
+                else
+                 theoremLikeByParentRows}}
             </details>
           </details>
           <details class="bp_summary_section" open>
@@ -794,7 +830,7 @@ def externalDeclHasProofSorry (env : Lean.Environment) (decl : Name) : Bool :=
   | none => false
   | some info => info.value?.map (·.hasSorry) |>.getD false
 
-def buildAll : CoreM Graph := do
+def buildAll : CoreM (Graph × Array (Name × String)) := do
   let env ← getEnv
   let state := informalExt.getState env
   let roots : Array Name := state.data.toArray.map (·.1)
@@ -803,7 +839,8 @@ def buildAll : CoreM Graph := do
     hasTypeSorry := externalDeclHasTypeSorry env
     hasProofSorry := externalDeclHasProofSorry env
   }
-  return Informal.Graph.buildWithExternal state roots external (resolveRef? := some)
+  let graph := Informal.Graph.buildWithExternal state roots external (resolveRef? := some)
+  return (graph, state.groups.toArray)
 
 def countDefSorries (decls : Array Data.LiterateDef) : Nat :=
   decls.foldl (init := 0) fun acc decl => acc + (if decl.hasSorry then 1 else 0)
@@ -844,59 +881,89 @@ def collectThmSorries (label : Name) (kind : String) (decls : Array Data.Literat
 def kindNeedsInformalProof (kind : Data.NodeKind) : Bool :=
   kind == Data.NodeKind.lemma || kind == Data.NodeKind.theorem || kind == Data.NodeKind.corollary
 
+def addParentTheoremLikeItem (groups : NameMap (List IndexItem)) (parent : Name) (item : IndexItem) :
+    NameMap (List IndexItem) :=
+  groups.insert parent (item :: groups.getD parent [])
+
 def buildSummary : CoreM Summary := do
-  let entries := (informalExt.getState (← getEnv)).data.toArray
-  return entries.foldl (init := ({} : Summary)) fun acc (label, node) =>
-    let hasStatement := node.statement.isSome
-    let hasProof := node.proof.isSome
-    let hasCode := node.code.isSome
-    let (leanDecls, sorries, leanObjects, sorryDetails) :=
-      match node.code with
-      | none => (0, 0, ([] : List Name), ([] : List SorryItem))
-      | some .userOk =>
-        (0, 0, ([] : List Name), ([] : List SorryItem))
-      | some (.external decls) =>
-        (decls.size, 0, (decls.map (·.canonical)).toList, ([] : List SorryItem))
-      | some (.literate code) =>
-        let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.LiterateThm) => acc.insert d.name
-        let leanObjects := (code.definedDefs.map (·.name) ++ code.definedTheorems.map (·.name)).toList
-        let leanDecls := code.definedDefs.size + code.definedTheorems.size
-        let sorries := countDefSorries code.definedDefs + countThmSorries code.definedTheorems
-        let sorryDetails :=
-          collectDefSorries label (toString node.kind) code.definedDefs theoremNames ++
-          collectThmSorries label (toString node.kind) code.definedTheorems theoremNames
-        (leanDecls, sorries, leanObjects, sorryDetails)
-    let pendingInformalProofEntries : List PendingProofItem :=
-      if hasCode && ((kindNeedsInformalProof node.kind && !hasProof) || !hasStatement) then
-        { label, kind := toString node.kind, leanObjects } :: acc.pendingInformalProofEntries
-      else
-        acc.pendingInformalProofEntries
-    let definitionIndex : List IndexItem :=
-      if node.kind == Data.NodeKind.definition then
-        { label, kind := toString node.kind, leanObjects } :: acc.definitionIndex
-      else
-        acc.definitionIndex
-    let theoremLikeIndex : List IndexItem :=
+  let state := informalExt.getState (← getEnv)
+  let entries := state.data.toArray
+  let parentChildren := state.data.parentChildren
+  let groupHeaders := state.groups
+  let summary := entries.foldl (init := ({} : Summary)) fun acc (label, node) =>
+      let hasStatement := node.statement.isSome
+      let hasProof := node.proof.isSome
+      let hasCode := node.code.isSome
+      let (leanDecls, sorries, leanObjects, sorryDetails) :=
+        match node.code with
+        | none => (0, 0, ([] : List Name), ([] : List SorryItem))
+        | some .userOk =>
+          (0, 0, ([] : List Name), ([] : List SorryItem))
+        | some (.external decls) =>
+          (decls.size, 0, (decls.map (·.canonical)).toList, ([] : List SorryItem))
+        | some (.literate code) =>
+          let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.LiterateThm) => acc.insert d.name
+          let leanObjects := (code.definedDefs.map (·.name) ++ code.definedTheorems.map (·.name)).toList
+          let leanDecls := code.definedDefs.size + code.definedTheorems.size
+          let sorries := countDefSorries code.definedDefs + countThmSorries code.definedTheorems
+          let sorryDetails :=
+            collectDefSorries label (toString node.kind) code.definedDefs theoremNames ++
+            collectThmSorries label (toString node.kind) code.definedTheorems theoremNames
+          (leanDecls, sorries, leanObjects, sorryDetails)
+      let pendingInformalProofEntries : List PendingProofItem :=
+        if hasCode && ((kindNeedsInformalProof node.kind && !hasProof) || !hasStatement) then
+          { label, kind := toString node.kind, leanObjects } :: acc.pendingInformalProofEntries
+        else
+          acc.pendingInformalProofEntries
+      let definitionIndex : List IndexItem :=
+        if node.kind == Data.NodeKind.definition then
+          { label, kind := toString node.kind, leanObjects } :: acc.definitionIndex
+        else
+          acc.definitionIndex
+      let theoremLikeIndex : List IndexItem :=
+        if kindNeedsInformalProof node.kind then
+          { label, kind := toString node.kind, leanObjects } :: acc.theoremLikeIndex
+        else
+          acc.theoremLikeIndex
+      let acc := { acc with
+        totalEntries := acc.totalEntries + 1
+        leanOnlyEntries := acc.leanOnlyEntries + (if hasCode && !hasStatement then 1 else 0)
+        informalOnlyEntries := acc.informalOnlyEntries + (if hasStatement && !hasCode then 1 else 0)
+        pendingInformalProofEntries
+        leanDecls := acc.leanDecls + leanDecls
+        sorries := acc.sorries + sorries
+        sorryDetails := sorryDetails ++ acc.sorryDetails
+        definitionIndex
+        theoremLikeIndex
+      }
+      match node.kind with
+      | Data.NodeKind.definition => { acc with definitions := acc.definitions + 1 }
+      | Data.NodeKind.lemma => { acc with lemmas := acc.lemmas + 1 }
+      | Data.NodeKind.theorem => { acc with theorems := acc.theorems + 1 }
+      | Data.NodeKind.corollary => { acc with corollaries := acc.corollaries + 1 }
+  let theoremLikeByParent : List ParentTheoremGroup :=
+    let grouped := entries.foldl (init := ({} : NameMap (List IndexItem))) fun acc (label, node) =>
       if kindNeedsInformalProof node.kind then
-        { label, kind := toString node.kind, leanObjects } :: acc.theoremLikeIndex
+        let leanObjects : List Name :=
+          match node.code with
+          | some (.external decls) => (decls.map (·.canonical)).toList
+          | some (.literate code) =>
+            (code.definedDefs.map (·.name) ++ code.definedTheorems.map (·.name)).toList
+          | _ => []
+        match node.parent with
+        | some parent =>
+          let item : IndexItem := { label, kind := toString node.kind, leanObjects }
+          addParentTheoremLikeItem acc parent item
+        | none => acc
       else
-        acc.theoremLikeIndex
-    let acc := { acc with
-      totalEntries := acc.totalEntries + 1
-      leanOnlyEntries := acc.leanOnlyEntries + (if hasCode && !hasStatement then 1 else 0)
-      informalOnlyEntries := acc.informalOnlyEntries + (if hasStatement && !hasCode then 1 else 0)
-      pendingInformalProofEntries
-      leanDecls := acc.leanDecls + leanDecls
-      sorries := acc.sorries + sorries
-      sorryDetails := sorryDetails ++ acc.sorryDetails
-      definitionIndex
-      theoremLikeIndex
-    }
-    match node.kind with
-    | Data.NodeKind.definition => { acc with definitions := acc.definitions + 1 }
-    | Data.NodeKind.lemma => { acc with lemmas := acc.lemmas + 1 }
-    | Data.NodeKind.theorem => { acc with theorems := acc.theorems + 1 }
-    | Data.NodeKind.corollary => { acc with corollaries := acc.corollaries + 1 }
+        acc
+    grouped.toArray.toList.foldr (init := []) fun (parent, items) acc =>
+      if (parentChildren.getD parent #[]).size <= 1 then
+        acc
+      else
+        let header := groupHeaders.getD parent parent.toString
+        { parent, header, entries := items.reverse } :: acc
+  return { summary with theoremLikeByParent }
 
 open Verso.ArgParse
 
@@ -937,9 +1004,9 @@ def mkGraphPart (stx : Syntax) (endPos : String.Pos.Raw) (direction : GraphDirec
   let titleInlines ← `(inline | "Dependency Graph")
   let expandedTitle ← #[titleInlines].mapM (elabInline ·)
   let metadata := none
-  let graph ← buildAll
+  let (graph, groupTitles) ← buildAll
   logInfo m!"Adding {graph.size} nodes"
-  let graphData : GraphBlockData := { graph, direction }
+  let graphData : GraphBlockData := { graph, direction, groupTitles }
   let block ← ``(Verso.Doc.Block.other (Block.graph $(quote graphData)) #[])
   let subParts := #[]
   pure $ FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos

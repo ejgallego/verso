@@ -54,7 +54,19 @@ set_option verso.code.warnLineLength 0
 \newcommand{\hull}[1]{\mathsf{Co}(#1)}
 ```
 
-:::lemma_ "lem:hullscalarprod" (lean := "GlobalTheorem.hull_scalar_prod")
+:::group "global_support_bounds"
+Support-function bounds for convex hull projections.
+:::
+
+:::group "global_derivative_bounds"
+Derivative bounds and approximation control for rotated projections.
+:::
+
+:::group "global_main"
+Assembly of the global no-Rupert theorem.
+:::
+
+:::lemma_ "lem:hullscalarprod" (lean := "GlobalTheorem.hull_scalar_prod") (parent := "global_support_bounds")
 Suppose $`V = V_1, \ldots, V_m \subseteq \mathbb{R}^n` is a finite sequence of points,
 and let $`\hull V` be its convex hull.
 If $`S \in \hull V` and $`w \in \mathbb{R}^n`, then
@@ -68,7 +80,7 @@ $$`
 This is a mild generalization of {citet polyhedron.without.rupert}[], Lemma 18.
 :::
 
-:::lemma_ "lem:leq1" (lean := "GlobalTheorem.rotation_partials_bounded")
+:::lemma_ "lem:leq1" (lean := "GlobalTheorem.rotation_partials_bounded") (parent := "global_derivative_bounds")
 Let $`S \in \mathbb{R}^3` and $`w \in \mathbb{R}^2` be unit vectors, and set
 $`f(x_1,x_2,x_3) = \langle R(x_3) M(x_1,x_2)S,w \rangle`.
 Then for all $`x_1,x_2,x_3 \in \mathbb{R}` and any $`i,j \in \{1,2,3\}` it holds that
@@ -82,7 +94,7 @@ $$`
 See {citet polyhedron.without.rupert}[], Lemma 19.
 :::
 
-:::lemma_ "lem:n2" (lean := "GlobalTheorem.bounded_partials_control_difference")
+:::lemma_ "lem:n2" (lean := "GlobalTheorem.bounded_partials_control_difference") (parent := "global_derivative_bounds")
 Let $`f:\mathbb{R}^n\to \mathbb{R}` be a $`C^2`-function and
 $`x_1,\dots,x_n,y_1,\dots,y_n \in \mathbb{R}` such that
 $`|x_1-y_1|,\dots,|x_n-y_n|\leq \varepsilon`.
@@ -100,7 +112,7 @@ $$`
 See {citet polyhedron.without.rupert}[], Lemma 20.
 :::
 
-:::lemma_ "lem:rotation_derivatives" (lean := "GlobalTheorem.rotation_partials_exist,GlobalTheorem.rotation_partials_exist_outer,GlobalTheorem.partials_helper0,GlobalTheorem.partials_helper1,GlobalTheorem.partials_helper2,GlobalTheorem.partials_helper3,GlobalTheorem.partials_helper4")
+:::lemma_ "lem:rotation_derivatives" (lean := "GlobalTheorem.rotation_partials_exist,GlobalTheorem.rotation_partials_exist_outer,GlobalTheorem.partials_helper0,GlobalTheorem.partials_helper1,GlobalTheorem.partials_helper2,GlobalTheorem.partials_helper3,GlobalTheorem.partials_helper4") (parent := "global_derivative_bounds")
 The partial derivatives of all relevant rotations, projections, and inner products
 used in the Global Theorem are as expected. Specifically:
 
@@ -120,7 +132,7 @@ $`g(\theta,\phi) =  \langle M(\theta,\phi) P / \|P\|, w\rangle`.
 By basic properties of derivatives.
 :::
 
-:::theorem "thm:global" (lean := "GlobalTheorem.global_theorem")
+:::theorem "thm:global" (lean := "GlobalTheorem.global_theorem") (parent := "global_main")
 Let $`\mathbf{P}` be a pointsymmetric convex polyhedron with radius $`\rho = 1`,
 let $`S \in \mathbf{P}`, and let
 $`\bar\theta_1,\bar\phi_1,\bar\theta_2,\bar\phi_2,\bar\alpha \in \mathbb{R}`.
