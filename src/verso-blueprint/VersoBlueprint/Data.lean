@@ -99,6 +99,15 @@ def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean)
   { written := name, canonical := name.eraseMacroScopes, origin }
 
 inductive CodeRef where
+  /-
+  Blueprint code references can currently come from three sources:
+  1. An inline Lean block processed by Verso/Lean integration (`.literate`).
+  2. A regular Lean declaration tagged with `@[blueprint "..."]` (`.external`, origin `.blueprintAttr`).
+  3. A `(lean := "...")` directive reference to Lean code we do not directly control (`.external`, origin `.directiveLean`).
+
+  TODO (external-definitions task): complete and encode the intended behavior from
+  the "We'd like to:" portion of the design spec.
+  -/
   | userOk
   | external (decls : Array ExternalRef)
   | literate (code : Code)
