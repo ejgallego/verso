@@ -55,3 +55,18 @@ When we create a worktree, it is possible that `lake` makes a choice to setup th
 - Remove after merge:
   - `git worktree remove .worktrees/<feature>`
   - `git branch -d feat/<feature>`
+
+## Worktree Dashboard File
+
+- Keep a root-level handoff/status file at:
+  - `WORKTREE_DASHBOARD.md`
+- Purpose:
+  - Track per-worktree status and handoff notes for quick resume.
+- Update this file whenever a worktree changes phase:
+  - created, rebased, validated, ready-for-review, merged, blocked.
+- For each active worktree, include at least:
+  - status (and owner action needed),
+  - worktree path, branch, and base commit/branch,
+  - key commits,
+  - validation status,
+  - short resume commands/notes.
