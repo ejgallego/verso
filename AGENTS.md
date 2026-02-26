@@ -70,3 +70,7 @@ When we create a worktree, it is possible that `lake` makes a choice to setup th
   - key commits,
   - validation status,
   - short resume commands/notes.
+- If a `Decision:` field is added to a dashboard item:
+  - execute it explicitly,
+  - update the item status to reflect implementation (or block reason),
+  - keep a short audit note in the dashboard.
