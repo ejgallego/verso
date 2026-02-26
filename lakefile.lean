@@ -6,7 +6,7 @@ require MD4Lean from git "https://github.com/acmepjz/md4lean"@"main"
 -- require plausible from git "https://github.com/leanprover-community/plausible"@"main"
 
 -- For blueprints
-require mathlib from git "https://github.com/leanprover-community/mathlib4"@"v4.29.0-rc1"
+require mathlib from git "https://github.com/leanprover-community/mathlib4"@"v4.29.0-rc2"
 -- require architect from git "https://github.com/hanwenzhu/LeanArchitect"@"main"
 
 package verso where

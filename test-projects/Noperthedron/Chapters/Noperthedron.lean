@@ -212,7 +212,6 @@ lemma C15_nonempty (pt : ℝ³) : (C15 pt).Nonempty := by
   simp only [C15, Finset.mem_image, Finset.mem_range]
   use 0
   simp only [Nat.ofNat_pos, CharP.cast_eq_zero, mul_zero, zero_div, and_self]
-  simp
 
 lemma C15_pres_norm (pt v : ℝ³) (hv : v ∈ C15 pt) : ‖v‖ = ‖pt‖ := by
   simp only [C15, Finset.mem_image, Finset.mem_range] at hv
