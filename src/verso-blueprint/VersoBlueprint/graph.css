@@ -49,11 +49,34 @@ div#graph {
   overflow: auto;
 }
 
+.bp_graph_preview_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
 .bp_graph_preview_title {
   font-size: 0.85rem;
   font-weight: 700;
   color: #111827;
-  margin-bottom: 0.4rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bp_graph_preview_close {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
 }
 
 .bp_graph_preview_body {
@@ -63,11 +86,91 @@ div#graph {
   overflow: auto;
 }
 
+.bp_group_hover_preview {
+  position: absolute;
+  left: 0.9rem;
+  top: 0.9rem;
+  z-index: 24;
+  width: min(32rem, calc(100% - 1.8rem));
+  height: min(42vh, 24rem);
+  border: 1px solid #cbd5e1;
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+  padding: 0.55rem 0.65rem;
+  pointer-events: auto;
+  backdrop-filter: blur(1px);
+}
+
+.bp_group_hover_preview_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.bp_group_hover_preview_title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0f172a;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bp_group_hover_preview_close {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+}
+
+.bp_group_hover_preview_graph {
+  width: 100%;
+  height: calc(100% - 1.6rem);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.4rem;
+  background: #ffffff;
+}
+
 .bp_graph_legend {
   margin-top: 0.75rem;
   display: grid;
   gap: 0.65rem;
   font-size: 0.88rem;
+}
+
+.bp_graph_controls {
+  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bp_graph_controls_label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.bp_graph_controls_select {
+  min-width: min(28rem, 88vw);
+  max-width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.45rem;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.87rem;
+  line-height: 1.2;
 }
 
 .bp_graph_legend_group {
