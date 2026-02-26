@@ -1111,17 +1111,6 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
             some s!"Contains sorry ({whereTxt})"
           else
             none
-        let isDefinition : Bool := item.kind? == some "definition"
-        let definitionBodyPreview? : Option String :=
-          if isDefinition then
-            item.sourceBodyPretty? <|> item.valuePretty?
-          else
-            none
-        let showProofSourcePreview : Bool := (!isDefinition) && item.sourceBodyPretty?.isSome
-        let hasDetails : Bool :=
-          hasProvenanceDetails || item.kind?.isSome || sourceInfo?.isSome || sorryInfo?.isSome ||
-            sourcePath?.isSome || item.typePretty?.isSome || item.sourceDeclPretty?.isSome ||
-            definitionBodyPreview?.isSome || item.valuePretty?.isSome || showProofSourcePreview
         {{
           <li class="bp_external_decl_item">
             <div class="bp_external_decl_head">
@@ -1129,37 +1118,10 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
               <span class={{statusClass}}>{{.text true statusTxt}}</span>
               {{if hasProvenanceDetails then {{<span class="bp_external_badge">{{.text true provenanceLabel}}</span>}} else .empty}}
             </div>
-            {{if hasDetails then
-                {{<details class="bp_external_decl_details">
-                    <summary>"details"</summary>
-                    {{if let some kind := item.kind? then {{<div class="bp_external_decl_meta">"kind: " <code>{{.text true kind}}</code></div>}} else .empty}}
-                    {{if let some sourceInfo := sourceInfo? then {{<div class="bp_external_decl_meta">"source: " <code>{{.text true sourceInfo}}</code></div>}} else .empty}}
-                    {{if let some sourcePath := sourcePath? then {{<div class="bp_external_decl_meta">"source path: " <code>{{.text true sourcePath}}</code></div>}} else .empty}}
-                    {{if let some sorryInfo := sorryInfo? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true sorryInfo}}</div>}} else .empty}}
-                    {{if let some typePretty := item.typePretty? then
-                        {{<details class="bp_external_decl_preview"><summary>"Type"</summary><pre>{{.text true typePretty}}</pre></details>}}
-                      else
-                        .empty}}
-                    {{if let some sourceDeclPretty := item.sourceDeclPretty? then
-                        {{<details class="bp_external_decl_preview"><summary>"Source declaration"</summary><pre>{{.text true sourceDeclPretty}}</pre></details>}}
-                      else
-                        .empty}}
-                    {{if let some definitionBody := definitionBodyPreview? then
-                          {{<details class="bp_external_decl_preview"><summary>"Body"</summary><pre>{{.text true definitionBody}}</pre></details>}}
-                      else
-                        if showProofSourcePreview then
-                          if let some proofSource := item.sourceBodyPretty? then
-                            {{<details class="bp_external_decl_preview"><summary>"Proof source"</summary><pre>{{.text true proofSource}}</pre></details>}}
-                          else
-                            .empty
-                        else
-                          if !isDefinition && item.valuePretty?.isSome then
-                            {{<div class="bp_external_decl_meta bp_code_hover_none">"Elaborated proof bodies are hidden for theorem-like declarations."</div>}}
-                          else
-                            .empty}}
-                  </details>}}
-              else
-                .empty}}
+            {{if let some kind := item.kind? then {{<div class="bp_external_decl_meta">"kind: " <code>{{.text true kind}}</code></div>}} else .empty}}
+            {{if let some sourceInfo := sourceInfo? then {{<div class="bp_external_decl_meta">"source: " <code>{{.text true sourceInfo}}</code></div>}} else .empty}}
+            {{if let some sourcePath := sourcePath? then {{<div class="bp_external_decl_meta">"source path: " <code>{{.text true sourcePath}}</code></div>}} else .empty}}
+            {{if let some sorryInfo := sorryInfo? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true sorryInfo}}</div>}} else .empty}}
           </li>
         }}
   let externalPanelListItems (items : Array ExternalHoverDecl) : Output.Html :=
