@@ -353,7 +353,6 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       hasTypeSorry := info.type.hasSorry
       hasProofSorry := info.value? (allowOpaque := true) |>.map (·.hasSorry) |>.getD false
     }
-
 def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.CodeRef) : CoreM BlockCodeStatus := do
   match codeRef? with
   | some .userOk => return .userOk
@@ -502,6 +501,81 @@ private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData
     a.commandIndex < b.commandIndex ||
     (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
 
+private def codeDeclSorryLocation (decl : CodeDeclData) : String :=
+  if decl.hasTypeSorry && decl.hasProofSorry then
+    "in statement and proof"
+  else if decl.hasTypeSorry then
+    "in statement"
+  else if decl.hasProofSorry then
+    "in proof"
+  else
+    "location unknown"
+
+private def externalDeclHasSorry (decl : ExternalHoverDecl) : Bool :=
+  decl.hasTypeSorry || decl.hasProofSorry
+
+private def externalDeclSorryLocation (decl : ExternalHoverDecl) : String :=
+  if decl.hasTypeSorry && decl.hasProofSorry then
+    "in statement and proof"
+  else if decl.hasTypeSorry then
+    "in statement"
+  else if decl.hasProofSorry then
+    "in proof"
+  else
+    "location unknown"
+
+private def externalDeclStatement? (decl : ExternalHoverDecl) : Option String :=
+  match decl.sourceDeclPretty? with
+  | some sourceDecl => some sourceDecl
+  | none =>
+    match decl.typePretty? with
+    | none => none
+    | some typePretty =>
+      let keyword :=
+        match decl.kind? with
+        | some "definition" => "def"
+        | some "theorem" => "theorem"
+        | some "axiom" => "axiom"
+        | some "opaque" => "opaque"
+        | some "inductive" => "inductive"
+        | some "constructor" => "constructor"
+        | some "recursor" => "recursor"
+        | some "quotient" => "quotient"
+        | _ => "def"
+      let head := s!"{keyword} {decl.decl} : {typePretty}"
+      if decl.kind? == some "definition" then
+        match decl.valuePretty? with
+        | some valuePretty => some s!"{head} :=\n  {valuePretty}"
+        | none => some head
+      else
+        some head
+
+private def externalPanelStatus (decls : Array ExternalHoverDecl) : String × String × String :=
+  let total := decls.size
+  let found := decls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
+  let missing := total - found
+  let withSorries := decls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
+  if missing > 0 then
+    ("bp_external_status_missing", "●", s!"External Lean references: {found}/{total} present ({missing} missing)")
+  else if withSorries > 0 then
+    ("bp_external_status_sorry", "●", s!"External Lean references: all present, {withSorries} contain sorry")
+  else
+    ("bp_external_status_ok", "●", s!"External Lean references: all {total} present")
+
+private def progressSegmentClass (missing hasSorry : Bool) : String :=
+  if missing then
+    "bp_code_progress_segment bp_code_progress_segment_missing"
+  else if hasSorry then
+    "bp_code_progress_segment bp_code_progress_segment_sorry"
+  else
+    "bp_code_progress_segment bp_code_progress_segment_ok"
+
+private def codePanelSummary (data : BlockData) : String :=
+  if data.isProof then
+    "Code for proof"
+  else
+    s!"Code for {data.kind} {data.count}"
+
 def blueprintCss : String := r##"
 .bp_wrapper {
   scroll-margin-top: 1rem;
@@ -542,6 +616,7 @@ span[class$="_thmlabel"]::after {
   text-decoration: none;
 }
 
+.bp_code_hover_wrap,
 .bp_code_link_wrap {
   position: relative;
   display: inline-flex;
@@ -550,6 +625,7 @@ span[class$="_thmlabel"]::after {
   margin-bottom: -0.45rem;
 }
 
+.bp_code_hover_wrap::after,
 .bp_code_link_wrap::after {
   content: "";
   position: absolute;
@@ -578,6 +654,7 @@ span[class$="_thmlabel"]::after {
   font-weight: 400;
 }
 
+.bp_code_hover_wrap:is(:hover, :focus-within) > .bp_code_hover,
 .bp_code_link_wrap:is(:hover, :focus-within) > .bp_code_hover {
   display: block;
 }
@@ -620,24 +697,31 @@ span[class$="_thmlabel"]::after {
   white-space: nowrap;
 }
 
+.bp_code_summary_indicator {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+}
+
 .bp_code_progress {
   display: inline-flex;
-  flex: 1 1 10rem;
-  min-width: 7rem;
-  max-width: 22rem;
-  height: 0.72rem;
-  border-radius: 0;
+  min-width: 9rem;
+  max-width: 24rem;
+  width: min(24rem, 40vw);
+  height: 0.64rem;
+  border-radius: 999px;
   overflow: hidden;
-  border: 1px solid #cbd5e1;
-  background: #f8fafc;
+  border: 1px solid #94a3b8;
+  background: linear-gradient(180deg, #f8fafc, #e2e8f0);
+  box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.08);
 }
 
 .bp_code_progress_segment {
-  min-width: 0.28rem;
+  min-width: 0.22rem;
 }
 
 .bp_code_progress_segment + .bp_code_progress_segment {
-  border-left: 2px solid rgba(15, 23, 42, 0.45);
+  border-left: 1px solid rgba(15, 23, 42, 0.35);
 }
 
 .bp_code_progress_segment_ok {
@@ -646,6 +730,35 @@ span[class$="_thmlabel"]::after {
 
 .bp_code_progress_segment_sorry {
   background: #eab308;
+}
+
+.bp_code_progress_segment_missing {
+  background: #dc2626;
+}
+
+.bp_external_status_icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  line-height: 1;
+  color: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.22);
+}
+
+.bp_external_status_ok {
+  background: #16a34a;
+}
+
+.bp_external_status_sorry {
+  background: #ca8a04;
+}
+
+.bp_external_status_missing {
+  background: #dc2626;
 }
 
 .bp_code_expand_hint {
@@ -660,6 +773,18 @@ span[class$="_thmlabel"]::after {
 
 details[open] > summary .bp_code_expand_hint::before {
   content: "collapse";
+}
+
+.bp_code_panel {
+  margin: 0;
+}
+
+.bp_code_panel_wrapper {
+  margin-top: 0.5rem;
+}
+
+.bp_code_panel_wrapper .bp_code_block > summary {
+  cursor: pointer;
 }
 
 .bp_decl_target {
@@ -720,6 +845,10 @@ details[open] > summary .bp_code_expand_hint::before {
   color: #166534;
 }
 
+.bp_external_decl_sorry {
+  color: #a16207;
+}
+
 .bp_external_decl_missing {
   color: #b91c1c;
 }
@@ -770,6 +899,17 @@ details[open] > summary .bp_code_expand_hint::before {
   white-space: pre-wrap;
   font-size: 0.7rem;
   line-height: 1.35;
+}
+
+.bp_external_decl_stmt {
+  margin: 0.22rem 0 0;
+  padding: 0.36rem 0.5rem;
+  border-left: 2px solid #cbd5e1;
+  background: #f8fafc;
+  white-space: pre-wrap;
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: #0f172a;
 }
 
 .bp_content {
@@ -864,6 +1004,24 @@ def blueprintStyleSwitcherCss : String := StyleSwitcher.css
 
 def blueprintStyleSwitcherJs : String := StyleSwitcher.jsInteractive
 
+private def mkCodePanel
+    (summaryText summaryTitle : String)
+    (progressBar body : Output.Html)
+    (attrs : Array (String × String) := #[]) : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <div class="bp_wrapper bp_code_panel_wrapper">
+      <details class="bp_code_block bp_code_panel" {{attrs}}>
+        <summary title={{summaryTitle}}>
+          <span class="bp_code_summary_text">{{.text true summaryText}}</span>
+          {{progressBar}}
+          <span class="bp_code_expand_hint"></span>
+        </summary>
+        {{body}}
+      </details>
+    </div>
+  }}
+
 def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : Array (String × String))
     (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
@@ -904,7 +1062,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
         </div>
       </div>
     }}
-  let externalListItems (items : Array ExternalHoverDecl) : Output.Html :=
+  let externalHoverListItems (items : Array ExternalHoverDecl) : Output.Html :=
     if items.isEmpty then
       {{<li class="bp_code_hover_none">"none"</li>}}
     else
@@ -915,8 +1073,19 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
             {{<a href={{href}}>{{declTxt}}</a>}}
           else
             declTxt
-        let statusTxt := if item.present then "(Lean declaration found)" else "(missing Lean declaration)"
-        let statusClass := if item.present then "bp_external_decl_ok" else "bp_external_decl_missing"
+        let hasSorry := externalDeclHasSorry item
+        let statusTxt :=
+          if item.present then
+            if hasSorry then
+              s!"(has Lean declaration; contains sorry {externalDeclSorryLocation item})"
+            else
+              "(has Lean declaration)"
+          else
+            "(missing Lean declaration)"
+        let statusClass :=
+          if !item.present then "bp_external_decl_missing"
+          else if hasSorry then "bp_external_decl_sorry"
+          else "bp_external_decl_ok"
         let hasProvenanceDetails : Bool :=
           match item.provenance with
           | .unknown => false
@@ -993,6 +1162,45 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
                 .empty}}
           </li>
         }}
+  let externalPanelListItems (items : Array ExternalHoverDecl) : Output.Html :=
+    if items.isEmpty then
+      {{<li class="bp_code_hover_none">"none"</li>}}
+    else
+      .seq <| items.map fun item =>
+        let declTxt := {{<code>{{.text true s!"{item.decl}"}}</code>}}
+        let declNode :=
+          if let some href := item.href then
+            {{<a href={{href}}>{{declTxt}}</a>}}
+          else
+            declTxt
+        let hasSorry := externalDeclHasSorry item
+        let statusTxt :=
+          if item.present then
+            if hasSorry then
+              s!"contains sorry {externalDeclSorryLocation item}"
+            else
+              "complete"
+          else
+            "missing declaration"
+        let statusClass :=
+          if !item.present then "bp_external_decl_missing"
+          else if hasSorry then "bp_external_decl_sorry"
+          else "bp_external_decl_ok"
+        let statementNode :=
+          if let some stmt := externalDeclStatement? item then
+            {{<pre class="bp_external_decl_stmt hl lean block"><code>{{.text true stmt}}</code></pre>}}
+          else if item.present then
+            {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (pretty-printer failed)"</pre>}}
+          else
+            {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (declaration not found)"</pre>}}
+        {{
+          <li class="bp_external_decl_item">
+            <div class="bp_external_decl_head">
+              {{declNode}} " " <span class={{statusClass}}>{{.text true statusTxt}}</span>
+            </div>
+            {{statementNode}}
+          </li>
+        }}
   let externalHover : Output.Html :=
     if cdata.externalDecls.isEmpty then
       .empty
@@ -1002,7 +1210,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
           <div class="bp_code_hover_title">"External Lean references"</div>
           <div class="bp_code_hover_section">
             <ul class="bp_code_hover_list">
-              {{externalListItems cdata.externalDecls}}
+              {{externalHoverListItems cdata.externalDecls}}
             </ul>
           </div>
         </div>
@@ -1035,8 +1243,12 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
     if hasExternal then
       let total := cdata.externalDecls.size
       let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
+      let withSorries := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
       if found == total then
-        s!"External Lean references (all present: {found}/{total})"
+        if withSorries == 0 then
+          s!"External Lean references (all present: {found}/{total})"
+        else
+          s!"External Lean references (all present: {found}/{total}; with sorry: {withSorries})"
       else
         s!"External Lean references ({found}/{total} present)"
     else if cdata.manualStatus then
@@ -1053,6 +1265,20 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
         else
           {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
       {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryHover}}</span>}}
+  let externalStatusIndicator : Output.Html :=
+    if !hasExternal then
+      .empty
+    else
+      let (iconClass, iconText, iconTitle) := externalPanelStatus cdata.externalDecls
+      let icon :=
+        {{<span class={{s!"bp_external_status_icon {iconClass}"}} title={{iconTitle}}>{{.text true iconText}}</span>}}
+      {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{icon}}{{externalHover}}</span>}}
+  let externalCodePanel : Output.Html :=
+    if !hasExternal || data.isProof then
+      .empty
+    else
+      mkCodePanel (codePanelSummary data) codeEntryTitle externalStatusIndicator
+        {{<ul class="bp_code_hover_list">{{externalPanelListItems cdata.externalDecls}}</ul>}}
   let kindText := if data.isProof then "Proof" else s!"{data.kind}"
   let labelTextNum := s!"{data.count}"
   let labelText := s!"{data.label}"
@@ -1085,12 +1311,14 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
       let total := cdata.externalDecls.size
       let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
       let missing := total - found
-      let title :=
-        if missing == 0 then
-          s!"External Lean names ({total}) are present"
+      let withSorries := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
+      let (title, mark) :=
+        if missing > 0 then
+          (s!"External Lean names: {found} present, {missing} missing", "✗")
+        else if withSorries > 0 then
+          (s!"External Lean names ({total}) are present, but {withSorries} contain sorry", "⚠")
         else
-          s!"External Lean names: {found} present, {missing} missing"
-      let mark := if missing == 0 then "✓" else "✗"
+          (s!"External Lean names ({total}) are present", "✓")
       {{ <span class="bp_status_mark" title={{title}}>{{.text true mark}}</span> }}
     else if cdata.manualStatus then
       {{ <span class="bp_status_mark" title="Marked complete via (leanok := true)">"✓ (manually set)"</span> }}
@@ -1105,19 +1333,21 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
       let mark := if hasSorriesHere then "✗" else "✓"
       let title := if hasSorriesHere then s!"Contains sorries in {whereTxt}" else s!"No sorries in {whereTxt}"
       {{ <span class="bp_status_mark" title={{title}}>{{.text true mark}}</span> }}
-  {{ <div class={{wrapperClass}} title={{labelText}} {{attrs}}>
-       <div class={{headingClass}}>
-         <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
-         {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
-         <div class="bp_extras thm_header_extras">
-           {{statusMark}}
-           {{codeEntry}}
-         </div>
-         <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
-       </div>
-       <div class={{contentClass}}> {{ content }} </div>
-     </div>
+  let informalBlock : Output.Html := {{
+    <div class={{wrapperClass}} title={{labelText}} {{attrs}}>
+      <div class={{headingClass}}>
+        <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
+        {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
+        <div class="bp_extras thm_header_extras">
+          {{statusMark}}
+          {{codeEntry}}
+        </div>
+        <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
+      </div>
+      <div class={{contentClass}}> {{ content }} </div>
+    </div>
   }}
+  .seq #[informalBlock, externalCodePanel]
 
 /- Informal custom blocks -/
 block_extension Block.informal (data : BlockData) where
@@ -1262,39 +1492,62 @@ block_extension Block.informalCode (data : CodeBlockData) where
         match s.getDomainObject? informalDomain label.toString with
         | some obj =>
           match fromJson? (α := BlockData) obj.data with
-          | .ok b => s!"Code for {b.kind} {b.count}"
+          | .ok b => codePanelSummary b
           | .error _ => "Code"
         | none => "Code"
       let orderedDecls := sortDeclsByCommand (definedDefs ++ definedTheorems)
+      let getDeclHref (decl : Name) : Option String :=
+        Resolve.resolveExampleDeclHref? s decl
+      let summaryHoverData := mkCodeHoverData label definedDefs definedTheorems getDeclHref
+      let listItems (items : Array CodeHoverDecl) : Output.Html :=
+        if items.isEmpty then
+          {{<li class="bp_code_hover_none">"none"</li>}}
+        else
+          .seq <| items.map fun item =>
+            let txt := {{<code>{{.text true item.text}}</code>}}
+            {{<li>{{if let some href := item.href then {{<a href={{href}}>{{txt}}</a>}} else txt}}</li>}}
+      let progressHover : Output.Html := {{
+        <div class="bp_code_hover" role="tooltip">
+          <div class="bp_code_hover_title">{{.text true s!"{summaryHoverData.label}"}}</div>
+          <div class="bp_code_hover_section">
+            <span class="bp_code_hover_label">"Lean definitions"</span>
+            <ul class="bp_code_hover_list">
+              {{listItems summaryHoverData.definedDefs}}
+            </ul>
+          </div>
+          <div class="bp_code_hover_section">
+            <span class="bp_code_hover_label">"Lean theorems/lemmas"</span>
+            <ul class="bp_code_hover_list">
+              {{listItems summaryHoverData.definedTheorems}}
+            </ul>
+          </div>
+          <div class="bp_code_hover_section">
+            <span class="bp_code_hover_label">"Sorries"</span>
+            <ul class="bp_code_hover_list">
+              {{listItems summaryHoverData.sorries}}
+            </ul>
+          </div>
+        </div>
+      }}
       let progressBar : Output.Html :=
         if orderedDecls.isEmpty then
           .empty
         else
           let segments := orderedDecls.map fun decl =>
-            let cls :=
-              if decl.hasSorry then
-                "bp_code_progress_segment bp_code_progress_segment_sorry"
-              else
-                "bp_code_progress_segment bp_code_progress_segment_ok"
+            let cls := progressSegmentClass false decl.hasSorry
             let weight := max decl.weight 1
             let title :=
               if decl.hasSorry then
-                s!"{decl.name}: has sorry"
+                s!"{decl.name}: contains sorry {codeDeclSorryLocation decl}"
               else
                 s!"{decl.name}: complete"
             {{<span class={{cls}} title={{title}} style={{s!"flex: {weight} 1 0%"}}></span>}}
-          {{<span class="bp_code_progress" aria-label="Lean declaration progress">{{segments}}</span>}}
+          let bar := {{<span class="bp_code_progress" aria-label="Lean declaration progress">{{segments}}</span>}}
+          {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{bar}}{{progressHover}}</span>}}
       let summaryHover := codeHoverText label definedDefs definedTheorems
-      pure {{
-        <details class="bp_code_block" "data-bp-proof-fold"={{if foldProofs then "on" else "off"}} {{attrs}}>
-          <summary title={{summaryHover}}>
-            <span class="bp_code_summary_text">{{summaryText}}</span>
-            {{progressBar}}
-            <span class="bp_code_expand_hint"></span>
-          </summary>
-          {{ ← blocks.mapM goB }}
-        </details>
-      }}
+      let panelAttrs := attrs.push ("data-bp-proof-fold", if foldProofs then "on" else "off")
+      let panelBody := .seq (← blocks.mapM goB)
+      pure <| mkCodePanel summaryText summaryHover progressBar panelBody panelAttrs
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
   | cfg, contents => do
