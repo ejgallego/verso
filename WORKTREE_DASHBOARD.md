@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-02 (feat/axioms-as-sorries)
+Last updated: 2026-03-02 (merged feat/axioms-as-sorries into bp)
 
 ## Inventory and Recommendation
 
@@ -25,26 +25,18 @@ Last updated: 2026-03-02 (feat/axioms-as-sorries)
     - planning document committed as `a7a0d420`
     - document path: `doc/VersoBlueprintRefactorPlan.md`
 
+### Recently merged / cleaned up
+
 - `feat/axioms-as-sorries`
-  - Path: `/home/egallego/lean/verso-blueprint/.worktrees/axioms-as-sorries`
-  - Branch: `feat/axioms-as-sorries`
-  - Status: validated (includes `ProvedStatus` refactor); owner action: review diff and commit
-  - Base: `bp` @ `1cb7cbe5`
-  - Key commits: none yet (working tree changes only)
-  - Notes:
-    - summary now consumes `ProvedStatus` directly (explicit `axiom-like` rows, no legacy ref-count classification path)
-    - external declarations now contribute to incomplete summary counts/details when status is not `.proved`
-    - summary includes a dedicated "Missing external Lean declarations" card + detail section for unresolved `(lean := ...)` names
-    - external missing-declaration reporting now uses a registration-time snapshot (`ExternalRef.presentAtRegistration`) as single source for both code panels and summary
-    - verified case: `Local.congruent_iff_sym_matrix_eq` appears in summary missing section when panel marks it missing
-  - Validation:
+  - Status: merged into `bp` and cleaned up
+  - Merge commit on `bp`: `2ad7bcc4` (fast-forward)
+  - Cleanup:
+    - worktree removed: `/home/egallego/lean/verso-blueprint/.worktrees/axioms-as-sorries`
+    - branch deleted: `feat/axioms-as-sorries`
+  - Validation at merge time:
     - `lake build VersoBlueprint.Data VersoBlueprint.Commands VersoBlueprint Tests.BlueprintGraph` passed
     - `lake env lean src/tests/Tests/BlueprintGraph.lean` passed
     - `lake exe noperthedron` passed
-  - Resume notes:
-    - `git -C .worktrees/axioms-as-sorries status --short`
-    - `git -C .worktrees/axioms-as-sorries diff -- src/verso-blueprint/VersoBlueprint/Data.lean src/verso-blueprint/VersoBlueprint/Lean.lean src/verso-blueprint/VersoBlueprint/Graph.lean src/verso-blueprint/VersoBlueprint/Commands.lean src/verso-blueprint/VersoBlueprint.lean src/tests/Tests/BlueprintGraph.lean`
-    - `lake exe noperthedron`
 
 ### Key Commits (on top of `bp`)
 
