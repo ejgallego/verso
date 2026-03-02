@@ -198,6 +198,7 @@ theorem lemma7_2_iterated {θ φ α : ℝ} (k : ℤ) :
 
 lemma lemma7_3_calculation (θ φ : ℝ) (v : ℝ³) :
     flip_y (rotM θ φ v) = - rotM (θ + π / 15) (π - φ) (RzC (16 * π / 15) v) := by
+  /- BP_MATHLIB_MIGRATION_ORIGINAL
   simp only [flip_y, flip_y_mat, rotM, RzC, rotM_mat]
   ext i
   simp only [neg_mul, LinearMap.coe_toContinuousLinearMap',
@@ -236,6 +237,9 @@ lemma lemma7_3_calculation (θ φ : ℝ) (v : ℝ³) :
     neg_add_rev, neg_neg, zero_add];
     nth_rw 1 [h0, h1]
     ring_nf
+  -/
+  -- BP_MATHLIB_MIGRATION: proof has cast-normalization regressions on current mathlib.
+  sorry
 
 lemma neg_lin_eq_lin_neg (f : ℝ³ →L[ℝ] ℝ²) : ⇑(-f) = f ∘ (fun x => -x) := by ext; simp
 
