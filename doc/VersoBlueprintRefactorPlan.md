@@ -10,6 +10,7 @@ Target baseline branch: `bp`
 1. This branch is retained as the planning branch for the VersoBlueprint modularization pass.
 2. The document here is the current planning baseline and should be updated before any structural split starts.
 3. Implementation work should begin only after rebasing/syncing against current `bp`.
+4. Commands-path boundary audit notes are tracked in `doc/CommandsPathRefactorNotes.md`.
 
 ## Baseline Update from `bp`
 
