@@ -190,6 +190,17 @@ lean_exe noperthedron where
   root := `Main
   supportInterpreter := true
 
+-- Port of the Sphere Packing TeX blueprint to Verso Blueprints
+lean_lib SpherePackingBlueprint where
+  srcDir := "test-projects/Sphere-Packing-Lean"
+  roots := #[`SpherePackingBlueprint]
+
+@[default_target]
+lean_exe spherepackingblueprint where
+  srcDir := "test-projects/Sphere-Packing-Lean"
+  root := `SpherePackingBlueprintMain
+  supportInterpreter := true
+
 module_facet literate mod : System.FilePath := do
   let ws ← getWorkspace
 
