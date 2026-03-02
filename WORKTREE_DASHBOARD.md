@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-02 (merged feat/axioms-as-sorries into bp)
+Last updated: 2026-03-02 (merged feat/blueprint-options into bp)
 
 ## Inventory and Recommendation
 
@@ -25,24 +25,25 @@ Last updated: 2026-03-02 (merged feat/axioms-as-sorries into bp)
     - planning document committed as `a7a0d420`
     - document path: `doc/VersoBlueprintRefactorPlan.md`
 
+### Recently merged / cleaned up
+
 - `feat/blueprint-options`
-  - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-options`
-  - Status: ready-for-review (owner action: final review + optional full noperthedron validation)
-  - Base: `bp` @ `1cb7cbe5`
+  - Status: merged into `bp` and cleaned up
+  - Merge commit on `bp`: `788cf484`
+  - Cleanup:
+    - worktree removed: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-options`
+    - branch deleted: `feat/blueprint-options`
   - Notes:
-    - custom command prototype was rolled back
-    - keep user-facing configuration on native `set_option` path
+    - kept user-facing configuration on native `set_option` path
     - added `test-projects/Noperthedron/OPTIONS.md` as set_option source of truth
-    - implemented backlog options:
+    - implemented options:
       - `verso.blueprint.profile`
       - `verso.blueprint.externalCode.strictResolve`
       - `verso.blueprint.externalCode.previewLimit.{type,value,decl,rhs}`
       - `verso.blueprint.graph.defaultDirection`
-    - validation:
-      - `lake build VersoBlueprint` passed
-      - `lake exe noperthedron` reached ~`3146/6777` before manual stop; no errors observed in this run
-
-### Recently merged / cleaned up
+  - Validation at merge time:
+    - `lake build VersoBlueprint` passed
+    - `lake exe noperthedron` reached ~`3146/6777` before manual stop; no errors observed
 
 - `feat/axioms-as-sorries`
   - Status: merged into `bp` and cleaned up
