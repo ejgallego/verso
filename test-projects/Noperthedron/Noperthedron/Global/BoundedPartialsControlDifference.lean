@@ -64,7 +64,7 @@ private noncomputable
 def Differentiable.interpolated {n : ℕ} (x y : E n) (f : E n → ℝ) (fc : ContDiff ℝ 2 f) :
     Differentiable ℝ (interpolated x y f)  := by
   have := Differentiable.interpolator x y
-  have := fc.differentiable (by norm_num)
+  have := fc.differentiable (by decide)
   unfold GlobalTheorem.interpolated
   fun_prop
 
@@ -122,7 +122,7 @@ def interpolated_has_deriv {n : ℕ} (x y : E n) (f : E n → ℝ) (fc : ContDif
   unfold interpolated interpolated_deriv
   rw [hasDerivAt_iff_hasFDerivAt]
   have hfd : HasFDerivAt f (fderiv ℝ f (interpolator x y t)) (interpolator x y t) :=
-    fc.differentiable (by norm_num) |>.differentiableAt.hasFDerivAt
+    fc.differentiable (by decide) |>.differentiableAt.hasFDerivAt
 
   have : (toSpanSingleton ℝ (∑ i, (y.ofLp i - x.ofLp i) * nth_partial i f ((1 - t) • x + t • y)))
       = ((fderiv ℝ f (interpolator x y t)).comp (interpolator' x y)) := by
@@ -138,7 +138,22 @@ def interpolated_has_deriv {n : ℕ} (x y : E n) (f : E n → ℝ) (fc : ContDif
 open ContinuousLinearMap in
 def interpolated_has_deriv2 {n : ℕ} (x y : E n) (f : E n → ℝ) (fc : ContDiff ℝ 2 f) (t : ℝ) :
     HasDerivAt (interpolated_deriv x y f) (interpolated_deriv2 x y f t) t := by
-  sorry
+  unfold interpolated_deriv interpolated_deriv2
+  rw [hasDerivAt_iff_hasFDerivAt]
+  have hd (i : Fin n) : HasDerivAt (fun t => nth_partial i f (interpolator x y t))
+      (∑ j, (y j - x j) * nth_partial j (nth_partial i f) (interpolator x y t)) t := by
+    convert HasFDerivAt.comp_hasDerivAt t (c2_imp_partials_c1 fc |>.differentiable_one _ |>.hasFDerivAt)
+      (interpolator_has_deriv x y t)
+    rw [nth_partial_def]
+    rfl
+  convert HasFDerivAt.sum fun i _ => (HasDerivAt.hasFDerivAt (HasDerivAt.const_mul (y i - x i) (hd i)))
+  all_goals try unfold interpolator
+  · rw [Finset.sum_fn]
+  · ext; simp only [toSpanSingleton_apply, smul_eq_mul, Finset.mul_sum, one_mul, coe_sum', Finset.sum_apply]
+    rw [Finset.sum_comm]
+    apply Finset.sum_congr rfl; intro i hi
+    apply Finset.sum_congr rfl; intro j hj
+    ring
 
 def deriv_interpolated {n : ℕ} (x y : E n) (f : E n → ℝ) (fc : ContDiff ℝ 2 f) :
     deriv (interpolated x y f) = interpolated_deriv x y f := by
@@ -174,4 +189,96 @@ theorem bounded_partials_control_difference {n : ℕ} (f : E n → ℝ)
     (ε : ℝ) (hε : ε > 0) (hdiff : (i : Fin n) → |x i - y i| ≤ ε)
     (mpb : mixed_partials_bounded f) :
     |f x - f y| ≤ ε * ∑ i, |nth_partial i f x| + (n^2 / 2) * ε^2 := by
-  sorry
+  let g₀ := interpolator x y
+  let g := interpolated x y f
+
+  let g' := interpolated_deriv x y f
+  let g'' := interpolated_deriv2 x y f
+
+  have f_diff : Differentiable ℝ f := fc.differentiable (by decide)
+  have g₀_diff : Differentiable ℝ g₀ := Differentiable.interpolator x y
+  have g_diff : Differentiable ℝ g := Differentiable.interpolated x y f fc
+  have g'_diff : Differentiable ℝ g' := differentiable_deriv_interpolated x y f fc
+  have g'_cont : Continuous g' := g'_diff.continuous
+  have g''_cont : Continuous g'' := continuous_deriv_interpolated2 x y f fc
+
+  have deriv_g_eq_g' : deriv g = g' := by
+    unfold g g'; exact deriv_interpolated x y f fc
+  have deriv_g'_eq_g'' : deriv g' = g'' := by
+    unfold g' g''; exact deriv_interpolated2 x y f fc
+
+  have int_g'_eq_sub (t : ℝ) : (∫ (s : ℝ) in 0..t, g' s) = g t - g 0 := by
+    exact intervalIntegral.integral_deriv_eq_sub' g deriv_g_eq_g' (by fun_prop) (by fun_prop)
+
+  have int_g''_eq_sub (t : ℝ) : (∫ (s : ℝ) in 0..t, g'' s) = g' t - g' 0 := by
+    exact intervalIntegral.integral_deriv_eq_sub' g' deriv_g'_eq_g'' (by fun_prop) (by fun_prop)
+
+  -- "and observe that"
+  have hobs := by calc g 1 - g 0
+      _ = ∫ (t : ℝ) in 0..1, g' t := by rw [int_g'_eq_sub]
+      _ = ∫ (t : ℝ) in 0..1, g' 0 + ∫ (s : ℝ) in 0..t, g'' s := by
+        conv => enter [2, 1, t]; rw [int_g''_eq_sub]; simp
+      _ = (∫ (t : ℝ) in 0..1, g' 0) + ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, g'' s := by
+        rw [intervalIntegral.integral_add]
+        · exact intervalIntegrable_const
+        · conv => enter [1, t]; rw [int_g''_eq_sub t]
+          exact Continuous.intervalIntegrable (by fun_prop) 0 1
+      _ = g' 0 + ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, g'' s := by
+        rw [intervalIntegral.integral_const]; simp
+
+  --- "thus at t = 0 we find..."
+  have bound1 : |g' 0| ≤ ε * ∑ i, |nth_partial i f x|  := by
+    calc |g' 0|
+    _ = |∑ i, (y i - x i) * nth_partial i f x| := by simp [g', interpolated_deriv]
+    _ ≤ ∑ i, |(y i - x i) * nth_partial i f x| := by apply Finset.abs_sum_le_sum_abs
+    _ = ∑ i, |(y i - x i)| * |nth_partial i f x| := by
+      conv => enter [1, 2, i]; rw [abs_mul]
+    _ = ∑ i, |(x i - y i)| * |nth_partial i f x| := by
+      conv => enter [1, 2, i, 1]; rw [abs_sub_comm]
+    _ ≤ ∑ i, ε * |nth_partial i f x| := by
+      refine Finset.sum_le_sum ?_; intro i hi; grw [hdiff i]
+    _ = ε * ∑ i, |nth_partial i f x| := by rw [Finset.mul_sum]
+
+  -- "For the second derivative of g(t) we also get with the chain rule"
+  have abs_int_le_int_abs {t : ℝ} (ht : 0 ≤ t) :
+      |∫ (s : ℝ) in 0..t, g'' s| ≤ ∫ (s : ℝ) in 0..t, |g'' s| :=
+    intervalIntegral.abs_integral_le_integral_abs ht
+
+  have int_abs_int_le_int_int_abs : ∫ (t : ℝ) in 0..1, |∫ (s : ℝ) in 0..t, g'' s|
+      ≤ ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, |g'' s| := by
+    refine intervalIntegral.integral_mono_on ?_ ?_ ?_ ?_
+    · norm_num
+    · exact Continuous.intervalIntegrable (by fun_prop) 0 1
+    · exact Continuous.intervalIntegrable (by fun_prop) 0 1
+    · intro t ⟨ht₁, ht₂⟩
+      exact intervalIntegral.abs_integral_le_integral_abs ht₁
+
+  have bound2 : ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, |g'' s| ≤ (n^2 / 2) * ε^2 := by
+    suffices h : ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, |g'' s| ≤
+        ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, n^2 * ε^2 by
+      grw [h]
+      refine le_of_eq ?_
+      simp only [intervalIntegral.integral_const_mul, intervalIntegral.integral_const, sub_zero,
+        smul_eq_mul, intervalIntegral.integral_mul_const, integral_id, one_pow, ne_eq,
+        OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, one_div]
+      ring_nf
+    have : ∀ t ∈ Set.Icc 0 1, ∫ (s : ℝ) in 0..t, |g'' s| ≤ ∫ (s : ℝ) in 0..t, n^2 * ε^2 := by
+      intro t ⟨ht, _⟩
+      refine intervalIntegral.integral_mono ht ?_ ?_ (interpolated_deriv2_bound x y mpb hε hdiff) <;>
+      · exact Continuous.intervalIntegrable (by fun_prop) 0 t
+    refine intervalIntegral.integral_mono_on (by norm_num) ?_ ?_ this <;>
+      · exact Continuous.intervalIntegrable (by fun_prop) 0 1
+
+  -- "Altogether one obtains"
+  calc |f x - f y|
+  _ = |g 0 - g 1| := by
+    rw [show g 0 = f x by simp[g, interpolated, interpolator]]
+    rw [show g 1 = f y by simp[g, interpolated, interpolator]]
+  _ = |g 1 - g 0| := by rw [abs_sub_comm]
+  _ = |g' 0 + ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, g'' s| := by rw [hobs]
+  _ ≤ |g' 0| + |∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, g'' s| := abs_add_le _ _
+  _ ≤ |g' 0| + ∫ (t : ℝ) in 0..1, |∫ (s : ℝ) in 0..t, g'' s| := by
+    grw [intervalIntegral.abs_integral_le_integral_abs (by norm_num)]
+  _ ≤ |g' 0| + ∫ (t : ℝ) in 0..1, ∫ (s : ℝ) in 0..t, |g'' s| := by
+    grw [int_abs_int_le_int_int_abs]
+  _ ≤ ε * ∑ i, |nth_partial i f x| + (n^2 / 2) * ε^2 := by grw[bound1, bound2]

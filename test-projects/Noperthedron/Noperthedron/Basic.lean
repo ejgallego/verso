@@ -320,22 +320,13 @@ lemma vecX_identity (θ φ : ℝ) :
   fin_cases i <;> simp [RyL, RzL, Matrix.vecHead, Matrix.vecTail, vecX]
 
 lemma vecX_norm_one (θ φ : ℝ) : ‖vecX θ φ‖ = 1 := by
-  have hsq : ‖vecX θ φ‖ ^ 2 = 1 := by
-    calc
-      ‖vecX θ φ‖ ^ 2 =
-          (Real.cos θ * Real.sin φ) ^ 2 + (Real.sin θ * Real.sin φ) ^ 2 + (Real.cos φ) ^ 2 := by
-            simpa [vecX, Fin.sum_univ_three] using (EuclideanSpace.norm_sq_eq (x := vecX θ φ))
-      _ = (Real.sin φ) ^ 2 * ((Real.cos θ) ^ 2 + (Real.sin θ) ^ 2) + (Real.cos φ) ^ 2 := by
-            ring
-      _ = (Real.sin φ) ^ 2 * 1 + (Real.cos φ) ^ 2 := by
-            rw [show (Real.cos θ) ^ 2 + (Real.sin θ) ^ 2 = 1 by
-              nlinarith [Real.sin_sq_add_cos_sq θ]]
-      _ = 1 := by
-            nlinarith [Real.sin_sq_add_cos_sq φ]
-  have hsq' : ‖vecX θ φ‖ ^ 2 = (1 : ℝ) ^ 2 := by simpa using hsq
-  rcases sq_eq_sq_iff_eq_or_eq_neg.mp hsq' with h | h
-  · exact h
-  · linarith [norm_nonneg (vecX θ φ)]
+  simp only [vecX, ENNReal.toReal_ofNat, Nat.ofNat_pos, PiLp.norm_eq_sum, norm_eq_abs,
+    rpow_ofNat, sq_abs, Fin.sum_univ_three, Fin.isValue, Matrix.cons_val_zero,
+    Matrix.cons_val_one, Matrix.cons_val, one_div]
+  ring_nf
+  simp only [Real.sin_sq]
+  ring_nf
+  simp
 
 lemma rotM_identity (θ φ : ℝ) : rotM θ φ = reduceL ∘L RyL φ ∘L RzL (-θ) := by
   ext v i
@@ -411,8 +402,7 @@ theorem polyhedron_radius_iff {n : ℕ} {r : ℝ} (S : Finset (E n)) (ne : S.Non
 theorem polyhedron_vertex_norm_le_radius {n : ℕ} (S : Finset (E n))
     (ne : S.Nonempty) {v : E n} (hv : v ∈ S) : ‖v‖ ≤ polyhedronRadius S ne := by
   apply Finset.le_max'
-  simp only [Finset.mem_image]
-  use v
+  exact Finset.mem_image_of_mem _ hv
 
 structure GoodPoly : Type where
   vertices : Finset ℝ³

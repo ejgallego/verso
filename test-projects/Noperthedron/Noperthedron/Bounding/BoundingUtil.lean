@@ -15,7 +15,45 @@ open scoped Real
 
 theorem dist_rot3_apply {d : Fin 3} {α α' : ℝ} {v : ℝ³} :
   ‖(rot3 d α - rot3 d α') v‖ = 2 * |sin ((α - α') / 2)| * ‖(WithLp.toLp 2 (Fin.removeNth d v) : ℝ²)‖ := by
-    sorry
+    let ix (i : Fin 3) : Fin 3 := match d, i with
+      | 0,0 => 0
+      | 0,1 => 1
+      | 0,2 => 2
+      | 1,0 => 1
+      | 1,1 => 0
+      | 1,2 => 2
+      | 2,0 => 2
+      | 2,1 => 0
+      | 2,2 => 1
+    fin_cases d <;>
+    · try simp [rot3, RxC, RyC, RzC, RxL, RyL, RzL, Rx_mat, Ry_mat, Rz_mat, AddChar.coe_mk, ContinuousLinearMap.coe_sub',
+        LinearMap.coe_toContinuousLinearMap', Pi.sub_apply, Matrix.toLpLin_apply,
+        Matrix.mulVec_eq_sum, op_smul_eq_smul, Fin.sum_univ_three, Fin.isValue,
+        WithLp.toLp_add, WithLp.toLp_smul, ENNReal.toReal_ofNat, Nat.ofNat_pos, PiLp.norm_eq_sum,
+        PiLp.sub_apply, PiLp.add_apply, PiLp.smul_apply, Matrix.transpose_apply,
+        Matrix.of_apply, smul_eq_mul, norm_eq_abs, rpow_ofNat, sq_abs, mul_one, mul_zero, add_zero,
+        sub_self, ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, zero_pow, zero_add, mul_neg, one_div,
+        Fin.sum_univ_two]
+      calc
+        _ = ((v (ix 1) * cos α + -(v (ix 2) * sin α) - (v (ix 1) * cos α' + -(v (ix 2) * sin α'))) ^ 2 +
+          (v (ix 1) * sin α + v (ix 2) * cos α - (v (ix 1) * sin α' + v (ix 2) * cos α')) ^ 2) ^ (2 : ℝ)⁻¹ := by simp only [ix]
+        _ = ((2 * sin ((α - α') / 2)) ^ 2 * (v (ix 1) ^ 2 + v (ix 2) ^ 2)) ^ (2 : ℝ)⁻¹ := by
+          have one_neg_cos_nonneg : 0 ≤ 1 - cos (α - α') := by simp [cos_le_one]
+          refine (rpow_left_inj ?_ ?_ ?_).mpr ?_ <;> try positivity
+          calc
+            _ = (v (ix 1) * cos α + -(v (ix 2) * sin α) - (v (ix 1) * cos α' + -(v (ix 2) * sin α'))) ^ 2 +
+              (v (ix 1) * sin α + v (ix 2) * cos α - (v (ix 1) * sin α' + v (ix 2) * cos α')) ^ 2 := by simp [ix]
+            _ = (v (ix 1) * (cos α - cos α') - v (ix 2) * (sin α - sin α')) ^ 2 + (v (ix 1) * (sin α - sin α') + v (ix 2) * (cos α - cos α')) ^ 2 := by ring_nf
+            _ = 4 * (v (ix 1) ^ 2 + v (ix 2) ^ 2) * (sin ((α - α') / 2)) ^ 2 * ((sin ((α + α') / 2)) ^ 2 + (cos ((α + α') / 2)) ^ 2) := by
+              simp [sin_sub_sin, cos_sub_cos, sq]
+              ring_nf
+              rfl
+            _ = 4 * (v (ix 1) ^ 2 + v (ix 2) ^ 2) * (sin ((α - α') / 2)) ^ 2 := by simp [sin_sq_add_cos_sq]
+            _ = (2 * sin ((α - α') / 2)) ^ 2 * (v (ix 1) ^ 2 + v (ix 2) ^ 2) := by ring
+        _ = 2 * |sin ((α - α') / 2)| * (v (ix 1) ^ 2 + v (ix 2) ^ 2) ^ (2 : ℝ)⁻¹ := by
+          rw [mul_rpow, inv_eq_one_div, rpow_div_two_eq_sqrt]
+          all_goals try positivity
+          simp [sqrt_sq_eq_abs]
 
 theorem dist_rot3 {d : Fin 3} {α α' : ℝ} :
   ‖rot3 d α - rot3 d α'‖ = 2 * |sin ((α - α') / 2)| := by
@@ -54,7 +92,32 @@ theorem dist_rot3 {d : Fin 3} {α α' : ℝ} :
 
 theorem dist_rot2_apply {α α' : ℝ} {v : ℝ²} :
   ‖(rot2 α - rot2 α') v‖ = 2 * |sin ((α - α') / 2)| * ‖v‖ := by
-    sorry
+    simp only [rot2, rot2_mat, AddChar.coe_mk, ContinuousLinearMap.coe_sub',
+      LinearMap.coe_toContinuousLinearMap', Pi.sub_apply, Matrix.toLpLin_apply,
+      Matrix.mulVec_eq_sum, op_smul_eq_smul, Fin.sum_univ_two, Fin.isValue,
+      WithLp.toLp_add, WithLp.toLp_smul, ENNReal.toReal_ofNat, Nat.ofNat_pos, PiLp.norm_eq_sum,
+      PiLp.sub_apply, PiLp.add_apply, PiLp.smul_apply, Matrix.transpose_apply,
+      Matrix.of_apply, smul_eq_mul, norm_eq_abs, rpow_ofNat, sq_abs, mul_neg, one_div]
+    calc
+      ((v 0 * cos α + -(v 1 * sin α) - (v 0 * cos α' + -(v 1 * sin α'))) ^ 2 +
+        (v 0 * sin α + v 1 * cos α - (v 0 * sin α' + v 1 * cos α')) ^ 2) ^ (2 : ℝ)⁻¹ = _ := by rfl
+      _ = ((2 * sin ((α - α') / 2)) ^ 2 * (v 0 ^ 2 + v 1 ^ 2)) ^ (2 : ℝ)⁻¹ := by
+        have one_neg_cos_nonneg : 0 ≤ 1 - cos (α - α') := by simp [cos_le_one]
+        refine (rpow_left_inj ?_ ?_ ?_).mpr ?_ <;> try positivity
+        calc
+          (v 0 * cos α + -(v 1 * sin α) - (v 0 * cos α' + -(v 1 * sin α'))) ^ 2 +
+            (v 0 * sin α + v 1 * cos α - (v 0 * sin α' + v 1 * cos α')) ^ 2 = _ := by rfl
+          _ = (v 0 * (cos α - cos α') - v 1 * (sin α - sin α')) ^ 2 + (v 0 * (sin α - sin α') + v 1 * (cos α - cos α')) ^ 2 := by ring_nf
+          _ = 4 * (v 0 ^ 2 + v 1 ^ 2) * (sin ((α - α') / 2)) ^ 2 * ((sin ((α + α') / 2)) ^ 2 + (cos ((α + α') / 2)) ^ 2) := by
+            simp only [Fin.isValue, cos_sub_cos, neg_mul, mul_neg, sin_sub_sin, sq]
+            ring_nf
+            rfl
+          _ = 4 * (v 0 ^ 2 + v 1 ^ 2) * (sin ((α - α') / 2)) ^ 2 := by simp [sin_sq_add_cos_sq]
+          _ = (2 * sin ((α - α') / 2)) ^ 2 * (v 0 ^ 2 + v 1 ^ 2) := by ring
+      _ = 2 * |sin ((α - α') / 2)| * (v 0 ^ 2 + v 1 ^ 2) ^ (2 : ℝ)⁻¹ := by
+        rw [mul_rpow, inv_eq_one_div, rpow_div_two_eq_sqrt]
+        all_goals try positivity
+        simp only [Fin.isValue, sqrt_sq_eq_abs, abs_mul, Nat.abs_ofNat, rpow_one, one_div]
 
 theorem dist_rot2 {α α' : ℝ} :
     ‖rot2 α - rot2 α'‖ = 2 * |sin ((α - α') / 2)| := by
@@ -75,7 +138,12 @@ theorem dist_rot3_eq_dist_rot {d : Fin 3} {α α' : ℝ} : ‖rot3 d α - rot3 d
   simp only [dist_rot3, dist_rot2]
 
 lemma two_mul_abs_sin_half_le {α : ℝ} : 2 * |sin (α / 2)| ≤ |α| := by
-  sorry
+  have h : |sin (α / 2)| ≤ |α / 2| := abs_sin_le_abs
+  calc
+    2 * |sin (α / 2)| = _ := by rfl
+    _ ≤ 2 * |α / 2| := by simp [h]
+    _ = 2 * (|α| / 2) := by simp [abs_div]
+    _ = |α| := by field
 
 theorem dist_rot2_le_dist {α α' : ℝ} : ‖rot2 α - rot2 α'‖ ≤ ‖α - α'‖ := by
   calc

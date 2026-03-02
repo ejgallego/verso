@@ -25,10 +25,6 @@ def rotMφ_approx : Matrix (Fin 2) (Fin 3) DistLeKappaEntry :=
 def vecX_approx : Matrix (Fin 3) (Fin 1) DistLeKappaEntry :=
   !![ (.cos, .sin); (.sin, .sin); (.one, .cos) ]
 
-private lemma mem_Icc_1_3_1 : (1 : ℕ) ∈ Finset.Icc 1 3 := by simp
-private lemma mem_Icc_1_3_2 : (2 : ℕ) ∈ Finset.Icc 1 3 := by simp
-private lemma mem_Icc_1_3_3 : (3 : ℕ) ∈ Finset.Icc 1 3 := by simp
-
 /-- Proof of [SY25] Corollary 41 -/
 theorem R_difference_norm_bounded (α : ℝ) (hα : α ∈ Set.Icc (-4) 4) : ‖rotR α - rotRℚ α‖ ≤ κ := by
   let z_ : Set.Icc (-4 : ℝ) 4 := ⟨0, by norm_num⟩
@@ -45,7 +41,7 @@ theorem R_difference_norm_bounded (α : ℝ) (hα : α ∈ Set.Icc (-4) 4) : ‖
     ext i j; fin_cases i <;> fin_cases j <;> simp
   rw [h]
 
-  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, mem_Icc_1_3_2⟩) (n := ⟨2, mem_Icc_1_3_2⟩)
+  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, by norm_num⟩) (n := ⟨2, by norm_num⟩)
     rotR_approx z_ α_
 
 theorem R'_difference_norm_bounded (α : ℝ) (hα : α ∈ Set.Icc (-4) 4) : ‖rotR' α - rotR'ℚ α‖ ≤ κ := by
@@ -63,7 +59,7 @@ theorem R'_difference_norm_bounded (α : ℝ) (hα : α ∈ Set.Icc (-4) 4) : �
     ext i j; fin_cases i <;> fin_cases j <;> simp
   rw [h]
 
-  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, mem_Icc_1_3_2⟩) (n := ⟨2, mem_Icc_1_3_2⟩)
+  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, by norm_num⟩) (n := ⟨2, by norm_num⟩)
     rotR'_approx z_ α_
 
 theorem M_difference_norm_bounded (θ φ : ℝ) (hθ : θ ∈ Set.Icc (-4) 4)
@@ -82,7 +78,7 @@ theorem M_difference_norm_bounded (θ φ : ℝ) (hθ : θ ∈ Set.Icc (-4) 4)
     ext i j; fin_cases i <;> fin_cases j <;> simp
   rw [h]
 
-  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, mem_Icc_1_3_2⟩) (n := ⟨3, mem_Icc_1_3_3⟩)
+  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, by norm_num⟩) (n := ⟨3, by norm_num⟩)
     rotM_approx θ_ φ_
 
 theorem Mθ_difference_norm_bounded (θ φ : ℝ) (hθ : θ ∈ Set.Icc (-4) 4)
@@ -101,7 +97,7 @@ theorem Mθ_difference_norm_bounded (θ φ : ℝ) (hθ : θ ∈ Set.Icc (-4) 4)
     ext i j; fin_cases i <;> fin_cases j <;> simp
   rw [h]
 
-  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, mem_Icc_1_3_2⟩) (n := ⟨3, mem_Icc_1_3_3⟩)
+  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, by norm_num⟩) (n := ⟨3, by norm_num⟩)
     rotMθ_approx θ_ φ_
 
 theorem Mφ_difference_norm_bounded (θ φ : ℝ) (hθ : θ ∈ Set.Icc (-4) 4)
@@ -120,7 +116,7 @@ theorem Mφ_difference_norm_bounded (θ φ : ℝ) (hθ : θ ∈ Set.Icc (-4) 4)
     ext i j; fin_cases i <;> fin_cases j <;> simp
   rw [h]
 
-  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, mem_Icc_1_3_2⟩) (n := ⟨3, mem_Icc_1_3_3⟩)
+  exact norm_matrix_actual_approx_le_kappa (m := ⟨2, by norm_num⟩) (n := ⟨3, by norm_num⟩)
     rotMφ_approx θ_ φ_
 
 theorem X_difference_norm_bounded (θ φ : ℝ) (hθ : θ ∈ Set.Icc (-4) 4)
@@ -140,7 +136,7 @@ theorem X_difference_norm_bounded (θ φ : ℝ) (hθ : θ ∈ Set.Icc (-4) 4)
     ext i j; fin_cases i <;> fin_cases j <;> simp
   rw [h]
 
-  exact norm_matrix_actual_approx_le_kappa (m := ⟨3, mem_Icc_1_3_3⟩) (n := ⟨1, mem_Icc_1_3_1⟩)
+  exact norm_matrix_actual_approx_le_kappa (m := ⟨3, by norm_num⟩) (n := ⟨1, by norm_num⟩)
     vecX_approx θ_ φ_
 
 theorem Rℚ_norm_bounded (α : ℝ) (hα : α ∈ Set.Icc (-4) 4) : ‖rotRℚ α‖ ≤ 1 + κ := by
