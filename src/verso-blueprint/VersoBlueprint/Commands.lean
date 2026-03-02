@@ -11,6 +11,7 @@ import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.Cite
 import VersoBlueprint.Graph
+import VersoBlueprint.Lib.PreviewLookup
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
@@ -1012,19 +1013,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
         match graphVariants[0]? with
         | some variant => variant.dot
         | Option.none => graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
-      -- TODO: factor preview-domain decoding into a shared helper used by both
-      -- graph and summary rendering paths.
-      let previewBlocks? (label : Name) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) :=
-        let decode (facet : PreviewCache.Facet) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) := do
-          let key := PreviewCache.key label facet
-          let obj ← s.getDomainObject? Resolve.informalPreviewDomainName key
-          let entry ← (fromJson? (α := PreviewCache.Entry) obj.data).toOption
-          return entry.blocks
-        match decode .statement with
-        | some blocks => some blocks
-        | Option.none => decode .proof
       let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
-        let some blocks := previewBlocks? node.label
+        let some blocks := Informal.PreviewLookup.previewBlocks? s node.label
           | pure acc
         let renderedBlocks ← blocks.mapM goB
         let tpl : Output.Html := {{
@@ -1137,17 +1127,6 @@ block_extension Block.summary (summary : Summary) where
         | HtmlT.logError "Malformed data in Block.summary.toHtml"
           pure .empty
       let s ← HtmlT.state
-      -- TODO: factor preview-domain decoding into a shared helper used by both
-      -- graph and summary rendering paths.
-      let previewBlocks? (label : Name) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) :=
-        let decode (facet : PreviewCache.Facet) : Option (Array (Verso.Doc.Block Verso.Genre.Manual)) := do
-          let key := PreviewCache.key label facet
-          let obj ← s.getDomainObject? Resolve.informalPreviewDomainName key
-          let entry ← (fromJson? (α := PreviewCache.Entry) obj.data).toOption
-          return entry.blocks
-        match decode .statement with
-        | some blocks => some blocks
-        | Option.none => decode .proof
       let getEntryHref (label : Name) : Option String :=
         Resolve.resolveDomainHref? s Resolve.informalDomainName label.toString
       let getCodeHref (label : Name) : Option String :=
@@ -1157,7 +1136,7 @@ block_extension Block.summary (summary : Summary) where
       let mkEntryRef (label : Name) := do
         -- TODO: unify preview UI behavior between graph and summary pages.
         let preview? : Option Output.Html ←
-          match previewBlocks? label with
+          match Informal.PreviewLookup.previewBlocks? s label with
           | Option.none => pure none
           | some blocks =>
             let rendered ← blocks.mapM goB
