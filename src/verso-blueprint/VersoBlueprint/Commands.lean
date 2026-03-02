@@ -11,6 +11,7 @@ import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.Cite
 import VersoBlueprint.Graph
+import VersoBlueprint.Lib.NodeFacts
 import VersoBlueprint.Lib.PreviewLookup
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
@@ -1449,30 +1450,12 @@ block_extension Block.bibliography (biblio : BibliographyData) where
   extraJs := singleton ⟨openTargetDetailsJs⟩
 --
 open Informal Data Environment
-def externalDeclMissing (env : Lean.Environment) (decl : Name) : Bool :=
-  let decl := decl.eraseMacroScopes
-  (env.find? decl).isNone
-
-def externalDeclProvedStatus (env : Lean.Environment) (decl : Name) : Data.ProvedStatus :=
-  let decl := decl.eraseMacroScopes
-  match env.find? decl with
-  | none => .proved
-  | some info => _root_.Informal.Data.ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
-
-def externalDeclIsTheoremLike (env : Lean.Environment) (decl : Name) : Bool :=
-  let decl := decl.eraseMacroScopes
-  match env.find? decl with
-  | some (.thmInfo _) => true
-  | _ => false
-
 def buildAll : CoreM (Graph × Array (Name × String)) := do
   let env ← getEnv
   let state := informalExt.getState env
   let roots : Array Name := state.data.toArray.map (·.1)
-  let external : Informal.Graph.ExternalCodeStatus := {
-    isMissing := externalDeclMissing env
-    provedStatus := externalDeclProvedStatus env
-  }
+  let externalAdapter := Informal.NodeFacts.ExternalDeclAdapter.ofEnv env
+  let external : Informal.Graph.ExternalCodeStatus := externalAdapter.graphStatus
   let graph := Informal.Graph.buildWithExternal state roots external (resolveRef? := some)
   return (graph, state.groups.toArray)
 
@@ -1519,6 +1502,7 @@ def addParentTheoremLikeItem (groups : NameMap (List IndexItem)) (parent : Name)
 
 def buildSummary : CoreM Summary := do
   let env ← getEnv
+  let externalAdapter := Informal.NodeFacts.ExternalDeclAdapter.ofEnv env
   let state := informalExt.getState env
   let entries := state.data.toArray
   let parentChildren := state.data.parentChildren
@@ -1550,7 +1534,7 @@ def buildSummary : CoreM Summary := do
               if !decl.presentAtRegistration then
                 acc
               else
-                let status := externalDeclProvedStatus env decl.canonical
+                let status := externalAdapter.provedStatus decl.canonical
                 if status.isIncomplete then
                   acc.push (decl.canonical, status)
                 else
@@ -1561,7 +1545,7 @@ def buildSummary : CoreM Summary := do
                 label
                 kind := toString node.kind
                 decl
-                isTheorem := externalDeclIsTheoremLike env decl
+                isTheorem := externalAdapter.isTheoremLike decl
                 status
               }
           (decls.size, incompleteDecls.size, leanObjects, sorryDetails, missingDecls)
