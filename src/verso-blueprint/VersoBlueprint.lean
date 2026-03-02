@@ -94,9 +94,15 @@ private def parseExternalCodeList (lean : Option String) : Array Data.ExternalRe
         (acc, invalid.push s!"{ref} ({err})")
 
 private def pushExternalRefDedup (acc : Array Data.ExternalRef) (ref : Data.ExternalRef) : Array Data.ExternalRef :=
-  if acc.any (fun entry => entry.canonical == ref.canonical) then
-    acc
-  else
+  match acc.findIdx? (fun entry => entry.canonical == ref.canonical) with
+  | some idx =>
+    let current := acc[idx]!
+    let merged : Data.ExternalRef := {
+      current with
+      presentAtRegistration := current.presentAtRegistration && ref.presentAtRegistration
+    }
+    acc.set! idx merged
+  | none =>
     acc.push ref
 
 private def parsedExternalRef (ref : Data.ExternalRef) : Data.ExternalRef :=
@@ -104,6 +110,15 @@ private def parsedExternalRef (ref : Data.ExternalRef) : Data.ExternalRef :=
 
 private def resolvedExternalRef (ref : Data.ExternalRef) (resolved : Name) : Data.ExternalRef :=
   { written := ref.written, canonical := resolved.eraseMacroScopes, origin := ref.origin }
+
+private def markExternalRefPresence [MonadEnv m] (ref : Data.ExternalRef) : m Data.ExternalRef := do
+  let env ← getEnv
+  let canonical := ref.canonical.eraseMacroScopes
+  return {
+    ref with
+    canonical
+    presentAtRegistration := (env.find? canonical).isSome
+  }
 
 private def resolveExternalNameCandidates [MonadResolveName m] [MonadOptions m]
     [MonadLog m] [AddMessageContext m]
@@ -115,7 +130,7 @@ private def resolveExternalNameCandidates [MonadResolveName m] [MonadOptions m]
     else
       acc
 
-private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m]
+private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadEnv m]
     [MonadLog m] [AddMessageContext m]
     (label : Name) (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
   refs.foldlM (init := #[]) fun acc ref => do
@@ -123,12 +138,15 @@ private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m]
     match candidates.toList with
     | [] =>
       logWarning m!"Label {label}: external Lean name '{ref.written}' could not be resolved in current namespace/open declarations; keeping parsed name"
-      return pushExternalRefDedup acc (parsedExternalRef ref)
+      let ref ← markExternalRefPresence (parsedExternalRef ref)
+      return pushExternalRefDedup acc ref
     | [resolved] =>
-      return pushExternalRefDedup acc (resolvedExternalRef ref resolved)
+      let ref ← markExternalRefPresence (resolvedExternalRef ref resolved)
+      return pushExternalRefDedup acc ref
     | many =>
       logWarning m!"Label {label}: external Lean name '{ref.written}' is ambiguous ({String.intercalate ", " (many.map toString)}); keeping parsed name"
-      return pushExternalRefDedup acc (parsedExternalRef ref)
+      let ref ← markExternalRefPresence (parsedExternalRef ref)
+      return pushExternalRefDedup acc ref
 
 def Config.parse  : ArgParse m Config :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent =>
@@ -212,8 +230,7 @@ structure ExternalDeclStatus where
   valuePretty? : Option String := none
   sourceDeclPretty? : Option String := none
   sourceBodyPretty? : Option String := none
-  hasTypeSorry : Bool := false
-  hasProofSorry : Bool := false
+  provedStatus : Data.ProvedStatus := .proved
 deriving Repr, Inhabited, FromJson, ToJson, Quote
 
 inductive BlockCodeStatus where
@@ -315,6 +332,8 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
     (workspaceRoot : System.FilePath)
     (decl : Data.ExternalRef) : CoreM ExternalDeclStatus := do
   let canonical := decl.canonical
+  if !decl.presentAtRegistration then
+    return { decl := decl.written, canonical, present := false }
   match env.find? canonical with
   | none =>
     return { decl := decl.written, canonical, present := false }
@@ -350,8 +369,7 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       valuePretty?
       sourceDeclPretty?
       sourceBodyPretty?
-      hasTypeSorry := info.type.hasSorry
-      hasProofSorry := info.value? (allowOpaque := true) |>.map (·.hasSorry) |>.getD false
+      provedStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
     }
 def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.CodeRef) : CoreM BlockCodeStatus := do
   match codeRef? with
@@ -375,9 +393,7 @@ structure CodeDeclData where
   name : Name
   commandIndex : Nat := 0
   weight : Nat := 1
-  hasSorry : Bool := false
-  hasTypeSorry : Bool := false
-  hasProofSorry : Bool := false
+  provedStatus : Data.ProvedStatus := .proved
 deriving FromJson, ToJson, Quote
 
 def CodeDeclData.ofLiterateDef (d : Data.LiterateDef) : CodeDeclData :=
@@ -385,9 +401,7 @@ def CodeDeclData.ofLiterateDef (d : Data.LiterateDef) : CodeDeclData :=
     name := d.name
     commandIndex := d.commandIndex
     weight := max d.commandLines 1
-    hasSorry := d.hasSorry
-    hasTypeSorry := d.hasTypeSorry
-    hasProofSorry := false
+    provedStatus := d.provedStatus
   }
 
 def CodeDeclData.ofLiterateThm (d : Data.LiterateThm) : CodeDeclData :=
@@ -395,9 +409,7 @@ def CodeDeclData.ofLiterateThm (d : Data.LiterateThm) : CodeDeclData :=
     name := d.name
     commandIndex := d.commandIndex
     weight := max d.commandLines 1
-    hasSorry := d.hasSorry
-    hasTypeSorry := d.hasTypeSorry
-    hasProofSorry := d.hasProofSorry
+    provedStatus := d.provedStatus
   }
 
 structure CodeBlockData where
@@ -434,8 +446,7 @@ structure ExternalHoverDecl where
   valuePretty? : Option String := none
   sourceDeclPretty? : Option String := none
   sourceBodyPretty? : Option String := none
-  hasTypeSorry : Bool := false
-  hasProofSorry : Bool := false
+  provedStatus : Data.ProvedStatus := .proved
 
 structure ComputedData where
   proved : Bool := false
@@ -446,6 +457,30 @@ structure ComputedData where
   hasStatementSorries : Bool := false
   hasProofSorries : Bool := false
 
+private def provedStatusHasSorry (status : Data.ProvedStatus) : Bool :=
+  status.isIncomplete
+
+private def provedStatusLocationText (status : Data.ProvedStatus) : String :=
+  match status with
+  | .axiomLike => "axiom-like (no body)"
+  | .containsSorry info =>
+    let hasType := info.any (·.location == .statement)
+    let hasProof := info.any (·.location == .proof)
+    if hasType && hasProof then
+      "in statement and proof"
+    else if hasType then
+      "in statement"
+    else if hasProof then
+      "in proof"
+    else
+      "location unknown"
+  | .proved => "location unknown"
+
+private def provedStatusContainsSorry (status : Data.ProvedStatus) : Bool :=
+  match status with
+  | .containsSorry _ => true
+  | _ => false
+
 def mkCodeHoverData
     (label : Data.Label)
     (definedDefs definedTheorems : Array CodeDeclData)
@@ -454,16 +489,16 @@ def mkCodeHoverData
     { text := toString d.name, href := hrefOf d.name }
   let toSorry (d : CodeDeclData) : CodeHoverDecl :=
     let kind :=
-      if d.hasTypeSorry && d.hasProofSorry then "in statement and proof"
-      else if d.hasTypeSorry then "in statement"
-      else if d.hasProofSorry then "in proof"
-      else "unknown"
+      match d.provedStatus with
+      | .axiomLike => "axiom-like (no body)"
+      | .containsSorry _ => provedStatusLocationText d.provedStatus
+      | .proved => "unknown"
     { text := s!"{d.name} [{kind}]", href := hrefOf d.name }
   {
     label
     definedDefs := definedDefs.map toDecl
     definedTheorems := definedTheorems.map toDecl
-    sorries := (definedDefs ++ definedTheorems).filter (·.hasSorry) |>.map toSorry
+    sorries := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus)) |>.map toSorry
   }
 
 def codeHoverText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
@@ -482,17 +517,17 @@ def codeHoverText (label : Data.Label) (definedDefs definedTheorems : Array Code
         "none"
       else
         String.intercalate ", " (definedTheoremNames.toList.map toString)
-    let sorryDecls := (definedDefs ++ definedTheorems).filter (·.hasSorry)
+    let sorryDecls := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus))
     let sorries :=
       if sorryDecls.isEmpty then
         "none"
       else
         String.intercalate ", " <| sorryDecls.toList.map fun d =>
           let kind :=
-            if d.hasTypeSorry && d.hasProofSorry then "in statement and proof"
-            else if d.hasTypeSorry then "in statement"
-            else if d.hasProofSorry then "in proof"
-            else "unknown"
+            match d.provedStatus with
+            | .axiomLike => "axiom-like (no body)"
+            | .containsSorry _ => provedStatusLocationText d.provedStatus
+            | .proved => "unknown"
           s!"{d.name} [{kind}]"
     s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
 
@@ -502,27 +537,13 @@ private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData
     (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
 
 private def codeDeclSorryLocation (decl : CodeDeclData) : String :=
-  if decl.hasTypeSorry && decl.hasProofSorry then
-    "in statement and proof"
-  else if decl.hasTypeSorry then
-    "in statement"
-  else if decl.hasProofSorry then
-    "in proof"
-  else
-    "location unknown"
+  provedStatusLocationText decl.provedStatus
 
 private def externalDeclHasSorry (decl : ExternalHoverDecl) : Bool :=
-  decl.hasTypeSorry || decl.hasProofSorry
+  provedStatusHasSorry decl.provedStatus
 
 private def externalDeclSorryLocation (decl : ExternalHoverDecl) : String :=
-  if decl.hasTypeSorry && decl.hasProofSorry then
-    "in statement and proof"
-  else if decl.hasTypeSorry then
-    "in statement"
-  else if decl.hasProofSorry then
-    "in proof"
-  else
-    "location unknown"
+  provedStatusLocationText decl.provedStatus
 
 private def externalDeclStatement? (decl : ExternalHoverDecl) : Option String :=
   match decl.sourceDeclPretty? with
@@ -554,11 +575,11 @@ private def externalPanelStatus (decls : Array ExternalHoverDecl) : String × St
   let total := decls.size
   let found := decls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
   let missing := total - found
-  let withSorries := decls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
+  let withGaps := decls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
   if missing > 0 then
     ("bp_external_status_missing", "●", s!"External Lean references: {found}/{total} present ({missing} missing)")
-  else if withSorries > 0 then
-    ("bp_external_status_sorry", "●", s!"External Lean references: all present, {withSorries} contain sorry")
+  else if withGaps > 0 then
+    ("bp_external_status_sorry", "●", s!"External Lean references: all present, {withGaps} incomplete")
   else
     ("bp_external_status_ok", "●", s!"External Lean references: all {total} present")
 
@@ -1077,7 +1098,10 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
         let statusTxt :=
           if item.present then
             if hasSorry then
-              s!"(has Lean declaration; contains sorry {externalDeclSorryLocation item})"
+              if provedStatusContainsSorry item.provedStatus then
+                s!"(has Lean declaration; contains sorry {externalDeclSorryLocation item})"
+              else
+                s!"(has Lean declaration; {externalDeclSorryLocation item})"
             else
               "(has Lean declaration)"
           else
@@ -1100,15 +1124,11 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
           | none, some rangeTxt => some s!"{rangeTxt}"
           | none, none => none
         let sorryInfo? : Option String :=
-          if item.hasTypeSorry || item.hasProofSorry then
-            let whereTxt :=
-              if item.hasTypeSorry && item.hasProofSorry then
-                "statement and proof"
-              else if item.hasTypeSorry then
-                "statement"
-              else
-                "proof"
-            some s!"Contains sorry ({whereTxt})"
+          if hasSorry then
+            if provedStatusContainsSorry item.provedStatus then
+              some s!"Contains sorry ({externalDeclSorryLocation item})"
+            else
+              some "Axiom-like declaration (no body)"
           else
             none
         {{
@@ -1139,7 +1159,10 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
         let statusTxt :=
           if item.present then
             if hasSorry then
-              s!"contains sorry {externalDeclSorryLocation item}"
+              if provedStatusContainsSorry item.provedStatus then
+                s!"contains sorry {externalDeclSorryLocation item}"
+              else
+                externalDeclSorryLocation item
             else
               "complete"
           else
@@ -1205,12 +1228,12 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
     if hasExternal then
       let total := cdata.externalDecls.size
       let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
-      let withSorries := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
+      let withGaps := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
       if found == total then
-        if withSorries == 0 then
+        if withGaps == 0 then
           s!"External Lean references (all present: {found}/{total})"
         else
-          s!"External Lean references (all present: {found}/{total}; with sorry: {withSorries})"
+          s!"External Lean references (all present: {found}/{total}; incomplete: {withGaps})"
       else
         s!"External Lean references ({found}/{total} present)"
     else if cdata.manualStatus then
@@ -1273,12 +1296,12 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
       let total := cdata.externalDecls.size
       let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
       let missing := total - found
-      let withSorries := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
+      let withGaps := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
       let (title, mark) :=
         if missing > 0 then
           (s!"External Lean names: {found} present, {missing} missing", "✗")
-        else if withSorries > 0 then
-          (s!"External Lean names ({total}) are present, but {withSorries} contain sorry", "⚠")
+        else if withGaps > 0 then
+          (s!"External Lean names ({total}) are present, but {withGaps} are incomplete", "⚠")
         else
           (s!"External Lean names ({total}) are present", "✓")
       {{ <span class="bp_status_mark" title={{title}}>{{.text true mark}}</span> }}
@@ -1391,8 +1414,7 @@ block_extension Block.informal (data : BlockData) where
                 valuePretty? := decl.valuePretty?
                 sourceDeclPretty? := decl.sourceDeclPretty?
                 sourceBodyPretty? := decl.sourceBodyPretty?
-                hasTypeSorry := decl.hasTypeSorry
-                hasProofSorry := decl.hasProofSorry
+                provedStatus := decl.provedStatus
               }
           | _ => #[]
         let manualStatus : Bool :=
@@ -1402,17 +1424,17 @@ block_extension Block.informal (data : BlockData) where
         let hasSorries : Bool :=
           match codeData? with
           | none => false
-          | some cdata => (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasSorry)
+          | some cdata => (cdata.definedDefs ++ cdata.definedTheorems).any (provedStatusHasSorry ∘ (·.provedStatus))
         let hasStatementSorries : Bool :=
           match codeData? with
           | none => false
           | some cdata =>
-            (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasTypeSorry)
+            (cdata.definedDefs ++ cdata.definedTheorems).any (fun decl => decl.provedStatus.hasTypeGap)
         let hasProofSorries : Bool :=
           match codeData? with
           | none => false
           | some cdata =>
-            (cdata.definedDefs ++ cdata.definedTheorems).any (·.hasProofSorry)
+            (cdata.definedDefs ++ cdata.definedTheorems).any (fun decl => decl.provedStatus.hasProofGap)
         let cdata := {
           proved := codeData?.isSome && !hasSorries
           codeHref
@@ -1496,11 +1518,15 @@ block_extension Block.informalCode (data : CodeBlockData) where
           .empty
         else
           let segments := orderedDecls.map fun decl =>
-            let cls := progressSegmentClass false decl.hasSorry
+            let hasSorry := provedStatusHasSorry decl.provedStatus
+            let cls := progressSegmentClass false hasSorry
             let weight := max decl.weight 1
             let title :=
-              if decl.hasSorry then
-                s!"{decl.name}: contains sorry {codeDeclSorryLocation decl}"
+              if hasSorry then
+                if provedStatusContainsSorry decl.provedStatus then
+                  s!"{decl.name}: contains sorry {codeDeclSorryLocation decl}"
+                else
+                  s!"{decl.name}: {codeDeclSorryLocation decl}"
               else
                 s!"{decl.name}: complete"
             {{<span class={{cls}} title={{title}} style={{s!"flex: {weight} 1 0%"}}></span>}}
