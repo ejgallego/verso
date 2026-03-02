@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-02-26
+Last updated: 2026-03-02
 
 ## Inventory and Recommendation
 
@@ -8,7 +8,9 @@ Last updated: 2026-02-26
 
 - `bp` (root checkout)
   - Path: `/home/egallego/lean/verso-blueprint`
-  - Status: keep
+  - Status: rebased over `upstream/main`; owner action: finish full validation pass
+  - Base: `upstream/main` @ `8fd45fae` (2026-03-02 fetch)
+  - Rebase safety pointer: `bp-pre-rebase-2026-03-02` @ `2eac3ccf`
   - Notes: primary branch.
 
 - `feat/lsp-folding-chain`
@@ -22,12 +24,6 @@ Last updated: 2026-02-26
   - Notes:
     - planning document committed as `a7a0d420`
     - document path: `doc/VersoBlueprintRefactorPlan.md`
-
-### Branch-only items (no worktree)
-
-- `bp+refactor`
-  - Status: removed
-  - Decision: implemented (branch deleted after approved cleanup).
 
 ### Key Commits (on top of `bp`)
 
@@ -51,7 +47,19 @@ Last updated: 2026-02-26
 - Validate quickly from the worktree:
   - `lake env bash src/tests/interactive/test_single.sh src/tests/interactive/test-cases/verso_folding_inline_lean.lean`
   - `lake exe noperthedron`
-### Pending Emilio Action
 
-1. Review the two commits and decide merge strategy (keep as-is or squash).
-2. Merge/cherry-pick to the target branch (bp/upstream path).
+## Rebase Notes (2026-03-02)
+
+- Worktree path: `/home/egallego/lean/verso-blueprint`
+- Branch: `bp`
+- Base branch and commit: `upstream/main` @ `8fd45fae`
+- Key commits:
+  - New `bp` tip: `1dbc37fe` (`docs: apply dashboard decision and codify decision workflow`)
+  - Pre-rebase tip preserved at `bp-pre-rebase-2026-03-02` (`2eac3ccf`)
+- Validation status:
+  - `lake exe noperthedron` started after rebase and ran until ~`1217/6777` build steps.
+  - No build errors observed before manual stop (runtime constrained).
+- Resume commands:
+  - `git log --oneline --decorate --max-count=20`
+  - `git range-diff bp-pre-rebase-2026-03-02...bp`
+  - `lake exe noperthedron`
