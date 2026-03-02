@@ -25,6 +25,23 @@ Last updated: 2026-03-02 (merged feat/axioms-as-sorries into bp)
     - planning document committed as `a7a0d420`
     - document path: `doc/VersoBlueprintRefactorPlan.md`
 
+- `feat/blueprint-options`
+  - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-options`
+  - Status: ready-for-review (owner action: final review + optional full noperthedron validation)
+  - Base: `bp` @ `1cb7cbe5`
+  - Notes:
+    - custom command prototype was rolled back
+    - keep user-facing configuration on native `set_option` path
+    - added `test-projects/Noperthedron/OPTIONS.md` as set_option source of truth
+    - implemented backlog options:
+      - `verso.blueprint.profile`
+      - `verso.blueprint.externalCode.strictResolve`
+      - `verso.blueprint.externalCode.previewLimit.{type,value,decl,rhs}`
+      - `verso.blueprint.graph.defaultDirection`
+    - validation:
+      - `lake build VersoBlueprint` passed
+      - `lake exe noperthedron` reached ~`3146/6777` before manual stop; no errors observed in this run
+
 ### Recently merged / cleaned up
 
 - `feat/axioms-as-sorries`

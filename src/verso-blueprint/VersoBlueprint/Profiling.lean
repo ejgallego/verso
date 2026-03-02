@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias, David Thrane Christiansen
 
 module
 
+import Lean.Data.Options
 public import Verso.Doc.DocName
 public import Verso.Doc.Elab.Monad
 
@@ -13,8 +14,13 @@ open Verso.Doc.Elab
 
 namespace Informal.Profile
 
--- XXX: Turn into an option?
-initialize bp_profile : IO.Ref Bool ← IO.mkRef false
+register_option verso.blueprint.profile : Bool := {
+  defValue := false
+  descr := "Enable profiling logs for Verso Blueprint directive/code-block elaboration"
+}
+
+private def profileEnabled : DocElabM Bool := do
+  return (← Lean.getOptions).get verso.blueprint.profile.name verso.blueprint.profile.defValue
 
 private def leftPad (s : String) (width : Nat) : String :=
   if s.length >= width then
@@ -41,7 +47,7 @@ private def sourcePosString (stx : Syntax) : DocElabM String := do
 
 public def withDocElab {α}
     (category : String) (name : String) (k : DocElabM α) : DocElabM α := do
-  if !(← bp_profile.get) then
+  if !(← profileEnabled) then
     return (← k)
   let stx ← getRef
   let startTime ← IO.monoMsNow
@@ -58,4 +64,3 @@ public def withDocElab {α}
     let ms := leftPad (toString (endTime - startTime)) 5
     logInfo s!"[bp_profile] {ms} ms | {category} {name} | {pos} | failed"
     throw ex
-

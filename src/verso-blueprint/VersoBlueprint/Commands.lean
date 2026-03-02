@@ -128,6 +128,11 @@ def GraphDirection.parse? (s : String) : Option GraphDirection :=
   | "bt" | "bottom-top" => some .BT
   | _ => none
 
+register_option verso.blueprint.graph.defaultDirection : String := {
+  defValue := "TB"
+  descr := "Default direction for `blueprint_graph` when `(direction := ...)` is omitted (LR, RL, TB, BT)"
+}
+
 structure GraphBlockData where
   graph : Graph
   direction : GraphDirection := .TB
@@ -1673,7 +1678,16 @@ instance : FromArgs BlueprintGraphConfig Verso.Doc.Elab.PartElabM where
 
 def parseGraphDirection (cfg : BlueprintGraphConfig) : Verso.Doc.Elab.PartElabM GraphDirection := do
   match cfg.direction with
-  | none => pure .TB
+  | none =>
+    let configured :=
+      (← getOptions).get
+        verso.blueprint.graph.defaultDirection.name
+        verso.blueprint.graph.defaultDirection.defValue
+    match GraphDirection.parse? configured with
+    | some direction => pure direction
+    | none =>
+      logWarning m!"Invalid value '{configured}' for option 'verso.blueprint.graph.defaultDirection'; expected LR, RL, TB, or BT. Falling back to TB."
+      pure .TB
   | some direction => pure direction
 
 -- this runs in corem as it only needs the env
