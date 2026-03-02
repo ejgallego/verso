@@ -20,12 +20,14 @@ def mkInformal (deps : Array Name := #[]) : InformalData :=
 def mkDefDecl (name : Name) (typeSorry : Bool := false) : LiterateDef :=
   {
     name
+    provedStatus := Data.ProvedStatus.ofRefCounts (if typeSorry then 1 else 0) 0
     typeSorryRefs := if typeSorry then #[.missing] else #[]
   }
 
 def mkThmDecl (name : Name) (typeSorry : Bool := false) (proofSorry : Bool := false) : LiterateThm :=
   {
     name
+    provedStatus := Data.ProvedStatus.ofRefCounts (if typeSorry then 1 else 0) (if proofSorry then 1 else 0)
     typeSorryRefs := if typeSorry then #[.missing] else #[]
     proofSorryRefs := if proofSorry then #[.missing] else #[]
   }
@@ -44,6 +46,25 @@ def hasNodeWith (g : Graph Unit) (label : Name) (p : GraphNode Unit → Bool) : 
   match g.find? (·.label == label) with
   | some node => p node
   | none => false
+
+axiom external_axiom_decl : Nat
+def external_def_decl : Nat := 1
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show CoreM Bool from do
+    let env ← getEnv
+    let some axiomInfo := env.find? `Verso.Tests.BlueprintGraph.external_axiom_decl
+      | return false
+    let some defInfo := env.find? `Verso.Tests.BlueprintGraph.external_def_decl
+      | return false
+    let axiomStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus axiomInfo (allowOpaque := true)
+    let defStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus defInfo (allowOpaque := true)
+    pure (
+      axiomStatus == .axiomLike &&
+      defStatus == .proved
+    )
 
 def nestedPopState : Environment.State :=
   {
@@ -237,8 +258,11 @@ def stateExternalCode : Environment.State := mkState [
 
 def externalStatus : ExternalCodeStatus := {
   isMissing := fun n => n == `Ext.missing
-  hasTypeSorry := fun n => n == `Ext.bad
-  hasProofSorry := fun n => n == `Ext.bad
+  provedStatus := fun n =>
+    if n == `Ext.bad then
+      .containsSorry #[{ location := .statement }, { location := .proof }]
+    else
+      .proved
 }
 
 def graphExternalCode : Graph Unit := buildWithExternal stateExternalCode #[`def_ext_ok, `def_ext_bad, `def_ext_missing] externalStatus

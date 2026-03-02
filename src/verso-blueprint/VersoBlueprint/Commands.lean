@@ -56,8 +56,14 @@ structure SorryItem where
   kind : String
   decl : Name
   isTheorem : Bool := false
-  typeSorryRefs : Nat := 0
-  proofSorryRefs : Nat := 0
+  status : Data.ProvedStatus := .proved
+deriving Inhabited, FromJson, ToJson, Quote
+
+structure MissingLeanDeclItem where
+  label : Name
+  kind : String
+  written : Name
+  canonical : Name
 deriving Inhabited, FromJson, ToJson, Quote
 
 structure IndexItem where
@@ -84,6 +90,7 @@ structure Summary where
   leanDecls : Nat := 0
   sorries : Nat := 0
   sorryDetails : List SorryItem := []
+  missingLeanDecls : List MissingLeanDeclItem := []
   definitionIndex : List IndexItem := []
   theoremLikeIndex : List IndexItem := []
   theoremLikeByParent : List ParentTheoremGroup := []
@@ -1197,48 +1204,115 @@ block_extension Block.summary (summary : Summary) where
             match getDeclHref item.decl with
             | Option.some href => {{ <a href={{href}}> <code>s!"{item.decl}"</code> </a> }}
             | Option.none => {{ <code>s!"{item.decl}"</code> }}
+          let hasTypeGap := item.status.hasTypeGap
+          let hasProofGap := item.status.hasProofGap
+          let typeSorryRefs :=
+            match item.status with
+            | .containsSorry info =>
+              info.foldl (init := 0) fun acc s =>
+                if s.location == .statement then acc + s.refs?.getD 0 else acc
+            | _ => 0
+          let proofSorryRefs :=
+            match item.status with
+            | .containsSorry info =>
+              info.foldl (init := 0) fun acc s =>
+                if s.location == .proof then acc + s.refs?.getD 0 else acc
+            | _ => 0
           let whereTxt :=
-            if item.typeSorryRefs > 0 && item.proofSorryRefs > 0 then
-              "in statement and proof"
-            else if item.typeSorryRefs > 0 then
-              "in statement"
-            else if item.proofSorryRefs > 0 then
-              "in proof"
-            else
-              "location unknown"
-          let sorryRefs := item.typeSorryRefs + item.proofSorryRefs
+            match item.status with
+            | .axiomLike => "axiom-like (no body)"
+            | .containsSorry _ =>
+              if hasTypeGap && hasProofGap then
+                "in statement and proof"
+              else if hasTypeGap then
+                "in statement"
+              else if hasProofGap then
+                "in proof"
+              else
+                "location unknown"
+            | .proved => "proved"
+          let sorryRefs := typeSorryRefs + proofSorryRefs
+          let refsTxt :=
+            match item.status with
+            | .axiomLike => "n/a"
+            | .containsSorry _ =>
+              if sorryRefs > 0 then toString sorryRefs else "unknown"
+            | .proved => "0"
           let sorryLinks : Array Output.Html :=
             match codeHref with
             | Option.none => #[]
             | some href =>
               let stmtLinks :=
-                if item.typeSorryRefs > 0 then
-                  #[{{ <a class="bp_code_link" href={{href}} title="Go to Lean code with statement sorry">s!"in statement ({item.typeSorryRefs})"</a> }}]
+                if typeSorryRefs > 0 then
+                  #[{{ <a class="bp_code_link" href={{href}} title="Go to Lean code with statement gap">s!"in statement ({typeSorryRefs})"</a> }}]
                 else
                   #[]
               let proofLinks :=
-                if item.proofSorryRefs > 0 then
-                  #[{{ <a class="bp_code_link" href={{href}} title="Go to Lean code with proof sorry">s!"in proof ({item.proofSorryRefs})"</a> }}]
+                if proofSorryRefs > 0 then
+                  #[{{ <a class="bp_code_link" href={{href}} title="Go to Lean code with proof gap">s!"in proof ({proofSorryRefs})"</a> }}]
                 else
                   #[]
               let links := stmtLinks ++ proofLinks
               if links.isEmpty then
-                #[{{ <a class="bp_code_link" href={{href}}>s!"in code ({sorryRefs})"</a> }}]
+                match item.status with
+                | .axiomLike =>
+                  #[{{ <a class="bp_code_link" href={{href}} title="Go to Lean declaration">"declaration"</a> }}]
+                | .containsSorry _ =>
+                  if sorryRefs > 0 then
+                    #[{{ <a class="bp_code_link" href={{href}}>s!"in code ({sorryRefs})"</a> }}]
+                  else
+                    #[{{ <a class="bp_code_link" href={{href}}> "in code" </a> }}]
+                | .proved => #[]
               else
                 links
+          let statusLabel :=
+            match item.status with
+            | .axiomLike => "axiom-like"
+            | .containsSorry _ => "contains sorry"
+            | .proved => "proved"
+          let declPrefix :=
+            match item.status with
+            | .axiomLike => "Axiom-like declaration: "
+            | .containsSorry _ => "Declaration with sorry: "
+            | .proved => "Declaration: "
           pure {{ <li>
                     <span class="bp_summary_item_head">{{entryRef}}</span>
                     <span class="bp_summary_item_meta">s!"({item.kind})"</span>
                     <div class="bp_summary_item_body">
-                      "Declaration with sorry: " {{declLink}} " "
+                      {{.text true declPrefix}} {{declLink}} " "
                       <span class="bp_summary_badge">
-                        s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {whereTxt}; refs: {sorryRefs}]"
+                        s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {statusLabel}; {whereTxt}; refs: {refsTxt}]"
                       </span>
                     </div>
                     {{if Array.isEmpty sorryLinks then
                        {{<span></span>}}
                       else
                        {{<div class="bp_summary_item_body">"Jump: " {{(sorryLinks.toList.intersperse {{<span>" | "</span>}}).toArray}}</div>}}}}
+                  </li> }}
+      let missingRows ←
+        data.missingLeanDecls.toArray.mapM fun item => do
+          let entryRef ← mkEntryRef item.label
+          let codeHref := getCodeHref item.label
+          let canonicalNode : Output.Html :=
+            match getDeclHref item.canonical with
+            | Option.some href => {{ <a href={{href}}> <code>s!"{item.canonical}"</code> </a> }}
+            | Option.none => {{ <code>s!"{item.canonical}"</code> }}
+          let declNode : Output.Html :=
+            if item.written == item.canonical then
+              canonicalNode
+            else
+              {{ <span> <code>s!"{item.written}"</code> " (resolved as " {{canonicalNode}} ")" </span> }}
+          pure {{ <li>
+                    <span class="bp_summary_item_head">{{entryRef}}</span>
+                    <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+                    <div class="bp_summary_item_body">
+                      "Missing external Lean declaration: " {{declNode}} " "
+                      <span class="bp_summary_badge">"[missing declaration]"</span>
+                    </div>
+                    {{if let some href := codeHref then
+                       {{<div class="bp_summary_item_body">"Jump: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
+                      else
+                       {{<span></span>}}}}
                   </li> }}
       let definitionRows ←
         data.definitionIndex.toArray.mapM fun item =>
@@ -1296,7 +1370,8 @@ block_extension Block.summary (summary : Summary) where
             <div class="bp_summary_grid">
               <div class="bp_summary_card"><span class="bp_summary_label">"Lean definitions/theorems"</span><span class="bp_summary_value">s!"{data.leanDecls}"</span></div>
               <div class="bp_summary_card"><span class="bp_summary_label">"Entries with informal proof pending"</span><span class="bp_summary_value">s!"{data.pendingInformalProofEntries.length}"</span></div>
-              <div class="bp_summary_card bp_summary_placeholder"><span class="bp_summary_label">"Sorries"</span><span class="bp_summary_value">s!"{data.sorries}"</span></div>
+              <div class="bp_summary_card bp_summary_placeholder"><span class="bp_summary_label">"Missing external Lean declarations"</span><span class="bp_summary_value">s!"{data.missingLeanDecls.length}"</span></div>
+              <div class="bp_summary_card bp_summary_placeholder"><span class="bp_summary_label">"Incomplete Lean declarations"</span><span class="bp_summary_value">s!"{data.sorries}"</span></div>
             </div>
             <details class="bp_summary_subsection">
               <summary>s!"Lean code with informal proof pending ({data.pendingInformalProofEntries.length})"</summary>
@@ -1305,9 +1380,15 @@ block_extension Block.summary (summary : Summary) where
               </ul>
             </details>
             <details class="bp_summary_subsection bp_summary_placeholder">
-              <summary>s!"Sorries details ({data.sorryDetails.length})"</summary>
+              <summary>s!"Missing external Lean declarations ({data.missingLeanDecls.length})"</summary>
               <ul class="bp_summary_list">
-                {{if sorryRows.isEmpty then {{<li class="bp_summary_empty">"No sorries detected."</li>}} else sorryRows}}
+                {{if missingRows.isEmpty then {{<li class="bp_summary_empty">"No missing external Lean declarations."</li>}} else missingRows}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection bp_summary_placeholder">
+              <summary>s!"Incomplete details ({data.sorryDetails.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if sorryRows.isEmpty then {{<li class="bp_summary_empty">"No incomplete declarations detected."</li>}} else sorryRows}}
               </ul>
             </details>
           </details>
@@ -1388,17 +1469,17 @@ def externalDeclMissing (env : Lean.Environment) (decl : Name) : Bool :=
   let decl := decl.eraseMacroScopes
   (env.find? decl).isNone
 
-def externalDeclHasTypeSorry (env : Lean.Environment) (decl : Name) : Bool :=
+def externalDeclProvedStatus (env : Lean.Environment) (decl : Name) : Data.ProvedStatus :=
   let decl := decl.eraseMacroScopes
   match env.find? decl with
-  | none => false
-  | some info => info.type.hasSorry
+  | none => .proved
+  | some info => _root_.Informal.Data.ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
 
-def externalDeclHasProofSorry (env : Lean.Environment) (decl : Name) : Bool :=
+def externalDeclIsTheoremLike (env : Lean.Environment) (decl : Name) : Bool :=
   let decl := decl.eraseMacroScopes
   match env.find? decl with
-  | none => false
-  | some info => info.value?.map (·.hasSorry) |>.getD false
+  | some (.thmInfo _) => true
+  | _ => false
 
 def buildAll : CoreM (Graph × Array (Name × String)) := do
   let env ← getEnv
@@ -1406,29 +1487,27 @@ def buildAll : CoreM (Graph × Array (Name × String)) := do
   let roots : Array Name := state.data.toArray.map (·.1)
   let external : Informal.Graph.ExternalCodeStatus := {
     isMissing := externalDeclMissing env
-    hasTypeSorry := externalDeclHasTypeSorry env
-    hasProofSorry := externalDeclHasProofSorry env
+    provedStatus := externalDeclProvedStatus env
   }
   let graph := Informal.Graph.buildWithExternal state roots external (resolveRef? := some)
   return (graph, state.groups.toArray)
 
 def countDefSorries (decls : Array Data.LiterateDef) : Nat :=
-  decls.foldl (init := 0) fun acc decl => acc + (if decl.hasSorry then 1 else 0)
+  decls.foldl (init := 0) fun acc decl => acc + (if decl.provedStatus.isIncomplete then 1 else 0)
 
 def countThmSorries (decls : Array Data.LiterateThm) : Nat :=
-  decls.foldl (init := 0) fun acc decl => acc + (if decl.hasSorry then 1 else 0)
+  decls.foldl (init := 0) fun acc decl => acc + (if decl.provedStatus.isIncomplete then 1 else 0)
 
 def collectDefSorries (label : Name) (kind : String) (decls : Array Data.LiterateDef) (theoremNames : NameSet) :
     List SorryItem :=
   decls.foldl (init := []) fun acc decl =>
-    if decl.hasSorry then
+    if decl.provedStatus.isIncomplete then
       {
         label
         kind
         decl := decl.name
         isTheorem := theoremNames.contains decl.name
-        typeSorryRefs := decl.typeSorryRefs.size
-        proofSorryRefs := 0
+        status := decl.provedStatus
       } :: acc
     else
       acc
@@ -1436,14 +1515,13 @@ def collectDefSorries (label : Name) (kind : String) (decls : Array Data.Literat
 def collectThmSorries (label : Name) (kind : String) (decls : Array Data.LiterateThm) (theoremNames : NameSet) :
     List SorryItem :=
   decls.foldl (init := []) fun acc decl =>
-    if decl.hasSorry then
+    if decl.provedStatus.isIncomplete then
       {
         label
         kind
         decl := decl.name
         isTheorem := theoremNames.contains decl.name
-        typeSorryRefs := decl.typeSorryRefs.size
-        proofSorryRefs := decl.proofSorryRefs.size
+        status := decl.provedStatus
       } :: acc
     else
       acc
@@ -1456,7 +1534,8 @@ def addParentTheoremLikeItem (groups : NameMap (List IndexItem)) (parent : Name)
   groups.insert parent (item :: groups.getD parent [])
 
 def buildSummary : CoreM Summary := do
-  let state := informalExt.getState (← getEnv)
+  let env ← getEnv
+  let state := informalExt.getState env
   let entries := state.data.toArray
   let parentChildren := state.data.parentChildren
   let groupHeaders := state.groups
@@ -1464,13 +1543,44 @@ def buildSummary : CoreM Summary := do
       let hasStatement := node.statement.isSome
       let hasProof := node.proof.isSome
       let hasCode := node.code.isSome
-      let (leanDecls, sorries, leanObjects, sorryDetails) :=
+      let (leanDecls, sorries, leanObjects, sorryDetails, missingLeanDecls) :=
         match node.code with
-        | none => (0, 0, ([] : List Name), ([] : List SorryItem))
+        | none => (0, 0, ([] : List Name), ([] : List SorryItem), ([] : List MissingLeanDeclItem))
         | some .userOk =>
-          (0, 0, ([] : List Name), ([] : List SorryItem))
+          (0, 0, ([] : List Name), ([] : List SorryItem), ([] : List MissingLeanDeclItem))
         | some (.external decls) =>
-          (decls.size, 0, (decls.map (·.canonical)).toList, ([] : List SorryItem))
+          let leanObjects := (decls.map (·.canonical)).toList
+          let missingDecls :=
+            decls.foldl (init := []) fun acc decl =>
+              if !decl.presentAtRegistration then
+                {
+                  label
+                  kind := toString node.kind
+                  written := decl.written
+                  canonical := decl.canonical
+                } :: acc
+              else
+                acc
+          let incompleteDecls :=
+            decls.foldl (init := #[]) fun acc decl =>
+              if !decl.presentAtRegistration then
+                acc
+              else
+                let status := externalDeclProvedStatus env decl.canonical
+                if status.isIncomplete then
+                  acc.push (decl.canonical, status)
+                else
+                  acc
+          let sorryDetails :=
+            incompleteDecls.toList.map fun (decl, status) =>
+              {
+                label
+                kind := toString node.kind
+                decl
+                isTheorem := externalDeclIsTheoremLike env decl
+                status
+              }
+          (decls.size, incompleteDecls.size, leanObjects, sorryDetails, missingDecls)
         | some (.literate code) =>
           let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.LiterateThm) => acc.insert d.name
           let leanObjects := (code.definedDefs.map (·.name) ++ code.definedTheorems.map (·.name)).toList
@@ -1479,7 +1589,7 @@ def buildSummary : CoreM Summary := do
           let sorryDetails :=
             collectDefSorries label (toString node.kind) code.definedDefs theoremNames ++
             collectThmSorries label (toString node.kind) code.definedTheorems theoremNames
-          (leanDecls, sorries, leanObjects, sorryDetails)
+          (leanDecls, sorries, leanObjects, sorryDetails, ([] : List MissingLeanDeclItem))
       let pendingInformalProofEntries : List PendingProofItem :=
         if hasCode && ((kindNeedsInformalProof node.kind && !hasProof) || !hasStatement) then
           { label, kind := toString node.kind, leanObjects } :: acc.pendingInformalProofEntries
@@ -1503,6 +1613,7 @@ def buildSummary : CoreM Summary := do
         leanDecls := acc.leanDecls + leanDecls
         sorries := acc.sorries + sorries
         sorryDetails := sorryDetails ++ acc.sorryDetails
+        missingLeanDecls := missingLeanDecls ++ acc.missingLeanDecls
         definitionIndex
         theoremLikeIndex
       }

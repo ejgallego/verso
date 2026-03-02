@@ -13,8 +13,8 @@ Each node has:
 
 External declaration status is provided by `ExternalCodeStatus`:
 - `isMissing : Name -> Bool`
-- `hasTypeSorry : Name -> Bool`
-- `hasProofSorry : Name -> Bool`
+- `provedStatus : Name -> ProvedStatus`
+  - `ProvedStatus = proved | axiomLike | containsSorry (Array SorryInfo)`
 
 ## 2. Dependency Graph Semantics
 
@@ -47,6 +47,7 @@ A node is considered locally formalized only if:
 - it has no relevant sorries:
   - statement track: no type sorries
   - proof track (theorem-like): no statement/type sorries and no proof sorries
+  - declarations with no body (`axiom`) are treated as incomplete and count as both type/proof sorry
 
 ## 4. Warning Flags
 

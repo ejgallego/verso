@@ -48,12 +48,90 @@ instance : Quote NodeKind where
     | .theorem => mkCApp ``NodeKind.theorem #[]
     | .corollary => mkCApp ``NodeKind.corollary #[]
 
+/-- Where an incompleteness marker appears in a declaration. -/
+inductive SorryWhere where
+  | statement
+  | proof
+deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
+
+open Syntax in
+instance : Quote SorryWhere where
+  quote
+    | .statement => mkCApp ``SorryWhere.statement #[]
+    | .proof => mkCApp ``SorryWhere.proof #[]
+
+/--
+Structured metadata for one incomplete location in a declaration.
+{lit}`refs?` stores the number of references when known.
+-/
+structure SorryInfo where
+  location : SorryWhere
+  refs? : Option Nat := none
+deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
+
+open Syntax in
+instance : Quote SorryInfo where
+  quote s := mkCApp ``SorryInfo.mk #[quote s.location, quote s.refs?]
+
+/--
+Formalization/proof status for a declaration.
+-/
+inductive ProvedStatus where
+  | proved
+  | axiomLike
+  | containsSorry (info : Array SorryInfo)
+deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
+
+open Syntax in
+instance : Quote ProvedStatus where
+  quote
+    | .proved => mkCApp ``ProvedStatus.proved #[]
+    | .axiomLike => mkCApp ``ProvedStatus.axiomLike #[]
+    | .containsSorry info => mkCApp ``ProvedStatus.containsSorry #[quote info]
+
+def ProvedStatus.isProved : ProvedStatus → Bool
+  | .proved => true
+  | _ => false
+
+def ProvedStatus.isAxiomLike : ProvedStatus → Bool
+  | .axiomLike => true
+  | _ => false
+
+def ProvedStatus.isIncomplete (status : ProvedStatus) : Bool :=
+  !status.isProved
+
+def ProvedStatus.hasTypeGap : ProvedStatus → Bool
+  | .proved => false
+  | .axiomLike => true
+  | .containsSorry info => info.any (·.location == .statement)
+
+def ProvedStatus.hasProofGap : ProvedStatus → Bool
+  | .proved => false
+  | .axiomLike => true
+  | .containsSorry info => info.any (·.location == .proof)
+
+def ProvedStatus.ofSorryFlags (hasType hasProof : Bool)
+    (typeRefs? : Option Nat := none) (proofRefs? : Option Nat := none) : ProvedStatus :=
+  let info : Array SorryInfo :=
+    (#[]
+      |> fun acc => if hasType then acc.push { location := .statement, refs? := typeRefs? } else acc
+      |> fun acc => if hasProof then acc.push { location := .proof, refs? := proofRefs? } else acc)
+  if info.isEmpty then .proved else .containsSorry info
+
+def ProvedStatus.ofRefCounts (typeRefs proofRefs : Nat) : ProvedStatus :=
+  ProvedStatus.ofSorryFlags
+    (typeRefs > 0)
+    (proofRefs > 0)
+    (if typeRefs > 0 then some typeRefs else none)
+    (if proofRefs > 0 then some proofRefs else none)
+
 /-- Information about a code block, including Lean-level analysis -/
 structure LiterateDef where
   name : Name
   commandStx : Syntax := .missing
   commandIndex : Nat := 0
   commandLines : Nat := 1
+  provedStatus : ProvedStatus := .proved
   typeSorryRefs : Array Syntax := #[]
 deriving Repr, Inhabited
 
@@ -62,19 +140,51 @@ structure LiterateThm extends LiterateDef where
 deriving Repr, Inhabited
 
 def LiterateDef.hasTypeSorry (d : LiterateDef) : Bool :=
-  !d.typeSorryRefs.isEmpty
+  d.provedStatus.hasTypeGap
 
 def LiterateDef.hasSorry (d : LiterateDef) : Bool :=
-  d.hasTypeSorry
+  d.provedStatus.isIncomplete
 
 def LiterateThm.hasTypeSorry (d : LiterateThm) : Bool :=
-  !d.typeSorryRefs.isEmpty
+  d.provedStatus.hasTypeGap
 
 def LiterateThm.hasProofSorry (d : LiterateThm) : Bool :=
-  !d.proofSorryRefs.isEmpty
+  d.provedStatus.hasProofGap
 
 def LiterateThm.hasSorry (d : LiterateThm) : Bool :=
-  d.hasTypeSorry || d.hasProofSorry
+  d.provedStatus.isIncomplete
+
+/--
+Blueprint incompleteness treats axioms like synthetic sorries because they
+lack executable/provable bodies.
+-/
+def ConstantInfo.blueprintIsAxiomLike (info : ConstantInfo) : Bool :=
+  match info with
+  | .axiomInfo _ => true
+  | _ => false
+
+/--
+Combined incompleteness status for blueprint checks.
+-/
+def ConstantInfo.blueprintProvedStatus (info : ConstantInfo) (allowOpaque : Bool := false) : ProvedStatus :=
+  if ConstantInfo.blueprintIsAxiomLike info then
+    .axiomLike
+  else
+    let hasTypeSorry := info.type.hasSorry
+    let hasProofSorry := (info.value? (allowOpaque := allowOpaque)).map (·.hasSorry) |>.getD false
+    ProvedStatus.ofSorryFlags hasTypeSorry hasProofSorry
+
+/--
+Statement-side incompleteness for blueprint status checks.
+-/
+def ConstantInfo.blueprintHasTypeSorry (info : ConstantInfo) : Bool :=
+  (ConstantInfo.blueprintProvedStatus info).hasTypeGap
+
+/--
+Proof/body-side incompleteness for blueprint status checks.
+-/
+def ConstantInfo.blueprintHasProofSorry (info : ConstantInfo) (allowOpaque : Bool := false) : Bool :=
+  (ConstantInfo.blueprintProvedStatus info (allowOpaque := allowOpaque)).hasProofGap
 
 structure Code where
   stx : Syntax
@@ -96,6 +206,11 @@ structure ExternalRef where
   written : Name
   canonical : Name
   origin : ExternalOrigin := .directiveLean
+  /--
+  Whether this declaration was present in the Lean environment at the time the
+  reference was registered from blueprint markup.
+  -/
+  presentAtRegistration : Bool := true
 deriving Repr, Inhabited
 
 def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean) : ExternalRef :=
@@ -151,12 +266,14 @@ section
 variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
 /-- registers an informal definition, will error if already existing -/
+private def mergeExternalRef (current incoming : ExternalRef) : ExternalRef :=
+  { current with presentAtRegistration := current.presentAtRegistration && incoming.presentAtRegistration }
+
 private def mergeExternalRefs (xs ys : Array ExternalRef) : Array ExternalRef :=
   ys.foldl (init := xs) fun acc y =>
-    if acc.any (fun x => x.canonical == y.canonical) then
-      acc
-    else
-      acc.push y
+    match acc.findIdx? (fun x => x.canonical == y.canonical) with
+    | some idx => acc.set! idx (mergeExternalRef (acc[idx]!) y)
+    | none => acc.push y
 
 private def mergeCodeRef (label : Label) (current : Option CodeRef) (incoming : CodeRef) : m (Option CodeRef) := do
   match current, incoming with

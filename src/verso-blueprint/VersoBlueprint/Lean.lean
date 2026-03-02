@@ -147,21 +147,39 @@ private def getDefinedDeclsImpl (fileMap : FileMap) (before after : Environment)
       continue
     if name.isInternalOrNum || name.hasMacroScopes then
       continue
-    let hasTypeSorry := info.type.hasSorry
-    let hasProofSorry := info.value?.map (·.hasSorry) |>.getD false
-    let hasSorry := hasTypeSorry || hasProofSorry
+    let baseStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus info
+    let hasTypeGap := baseStatus.hasTypeGap
+    let hasProofGap := baseStatus.hasProofGap
+    let hasGap := baseStatus.isIncomplete
     let cmdInfo? ← findDeclCommand? fileMap cmdAnalyses name
     let refs := cmdInfo?.map (·.refs) |>.getD {}
     let commandStx := cmdInfo?.map (·.commandStx) |>.getD .missing
     let commandIndex := cmdInfo?.map (·.commandIndex) |>.getD 0
     let commandLines := commandLineSpan fileMap commandStx
+    let fallbackRefs : Array Syntax :=
+      if refs.allRefs.isEmpty then #[commandStx] else refs.allRefs
+    let typeRefs :=
+      if hasTypeGap then
+        if refs.typeRefs.isEmpty then fallbackRefs else refs.typeRefs
+      else
+        #[]
+    let proofRefs :=
+      if hasProofGap then
+        if refs.proofRefs.isEmpty then fallbackRefs else refs.proofRefs
+      else
+        #[]
     let (typeSorryRefs, proofSorryRefs) :=
-      if hasSorry then
+      if hasGap then
         match info with
-        | .thmInfo _ => (refs.typeRefs, refs.proofRefs)
-        | _ => (if hasTypeSorry then refs.allRefs else #[], if hasProofSorry then refs.allRefs else #[])
+        | .thmInfo _ => (typeRefs, proofRefs)
+        | _ => (if hasTypeGap || hasProofGap then fallbackRefs else #[], #[])
       else
         (#[], #[])
+    let provedStatus : Data.ProvedStatus :=
+      if baseStatus.isAxiomLike then
+        .axiomLike
+      else
+        _root_.Informal.Data.ProvedStatus.ofRefCounts typeSorryRefs.size proofSorryRefs.size
     match info with
     | .thmInfo _ =>
       theorems := theorems.push ({
@@ -169,6 +187,7 @@ private def getDefinedDeclsImpl (fileMap : FileMap) (before after : Environment)
         commandStx
         commandIndex
         commandLines
+        provedStatus
         typeSorryRefs
         proofSorryRefs
       } : LiterateThm)
@@ -178,6 +197,7 @@ private def getDefinedDeclsImpl (fileMap : FileMap) (before after : Environment)
         commandStx
         commandIndex
         commandLines
+        provedStatus
         typeSorryRefs
       } : LiterateDef)
   let cmpDef (a b : LiterateDef) :=
