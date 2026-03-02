@@ -65,7 +65,6 @@ theorem hull_scalar_prod {n : ℕ} (V : Finset (E n)) (Vne : V.Nonempty)
 -- rotation_partials_bounded, rotation_partials_bounded_outer ([SY25] Lemma 19) are now
 -- imported from Noperthedron.Global.RotationPartials (via SecondPartialInner/SecondPartialOuter)
 
-/- FIXME: the paper has `- 9 * ε²/2` rather than `+ 9 * ε²/2` below. Did we mess something up here? -/
 /--
 A measure of how far an inner-shadow vertex S can "stick out"
 -/
@@ -339,7 +338,9 @@ lemma partials_helper_outer {pbar : Pose} {ε : ℝ} {poly : GoodPoly}
     (pc : GlobalTheoremPrecondition poly pbar ε) (P : ℝ³) :
     |⟪pbar.rotM₂θ P, pc.w⟫| + |⟪pbar.rotM₂φ P, pc.w⟫| =
     ‖P‖ * ∑ i, |nth_partial i (pc.fu_outer P) pbar.outerParams| := by
-  sorry
+  rw [Finset.mul_sum, Fin.sum_univ_two, ← abs_norm, ← abs_mul, ← abs_mul]
+  simp only [Fin.isValue]
+  rw [partials_helper3 pc P, partials_helper4 pc P]
 
 theorem fu_times_norm_S_eq_f {pbar p : Pose} {ε : ℝ} {poly : GoodPoly}
     (pc : GlobalTheoremPrecondition poly pbar ε) :
@@ -388,7 +389,40 @@ lemma global_theorem_inequality_iv (pbar p : Pose) (ε : ℝ) (hε : ε > 0)
     (poly : GoodPoly)
     (pc : GlobalTheoremPrecondition poly pbar ε) :
     maxOuter p poly pc.w ≤ maxH pbar poly ε pc.w := by
-  sorry
+  -- First of all, we can relate these two maximums by relating
+  -- their components.
+  suffices h : ∀ vert ∈ poly.vertices,
+      ⟪pc.w, p.outer vert⟫ ≤ H pbar ε pc.w vert by
+    simp only [maxH, maxOuter, imgOuter, Finset.max'_le_iff, Finset.mem_image, forall_exists_index,
+      and_imp, forall_apply_eq_imp_iff₂]
+    simp only [Finset.max', Finset.sup'_image,
+      Finset.le_sup'_iff]
+    exact fun a ha => Exists.intro a ⟨ha, h a ha⟩
+  -- Now we're just considering a single polyhedron vertex P
+  intro P hP
+  have P_norm_pos : 0 < ‖P‖ := poly.nontriv P hP
+  have P_norm_nonzero : ‖P‖ ≠ 0 := Ne.symm (ne_of_lt P_norm_pos)
+  have P_norm_le_one : ‖P‖ ≤ 1 := poly.vertex_radius_le_one P hP
+
+  have hz := bounded_partials_control_difference
+    (pc.fu_outer P) (rotation_partials_exist_outer P_norm_pos)
+    pbar.outerParams p.outerParams ε hε
+    (closed_ball_imp_outer_params_near p_near_pbar)
+    (rotation_partials_bounded_outer P pc.w_unit)
+  simp_all only [H]
+  rw [abs_sub_comm] at hz
+  replace hz := sub_le_of_abs_sub_le_right hz
+  rw [tsub_le_iff_right] at hz
+  replace hz := mul_le_mul_of_nonneg_right hz (ha := le_of_lt P_norm_pos)
+  rw [add_mul] at hz
+  rw [pc.fu_pose_eq_outer P_norm_nonzero, pc.fu_pose_eq_outer P_norm_nonzero] at hz
+  rw [partials_helper_outer pc]
+  rw [show pbar.rotM₂ P = pbar.outer P by rw [Pose.outer_eq_M]]
+  conv => enter [2, 1, 1]; rw [real_inner_comm]
+  ring_nf at hz ⊢
+  nth_grw 2 [P_norm_le_one] at hz
+  simp only [mul_one] at hz
+  exact hz
 
 /--
 Here we run through the "sequence of inequalities [which yield] the desired contradiction"

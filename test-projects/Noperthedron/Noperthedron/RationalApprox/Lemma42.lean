@@ -34,13 +34,15 @@ def MatVec.DiffBoundedBy {n m : ℕ} (mv : MatVec n m) (κ : ℝ) : Prop :=
   | .cons tl A B => tl.DiffBoundedBy κ ∧  ‖A - B‖ ≤ κ
 
 @[simp]
-noncomputable def MatVec.compA {n m : ℕ} (mv : MatVec n m) : Euc(m) →L[ℝ] Euc(n) :=
+noncomputable
+def MatVec.compA {n m : ℕ} (mv : MatVec n m) : Euc(m) →L[ℝ] Euc(n) :=
   match mv with
   | nil  => ContinuousLinearMap.id ℝ Euc(n)
   | cons tl A _ => tl.compA ∘L A
 
 @[simp]
-noncomputable def MatVec.compB {n m : ℕ} (mv : MatVec n m) : Euc(m) →L[ℝ] Euc(n) :=
+noncomputable
+def MatVec.compB {n m : ℕ} (mv : MatVec n m) : Euc(m) →L[ℝ] Euc(n) :=
   match mv with
   | nil  => ContinuousLinearMap.id ℝ Euc(n)
   | cons tl _ B => tl.compB ∘L B
@@ -80,7 +82,12 @@ lemma norm_comp_a_le_prod_max_norm_list_prod
 @[simp]
 lemma MatVec.maxNormList_non_neg {m n : ℕ} (mv : MatVec n m) :
     0 ≤ mv.maxNormList.prod := by
-  sorry
+  match mv with
+  | .nil => simp
+  | .cons tl A B =>
+    simp only [maxNormList, List.prod_append, List.prod_cons, List.prod_nil,
+      mul_one, lt_sup_iff, zero_lt_one, or_true, mul_nonneg_iff_of_pos_right]
+    exact tl.maxNormList_non_neg
 
 /-- [SY25] Lemma 42 -/
 lemma norm_sub_le_prod {n m : ℕ} (mv : MatVec n m)

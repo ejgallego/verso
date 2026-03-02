@@ -18,12 +18,7 @@ theorem pythagoras {θ φ : ℝ} (P : Euc(3)) :
     Fin.sum_univ_succ, Fin.isValue, Matrix.cons_val_zero, Matrix.cons_dotProduct, Matrix.vecHead,
     Matrix.vecTail, zero_mul, Matrix.dotProduct_of_isEmpty, add_zero, Finset.univ_unique,
     Fin.default_eq_zero, Matrix.cons_val_succ, Finset.sum_singleton, Fin.succ_zero_eq_one,
-    Fin.succ_one_eq_two, inner, vecX]
-  have h0 : ⟪Real.cos θ * Real.sin φ, P.ofLp 0⟫ = P.ofLp 0 * (Real.cos θ * Real.sin φ) := rfl
-  have h1 : ⟪Real.sin θ * Real.sin φ, P.ofLp 1⟫ = P.ofLp 1 * (Real.sin θ * Real.sin φ) := rfl
-  have h2 : ⟪Real.cos φ, P.ofLp 2⟫ = P.ofLp 2 * Real.cos φ := rfl
-  rw [h0, h1, h2]
-  simp [Nat.rawCast]
+    Fin.succ_one_eq_two, inner, vecX, RCLike.inner_apply, Real.ringHom_apply]
   grind [Real.sin_sq]
 
 /-- [SY25] Lemma 24 -/
