@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-02 (merged feat/blueprint-options into bp)
+Last updated: 2026-03-03 (bp dependency/profiling consolidation + validation)
 
 ## Inventory and Recommendation
 
@@ -8,89 +8,30 @@ Last updated: 2026-03-02 (merged feat/blueprint-options into bp)
 
 - `bp` (root checkout)
   - Path: `/home/egallego/lean/verso-blueprint`
-  - Status: rebased over `upstream/main`; owner action: finish full validation pass
-  - Base: `upstream/main` @ `8fd45fae` (2026-03-02 fetch)
-  - Rebase safety pointer: `bp-pre-rebase-2026-03-02` @ `2eac3ccf`
-  - Notes: primary branch.
+  - HEAD: `807771d0`
+  - Status: primary branch; dependency/profiling maintenance commit prepared locally
+  - Notes:
+    - contains merged critique plan at `doc/VersoBlueprintRefactorPlan.md`
+    - non-branch-local untracked dirs present (`.worktrees/`, `test-projects/Noperthedron/tex-src/`, `test-projects/Sphere-Packing-Lean/`)
+    - consolidated dependency bump to mathlib `v4.29.0-rc3` in `lakefile.lean` + `lake-manifest.json`
+    - updated `verso.blueprint.profile` option read path in `src/verso-blueprint/VersoBlueprint/Profiling.lean`
+    - validation: `lake exe noperthedron` passed on 2026-03-03 (warnings only)
 
 - `feat/lsp-folding-chain`
   - Path: `/home/egallego/lean/verso-blueprint/.worktrees/lsp-folding-chain`
-  - Status: keep (in progress, needs Emilio action)
-  - Notes: clean worktree; 2 commits on top of `bp`.
+  - HEAD: `4cafd289`
+  - Status: clean worktree
+  - Divergence vs `bp`: `66` behind / `28` ahead
+  - Recommendation: rebase onto current `bp` before next integration step
 
-- `feat/versoblueprint-critique`
-  - Path: `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-critique`
-  - Status: active branch, in planning
-  - Notes:
-    - planning document committed as `a7a0d420`
-    - document path: `doc/VersoBlueprintRefactorPlan.md`
+- `feat/sphere-packing-blueprint`
+  - Path: `/home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
+  - HEAD: `8120a6e5`
+  - Status: dirty worktree (multiple chapter edits + `tmp/` untracked)
+  - Divergence vs `bp`: `25` behind / `2` ahead
+  - Recommendation: checkpoint current edits, then rebase on `bp` to reduce drift
 
-### Recently merged / cleaned up
+### Recently cleaned up
 
-- `feat/blueprint-options`
-  - Status: merged into `bp` and cleaned up
-  - Merge commit on `bp`: `788cf484`
-  - Cleanup:
-    - worktree removed: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-options`
-    - branch deleted: `feat/blueprint-options`
-  - Notes:
-    - kept user-facing configuration on native `set_option` path
-    - added `test-projects/Noperthedron/OPTIONS.md` as set_option source of truth
-    - implemented options:
-      - `verso.blueprint.profile`
-      - `verso.blueprint.externalCode.strictResolve`
-      - `verso.blueprint.externalCode.previewLimit.{type,value,decl,rhs}`
-      - `verso.blueprint.graph.defaultDirection`
-  - Validation at merge time:
-    - `lake build VersoBlueprint` passed
-    - `lake exe noperthedron` reached ~`3146/6777` before manual stop; no errors observed
-
-- `feat/axioms-as-sorries`
-  - Status: merged into `bp` and cleaned up
-  - Merge commit on `bp`: `2ad7bcc4` (fast-forward)
-  - Cleanup:
-    - worktree removed: `/home/egallego/lean/verso-blueprint/.worktrees/axioms-as-sorries`
-    - branch deleted: `feat/axioms-as-sorries`
-  - Validation at merge time:
-    - `lake build VersoBlueprint.Data VersoBlueprint.Commands VersoBlueprint Tests.BlueprintGraph` passed
-    - `lake env lean src/tests/Tests/BlueprintGraph.lean` passed
-    - `lake exe noperthedron` passed
-
-### Key Commits (on top of `bp`)
-
-- `b1821909` - `verso: add chained folding ranges including headers and inline Lean`
-- `4cafd289` - `verso: cleanup folding metadata plumbing and dedupe helpers`
-
-### Validation Done
-
-- `lake exe noperthedron` passed.
-- Interactive tests passed:
-  - `src/tests/interactive/test-cases/folding_verso.lean`
-  - `src/tests/interactive/test-cases/verso_folding.lean`
-  - `src/tests/interactive/test-cases/verso_folding_headers.lean`
-  - `src/tests/interactive/test-cases/verso_folding_inline_lean.lean`
-
-### Helpful Resume Notes
-
-- Compare work vs `bp`:
-  - `git log --oneline bp..feat/lsp-folding-chain`
-  - `git diff --name-only bp..feat/lsp-folding-chain`
-- Validate quickly from the worktree:
-  - `lake env bash src/tests/interactive/test_single.sh src/tests/interactive/test-cases/verso_folding_inline_lean.lean`
-  - `lake exe noperthedron`
-
-## Rebase Notes (2026-03-02)
-
-- Worktree path: `/home/egallego/lean/verso-blueprint`
-- Branch: `bp`
-- Base branch and commit: `upstream/main` @ `8fd45fae`
-- Key commits:
-  - New `bp` tip: `1dbc37fe` (`docs: apply dashboard decision and codify decision workflow`)
-  - Pre-rebase tip preserved at `bp-pre-rebase-2026-03-02` (`2eac3ccf`)
-- Validation status:
-  - `lake exe noperthedron` started after rebase and ran until ~`1217/6777` build steps.
-  - No build errors observed before manual stop (runtime constrained).
-- Resume commands:
-  - `git log --oneline --decorate --max-count=20`
-  - `git range-diff bp-pre-rebase-2026-03-02...bp`
-  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-critique`
+- Deleted branch: `feat/versoblueprint-critique`
