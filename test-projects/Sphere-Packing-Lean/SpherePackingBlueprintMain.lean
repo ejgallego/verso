@@ -7,6 +7,7 @@ open Verso.Genre Manual
 open Std (HashMap)
 
 def htmlAssets : HtmlAssets where
+  features := .all
   extraCss := {}
   extraJs := {}
   extraJsFiles := {}
