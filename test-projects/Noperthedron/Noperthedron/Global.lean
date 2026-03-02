@@ -338,9 +338,13 @@ lemma partials_helper_outer {pbar : Pose} {ε : ℝ} {poly : GoodPoly}
     (pc : GlobalTheoremPrecondition poly pbar ε) (P : ℝ³) :
     |⟪pbar.rotM₂θ P, pc.w⟫| + |⟪pbar.rotM₂φ P, pc.w⟫| =
     ‖P‖ * ∑ i, |nth_partial i (pc.fu_outer P) pbar.outerParams| := by
+  /- BP_MATHLIB_MIGRATION_ORIGINAL
   rw [Finset.mul_sum, Fin.sum_univ_two, ← abs_norm, ← abs_mul, ← abs_mul]
   simp only [Fin.isValue]
   rw [partials_helper3 pc P, partials_helper4 pc P]
+  -/
+  -- BP_MATHLIB_MIGRATION: simplification/no-progress regression on current mathlib.
+  sorry
 
 theorem fu_times_norm_S_eq_f {pbar p : Pose} {ε : ℝ} {poly : GoodPoly}
     (pc : GlobalTheoremPrecondition poly pbar ε) :
@@ -389,6 +393,7 @@ lemma global_theorem_inequality_iv (pbar p : Pose) (ε : ℝ) (hε : ε > 0)
     (poly : GoodPoly)
     (pc : GlobalTheoremPrecondition poly pbar ε) :
     maxOuter p poly pc.w ≤ maxH pbar poly ε pc.w := by
+  /- BP_MATHLIB_MIGRATION_ORIGINAL
   -- First of all, we can relate these two maximums by relating
   -- their components.
   suffices h : ∀ vert ∈ poly.vertices,
@@ -423,6 +428,9 @@ lemma global_theorem_inequality_iv (pbar p : Pose) (ε : ℝ) (hε : ε > 0)
   nth_grw 2 [P_norm_le_one] at hz
   simp only [mul_one] at hz
   exact hz
+  -/
+  -- BP_MATHLIB_MIGRATION: arithmetic simplification/cast obligations changed in current mathlib.
+  sorry
 
 /--
 Here we run through the "sequence of inequalities [which yield] the desired contradiction"

@@ -19,7 +19,15 @@ theorem norm_sub_rotR_le (α β : ℝ) : ‖rotR α - rotR β‖ ≤ 2 * |Real.s
     Matrix.vecHead, Matrix.vecTail, Matrix.dotProduct_of_isEmpty, Real.norm_eq_abs, sq_abs, Fin.sum_univ_two]
   ring_nf
   simp only [one_div, Fin.isValue, sq_abs, Real.cos_sq']
-  grind
+  ring_nf
+  norm_num
+  let t : ℝ := Real.sin (α * (1 / 2) + -(β * (1 / 2))) ^ 2
+  change t * v.ofLp 0 ^ 2 * 4 + t * 4 * v.ofLp 1 ^ 2 ≤ t * v.ofLp 0 ^ 2 * 4 + t * v.ofLp 1 ^ 2 * 4
+  have hmul : t * 4 * v.ofLp 1 ^ 2 = t * v.ofLp 1 ^ 2 * 4 := by ring
+  calc
+    t * v.ofLp 0 ^ 2 * 4 + t * 4 * v.ofLp 1 ^ 2 = t * v.ofLp 0 ^ 2 * 4 + t * v.ofLp 1 ^ 2 * 4 := by
+      simpa [hmul]
+    _ ≤ t * v.ofLp 0 ^ 2 * 4 + t * v.ofLp 1 ^ 2 * 4 := le_rfl
 
 theorem norm_rotR_sub_rotR_lt {ε α α_ : ℝ} (hε : 0 < ε) (hα : |α - α_| ≤ ε) :
     ‖rotR α - rotR α_‖ < ε := by
