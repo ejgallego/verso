@@ -61,6 +61,39 @@ def informalCodeDomain : Name := Resolve.informalCodeDomainName
 /-- Name used in {name}`TraverseState.domains` for informal preview payloads. -/
 def informalPreviewDomain : Name := Resolve.informalPreviewDomainName
 
+/--
+If enabled, unresolved or ambiguous external Lean names in `(lean := "...")` are treated as
+errors instead of warnings.
+-/
+register_option verso.blueprint.externalCode.strictResolve : Bool := {
+  defValue := false
+  descr := "Treat unresolved or ambiguous `(lean := ...)` external references as errors"
+}
+
+/-- Maximum pretty-printed type preview length for external declaration metadata (`0` = unlimited). -/
+register_option verso.blueprint.externalCode.previewLimit.type : Nat := {
+  defValue := 1200
+  descr := "Maximum external declaration type preview length (`0` disables truncation)"
+}
+
+/-- Maximum pretty-printed value preview length for external declaration metadata (`0` = unlimited). -/
+register_option verso.blueprint.externalCode.previewLimit.value : Nat := {
+  defValue := 1200
+  descr := "Maximum external declaration value preview length (`0` disables truncation)"
+}
+
+/-- Maximum source declaration preview length for external declaration metadata (`0` = unlimited). -/
+register_option verso.blueprint.externalCode.previewLimit.decl : Nat := {
+  defValue := 1600
+  descr := "Maximum external declaration source preview length (`0` disables truncation)"
+}
+
+/-- Maximum source RHS preview length for external declaration metadata (`0` = unlimited). -/
+register_option verso.blueprint.externalCode.previewLimit.rhs : Nat := {
+  defValue := 1200
+  descr := "Maximum external declaration RHS preview length (`0` disables truncation)"
+}
+
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
   label : Data.Label
@@ -131,22 +164,34 @@ private def resolveExternalNameCandidates [MonadResolveName m] [MonadOptions m]
       acc
 
 private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadEnv m]
-    [MonadLog m] [AddMessageContext m]
+    [MonadLog m] [AddMessageContext m] [MonadError m]
     (label : Name) (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
+  let strictResolve :=
+    (← getOptions).get
+      verso.blueprint.externalCode.strictResolve.name
+      verso.blueprint.externalCode.strictResolve.defValue
   refs.foldlM (init := #[]) fun acc ref => do
     let candidates ← resolveExternalNameCandidates ref.written
     match candidates.toList with
     | [] =>
-      logWarning m!"Label {label}: external Lean name '{ref.written}' could not be resolved in current namespace/open declarations; keeping parsed name"
-      let ref ← markExternalRefPresence (parsedExternalRef ref)
-      return pushExternalRefDedup acc ref
+      let msg := m!"Label {label}: external Lean name '{ref.written}' could not be resolved in current namespace/open declarations"
+      if strictResolve then
+        throwError msg
+      else
+        logWarning m!"{msg}; keeping parsed name"
+        let ref ← markExternalRefPresence (parsedExternalRef ref)
+        return pushExternalRefDedup acc ref
     | [resolved] =>
       let ref ← markExternalRefPresence (resolvedExternalRef ref resolved)
       return pushExternalRefDedup acc ref
     | many =>
-      logWarning m!"Label {label}: external Lean name '{ref.written}' is ambiguous ({String.intercalate ", " (many.map toString)}); keeping parsed name"
-      let ref ← markExternalRefPresence (parsedExternalRef ref)
-      return pushExternalRefDedup acc ref
+      let msg := m!"Label {label}: external Lean name '{ref.written}' is ambiguous ({String.intercalate ", " (many.map toString)})"
+      if strictResolve then
+        throwError msg
+      else
+        logWarning m!"{msg}; keeping parsed name"
+        let ref ← markExternalRefPresence (parsedExternalRef ref)
+        return pushExternalRefDedup acc ref
 
 def Config.parse  : ArgParse m Config :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent =>
@@ -240,10 +285,30 @@ inductive BlockCodeStatus where
 deriving Repr, Inhabited, FromJson, ToJson, Quote
 
 private def truncatePreview (limit : Nat) (s : String) : String :=
-  if s.length <= limit then
+  if limit == 0 || s.length <= limit then
     s
   else
     (s.take limit).toString ++ "…"
+
+private def externalTypePreviewLimit (opts : Lean.Options) : Nat :=
+  opts.get
+    verso.blueprint.externalCode.previewLimit.type.name
+    verso.blueprint.externalCode.previewLimit.type.defValue
+
+private def externalValuePreviewLimit (opts : Lean.Options) : Nat :=
+  opts.get
+    verso.blueprint.externalCode.previewLimit.value.name
+    verso.blueprint.externalCode.previewLimit.value.defValue
+
+private def externalDeclPreviewLimit (opts : Lean.Options) : Nat :=
+  opts.get
+    verso.blueprint.externalCode.previewLimit.decl.name
+    verso.blueprint.externalCode.previewLimit.decl.defValue
+
+private def externalRhsPreviewLimit (opts : Lean.Options) : Nat :=
+  opts.get
+    verso.blueprint.externalCode.previewLimit.rhs.name
+    verso.blueprint.externalCode.previewLimit.rhs.defValue
 
 private def externalDeclKindText (info : ConstantInfo) : String :=
   match info with
@@ -331,6 +396,10 @@ private def prettyExprPreview (env : Lean.Environment) (opts : Lean.Options) (ex
 private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
     (workspaceRoot : System.FilePath)
     (decl : Data.ExternalRef) : CoreM ExternalDeclStatus := do
+  let typePreviewLimit := externalTypePreviewLimit opts
+  let valuePreviewLimit := externalValuePreviewLimit opts
+  let declPreviewLimit := externalDeclPreviewLimit opts
+  let rhsPreviewLimit := externalRhsPreviewLimit opts
   let canonical := decl.canonical
   if !decl.presentAtRegistration then
     return { decl := decl.written, canonical, present := false }
@@ -350,13 +419,13 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       | some sourcePath, some ranges =>
         liftM <| readDeclarationSource? sourcePath ranges.range
       | _, _ => pure none
-    let sourceDeclPretty? := sourceDecl?.map (truncatePreview 1600)
-    let sourceBodyPretty? := (rhsFromDeclarationSource? =<< sourceDecl?) |>.map (truncatePreview 1200)
-    let typePretty ← prettyExprPreview env opts info.type
+    let sourceDeclPretty? := sourceDecl?.map (truncatePreview declPreviewLimit)
+    let sourceBodyPretty? := (rhsFromDeclarationSource? =<< sourceDecl?) |>.map (truncatePreview rhsPreviewLimit)
+    let typePretty ← prettyExprPreview env opts info.type typePreviewLimit
     let valuePretty? ←
       match info.value? (allowOpaque := true) with
       | none => pure none
-      | some value => some <$> prettyExprPreview env opts value
+      | some value => some <$> prettyExprPreview env opts value valuePreviewLimit
     return {
       decl := decl.written
       canonical
