@@ -16,11 +16,11 @@ namespace Informal.Profile
 
 register_option verso.blueprint.profile : Bool := {
   defValue := false
-  descr := "Enable profiling logs for Verso Blueprint directive/code-block elaboration"
+  descr := "Enable timing logs for VersoBlueprint directive/code-block elaboration"
 }
 
 private def profileEnabled : DocElabM Bool := do
-  return (← Lean.getOptions).get verso.blueprint.profile.name verso.blueprint.profile.defValue
+  pure <| verso.blueprint.profile.get (← Lean.getOptions)
 
 private def leftPad (s : String) (width : Nat) : String :=
   if s.length >= width then
