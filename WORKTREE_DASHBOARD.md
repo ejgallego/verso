@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` created for in-depth `Commands/Summary` review, preview server running)
+Last updated: 2026-03-04 (`feat/external-lean-html-audit-20260303` rebased on `bp`, validated, and marked ready for merge)
 
 ## Active Worktrees
 
@@ -75,6 +75,25 @@ Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` created for in-
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
   - `git status --short`
   - commit/stash local chapter changes before rebasing on `bp`
+
+### `feat/external-lean-html-audit-20260303`
+
+- Status: `ready-for-review` (owner action: merge onto `bp`)
+- Summary: external Lean declaration rendering now supports explicit `docstring`/`docgen` modes, keeps vendor code as an upstream subset, and uses a shared wrapper for consistent definition framing.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-lean-html-audit-20260303`
+- Branch: `feat/external-lean-html-audit-20260303`
+- Base commit/branch:
+  - rebased on `bp`: `954de6e6` (`0` behind / `1` ahead)
+- Key commit:
+  - `733a6fc3` feat(external-code): add docstring/docgen render modes with shared wrapping
+- Validation status:
+  - `lake env lean src/tests/Tests/DocGenNameRender.lean`
+  - `lake exe noperthedron` (pass with existing project warnings)
+  - preview server: `http://127.0.0.1:8101/` (session `39948`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-lean-html-audit-20260303`
+  - `git status --short`
+  - `git log --oneline --decorate -n 3`
 
 ## Recently Completed
 
