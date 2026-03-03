@@ -48,6 +48,15 @@ When we create a worktree, it is possible that `lake` makes a choice to setup th
 - Do not run multiple sub-agents in the same worktree simultaneously.
 - Keep shared fixes in a separate worktree/branch and merge/cherry-pick as needed.
 
+### Worktree scope discipline
+
+- Treat the user-designated worktree as the only writable and executable scope for the task.
+- Do not inspect, edit, build, rebase, or validate other worktrees unless the user explicitly asks.
+- IDE context may include unrelated tabs/files from other worktrees; this is not a scope signal.
+- If tab context conflicts with the designated worktree, follow the designated worktree.
+- If the designated path is unclear or missing, stop and ask for the exact path before proceeding.
+- Goal: avoid cross-worktree drift, which can cause destructive or hard-to-recover mistakes.
+
 ### Daily operations
 
 - List worktrees:
