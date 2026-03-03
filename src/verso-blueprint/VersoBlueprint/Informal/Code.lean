@@ -73,10 +73,10 @@ private def codeSummaryText (label : Data.Label) (definedDefs definedTheorems : 
           s!"{d.name} [{codeSummaryStatusText d.provedStatus}]"
     s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
 
-block_extension Block.informalCode (data : CodeBlockData) where
+block_extension Block.informalCode (data : InlineCodeData) where
   data := toJson data
   traverse id data _contents := do
-    let .ok cdata@{ label, definedDefs := _, definedTheorems := _, foldProofs := _ } := fromJson? (α := CodeBlockData) data
+    let .ok cdata@{ label, definedDefs := _, definedTheorems := _, foldProofs := _ } := fromJson? (α := InlineCodeData) data
       | logError s!"Malformed data: {data}"
         pure none
     if let .some _d := (← get).getDomainObject? informalCodeDomain label.toString then
@@ -94,7 +94,7 @@ block_extension Block.informalCode (data : CodeBlockData) where
     open Verso.Doc.Html in
     open Verso.Output.Html in
     some <| fun _goI goB id data blocks => do
-      let .ok { label, definedDefs, definedTheorems, foldProofs } := fromJson? (α := CodeBlockData) data
+      let .ok { label, definedDefs, definedTheorems, foldProofs } := fromJson? (α := InlineCodeData) data
         | HtmlT.logError s!"Malformed data: {data}"
           pure .empty
       let s ← HtmlT.state
@@ -108,7 +108,7 @@ block_extension Block.informalCode (data : CodeBlockData) where
         | none => "Code"
       let orderedDecls := sortDeclsByCommand (definedDefs ++ definedTheorems)
       let getDeclHref (decl : Name) : Option String :=
-        Resolve.resolveExampleDeclHref? s decl
+        Resolve.resolveInlineLeanDeclHref? s decl
       let progressSummaryTooltip : Output.Html :=
         renderCodeSummaryTooltip label definedDefs definedTheorems getDeclHref
       let progressBar : Output.Html :=
@@ -162,7 +162,7 @@ private def leanImpl : CodeBlockExpanderOf CodeConfig
     let codeBlock := res.block
     let definedDefs := res.definedDefs.map CodeDeclData.ofLiterateDef
     let definedTheorems := res.definedTheorems.map CodeDeclData.ofLiterateThm
-    let data : CodeBlockData := {
+    let data : InlineCodeData := {
       label := cfg.label
       definedDefs
       definedTheorems

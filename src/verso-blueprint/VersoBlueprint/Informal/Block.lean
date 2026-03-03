@@ -802,43 +802,31 @@ block_extension Block.informal (data : BlockData) where
           match s.resolveDomainObject informalCodeDomain data.label.toString with
           | .ok dest => some dest.relativeLink
           | .error _ => none
-        let codeData? : Option CodeBlockData ←
+        let codeData? : Option InlineCodeData ←
           match s.getDomainObject? informalCodeDomain data.label.toString with
           | none => pure none
           | some obj =>
-            match fromJson? (α := CodeBlockData) obj.data with
+            match fromJson? (α := InlineCodeData) obj.data with
             | .ok cdata => pure (some cdata)
             | .error err =>
                 HtmlT.logError s!"Malformed informal code data for {data.label}: {err}"
                 pure none
+        let codeSource := BlockCodeData.ofHintAndInline data.codeData codeData?
         let getDeclHref (decl : Name) : Option String :=
-          Resolve.resolveExampleDeclHref? s decl
+          Resolve.resolveInlineLeanDeclHref? s decl
         let externalDecls : Array Data.ExternalRef :=
-          ExternalCode.externalDeclsOfCodeStatus data.codeStatus
-        let manualStatus : Bool :=
-          match data.codeStatus with
-          | .userOk => true
-          | _ => false
-        let hasStatementSorries : Bool :=
-          match codeData? with
-          | none => false
-          | some cdata =>
-            (cdata.definedDefs ++ cdata.definedTheorems).any (fun decl => decl.provedStatus.hasTypeGap)
-        let hasProofSorries : Bool :=
-          match codeData? with
-          | none => false
-          | some cdata =>
-            (cdata.definedDefs ++ cdata.definedTheorems).any (fun decl => decl.provedStatus.hasProofGap)
+          match codeSource with
+          | some source => source.externalDecls
+          | none => #[]
         let cdata := {
           codeHref
-          codeData?
-          manualStatus
-          hasStatementSorries
-          hasProofSorries
+          source := codeSource
         }
         let summaryParts := CodeSummary.renderParts data cdata getDeclHref
         let externalParts := ExternalCode.renderParts data codeHref externalDecls getDeclHref
-        let hasExternal := !externalDecls.isEmpty
+        let hasExternal := match codeSource with
+          | some (.external decls) => !decls.isEmpty
+          | _ => false
         let statusMark := if hasExternal then externalParts.statusMark else summaryParts.statusMark
         let codeEntry := if hasExternal then externalParts.codeEntry else summaryParts.codeEntry
         let content := (← blocks.mapM goB)
@@ -874,10 +862,10 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let node? ← Environment.getNode? label
     let nodeCodeRef? := node?.bind (·.code)
     let nodeKind := node?.map (·.kind) |>.getD kind
-    let codeStatus := BlockCodeStatus.ofCodeRef nodeCodeRef?
+    let codeData := BlockCodeData.ofCodeRefHint nodeCodeRef?
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := { kind := nodeKind, label, count, isProof, codeStatus }
+    let data : BlockData := { kind := nodeKind, label, count, isProof, codeData }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
 private def directiveName (kind : Data.NodeKind) (isProof : Bool): String :=

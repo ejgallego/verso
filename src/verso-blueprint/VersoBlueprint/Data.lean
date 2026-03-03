@@ -511,17 +511,17 @@ private def mergeCodeRef (label : Label) (current : Option CodeRef) (incoming : 
   | some (.literate _), .literate _ =>
     logError m!"Label {label} already has code"
     return current
-  | some .userOk, .literate _ =>
-    logError m!"Label {label} uses '(leanok := true)' and cannot have an associated Lean code block"
-    return current
-  | some (.external _), .literate _ =>
-    logError m!"Label {label} uses '(lean := ...)' and cannot have an associated Lean code block"
-    return current
+  | some .userOk, .literate code =>
+    logError m!"Label {label} has both '(leanok := true)' and an associated Lean code block; preferring inline code"
+    return some (.literate code)
+  | some (.external _), .literate code =>
+    logError m!"Label {label} has both '(lean := ...)' and an associated Lean code block; preferring inline code"
+    return some (.literate code)
   | some (.literate _), .userOk =>
-    logError m!"Label {label} cannot use '(leanok := true)' because it already has an associated Lean code block"
+    logError m!"Label {label} has both an associated Lean code block and '(leanok := true)'; preferring inline code"
     return current
   | some (.literate _), .external _ =>
-    logError m!"Label {label} cannot use '(lean := ...)' because it already has an associated Lean code block"
+    logError m!"Label {label} has both an associated Lean code block and '(lean := ...)'; preferring inline code"
     return current
 
 private def mergeParent (label : Label) (current incoming : Option Parent) : m (Option Parent) := do

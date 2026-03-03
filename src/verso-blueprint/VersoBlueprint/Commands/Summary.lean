@@ -285,7 +285,7 @@ block_extension Block.summary (summary : Summary) where
       let getCodeHref (label : Name) : Option String :=
         Resolve.resolveDomainHref? s Resolve.informalCodeDomainName label.toString
       let getDeclHref (decl : Name) : Option String :=
-        Resolve.resolveExampleDeclHref? s decl
+        Resolve.resolveInlineLeanDeclHref? s decl
       let mkEntryRef (label : Name) := do
         let preview? : Option Output.Html ←
           match Informal.PreviewSource.traversalBlocks? s label with

@@ -18,15 +18,13 @@ open Lean Elab
 /--
 Canonical inputs used to compute Lean summary UI for one informal block.
 
-`codeData?` is the canonical internal-code payload (if any), while the booleans are
-already-derived status facts from the owning `BlockData`.
+`source` is the resolved optional code source for this block (`none` / `some userOk` /
+`some inline` / `some external`).
+Inline declaration summaries come from `.inline`; `codeHref` is used for heading link rendering.
 -/
 structure ComputedData where
   codeHref : Option String := none
-  codeData? : Option CodeBlockData := none
-  manualStatus : Bool := false
-  hasStatementSorries : Bool := false
-  hasProofSorries : Bool := false
+  source : Option BlockCodeData := none
 
 /--
 Rendered fragments produced by `CodeSummary.renderParts` for an informal block heading.
@@ -92,7 +90,7 @@ def renderCodeSummaryTooltip (label : Data.Label)
     </div>
   }}
 
-private def manualSummaryTooltip : Output.Html :=
+private def userOkSummaryTooltip : Output.Html :=
   open Verso.Output.Html in
   {{
     <div class="bp_code_hover" role="tooltip">
@@ -108,26 +106,26 @@ Render the inline Lean summary UI for an informal block heading.
 
 Inputs come from canonical block/code data:
 - `codeHref`: link to the generated Lean code block when available.
-- `codeData?`: tracked declarations from the matching internal Lean block.
-- `manualStatus`: `(leanok := true)` manual completion flag.
-- `hasStatementSorries` / `hasProofSorries`: context-sensitive status marker source.
+- `source`: resolved optional code source (inline/userOk/external).
 -/
 def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Option String) : RenderParts :=
   open Verso.Output.Html in
-  let hasInline := cdata.codeHref.isSome || cdata.codeData?.isSome
-  let hasCodeEntry := hasInline || cdata.manualStatus
+  let inlineData? := cdata.source.bind BlockCodeData.inlineData?
+  let userOk := cdata.source.map BlockCodeData.isUserOk |>.getD false
+  let hasInline := cdata.codeHref.isSome || inlineData?.isSome
+  let hasCodeEntry := hasInline || userOk
   let codeEntryTooltip : Output.Html :=
-    match cdata.codeData? with
+    match inlineData? with
     | some codeData => renderCodeSummaryTooltip data.label codeData.definedDefs codeData.definedTheorems hrefOf
     | none =>
-      if cdata.manualStatus then
-        manualSummaryTooltip
+      if userOk then
+        userOkSummaryTooltip
       else
         .empty
   let codeEntryTitle : String :=
     if hasInline then
       "Lean declarations"
-    else if cdata.manualStatus then
+    else if userOk then
       "Marked complete via (leanok := true)"
     else
       "Lean declarations"
@@ -141,17 +139,27 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
         else
           {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
       {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
+  let hasStatementSorries : Bool :=
+    match inlineData? with
+    | none => false
+    | some codeData =>
+      (codeData.definedDefs ++ codeData.definedTheorems).any (fun decl => decl.provedStatus.hasTypeGap)
+  let hasProofSorries : Bool :=
+    match inlineData? with
+    | none => false
+    | some codeData =>
+      (codeData.definedDefs ++ codeData.definedTheorems).any (fun decl => decl.provedStatus.hasProofGap)
   let statusMark : Output.Html :=
-    if cdata.manualStatus then
+    if userOk then
       {{ <span class="bp_status_mark" title="Marked complete via (leanok := true)">"✓ (manually set)"</span> }}
     else if cdata.codeHref.isNone then
       .empty
     else
       let (hasSorriesHere, whereTxt) :=
         if data.isProof then
-          (cdata.hasProofSorries, "proof")
+          (hasProofSorries, "proof")
         else
-          (cdata.hasStatementSorries, "statement")
+          (hasStatementSorries, "statement")
       let mark := if hasSorriesHere then "✗" else "✓"
       let title := if hasSorriesHere then s!"Contains sorries in {whereTxt}" else s!"No sorries in {whereTxt}"
       {{ <span class="bp_status_mark" title={{title}}>{{.text true mark}}</span> }}

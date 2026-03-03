@@ -137,16 +137,6 @@ def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadLiftT Co
 
 end
 
-/--
-Project external declarations from block code status.
-
-This keeps a single extraction point for consumers that only care about external-code refs.
--/
-def externalDeclsOfCodeStatus (codeStatus : BlockCodeStatus) : Array Data.ExternalRef :=
-  match codeStatus with
-  | .external decls => decls
-  | _ => #[]
-
 private structure LinkedExternalDecl where
   decl : Data.ExternalRef
   href : Option String := none
