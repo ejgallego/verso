@@ -49,12 +49,14 @@ def ExternalDeclLookupError.message : ExternalDeclLookupError → String
   | .notPresentAtRegistration => "name was not present during directive/code-block registration"
   | .notFoundInEnvironment => "name is not present in current environment"
 
-instance : ToJson (Except String String) where
+abbrev ExternalDeclRender := Except DocGenRenderError DocGenHtml
+
+instance : ToJson ExternalDeclRender where
   toJson
     | .ok html => Json.mkObj [("ok", toJson html)]
-    | .error message => Json.mkObj [("error", toJson message)]
+    | .error error => Json.mkObj [("error", toJson error)]
 
-instance : FromJson (Except String String) where
+instance : FromJson ExternalDeclRender where
   fromJson?
     | .obj obj =>
       match obj.get? "ok", obj.get? "error" with
@@ -63,14 +65,14 @@ instance : FromJson (Except String String) where
       | _, _ => throw "expected object with exactly one of fields 'ok' or 'error'"
     | _ => throw "expected object"
 
-instance : Lean.Quote (Except String String) where
+instance : Lean.Quote ExternalDeclRender where
   quote
     | .ok html => Syntax.mkApp (mkCIdent ``Except.ok) #[(Lean.quote html)]
-    | .error message => Syntax.mkApp (mkCIdent ``Except.error) #[(Lean.quote message)]
+    | .error error => Syntax.mkApp (mkCIdent ``Except.error) #[(Lean.quote error)]
 
-def renderErrorMessage? : Except String String → Option String
+def renderErrorMessage? : ExternalDeclRender → Option String
   | .ok _ => none
-  | .error message => some message
+  | .error error => some error.message
 
 /-- Resolved metadata for external declarations plus docgen render outcome. -/
 structure ExternalDeclInfo where
@@ -90,8 +92,8 @@ structure ExternalDeclInfo where
   sourceHref? : Option String := none
   /-- Incompleteness metadata used by status colors/badges/tooltips. -/
   provedStatus : Data.ProvedStatus := .proved
-  /-- DocGen render result for this declaration (`.ok html` or `.error message`). -/
-  render : Except String String
+  /-- DocGen render result for this declaration (`.ok html` or `.error error`). -/
+  render : ExternalDeclRender
 deriving Repr, Inhabited, FromJson, ToJson, Quote
 
 /--
@@ -516,6 +518,12 @@ def codeHoverDeclItems (items : Array CodeHoverDecl) : Output.Html :=
       let txt := {{<code>{{.text true item.text}}</code>}}
       {{<li>{{if let some href := item.href then {{<a href={{href}}>{{txt}}</a>}} else txt}}</li>}}
 
+private partial def docGenHtmlToOutputHtml : DocGenHtml → Output.Html
+  | .element tag _inline attrs children =>
+      .tag tag attrs (.seq (children.map docGenHtmlToOutputHtml))
+  | .text s => .text true s
+  | .raw s => .text false s
+
 def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : Array (String × String))
     (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
@@ -592,7 +600,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
           | .ok renderedHtml =>
             {{
               <li class="bp_external_decl_item bp_external_decl_item_rendered">
-                <div class="bp_external_decl_rendered">{{.text false renderedHtml}}</div>
+                <div class="bp_external_decl_rendered">{{docGenHtmlToOutputHtml renderedHtml}}</div>
                 <div class="bp_external_decl_rendered_meta">
                   <span class={{statusClass}}>{{.text true statusTxt}}</span>
                   {{if let some sourceRef := externalDeclSourceRef? item then
@@ -604,7 +612,7 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
           | .error err =>
             let body : Output.Html := {{
               {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
-              <pre class="bp_external_decl_stmt bp_external_decl_render_error">{{.text true s!"DocGen render failed: {err}"}}</pre>
+              <pre class="bp_external_decl_stmt bp_external_decl_render_error">{{.text true s!"DocGen render failed: {err.message}"}}</pre>
             }}
             externalDeclItem item statusTxt body
         | .missing _ lookupError =>

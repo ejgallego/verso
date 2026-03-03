@@ -12,9 +12,13 @@ namespace Verso.Tests.DocGenNameRender
 #guard_msgs in
 #eval
   show Lean.CoreM Bool from do
-    let natAdd? ← (Informal.renderDeclHtmlStringDirect? `Nat.add).run'
-    let prod? ← (Informal.renderDeclHtmlStringDirect? `Prod).run'
-    let missing? ← (Informal.renderDeclHtmlStringDirect? `No.Such.Declaration).run'
-    pure (natAdd?.isSome && prod?.isSome && missing?.isNone)
+    let natAdd? ← (Informal.renderDeclHtmlNodeDirect? `Nat.add).run'
+    let prod? ← (Informal.renderDeclHtmlNodeDirect? `Prod).run'
+    let missing? ← (Informal.renderDeclHtmlNodeDirect? `No.Such.Declaration).run'
+    let natAddHasPayload :=
+      match natAdd? with
+      | some html => Informal.Vendor.DocGen4.Html.textLength html > 0
+      | none => false
+    pure (natAddHasPayload && prod?.isSome && missing?.isNone)
 
 end Verso.Tests.DocGenNameRender

@@ -320,14 +320,10 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       | none => pure none
     let provenance := mkProvenance workspaceRoot moduleName? sourcePath?
     let sourceHref? := sourceLinkHref? opts workspaceRoot moduleName? sourcePath? (ranges?.map (·.selectionRange))
-    let renderResult : Except DocGenRenderError String ←
+    let render : ExternalDeclRender ←
       match moduleName? with
       | none => pure (.error (.moduleUnavailable canonical))
-      | some moduleName => (renderDeclHtmlStringDirectFromInfoE moduleName canonical cinfo).run'
-    let render : Except String String :=
-      match renderResult with
-      | .ok html => .ok html
-      | .error error => .error error.message
+      | some moduleName => (renderDeclHtmlDirectFromInfoE moduleName canonical cinfo).run'
     let declInfo : ExternalDeclInfo := {
       decl := decl.written
       canonical
