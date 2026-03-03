@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (created `feat/blueprint-deadcode-audit-20260303`, cache/build complete, preview started)
+Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` audit complete, ready for review)
 
 ## Active Worktrees
 
@@ -24,8 +24,8 @@ Last updated: 2026-03-03 (created `feat/blueprint-deadcode-audit-20260303`, cach
 
 ### `feat/blueprint-deadcode-audit-20260303`
 
-- Status: `active` (owner action: run exhaustive dead-code / use-once audit and triage candidates)
-- Summary: dedicated audit worktree for unused code, dead structure fields, and cross-file use-once definitions in Blueprint.
+- Status: `ready-for-review` (owner action: triage dead-code findings and decide keep/remove/refactor)
+- Summary: exhaustive dead-code and use-once audit complete; findings include unused API wrappers, an unused environment helper, and stale external-status fields in graph status plumbing.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`
 - Branch: `feat/blueprint-deadcode-audit-20260303`
 - Base commit/branch:
@@ -41,7 +41,7 @@ Last updated: 2026-03-03 (created `feat/blueprint-deadcode-audit-20260303`, cach
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`
   - `git status --short`
-  - continue audit from `src/verso-blueprint/` first
+  - review audit notes and decide per-item action (delete, privatize, or co-locate)
 
 ### `feat/lsp-folding-chain`
 
