@@ -98,9 +98,6 @@ def proofDeps (node : Data.Node) : Array Name :=
 def allDeps (node : Data.Node) : Array Name :=
   statementDeps node ++ proofDeps node
 
-def isTheoremLikeKind (kind : Data.NodeKind) : Bool :=
-  kind == Data.NodeKind.lemma || kind == Data.NodeKind.theorem || kind == Data.NodeKind.corollary
-
 structure ExternalCodeStatus where
   isMissing : Name → Bool := fun _ => false
   provedStatus : Name → Data.ProvedStatus := fun _ => .proved
@@ -149,7 +146,7 @@ def nodeLocalProofFormalized (external : ExternalCodeStatus) (node : Data.Node) 
   nodeHasAssociatedCode node && !nodeHasMissingExternalDecls external node && !nodeHasSorries external node
 
 def nodeLocalFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  if isTheoremLikeKind node.kind then
+  if node.kind.isTheoremLike then
     nodeLocalProofFormalized external node
   else if node.kind == Data.NodeKind.definition then
     nodeLocalStatementFormalized external node
@@ -206,7 +203,7 @@ def statementStatus (external : ExternalCodeStatus) (state : Environment.State) 
 
 def proofStatus (external : ExternalCodeStatus) (state : Environment.State) (_label : Name)
     (node : Data.Node) : ProofStatus :=
-  if !isTheoremLikeKind node.kind then
+  if !node.kind.isTheoremLike then
     if nodeLocalStatementFormalized external node then
       if nodeAncestorsFormalized external state node then .formalizedWithAncestors else .formalized
     else if depsClosureComplete external state .statement (statementDeps node) then
@@ -230,7 +227,7 @@ def nodeWarnings (external : ExternalCodeStatus) (state : Environment.State) (_l
     leanOnlyNoStatement := nodeHasAssociatedCode node && node.statement.isNone
     missingExternalDecl := nodeHasAssociatedCode node && missingExternal
     localSorries := nodeHasAssociatedCode node && node.statement.isSome && nodeHasSorries external node
-    depsWithSorries := isTheoremLikeKind node.kind && localProofDone && !ancestorDepsDone
+    depsWithSorries := node.kind.isTheoremLike && localProofDone && !ancestorDepsDone
   }
 
 def statementStatusBorderColor : StatementStatus → String
@@ -241,7 +238,7 @@ def statementStatusBorderColor : StatementStatus → String
 
 def proofStatusFillColor (kind : Data.NodeKind) : ProofStatus → String
   | .none =>
-    if isTheoremLikeKind kind then proofBackgroundNeutralColor else definitionBackgroundColor
+    if kind.isTheoremLike then proofBackgroundNeutralColor else definitionBackgroundColor
   | .ready => proofBackgroundReadyColor
   | .formalized => proofBackgroundFormalizedColor
   | .formalizedWithAncestors => proofBackgroundFormalizedAncColor
@@ -251,7 +248,7 @@ def proofStatusFontColor : ProofStatus → String
   | _ => "#111827"
 
 def kindShape (kind : Data.NodeKind) : String :=
-  if isTheoremLikeKind kind then "ellipse" else "box"
+  if kind.isTheoremLike then "ellipse" else "box"
 
 def StatementStatus.toText : StatementStatus → String
   | .blocked => "blocked"
