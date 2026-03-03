@@ -64,6 +64,7 @@ structure ExternalDeclStatus where
   sourceHref? : Option String := none
   sourceDeclPretty? : Option String := none
   sourceBodyPretty? : Option String := none
+  renderedHtml? : Option String := none
   provedStatus : Data.ProvedStatus := .proved
 deriving Repr, Inhabited, FromJson, ToJson, Quote
 
@@ -139,6 +140,7 @@ structure ExternalHoverDecl where
   sourceHref? : Option String := none
   sourceDeclPretty? : Option String := none
   sourceBodyPretty? : Option String := none
+  renderedHtml? : Option String := none
   provedStatus : Data.ProvedStatus := .proved
 
 structure ComputedData where
@@ -496,18 +498,32 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
     else
       .seq <| items.map fun item =>
         let statusTxt := externalDeclPanelStatusText item
-        let statementNode :=
-          if let some stmt := externalDeclStatement? item then
-            {{<pre class="bp_external_decl_stmt hl lean block"><code>{{.text true stmt}}</code></pre>}}
-          else if item.present then
-            {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (pretty-printer failed)"</pre>}}
-          else
-            {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (declaration not found)"</pre>}}
-        let body : Output.Html := {{
-          {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
-          {{statementNode}}
-        }}
-        externalDeclItem item statusTxt body
+        let statusClass := externalDeclStatusClass item
+        if let some renderedHtml := item.renderedHtml? then
+          {{
+            <li class="bp_external_decl_item bp_external_decl_item_rendered">
+              <div class="bp_external_decl_rendered">{{.text false renderedHtml}}</div>
+              <div class="bp_external_decl_rendered_meta">
+                <span class={{statusClass}}>{{.text true statusTxt}}</span>
+                {{if let some sourceRef := externalDeclSourceRef? item then
+                   {{<span class="bp_external_decl_rendered_source">{{sourceRef}}</span>}}
+                 else .empty}}
+              </div>
+            </li>
+          }}
+        else
+          let statementNode :=
+            if let some stmt := externalDeclStatement? item then
+              {{<pre class="bp_external_decl_stmt hl lean block"><code>{{.text true stmt}}</code></pre>}}
+            else if item.present then
+              {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (pretty-printer failed)"</pre>}}
+            else
+              {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (declaration not found)"</pre>}}
+          let body : Output.Html := {{
+            {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
+            {{statementNode}}
+          }}
+          externalDeclItem item statusTxt body
   let externalHover : Output.Html :=
     if cdata.externalDecls.isEmpty then
       .empty
@@ -576,7 +592,12 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
     if !hasExternal || data.isProof then
       .empty
     else
-      mkCodePanel (codePanelSummary data) codeEntryTitle externalStatusIndicator
+      let summaryText :=
+        if data.isProof then
+          "External Lean declarations for proof"
+        else
+          s!"External Lean declarations for {data.kind} {data.count}"
+      mkCodePanel summaryText codeEntryTitle externalStatusIndicator
         {{<ul class="bp_code_hover_list">{{externalPanelListItems cdata.externalDecls}}</ul>}}
   let kindText := if data.isProof then "Proof" else s!"{data.kind}"
   let labelTextNum := s!"{data.count}"
