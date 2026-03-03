@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/informal-code-audit-restart-20260303` merged into `bp` and cleaned up)
+Last updated: 2026-03-03 (`feat/lib-analysis-20260303` implemented Lib cleanup refactor and validated)
 
 ## Active Worktrees
 
@@ -55,6 +55,26 @@ Last updated: 2026-03-03 (`feat/informal-code-audit-restart-20260303` merged int
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
   - `git status --short`
   - commit/stash local chapter changes before rebasing on `bp`
+
+### `feat/lib-analysis-20260303`
+
+- Status: `ready-for-review` (owner action: review diff and decide merge sequencing)
+- Summary: implemented Lib cleanup: removed dead modules/APIs, co-located summary builder with summary command, and validated end-to-end output.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/lib-analysis-20260303`
+- Branch: `feat/lib-analysis-20260303`
+- Base commit/branch:
+  - based on `bp` at `df411fe8`
+- Key commit:
+  - none yet (local changes pending commit)
+- Validation status:
+  - `lake build VersoBlueprint` (pass)
+  - `lake exe noperthedron` (pass)
+  - preview server: `http://127.0.0.1:8092/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/lib-analysis-20260303`
+  - `git status --short`
+  - `git diff -- src/verso-blueprint/VersoBlueprint/Lib src/verso-blueprint/VersoBlueprint/Commands/Summary.lean src/verso-blueprint/VersoBlueprint/Widget.lean`
+  - preview server is running in session `9175` on port `8092`
 
 ## Recently Completed
 

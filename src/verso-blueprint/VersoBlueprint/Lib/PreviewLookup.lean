@@ -28,10 +28,4 @@ def previewBlocksForFacet?
     (facet : PreviewCache.Facet) : Option (Array ManualBlock) :=
   decodeFacet s label facet
 
-def previewBlocks?
-    (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option (Array ManualBlock) :=
-  match previewBlocksForFacet? s label .statement with
-  | some blocks => some blocks
-  | none => previewBlocksForFacet? s label .proof
-
 end Informal.PreviewLookup
