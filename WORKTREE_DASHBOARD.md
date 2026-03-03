@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (added `feat/versoblueprint-refactor` worktree for `VersoBlueprint.lean` split)
+Last updated: 2026-03-03 (`feat/docgen-direct-render` merged into `bp`; worktree cleaned up)
 
 ## Active Worktrees
 
@@ -41,23 +41,6 @@ Last updated: 2026-03-03 (added `feat/versoblueprint-refactor` worktree for `Ver
   - `git status --short`
   - start by auditing imports and public surface in `src/verso-blueprint/VersoBlueprint.lean`
 
-### `feat/docgen-direct-render`
-
-- Status: `active` (owner action: finish or checkpoint WIP; branch is behind `bp`)
-- Summary: in-progress direct-render docgen work that is currently stale versus `bp` and needs a sync before continuation.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/docgen-direct-render`
-- Branch: `feat/docgen-direct-render`
-- Base commit/branch:
-  - merge-base with `bp`: `a3381ff3` (`11` behind / `0` ahead)
-- Key commit:
-  - `a3381ff3` docs: consolidate commands path refactor notes
-- Validation status:
-  - not rerun in this update
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/docgen-direct-render`
-  - `git status --short`
-  - rebase or merge `bp` after checkpointing local edits
-
 ### `feat/lsp-folding-chain`
 
 - Status: `active` (owner action: rebase before integration)
@@ -94,6 +77,12 @@ Last updated: 2026-03-03 (added `feat/versoblueprint-refactor` worktree for `Ver
 
 ## Recently Completed
 
+- Merged `feat/docgen-direct-render` into `bp` (`460a78b3 -> 24974b73`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/docgen-direct-render`.
+- Deleted branch: `feat/docgen-direct-render`.
 - Merged `feat/release-audit` into `bp` (`6dfda830 -> af04fe7b`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
