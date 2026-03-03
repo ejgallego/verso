@@ -212,6 +212,8 @@ deriving Inhabited, FromJson, ToJson
 structure CitationUse where
   href : String
   summary : String
+  kind : Option CitePartKind := none
+  index : Option String := none
 deriving Inhabited, FromJson, ToJson
 
 structure CitationUsageData where
@@ -219,7 +221,11 @@ structure CitationUsageData where
 deriving Inhabited, FromJson, ToJson
 
 private def CitationUsageData.insertUnique (d : CitationUsageData) (u : CitationUse) : CitationUsageData :=
-  if d.uses.any (fun e => e.href == u.href && e.summary == u.summary) then
+  if d.uses.any (fun e =>
+      e.href == u.href
+      && e.summary == u.summary
+      && e.kind == u.kind
+      && e.index == u.index) then
     d
   else
     { d with uses := d.uses ++ [u] }
@@ -325,18 +331,20 @@ private def joinHtml (sep : Verso.Output.Html) (xs : List Verso.Output.Html) : V
   | [] => .empty
   | x :: rest => rest.foldl (init := x) fun acc y => acc ++ sep ++ y
 
-private def locatorText (kind : Option CitePartKind) (index : Option String) : Option String :=
-  let index := index.map (·.trimAscii.toString)
+private def normalizedLocatorIndex (index : Option String) : Option String :=
+  match index.map (·.trimAscii.toString) with
+  | some i =>
+    if i.isEmpty then Option.none else some i
+  | Option.none => Option.none
+
+def locatorText (kind : Option CitePartKind) (index : Option String) : Option String :=
+  let index := normalizedLocatorIndex index
   match kind, index with
   | Option.none, Option.none => Option.none
   | some k, Option.none => some k.text
-  | Option.none, some i =>
-    if i.isEmpty then Option.none else some i
+  | Option.none, some i => some i
   | some k, some i =>
-    if i.isEmpty then
-      some k.text
-    else
-      some s!"{k.text} {i}"
+    some s!"{k.text} {i}"
 
 private def pieceText (style : CitationStyle) (c : Citable) : String :=
   let who := authorText c
@@ -362,6 +370,7 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
     let _ ← Verso.Genre.Manual.externalTag id path tagBase
     let href? := (← get).externalTags[id]? |>.map (·.relativeLink)
     let summary := usageSummary ctxt
+    let locatorIndex := normalizedLocatorIndex cfg.index
     for item in cfg.citations do
       modify fun st =>
         let st := st.saveDomainObject Resolve.citationUsageDomainName item.label id
@@ -370,7 +379,12 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
           st.modifyDomainObjectData
             Resolve.citationUsageDomainName
             item.label
-            (updateCitationUsageData { href, summary })
+            (updateCitationUsageData {
+              href,
+              summary,
+              kind := cfg.kind,
+              index := locatorIndex
+            })
         | Option.none => st
     pure none
   toTeX :=

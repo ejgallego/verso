@@ -68,7 +68,32 @@ block_extension Block.bibliography (biblio : BibliographyData) where
               out.push {{<li><a href={{href}}>s!"Citation use {out.size + 1}"</a></li>}}
           else
             usageDetails.map fun use =>
-              {{<li><a href={{use.href}}>{{.text true use.summary}}</a></li>}}
+              let inlineMeta : Output.Html :=
+                let index? :=
+                  match use.index.map (·.trimAscii.toString) with
+                  | some i =>
+                    if i.isEmpty then Option.none else some i
+                  | Option.none => Option.none
+                let detailText? : Option String :=
+                  match use.kind, index? with
+                  | some .page, some i => some s!"Cites page {i}"
+                  | some k, some i => some s!"Cites {k.text} {i}"
+                  | some .page, Option.none => some "Cites a page"
+                  | some k, Option.none => some s!"Cites {k.text}"
+                  | Option.none, some i => some s!"Cites reference {i}"
+                  | Option.none, Option.none => Option.none
+                match detailText? with
+                | some detail =>
+                  {{<span class="bp_bibliography_use_inline_meta">
+                    {{.text true s!" - {detail}"}}
+                  </span>}}
+                | Option.none => .empty
+              {{<li class="bp_bibliography_use_item">
+                <a href={{use.href}} class="bp_bibliography_use_line">
+                  {{.text true use.summary}}
+                  {{inlineMeta}}
+                </a>
+              </li>}}
         let usageCount := if usageDetails.isEmpty then usageHrefs.size else usageDetails.size
         pure {{
           <li id={{itemId}}>

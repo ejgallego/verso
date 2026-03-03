@@ -77,7 +77,7 @@ $$`
 :::
 
 :::proof "lem:hullscalarprod" (leanok := true)
-This is a mild generalization of {citet polyhedron.without.rupert}[], Lemma 18.
+This is a mild generalization of {citet polyhedron.without.rupert (kind := lemma) (index := 18)}[].
 :::
 
 :::lemma_ "lem:leq1" (lean := "GlobalTheorem.rotation_partials_bounded") (parent := "global_derivative_bounds")
@@ -91,7 +91,7 @@ $$`
 :::
 
 :::proof "lem:leq1" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 19.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 19)}[].
 :::
 
 :::lemma_ "lem:n2" (lean := "GlobalTheorem.bounded_partials_control_difference") (parent := "global_derivative_bounds")
@@ -109,7 +109,7 @@ $$`
 :::
 
 :::proof "lem:n2" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 20.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 20)}[].
 :::
 
 :::lemma_ "lem:rotation_derivatives" (lean := "GlobalTheorem.rotation_partials_exist,GlobalTheorem.rotation_partials_exist_outer,GlobalTheorem.partials_helper0,GlobalTheorem.partials_helper1,GlobalTheorem.partials_helper2,GlobalTheorem.partials_helper3,GlobalTheorem.partials_helper4") (parent := "global_derivative_bounds")
@@ -151,5 +151,5 @@ $$`
 
 :::proof "thm:global" (leanok := true)
 Using {uses "lem:hullscalarprod"}[], {uses "lem:leq1"}[], {uses "lem:n2"}[], and {uses "lem:rotation_derivatives"}[].
-See {citet polyhedron.without.rupert}[], Section 4.2.
+See {citet polyhedron.without.rupert (kind := section) (index := "4.2")}[].
 :::

@@ -79,7 +79,7 @@ $`\|M(\theta, \phi) P\|^2=\|P\|^2-\langle X(\theta,\varphi),P\rangle^2`.
 :::
 
 :::proof "lem:pythagoras" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 21.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 21)}[].
 :::
 
 :::definition "def:spanp" (lean := "Local.Spanp") (parent := "local_linear_algebra")
@@ -103,7 +103,7 @@ Then at least one of the following inequalities fails:
 :::
 
 :::proof "lem:langles" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 23.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 23)}[].
 :::
 
 :::lemma_ "lem:scalarprodbars" (lean := "Local.abs_sub_inner_bars_le") (parent := "local_linear_algebra")
@@ -116,7 +116,7 @@ $$`
 :::
 
 :::proof "lem:scalarprodbars" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 24.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 24)}[].
 :::
 
 :::lemma_ "lem:absscalar" (lean := "Local.abs_sub_inner_le") (parent := "local_linear_algebra")
@@ -129,7 +129,7 @@ $$`
 :::
 
 :::proof "lem:absscalar" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 25.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 25)}[].
 :::
 
 :::lemma_ "lem:origintriangle" (lean := "Local.origin_in_triangle") (parent := "local_linear_algebra")
@@ -141,7 +141,7 @@ Then the origin lies strictly in triangle $`ABC`.
 :::
 
 :::proof "lem:origintriangle" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 26.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 26)}[].
 :::
 
 :::definition "def:eps-spanning" (lean := "Local.Triangle.Spanning") (parent := "local_spanning")
@@ -167,7 +167,7 @@ $`X(\theta, \phi) \in \spanp(P_1, P_2, P_3)`.
 
 :::proof "lem:eps-spanning" (leanok := true)
 Using {uses "lem:scalarprodbars"}[], {uses "lem:origintriangle"}[], and {uses "lem:sqrt2"}[].
-See {citet polyhedron.without.rupert}[], Lemma 28.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 28)}[].
 :::
 
 :::lemma_ "lem:inCirc" (lean := "Local.inCirc") (parent := "local_distance_sector")
@@ -187,7 +187,7 @@ $`\mathrm{Circ}_{\delta + \sqrt{5} \epsilon}(T)`.
 
 :::proof "lem:inCirc" (leanok := true)
 Using {uses "lem:sqrt2"}[] and {uses "lem:sqrt5"}[].
-See {citet polyhedron.without.rupert}[], Lemma 30.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 30)}[].
 :::
 
 :::definition "def:LMD" (lean := "Local.LocallyMaximallyDistant") (parent := "local_distance_sector")
@@ -215,7 +215,7 @@ Then $`Q` is $`\delta`-locally maximally distant with respect to $`\overline{Q}`
 :::
 
 :::proof "lem:LMD" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 32.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 32)}[].
 :::
 
 :::lemma_ "lem:coss" (lean := "Local.coss") (parent := "local_distance_sector")
@@ -234,7 +234,7 @@ $$`
 
 :::proof "lem:coss" (leanok := true)
 Using {uses "lem:absscalar"}[] and {uses "lem:sqrt2"}[].
-See {citet polyhedron.without.rupert}[], Lemma 33.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 33)}[].
 :::
 
 :::lemma_ "lem:congruent" (lean := "Local.congruent_iff_sym_matrix_eq") (parent := "local_congruence")
@@ -244,7 +244,7 @@ Then $`P_1, P_2, P_3` and $`Q_1, Q_2, Q_3` are congruent iff $`P^t P = Q^t Q`.
 :::
 
 :::proof "lem:congruent" (leanok := true)
-From {citet polyhedron.without.rupert}[], Lemma 35.
+From {citet polyhedron.without.rupert (kind := lemma) (index := 35)}[].
 :::
 
 :::theorem "thm:local" (lean := "Local.local_theorem") (parent := "local_main")
@@ -262,5 +262,5 @@ $$`
 :::proof "thm:local" (leanok := true)
 Using {uses "lem:langles"}[], {uses "lem:XPgt0"}[], {uses "lem:eps-spanning"}[],
 {uses "lem:MPgtr"}[], {uses "lem:inCirc"}[], {uses "lem:coss"}[], {uses "lem:LMD"}[], and {uses "lem:pythagoras"}[].
-See {citet polyhedron.without.rupert}[], Theorem 36.
+See {citet polyhedron.without.rupert (kind := theorem) (index := 36)}[].
 :::
