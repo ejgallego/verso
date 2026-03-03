@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/versoblueprint-refactor` split implemented and validated)
+Last updated: 2026-03-03 (`feat/versoblueprint-refactor` merged into `bp`)
 
 ## Active Worktrees
 
@@ -21,29 +21,6 @@ Last updated: 2026-03-03 (`feat/versoblueprint-refactor` split implemented and v
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/versoblueprint-refactor`
-
-- Status: `validated` (owner action: review and commit split changes)
-- Summary: extracted `VersoBlueprint.lean` informal logic into `Informal/Block` and `Informal/Uses`; kept root module as import aggregator.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
-- Branch: `feat/versoblueprint-refactor`
-- Base commit/branch:
-  - rebased onto `bp` at `1b49078e`
-- Key commit:
-  - `1b49078e` dashboard: mark blueprint-dataflow-audit merged
-- Validation status:
-  - branch sync validated:
-  - `git rebase bp` completed cleanly (no conflicts)
-  - split validation passed:
-  - `lake build VersoBlueprint`
-  - `lake exe noperthedron`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
-  - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint.lean`
-  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
-  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
 
 ### `feat/lsp-folding-chain`
 
@@ -81,6 +58,16 @@ Last updated: 2026-03-03 (`feat/versoblueprint-refactor` split implemented and v
 
 ## Recently Completed
 
+- Merged `feat/versoblueprint-refactor` into `bp` (`1b49078e -> e6708cbc`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Worktree still present (optional cleanup):
+  - `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
+- Branch still present (optional cleanup):
+  - `feat/versoblueprint-refactor`
 - Merged `feat/blueprint-dataflow-audit` into `bp` (`9fcd85b3 -> c136a915`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
