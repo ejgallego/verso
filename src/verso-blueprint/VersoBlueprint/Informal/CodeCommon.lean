@@ -73,33 +73,6 @@ register_option verso.blueprint.foldProofs : Bool := {
   descr := "Enable proof folding in VersoBlueprint Lean code blocks (hide text after `by` behind a toggle)"
 }
 
-structure CodeHoverDecl where
-  text : String
-  href : Option String := none
-
-structure CodeHoverData where
-  label : Data.Label
-  definedDefs : Array CodeHoverDecl := #[]
-  definedTheorems : Array CodeHoverDecl := #[]
-  sorries : Array CodeHoverDecl := #[]
-
-/--
-View model used by informal block rendering for one external Lean declaration.
-This extends resolved declaration metadata with optional in-site links.
--/
-structure ExternalHoverDecl where
-  decl : Data.ExternalRef
-  /-- Optional link to local docs/example declaration pages. -/
-  href : Option String := none
-
-structure ComputedData where
-  codeHref : Option String := none
-  codeHover : Option CodeHoverData := none
-  manualStatus : Bool := false
-  externalDecls : Array ExternalHoverDecl := #[]
-  hasStatementSorries : Bool := false
-  hasProofSorries : Bool := false
-
 def provedStatusHasSorry (status : Data.ProvedStatus) : Bool :=
   status.isIncomplete
 
@@ -123,54 +96,6 @@ def provedStatusContainsSorry (status : Data.ProvedStatus) : Bool :=
   match status with
   | .containsSorry _ => true
   | _ => false
-
-private def sorryStatusText (status : Data.ProvedStatus) : String :=
-  match status with
-  | .axiomLike => "axiom-like (no body)"
-  | .containsSorry _ => provedStatusLocationText status
-  | .proved => "unknown"
-
-def mkCodeHoverData
-    (label : Data.Label)
-    (definedDefs definedTheorems : Array CodeDeclData)
-    (hrefOf : Name → Option String) : CodeHoverData :=
-  let toDecl (d : CodeDeclData) : CodeHoverDecl :=
-    { text := toString d.name, href := hrefOf d.name }
-  let toSorry (d : CodeDeclData) : CodeHoverDecl :=
-    let kind := sorryStatusText d.provedStatus
-    { text := s!"{d.name} [{kind}]", href := hrefOf d.name }
-  {
-    label
-    definedDefs := definedDefs.map toDecl
-    definedTheorems := definedTheorems.map toDecl
-    sorries := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus)) |>.map toSorry
-  }
-
-def codeHoverText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
-  if definedDefs.isEmpty && definedTheorems.isEmpty then
-    s!"{label}"
-  else
-    let definedDefNames := definedDefs.map (·.name)
-    let definedTheoremNames := definedTheorems.map (·.name)
-    let defs :=
-      if definedDefNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedDefNames.toList.map toString)
-    let thms :=
-      if definedTheoremNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedTheoremNames.toList.map toString)
-    let sorryDecls := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus))
-    let sorries :=
-      if sorryDecls.isEmpty then
-        "none"
-      else
-        String.intercalate ", " <| sorryDecls.toList.map fun d =>
-          let kind := sorryStatusText d.provedStatus
-          s!"{d.name} [{kind}]"
-    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
 
 def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
   decls.qsort (fun a b =>
@@ -208,14 +133,5 @@ def mkCodePanel
       </details>
     </div>
   }}
-
-def codeHoverDeclItems (items : Array CodeHoverDecl) : Output.Html :=
-  open Verso.Output.Html in
-  if items.isEmpty then
-    {{<li class="bp_code_hover_none">"none"</li>}}
-  else
-    .seq <| items.map fun item =>
-      let txt := {{<code>{{.text true item.text}}</code>}}
-      {{<li>{{if let some href := item.href then {{<a href={{href}}>{{txt}}</a>}} else txt}}</li>}}
 
 end Informal
