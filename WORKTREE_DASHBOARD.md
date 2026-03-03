@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (validated `feat/blueprint-dataflow-audit`; snapshot-only external-ref status + `AtRegistration` suffix cleanup)
+Last updated: 2026-03-03 (merged `feat/blueprint-dataflow-audit` into `bp`; worktree/branch cleaned up)
 
 ## Active Worktrees
 
@@ -41,26 +41,6 @@ Last updated: 2026-03-03 (validated `feat/blueprint-dataflow-audit`; snapshot-on
   - `git status --short`
   - start by auditing imports and public surface in `src/verso-blueprint/VersoBlueprint.lean`
 
-### `feat/blueprint-dataflow-audit`
-
-- Status: `validated` (owner action: review/merge external-ref snapshot unification)
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-dataflow-audit`
-- Branch: `feat/blueprint-dataflow-audit`
-- Base commit/branch:
-  - branched from `bp` at `6dfda830`
-- Key commit:
-  - local edits only (not committed yet): external refs now snapshot full metadata/render at elaboration and consume renamed snapshot fields (`present`/`provedStatus`/`isTheoremLike`)
-- Validation status:
-  - `lake build VersoBlueprint` passed
-  - `lake env lean src/tests/Tests/BlueprintGraph.lean` passed
-  - `lake exe noperthedron` passed (expected existing warnings/sorries in project remain)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-dataflow-audit`
-  - `git status --short`
-  - inspect: `src/verso-blueprint/VersoBlueprint/Data.lean`
-  - inspect: `src/verso-blueprint/VersoBlueprint/Graph.lean`
-  - inspect: `src/verso-blueprint/VersoBlueprint/Lib/SummaryBuild.lean`
-
 ### `feat/lsp-folding-chain`
 
 - Status: `active` (owner action: rebase before integration)
@@ -97,6 +77,13 @@ Last updated: 2026-03-03 (validated `feat/blueprint-dataflow-audit`; snapshot-on
 
 ## Recently Completed
 
+- Merged `feat/blueprint-dataflow-audit` into `bp` (`9fcd85b3 -> c136a915`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintGraph.lean`
+  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-dataflow-audit`.
+- Deleted branch: `feat/blueprint-dataflow-audit`.
 - Merged `feat/docgen-direct-render` into `bp` (`460a78b3 -> 24974b73`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
