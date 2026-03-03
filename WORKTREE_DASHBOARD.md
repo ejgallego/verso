@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` finding #3 + `_informal` cleanup implemented and validated)
+Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` merged into `bp`, validated, and cleaned up)
 
 ## Active Worktrees
 
@@ -21,30 +21,6 @@ Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` finding #3 + 
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/blueprint-deadcode-audit-20260303`
-
-- Status: `ready-for-review` (owner action: triage dead-code findings and decide keep/remove/refactor)
-- Summary: exhaustive dead-code and use-once audit complete; finding #1 implemented with regression coverage, `_informal` removed, and finding #3 resolved by dropping dormant vendored `DeclHtmlInput` fields.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`
-- Branch: `feat/blueprint-deadcode-audit-20260303`
-- Base commit/branch:
-  - branched from `bp` at `e972f0ca`
-- Key commit:
-  - `e972f0ca` docs(dashboard): mark informal-code-audit merged and cleaned up
-- Validation status:
-  - bootstrap complete in this worktree:
-  - `lake exe cache get`
-  - `lake exe noperthedron`
-  - finding #1 / #3 validation:
-  - `lake build VersoBlueprint`
-  - `lake env lean src/tests/Tests/BlueprintGraph.lean`
-- Preview:
-  - `http://127.0.0.1:8095/` (session `98251`, serving `_out/html-multi`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`
-  - `git status --short`
-  - review audit notes and decide per-item action (delete, privatize, or co-locate)
 
 ### `feat/lsp-folding-chain`
 
@@ -82,6 +58,18 @@ Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` finding #3 + 
 
 ## Recently Completed
 
+- Merged `feat/blueprint-deadcode-audit-20260303` into `bp` (`e972f0ca -> 85cb522b`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintGraph.lean`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintGraph.lean`
+  - `lake exe noperthedron` (rerun after one transient clang frontend crash in `VersoBlueprint.Informal.CodeCommon:c.o`)
+- Stopped preview server session `98251` (`http://127.0.0.1:8095/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`.
+- Deleted branch: `feat/blueprint-deadcode-audit-20260303`.
 - Merged `feat/informal-code-audit` into `bp` (`66da6cd6 -> e5295f14`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
