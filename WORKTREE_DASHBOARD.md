@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` audit complete, ready for review)
+Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` finding #1 implemented and validated)
 
 ## Active Worktrees
 
@@ -25,7 +25,7 @@ Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` audit complet
 ### `feat/blueprint-deadcode-audit-20260303`
 
 - Status: `ready-for-review` (owner action: triage dead-code findings and decide keep/remove/refactor)
-- Summary: exhaustive dead-code and use-once audit complete; findings include unused API wrappers, an unused environment helper, and stale external-status fields in graph status plumbing.
+- Summary: exhaustive dead-code and use-once audit complete; finding #1 (stale external-status fields in graph status plumbing) has now been implemented with regression coverage.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`
 - Branch: `feat/blueprint-deadcode-audit-20260303`
 - Base commit/branch:
@@ -36,6 +36,9 @@ Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` audit complet
   - bootstrap complete in this worktree:
   - `lake exe cache get`
   - `lake exe noperthedron`
+  - finding #1 validation:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintGraph.lean`
 - Preview:
   - `http://127.0.0.1:8095/` (session `98251`, serving `_out/html-multi`)
 - Resume commands/notes:
