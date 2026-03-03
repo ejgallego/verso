@@ -11,6 +11,7 @@ import VersoManual
 import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
+import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.Resolve
@@ -19,16 +20,6 @@ namespace Informal.Commands
 
 open Lean Elab Command
 open Informal Data Environment
-
-structure PendingInformalItem where
-  label : Name
-  kind : String
-  leanObjects : List Name := []
-deriving Inhabited, FromJson, ToJson
-
-open Syntax in
-instance : Quote PendingInformalItem where
-  quote s := mkCApp ``PendingInformalItem.mk #[quote s.label, quote s.kind, quote s.leanObjects]
 
 structure SorryItem where
   label : Name
@@ -62,6 +53,8 @@ deriving Inhabited, FromJson, ToJson
 open Syntax in
 instance : Quote IndexItem where
   quote s := mkCApp ``IndexItem.mk #[quote s.label, quote s.kind, quote s.leanObjects]
+
+abbrev PendingInformalItem := IndexItem
 
 structure ParentTheoremGroup where
   parent : Name
@@ -133,8 +126,8 @@ private def collectSorries (label : Name) (kind : String) (decls : Array α)
     else
       acc
 
-private def kindNeedsInformalProof (kind : Data.NodeKind) : Bool :=
-  kind == Data.NodeKind.lemma || kind == Data.NodeKind.theorem || kind == Data.NodeKind.corollary
+private def mkIndexItem (label : Name) (kind : Data.NodeKind) (leanObjects : List Name := []) : IndexItem :=
+  { label, kind := toString kind, leanObjects }
 
 private def nodeLeanObjects (node : Data.Node) : List Name :=
   match node.code with
@@ -145,6 +138,15 @@ private def nodeLeanObjects (node : Data.Node) : List Name :=
 private def addParentTheoremLikeItem (groups : NameMap (List IndexItem)) (parent : Name) (item : IndexItem) :
     NameMap (List IndexItem) :=
   groups.insert parent (item :: groups.getD parent [])
+
+private def sorryRefsByLocation (status : Data.ProvedStatus) : Nat × Nat :=
+  match status with
+  | .containsSorry info =>
+    info.foldl (init := (0, 0)) fun (typeRefs, proofRefs) s =>
+      match s.location with
+      | .statement => (typeRefs + s.refs?.getD 0, proofRefs)
+      | .proof => (typeRefs, proofRefs + s.refs?.getD 0)
+  | _ => (0, 0)
 
 def buildSummary : CoreM Summary := do
   let env ← getEnv
@@ -195,7 +197,6 @@ def buildSummary : CoreM Summary := do
               }
           (decls.size, incompleteDecls.size, leanObjects, sorryDetails, missingDecls)
         | some (.literate code) =>
-          let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.LiterateThm) => acc.insert d.name
           let kind := toString node.kind
           let leanObjects := nodeLeanObjects node
           let leanDecls := code.definedDefs.size + code.definedTheorems.size
@@ -206,25 +207,25 @@ def buildSummary : CoreM Summary := do
             collectSorries label kind code.definedDefs
               (fun (d : Data.LiterateDef) => d.name)
               (fun (d : Data.LiterateDef) => d.provedStatus)
-              (fun (d : Data.LiterateDef) => theoremNames.contains d.name) ++
+              (fun _ => false) ++
             collectSorries label kind code.definedTheorems
               (fun (d : Data.LiterateThm) => d.name)
               (fun (d : Data.LiterateThm) => d.provedStatus)
-              (fun (d : Data.LiterateThm) => theoremNames.contains d.name)
+              (fun _ => true)
           (leanDecls, sorries, leanObjects, sorryDetails, ([] : List MissingLeanDeclItem))
       let pendingInformalEntries : List PendingInformalItem :=
-        if hasCode && ((kindNeedsInformalProof node.kind && !hasProof) || !hasStatement) then
-          { label, kind := toString node.kind, leanObjects } :: acc.pendingInformalEntries
+        if hasCode && ((node.kind.isTheoremLike && !hasProof) || !hasStatement) then
+          mkIndexItem label node.kind leanObjects :: acc.pendingInformalEntries
         else
           acc.pendingInformalEntries
       let definitionIndex : List IndexItem :=
         if node.kind == Data.NodeKind.definition then
-          { label, kind := toString node.kind, leanObjects } :: acc.definitionIndex
+          mkIndexItem label node.kind leanObjects :: acc.definitionIndex
         else
           acc.definitionIndex
       let theoremLikeIndex : List IndexItem :=
-        if kindNeedsInformalProof node.kind then
-          { label, kind := toString node.kind, leanObjects } :: acc.theoremLikeIndex
+        if node.kind.isTheoremLike then
+          mkIndexItem label node.kind leanObjects :: acc.theoremLikeIndex
         else
           acc.theoremLikeIndex
       let acc := { acc with
@@ -246,11 +247,11 @@ def buildSummary : CoreM Summary := do
       | Data.NodeKind.corollary => { acc with corollaries := acc.corollaries + 1 }
   let theoremLikeByParent : List ParentTheoremGroup :=
     let grouped := entries.foldl (init := ({} : NameMap (List IndexItem))) fun acc (label, node) =>
-      if kindNeedsInformalProof node.kind then
+      if node.kind.isTheoremLike then
         let leanObjects := nodeLeanObjects node
         match node.parent with
         | some parent =>
-          let item : IndexItem := { label, kind := toString node.kind, leanObjects }
+          let item : IndexItem := mkIndexItem label node.kind leanObjects
           addParentTheoremLikeItem acc parent item
         | none => acc
       else
@@ -306,17 +307,19 @@ block_extension Block.summary (summary : Summary) where
         let entryRef ← mkEntryRef label
         let codeHref := getCodeHref label
         let associatedDecls := !leanObjects.isEmpty
-        pure {{ <li>
-                  <span class="bp_summary_item_head">{{entryRef}}</span>
-                  <span class="bp_summary_item_meta">s!"({kind})"</span>
+        pure {{ <li class="bp_summary_item">
+                  <div class="bp_summary_item_top">
+                    <span class="bp_summary_item_head">{{entryRef}}</span>
+                    <span class="bp_summary_item_meta">s!"({kind})"</span>
+                  </div>
                   {{if associatedDecls then
                      {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems leanObjects}}</ul></details>}}
                     else
-                     {{<span></span>}}}}
+                     .empty}}
                   {{if let some href := codeHref then
-                     {{<div class="bp_summary_item_body">"Lean code: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
+                     {{<div class="bp_summary_item_actions">"Lean code: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
                     else
-                     {{<span></span>}}}}
+                     .empty}}
                 </li> }}
       let pendingInformalRows ←
         data.pendingInformalEntries.toArray.mapM fun item =>
@@ -329,40 +332,28 @@ block_extension Block.summary (summary : Summary) where
             match getDeclHref item.decl with
             | Option.some href => {{ <a href={{href}}> <code>s!"{item.decl}"</code> </a> }}
             | Option.none => {{ <code>s!"{item.decl}"</code> }}
-          let hasTypeGap := item.status.hasTypeGap
-          let hasProofGap := item.status.hasProofGap
-          let typeSorryRefs :=
+          let statusInfo ←
             match item.status with
-            | .containsSorry info =>
-              info.foldl (init := 0) fun acc s =>
-                if s.location == .statement then acc + s.refs?.getD 0 else acc
-            | _ => 0
-          let proofSorryRefs :=
-            match item.status with
-            | .containsSorry info =>
-              info.foldl (init := 0) fun acc s =>
-                if s.location == .proof then acc + s.refs?.getD 0 else acc
-            | _ => 0
-          let whereTxt :=
-            match item.status with
-            | .axiomLike => "axiom-like (no body)"
+            | .axiomLike =>
+              pure ("axiom-like", "Axiom-like declaration: ", "bp_summary_badge bp_summary_badge_warn",
+                provedStatusLocationText item.status, "n/a", 0, 0, 0)
             | .containsSorry _ =>
-              if hasTypeGap && hasProofGap then
-                "in statement and proof"
-              else if hasTypeGap then
-                "in statement"
-              else if hasProofGap then
-                "in proof"
-              else
-                "location unknown"
-            | .proved => "proved"
-          let sorryRefs := typeSorryRefs + proofSorryRefs
-          let refsTxt :=
-            match item.status with
-            | .axiomLike => "n/a"
-            | .containsSorry _ =>
-              if sorryRefs > 0 then toString sorryRefs else "unknown"
-            | .proved => "0"
+              let hasTypeGap := item.status.hasTypeGap
+              let hasProofGap := item.status.hasProofGap
+              let (typeSorryRefs, proofSorryRefs) := sorryRefsByLocation item.status
+              let sorryRefs := typeSorryRefs + proofSorryRefs
+              let refsTxt := if sorryRefs > 0 then toString sorryRefs else "unknown"
+              let whereTxt :=
+                if hasTypeGap && hasProofGap then
+                  "in statement and proof"
+                else
+                  provedStatusLocationText item.status
+              pure ("contains sorry", "Declaration with sorry: ", "bp_summary_badge bp_summary_badge_warn",
+                whereTxt, refsTxt, typeSorryRefs, proofSorryRefs, sorryRefs)
+            | .proved =>
+              HtmlT.logError s!"Unexpected proved status in summary sorry details for {item.decl}"
+              pure ("proved", "Declaration: ", "bp_summary_badge", "proved", "0", 0, 0, 0)
+          let (statusLabel, declPrefix, badgeClass, whereTxt, refsTxt, typeSorryRefs, proofSorryRefs, sorryRefs) := statusInfo
           let sorryLinks : Array Output.Html :=
             match codeHref with
             | Option.none => #[]
@@ -390,29 +381,21 @@ block_extension Block.summary (summary : Summary) where
                 | .proved => #[]
               else
                 links
-          let statusLabel :=
-            match item.status with
-            | .axiomLike => "axiom-like"
-            | .containsSorry _ => "contains sorry"
-            | .proved => "proved"
-          let declPrefix :=
-            match item.status with
-            | .axiomLike => "Axiom-like declaration: "
-            | .containsSorry _ => "Declaration with sorry: "
-            | .proved => "Declaration: "
-          pure {{ <li>
-                    <span class="bp_summary_item_head">{{entryRef}}</span>
-                    <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+          pure {{ <li class="bp_summary_item">
+                    <div class="bp_summary_item_top">
+                      <span class="bp_summary_item_head">{{entryRef}}</span>
+                      <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+                    </div>
                     <div class="bp_summary_item_body">
                       {{.text true declPrefix}} {{declLink}} " "
-                      <span class="bp_summary_badge">
+                      <span class={{badgeClass}}>
                         s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {statusLabel}; {whereTxt}; refs: {refsTxt}]"
                       </span>
                     </div>
                     {{if Array.isEmpty sorryLinks then
-                       {{<span></span>}}
+                       .empty
                       else
-                       {{<div class="bp_summary_item_body">"Jump: " {{(sorryLinks.toList.intersperse {{<span>" | "</span>}}).toArray}}</div>}}}}
+                       {{<div class="bp_summary_item_actions">"Jump: " {{(sorryLinks.toList.intersperse {{<span class="bp_summary_sep">" | "</span>}}).toArray}}</div>}}}}
                   </li> }}
       let missingRows ←
         data.missingLeanDecls.toArray.mapM fun item => do
@@ -427,17 +410,19 @@ block_extension Block.summary (summary : Summary) where
               canonicalNode
             else
               {{ <span> <code>s!"{item.written}"</code> " (resolved as " {{canonicalNode}} ")" </span> }}
-          pure {{ <li>
-                    <span class="bp_summary_item_head">{{entryRef}}</span>
-                    <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+          pure {{ <li class="bp_summary_item">
+                    <div class="bp_summary_item_top">
+                      <span class="bp_summary_item_head">{{entryRef}}</span>
+                      <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+                    </div>
                     <div class="bp_summary_item_body">
                       "Missing external Lean declaration: " {{declNode}} " "
-                      <span class="bp_summary_badge">"[missing declaration]"</span>
+                      <span class="bp_summary_badge bp_summary_badge_error">"[missing declaration]"</span>
                     </div>
                     {{if let some href := codeHref then
-                       {{<div class="bp_summary_item_body">"Jump: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
+                       {{<div class="bp_summary_item_actions">"Jump: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
                       else
-                       {{<span></span>}}}}
+                       .empty}}
                   </li> }}
       let definitionRows ←
         data.definitionIndex.toArray.mapM fun item =>
@@ -458,6 +443,8 @@ block_extension Block.summary (summary : Summary) where
             </details>
           }}
       return {{
+        <style>{{.text false summaryCss}}</style>
+        <script>{{.text false openTargetDetailsJs}}</script>
         <div class="bp_summary">
           <details class="bp_summary_section" open>
             <summary>s!"Blueprint DB entries ({data.totalEntries})"</summary>
@@ -495,8 +482,8 @@ block_extension Block.summary (summary : Summary) where
             <div class="bp_summary_grid">
               <div class="bp_summary_card"><span class="bp_summary_label">"Lean definitions/theorems"</span><span class="bp_summary_value">s!"{data.leanDecls}"</span></div>
               <div class="bp_summary_card"><span class="bp_summary_label">"Entries with missing informal statement/proof"</span><span class="bp_summary_value">s!"{data.pendingInformalEntries.length}"</span></div>
-              <div class="bp_summary_card bp_summary_placeholder"><span class="bp_summary_label">"Missing external Lean declarations"</span><span class="bp_summary_value">s!"{data.missingLeanDecls.length}"</span></div>
-              <div class="bp_summary_card bp_summary_placeholder"><span class="bp_summary_label">"Incomplete Lean declarations"</span><span class="bp_summary_value">s!"{data.sorries}"</span></div>
+              <div class="bp_summary_card bp_summary_card_warn"><span class="bp_summary_label">"Missing external Lean declarations"</span><span class="bp_summary_value">s!"{data.missingLeanDecls.length}"</span></div>
+              <div class="bp_summary_card bp_summary_card_warn"><span class="bp_summary_label">"Incomplete Lean declarations"</span><span class="bp_summary_value">s!"{data.sorries}"</span></div>
             </div>
             <details class="bp_summary_subsection">
               <summary>s!"Lean code with missing informal statement/proof ({data.pendingInformalEntries.length})"</summary>
@@ -504,13 +491,13 @@ block_extension Block.summary (summary : Summary) where
                 {{if pendingInformalRows.isEmpty then {{<li class="bp_summary_empty">"No entries missing informal statement/proof."</li>}} else pendingInformalRows}}
               </ul>
             </details>
-            <details class="bp_summary_subsection bp_summary_placeholder">
+            <details class="bp_summary_subsection bp_summary_subsection_warn">
               <summary>s!"Missing external Lean declarations ({data.missingLeanDecls.length})"</summary>
               <ul class="bp_summary_list">
                 {{if missingRows.isEmpty then {{<li class="bp_summary_empty">"No missing external Lean declarations."</li>}} else missingRows}}
               </ul>
             </details>
-            <details class="bp_summary_subsection bp_summary_placeholder">
+            <details class="bp_summary_subsection bp_summary_subsection_warn">
               <summary>s!"Incomplete details ({data.sorryDetails.length})"</summary>
               <ul class="bp_summary_list">
                 {{if sorryRows.isEmpty then {{<li class="bp_summary_empty">"No incomplete declarations detected."</li>}} else sorryRows}}
@@ -519,8 +506,8 @@ block_extension Block.summary (summary : Summary) where
           </details>
         </div>
       }}
-  extraCss := singleton ⟨summaryCss⟩
-  extraJs := singleton ⟨openTargetDetailsJs⟩
+  extraCss := ([] : List String)
+  extraJs := ([] : List String)
 
 open Verso Doc Elab Syntax in
 def mkSummaryPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do

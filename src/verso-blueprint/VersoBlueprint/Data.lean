@@ -53,6 +53,10 @@ instance : ToString NodeKind where
     | .theorem => "Theorem"
     | .corollary => "Corollary"
 
+def NodeKind.isTheoremLike : NodeKind → Bool
+  | .lemma | .theorem | .corollary => true
+  | .definition => false
+
 open Syntax in
 instance : Quote NodeKind where
   quote

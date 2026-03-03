@@ -107,6 +107,8 @@ block_extension Block.bibliography (biblio : BibliographyData) where
           </li>
         }}
       pure {{
+        <style>{{.text false bibliographyCss}}</style>
+        <script>{{.text false openTargetDetailsJs}}</script>
         <div class="bp_bibliography">
           <details class="bp_bibliography_section" open>
             <summary>s!"Bibliography ({entries.size})"</summary>
@@ -116,8 +118,8 @@ block_extension Block.bibliography (biblio : BibliographyData) where
           </details>
         </div>
       }}
-  extraCss := singleton ⟨bibliographyCss⟩
-  extraJs := singleton ⟨openTargetDetailsJs⟩
+  extraCss := ([] : List String)
+  extraJs := ([] : List String)
 
 open Verso Doc Elab Syntax in
 def mkBibliographyPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do
