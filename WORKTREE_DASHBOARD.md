@@ -1,18 +1,18 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (external-def-display validated and ready for merge on `bp`)
+Last updated: 2026-03-03 (external-def-display merged into `bp`)
 
 ## Active Worktrees
 
 ### `bp` (root checkout)
 
-- Status: `active` (owner action: merge `feat/external-def-display`)
+- Status: `active` (owner action: monitor follow-up builder-boundary work)
 - Path: `/home/egallego/lean/verso-blueprint`
 - Branch: `bp`
 - Base commit/branch:
   - local integration branch
 - Key commit:
-  - `61a5f0a7` docs: add strict worktree scope discipline
+  - `fd974295` refactor: extract informal code renderer and refresh roadmap
 - Validation status:
   - commands-path validation passed before merge:
   - `lake build VersoBlueprint.Commands.Common VersoBlueprint.Commands.Graph VersoBlueprint.Commands.Summary VersoBlueprint.Commands.Bibliography VersoBlueprint`
@@ -39,13 +39,13 @@ Last updated: 2026-03-03 (external-def-display validated and ready for merge on 
 
 ### `feat/external-def-display`
 
-- Status: `ready-for-review` (owner action: merge/cherry-pick to `bp`)
+- Status: `merged` (owner action: optional worktree cleanup when no longer needed)
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-display`
 - Branch: `feat/external-def-display`
 - Base commit/branch:
   - aligned with `bp` at `2d68ac9a`
 - Key commit:
-  - `74a46fb7` refactor: extract informal code renderer and refresh roadmap
+  - `fd974295` refactor: extract informal code renderer and refresh roadmap
 - Validation status:
   - `lake build VersoBlueprint` (pass)
   - `lake exe noperthedron` (pass, warnings only)
@@ -88,6 +88,7 @@ Last updated: 2026-03-03 (external-def-display validated and ready for merge on 
 
 ## Recently Completed
 
+- Merged `feat/external-def-display` into `bp` (`61a5f0a7 -> fd974295`, fast-forward).
 - Merged `feat/commands-path-refactor` into `bp` (`a3381ff3 -> 2d68ac9a`, fast-forward).
 - Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`.
 - Deleted branch: `feat/commands-path-refactor`.
