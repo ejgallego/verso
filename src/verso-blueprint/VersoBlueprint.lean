@@ -18,6 +18,7 @@ import VersoBlueprint.Environment
 import VersoBlueprint.Attribute
 import VersoBlueprint.Cite
 import VersoBlueprint.Commands
+import VersoBlueprint.Commands.RenderGraph
 import VersoBlueprint.Commands.ShowGraph
 import VersoBlueprint.Commands.ShowSummary
 import VersoBlueprint.Commands.ShowBibliography
