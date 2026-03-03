@@ -19,7 +19,7 @@ Last updated: 2026-03-03 (commands path refactor progress + validation)
 
 - `feat/commands-path-refactor`
   - Path: `/home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`
-  - HEAD: `1b0d6902`
+  - HEAD: in progress (`git log --oneline -1`)
   - Status: active; command-path modularization in progress (dirty worktree, expected)
   - Base branch: `bp`
   - Key commits:
@@ -27,21 +27,21 @@ Last updated: 2026-03-03 (commands path refactor progress + validation)
     - `b0cb3f80` refactor: extract shared external node facts adapter
     - `b88ef562` refactor: move summary model and builder to lib module
     - `1b0d6902` refactor: extract graph part command module
+    - `f6a5de69` refactor: split summary and bibliography command modules
+    - `8aa11a90` refactor: extract shared hover preview rendering helpers
   - In-progress changes:
-    - add `src/verso-blueprint/VersoBlueprint/Commands/ShowSummary.lean`
-    - add `src/verso-blueprint/VersoBlueprint/Commands/ShowBibliography.lean`
-    - add `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`
-    - move summary/bibliography part builders and command registrations out of `src/verso-blueprint/VersoBlueprint/Commands.lean`
-    - route graph and summary preview markup through shared hover-render helpers
-    - wire top-level imports in `src/verso-blueprint/VersoBlueprint.lean`
-    - update `doc/CommandsPathRefactorNotes.md` with checkpoint log
+    - add `src/verso-blueprint/VersoBlueprint/Lib/PreviewSource.lean`
+    - route traversal preview lookup in `Commands.lean` through `PreviewSource`
+    - route widget preview acquisition/rendering in `Widget.lean` through `PreviewSource`
+    - expose `renderPreviewBlocksHtml` in `PreviewRender.lean` for shared rendering path
+    - update `doc/CommandsPathRefactorNotes.md` with new adapter checkpoint
   - Validation:
-    - `lake build VersoBlueprint.Lib.HoverRender VersoBlueprint.Commands VersoBlueprint.Commands.ShowGraph VersoBlueprint.Commands.ShowSummary VersoBlueprint.Commands.ShowBibliography VersoBlueprint` passed on 2026-03-03
+    - `lake build VersoBlueprint.Lib.PreviewLookup VersoBlueprint.PreviewRender VersoBlueprint.Lib.PreviewSource VersoBlueprint.Commands VersoBlueprint.Widget VersoBlueprint` passed on 2026-03-03
     - `lake exe noperthedron` passed on 2026-03-03 (warnings only)
   - Resume notes:
     - `cd /home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`
     - `git status --short`
-    - next target: extend hover-render API to widget path and continue renderer/data split in `Commands.lean`
+    - next target: continue renderer/data split in `Commands.lean` by extracting graph/summary renderer-heavy helpers
 
 - `feat/lsp-folding-chain`
   - Path: `/home/egallego/lean/verso-blueprint/.worktrees/lsp-folding-chain`

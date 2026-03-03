@@ -72,11 +72,20 @@ private unsafe def getExtensionImpls : Lean.Elab.Term.TermElabM Verso.Genre.Manu
   let implExpr ← Lean.Elab.Term.elabTermAndSynthesize (← `(extension_impls%)) (some tyExpr)
   Lean.Meta.evalExpr Verso.Genre.Manual.ExtensionImpls tyExpr implExpr
 
+private unsafe def renderPreviewBlocksHtmlUnsafe
+    (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) : Lean.Elab.Term.TermElabM Verso.Output.Html := do
+  let impls ← getExtensionImpls
+  monadLift <| renderManualBlocksHtml blocks impls
+
+/-- Render manual preview blocks to HTML using the manual renderer. -/
+@[implemented_by renderPreviewBlocksHtmlUnsafe]
+opaque renderPreviewBlocksHtml
+    (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) : Lean.Elab.Term.TermElabM Verso.Output.Html
+
 /-- Render cached elaborated statement blocks to HTML using the manual renderer. -/
 private unsafe def renderStatementElabHtmlUnsafe (stxs : Array Lean.Syntax) : Lean.Elab.Term.TermElabM Verso.Output.Html := do
   let blocks ← evalElaboratedBlocks stxs
-  let impls ← getExtensionImpls
-  monadLift <| renderManualBlocksHtml blocks impls
+  renderPreviewBlocksHtml blocks
 
 /-- Render cached elaborated statement blocks to HTML using the manual renderer. -/
 @[implemented_by renderStatementElabHtmlUnsafe]

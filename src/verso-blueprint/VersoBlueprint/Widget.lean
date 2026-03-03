@@ -10,7 +10,7 @@ import ProofWidgets.Component.HtmlDisplay
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
 import VersoBlueprint.Graph
-import VersoBlueprint.PreviewRender
+import VersoBlueprint.Lib.PreviewSource
 
 open Lean Elab Command
 open ProofWidgets
@@ -269,12 +269,13 @@ def Graph.toDot (g : Graph) (resolveGroupTitle : Name → Option String := fun _
 open Informal Data Environment
 structure BuildResult where
   dot : String
-  statementElab : Array Syntax
+  statementPreview? : Option Informal.PreviewSource.Payload := none
   texPrelude : String
 
 def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResult := do
-  let state := informalExt.getState (← getEnv)
-  let some root := state.data.get? label
+  let env ← getEnv
+  let state := informalExt.getState env
+  let some _root := state.data.get? label
     | do
       let available :=
         state.data.toArray
@@ -284,7 +285,8 @@ def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResul
   let graph : Graph := Informal.Graph.build state #[label]
   let dot := graph.toDot (fun group => state.groups.get? group)
   let texPrelude ← Environment.getTexPrelude
-  pure { dot, statementElab := (root.statement.map (·.elabStx)).getD #[], texPrelude }
+  let statementPreview? := Informal.PreviewSource.fromEnvironment? env label
+  pure { dot, statementPreview?, texPrelude }
 
 open Server in
 def updatePanel (title label : String) (statementHtml : Json) (dot texPrelude : String) stx :=
@@ -296,7 +298,7 @@ def activateForLabelDoc (label : Name) (stx : Syntax) : Verso.Doc.Elab.DocElabM 
   if stx.getPos?.isNone then
     return ()
   let out ← buildFor label
-  let statementHtml := toJson (← Informal.renderStatementElabHtml out.statementElab)
+  let statementHtml := toJson (← Informal.PreviewSource.renderWidgetHtml out.statementPreview?)
   (monadLift (updatePanel s!"BluePrint widget: {label}" label.toString statementHtml out.dot out.texPrelude stx) : Verso.Doc.Elab.DocElabM Unit)
 
 show_panel_widgets [local blueprintWidget]
@@ -309,7 +311,7 @@ unsafe def elabGraph : CommandElab := fun
   | stx@`(#show_graph $label:str) => do
     let target := Name.mkSimple label.getString
     let out ← liftCoreM <| buildFor target
-    let statementHtml := toJson (← Lean.Elab.Command.liftTermElabM <| Informal.renderStatementElabHtml out.statementElab)
+    let statementHtml := toJson (← Lean.Elab.Command.liftTermElabM <| Informal.PreviewSource.renderWidgetHtml out.statementPreview?)
     liftCoreM <| updatePanel s!"BluePrint widget: {target}" label.getString statementHtml out.dot out.texPrelude stx
   | _ => throwUnsupportedSyntax
 

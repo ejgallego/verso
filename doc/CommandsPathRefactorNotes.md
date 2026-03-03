@@ -42,18 +42,25 @@ Completed extraction checkpoints (behavior-preserving):
    - graph preview template/store/panel markup now routed through `HoverRender`
    - summary preview tooltip wrapper now routed through `HoverRender`
 
+7. (working tree, validated):
+   - added `Lib/PreviewSource.lean` as a shared preview adapter boundary
+   - traversal path now consumes previews via `PreviewSource.traversalBlocks?`
+   - widget path now consumes previews via `PreviewSource.fromEnvironment?` + `PreviewSource.renderWidgetHtml`
+   - `PreviewRender` now exposes `renderPreviewBlocksHtml` so adapter consumers can render manual preview blocks directly
+
 Current boundary status:
 
 - `Environment.State.data` remains the single semantic source for graph/summary derivation.
 - Shared derivation utilities now live in `Lib/`.
 - Graph/summary/bibliography command paths are split out of monolithic `Commands.lean`.
 - Shared hover/preview HTML contracts now live in `Lib/HoverRender.lean`.
+- Traversal + widget preview acquisition now share a common adapter contract in `Lib/PreviewSource.lean`.
 - `Commands.lean` still owns block renderers and large JS/CSS payloads (next modularization pressure point).
 
 Immediate next step:
 
-1. Extend the hover API so traversal and widget channels can share the same preview contract (adapter boundary).
-2. Continue command modularization by separating renderer-heavy sections from registration/data-model definitions where safe.
+1. Continue command modularization by separating renderer-heavy sections from registration/data-model definitions where safe.
+2. Move graph/summary HTML renderer-specific helpers out of `Commands.lean` into dedicated modules.
 
 ## 1) Current Data Model by Phase
 
