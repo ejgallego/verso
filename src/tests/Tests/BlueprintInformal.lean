@@ -42,6 +42,36 @@ Simple body.
 :::
 :::::::
 
+/--
+error: Label «conflict.ext.inline» has both '(lean := ...)' and an associated Lean code block; preferring inline code
+-/
+#guard_msgs in
+#docs (Manual) conflictExternalThenInline "Conflict External Then Inline" :=
+:::::::
+:::definition "conflict.ext.inline" (lean := "Nat.succ")
+Simple body.
+:::
+
+```lean "conflict.ext.inline"
+def conflictExternalThenInlineValue : Nat := Nat.succ 0
+```
+:::::::
+
+/--
+error: Label «conflict.inline.ext» has both an associated Lean code block and '(lean := ...)'; preferring inline code
+-/
+#guard_msgs in
+#docs (Manual) conflictInlineThenExternal "Conflict Inline Then External" :=
+:::::::
+```lean "conflict.inline.ext"
+def conflictInlineThenExternalValue : Nat := Nat.succ 1
+```
+
+:::definition "conflict.inline.ext" (lean := "Nat.succ")
+Simple body.
+:::
+:::::::
+
 #docs (Manual) groupHeaderDoc "Group Header" :=
 :::::::
 :::group "grp.quoted"

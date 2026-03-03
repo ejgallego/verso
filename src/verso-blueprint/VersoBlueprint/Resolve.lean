@@ -16,7 +16,14 @@ def informalCodeDomainName : Name := Name.mkSimple "Informal.Block.informalCode"
 def informalPreviewDomainName : Name := Name.mkSimple "Informal.Block.informalPreview"
 def bibliographyDomainName : Name := Name.mkSimple "Informal.Block.bpCitations"
 def citationUsageDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.usages"
-def exampleDomainName : Name := ``Verso.Genre.Manual.example
+/--
+Domain that stores declaration anchors for inline Lean code.
+
+Blueprint code blocks currently elaborate via `Verso.Genre.Manual.InlineLean.Block.lean`,
+which registers defined declarations in the Manual `example` domain through
+`Verso.Genre.Manual.saveExampleDefs`. We intentionally reuse that index here.
+-/
+def inlineLeanDeclDomainName : Name := ``Verso.Genre.Manual.example
 
 def resolveDomainHref? (s : Verso.Genre.Manual.TraverseState) (domain : Name) (label : String) :
     Option String :=
@@ -33,11 +40,11 @@ def resolveDomainHrefs (s : Verso.Genre.Manual.TraverseState) (domain : Name) (l
       (s.externalTags[id]?).map (·.relativeLink)
     hrefs.qsort (fun a b => a < b)
 
-def resolveExampleDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : Name) : Option String :=
-  match resolveDomainHref? s exampleDomainName decl.toString with
+def resolveInlineLeanDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : Name) : Option String :=
+  match resolveDomainHref? s inlineLeanDeclDomainName decl.toString with
   | some href => some href
   | none =>
-    match s.domains.get? exampleDomainName with
+    match s.domains.get? inlineLeanDeclDomainName with
     | none => none
     | some dom =>
       let pref := decl.toString ++ " (in "
@@ -47,7 +54,7 @@ def resolveExampleDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : Name)
         else
           acc
       if cands.size = 1 then
-        resolveDomainHref? s exampleDomainName cands[0]!
+        resolveDomainHref? s inlineLeanDeclDomainName cands[0]!
       else
         none
 

@@ -18,32 +18,12 @@ def renderErrorMessage? : Data.ExternalDeclRender → Option String
   | .ok _ => none
   | .error error => some error.message
 
-inductive BlockCodeStatus where
-  | none
-  | userOk
-  | external (decls : Array Data.ExternalRef)
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
-def BlockCodeStatus.ofCodeRef (codeRef? : Option Data.CodeRef) : BlockCodeStatus :=
-  match codeRef? with
-  | some .userOk => .userOk
-  | some (.external decls) => .external decls
-  | _ => .none
-
-structure BlockData where
-  kind : Data.NodeKind
-  label : Data.Label
-  count : Nat
-  isProof : Bool := false
-  codeStatus : BlockCodeStatus := .none
-deriving FromJson, ToJson, Quote
-
 structure CodeDeclData where
   name : Name
   commandIndex : Nat := 0
   weight : Nat := 1
   provedStatus : Data.ProvedStatus := .proved
-deriving FromJson, ToJson, Quote
+deriving Repr, Inhabited, FromJson, ToJson, Quote
 
 def CodeDeclData.ofLiterateDef (d : Data.LiterateDef) : CodeDeclData :=
   {
@@ -61,11 +41,62 @@ def CodeDeclData.ofLiterateThm (d : Data.LiterateThm) : CodeDeclData :=
     provedStatus := d.provedStatus
   }
 
-structure CodeBlockData where
+structure InlineCodeData where
   label : Data.Label
   definedDefs : Array CodeDeclData := #[]
   definedTheorems : Array CodeDeclData := #[]
   foldProofs : Bool := true
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+/--
+Resolved block-level code semantics used by informal block rendering.
+
+This unifies directive hints and inline code payloads (`InlineCodeData`)
+for the HTML phase:
+- `inline` takes precedence whenever code-block data exists,
+- otherwise we fall back to optional directive hints (`userOk` / `external`).
+-/
+inductive BlockCodeData where
+  /-- User asserted completion with `(leanok := true)`. -/
+  | userOk
+  /-- Inline/literate code block associated with this label. -/
+  | inline (code : InlineCodeData)
+  /-- External Lean declarations associated with this label. -/
+  | external (decls : Array Data.ExternalRef)
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+/-- Projection from environment-level `Data.CodeRef` into JSON-safe block payload hints. -/
+def BlockCodeData.ofCodeRefHint (codeRef? : Option Data.CodeRef) : Option BlockCodeData :=
+  match codeRef? with
+  | some .userOk => some .userOk
+  | some (.external decls) => some (.external decls)
+  | _ => none
+
+/-- Resolve inline precedence at render time by combining optional hint + inline payload. -/
+def BlockCodeData.ofHintAndInline (hint? : Option BlockCodeData) (inline? : Option InlineCodeData)
+    : Option BlockCodeData :=
+  match inline? with
+  | some code => some (.inline code)
+  | Option.none => hint?
+
+def BlockCodeData.inlineData? : BlockCodeData → Option InlineCodeData
+  | .inline code => some code
+  | _ => Option.none
+
+def BlockCodeData.externalDecls : BlockCodeData → Array Data.ExternalRef
+  | .external decls => decls
+  | _ => #[]
+
+def BlockCodeData.isUserOk : BlockCodeData → Bool
+  | .userOk => true
+  | _ => false
+
+structure BlockData where
+  kind : Data.NodeKind
+  label : Data.Label
+  count : Nat
+  isProof : Bool := false
+  codeData : Option BlockCodeData := none
 deriving FromJson, ToJson, Quote
 
 register_option verso.blueprint.foldProofs : Bool := {
