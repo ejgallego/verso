@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` rebased on `bp`, validated, and marked ready-for-review)
+Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` merged into `bp`, validated, preview stopped, and cleaned up)
 
 ## Active Worktrees
 
@@ -21,25 +21,6 @@ Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` rebased on `bp`
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/commands-summary-audit-20260304`
-
-- Status: `ready-for-review` (owner action: merge into `bp`)
-- Summary: completed `Commands/Summary` audit/refactor: scoped summary+bibliography assets, deduped theorem/status helpers, simplified status rendering invariants, and refreshed summary UI/CSS structure.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/commands-summary-audit-20260304`
-- Branch: `feat/commands-summary-audit-20260304`
-- Base commit/branch:
-  - merge-base with `bp`: `646e0ea1` (`0` behind / `1` ahead)
-- Key commit:
-  - `062d9f26` refactor(summary): dedupe status logic and scope assets
-- Validation status:
-  - rebased: `git rebase bp`
-  - `lake exe noperthedron`
-  - preview server: `http://127.0.0.1:8098/` (session `4519`, active)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/commands-summary-audit-20260304`
-  - `git show --stat --oneline HEAD`
-  - merge target is `bp` (fast-forward not expected; normal merge/cherry-pick flow)
 
 ### `feat/lsp-folding-chain`
 
@@ -77,6 +58,16 @@ Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` rebased on `bp`
 
 ## Recently Completed
 
+- Merged `feat/commands-summary-audit-20260304` into `bp` (`646e0ea1 -> 63449f96`, merge commit).
+- Feature branch key commit:
+  - `062d9f26` refactor(summary): dedupe status logic and scope assets
+- Validation on branch before merge:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server session `4519` (`http://127.0.0.1:8098/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/commands-summary-audit-20260304`.
+- Deleted branch: `feat/commands-summary-audit-20260304`.
 - Merged `feat/external-lean-html-audit-20260303` into `bp` (`8b560e02 -> 7c2c3b06`, fast-forward).
 - Follow-up on `bp`: `8df33b93` (`test(docgen): assert payload via rendered string length`).
 - Validation on `bp` after merge:
