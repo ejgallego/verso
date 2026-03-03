@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean
 import Lean.Data.Json
+import VersoBlueprint.DocGenNameRender
 
 namespace Informal.Data
 
@@ -125,6 +126,19 @@ def ProvedStatus.ofRefCounts (typeRefs proofRefs : Nat) : ProvedStatus :=
     (if typeRefs > 0 then some typeRefs else none)
     (if proofRefs > 0 then some proofRefs else none)
 
+/--
+Conservative merge for duplicated status snapshots:
+- `axiomLike` dominates,
+- otherwise keep any observed statement/proof incompleteness.
+-/
+def ProvedStatus.mergeConservative (a b : ProvedStatus) : ProvedStatus :=
+  if a.isAxiomLike || b.isAxiomLike then
+    .axiomLike
+  else
+    ProvedStatus.ofSorryFlags
+      (a.hasTypeGap || b.hasTypeGap)
+      (a.hasProofGap || b.hasProofGap)
+
 /-- Information about a code block, including Lean-level analysis -/
 structure LiterateDef where
   name : Name
@@ -186,6 +200,16 @@ Proof/body-side incompleteness for blueprint status checks.
 def ConstantInfo.blueprintHasProofSorry (info : ConstantInfo) (allowOpaque : Bool := false) : Bool :=
   (ConstantInfo.blueprintProvedStatus info (allowOpaque := allowOpaque)).hasProofGap
 
+def ConstantInfo.blueprintKindText : ConstantInfo → String
+  | .defnInfo _ => "definition"
+  | .thmInfo _ => "theorem"
+  | .axiomInfo _ => "axiom"
+  | .opaqueInfo _ => "opaque"
+  | .quotInfo _ => "quotient"
+  | .inductInfo _ => "inductive"
+  | .ctorInfo _ => "constructor"
+  | .recInfo _ => "recursor"
+
 structure Code where
   stx : Syntax
   definedDefs : Array LiterateDef := #[]
@@ -196,6 +220,56 @@ inductive ExternalOrigin where
   | directiveLean
   | blueprintAttr
 deriving Repr, Inhabited, DecidableEq
+
+inductive ExternalDeclProvenance where
+  | inWorkspace (moduleName : Name) (sourcePath : String)
+  | outWorkspace (moduleName : Name) (sourcePath? : Option String := none)
+  | unknown
+deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
+
+open Syntax in
+instance : Quote ExternalDeclProvenance where
+  quote
+    | .inWorkspace moduleName sourcePath =>
+      mkCApp ``ExternalDeclProvenance.inWorkspace #[quote moduleName, quote sourcePath]
+    | .outWorkspace moduleName sourcePath? =>
+      mkCApp ``ExternalDeclProvenance.outWorkspace #[quote moduleName, quote sourcePath?]
+    | .unknown =>
+      mkCApp ``ExternalDeclProvenance.unknown #[]
+
+def ExternalDeclProvenance.moduleName? : ExternalDeclProvenance → Option Name
+  | .inWorkspace moduleName _ => some moduleName
+  | .outWorkspace moduleName _ => some moduleName
+  | .unknown => none
+
+def ExternalDeclProvenance.sourcePath? : ExternalDeclProvenance → Option String
+  | .inWorkspace _ sourcePath => some sourcePath
+  | .outWorkspace _ sourcePath? => sourcePath?
+  | .unknown => none
+
+def ExternalDeclProvenance.label : ExternalDeclProvenance → String
+  | .inWorkspace _ _ => "in workspace"
+  | .outWorkspace _ _ => "out workspace"
+  | .unknown => "unknown provenance"
+
+inductive ExternalDeclLookupError where
+  | notPresentAtRegistration
+  | notFoundInEnvironment
+deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
+
+open Syntax in
+instance : Quote ExternalDeclLookupError where
+  quote
+    | .notPresentAtRegistration =>
+      mkCApp ``ExternalDeclLookupError.notPresentAtRegistration #[]
+    | .notFoundInEnvironment =>
+      mkCApp ``ExternalDeclLookupError.notFoundInEnvironment #[]
+
+def ExternalDeclLookupError.message : ExternalDeclLookupError → String
+  | .notPresentAtRegistration => "name was not present during directive/code-block registration"
+  | .notFoundInEnvironment => "name is not present in current environment"
+
+abbrev ExternalDeclRender := _root_.Informal.DocGenRender
 
 /--
 Reference to an external declaration mentioned by a blueprint node.
@@ -210,11 +284,105 @@ structure ExternalRef where
   Whether this declaration was present in the Lean environment at the time the
   reference was registered from blueprint markup.
   -/
-  presentAtRegistration : Bool := true
+  present : Bool := true
+  /--
+  Snapshot of proof/completeness status at registration time.
+  -/
+  provedStatus : ProvedStatus := .proved
+  /--
+  Snapshot of theorem-likeness at registration time.
+  -/
+  isTheoremLike : Bool := false
+  /--
+  Snapshot of declaration provenance metadata.
+  -/
+  provenance : ExternalDeclProvenance := .unknown
+  /--
+  Snapshot of declaration source ranges (if known at registration time).
+  -/
+  range? : Option Lean.DeclarationRange := none
+  selectionRange? : Option Lean.DeclarationRange := none
+  /--
+  Snapshot of declaration kind and optional source link.
+  -/
+  kind? : Option String := none
+  sourceHref? : Option String := none
+  /--
+  Snapshot of direct DocGen rendering outcome.
+  -/
+  render : ExternalDeclRender := .error (.moduleUnavailable canonical)
 deriving Repr, Inhabited
 
 def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean) : ExternalRef :=
   { written := name, canonical := name.eraseMacroScopes, origin }
+
+def ExternalRef.withSnapshot (ref : ExternalRef) (info? : Option ConstantInfo) : ExternalRef :=
+  let canonical := ref.canonical.eraseMacroScopes
+  match info? with
+  | none =>
+    {
+      ref with
+      canonical
+      present := false
+      provedStatus := .proved
+      isTheoremLike := false
+      kind? := none
+      render := .error (.moduleUnavailable canonical)
+    }
+  | some info =>
+    {
+      ref with
+      canonical
+      present := true
+      provedStatus := ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
+      isTheoremLike := match info with | .thmInfo _ => true | _ => false
+      kind? := some (ConstantInfo.blueprintKindText info)
+    }
+
+private def chooseProvenance (current incoming : ExternalDeclProvenance) : ExternalDeclProvenance :=
+  match current, incoming with
+  | .unknown, p => p
+  | p, .unknown => p
+  | p, _ => p
+
+private def chooseRender (current incoming : ExternalDeclRender) : ExternalDeclRender :=
+  match current, incoming with
+  | .ok _, _ => current
+  | .error _, .ok _ => incoming
+  | .error _, .error _ => current
+
+def ExternalRef.merge (current incoming : ExternalRef) : ExternalRef :=
+  let present := current.present && incoming.present
+  let provedStatus :=
+    if present then
+      ProvedStatus.mergeConservative
+        current.provedStatus
+        incoming.provedStatus
+    else
+      .proved
+  let provenance :=
+    if present then chooseProvenance current.provenance incoming.provenance else .unknown
+  let range? := if present then current.range? <|> incoming.range? else none
+  let selectionRange? := if present then current.selectionRange? <|> incoming.selectionRange? else none
+  let kind? := if present then current.kind? <|> incoming.kind? else none
+  let sourceHref? := if present then current.sourceHref? <|> incoming.sourceHref? else none
+  let render :=
+    if present then
+      chooseRender current.render incoming.render
+    else
+      .error (.moduleUnavailable current.canonical)
+  {
+    current with
+    present
+    provedStatus
+    isTheoremLike := current.isTheoremLike || incoming.isTheoremLike
+    provenance
+    range?
+    selectionRange?
+    kind?
+    sourceHref?
+    render
+  }
 
 inductive CodeRef where
   /-
@@ -267,7 +435,7 @@ variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
 /-- registers an informal definition, will error if already existing -/
 private def mergeExternalRef (current incoming : ExternalRef) : ExternalRef :=
-  { current with presentAtRegistration := current.presentAtRegistration && incoming.presentAtRegistration }
+  ExternalRef.merge current incoming
 
 private def mergeExternalRefs (xs ys : Array ExternalRef) : Array ExternalRef :=
   ys.foldl (init := xs) fun acc y =>

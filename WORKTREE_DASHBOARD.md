@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/docgen-direct-render` merged into `bp`; worktree cleaned up)
+Last updated: 2026-03-03 (validated `feat/blueprint-dataflow-audit`; snapshot-only external-ref status + `AtRegistration` suffix cleanup)
 
 ## Active Worktrees
 
@@ -40,6 +40,26 @@ Last updated: 2026-03-03 (`feat/docgen-direct-render` merged into `bp`; worktree
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
   - `git status --short`
   - start by auditing imports and public surface in `src/verso-blueprint/VersoBlueprint.lean`
+
+### `feat/blueprint-dataflow-audit`
+
+- Status: `validated` (owner action: review/merge external-ref snapshot unification)
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-dataflow-audit`
+- Branch: `feat/blueprint-dataflow-audit`
+- Base commit/branch:
+  - branched from `bp` at `6dfda830`
+- Key commit:
+  - local edits only (not committed yet): external refs now snapshot full metadata/render at elaboration and consume renamed snapshot fields (`present`/`provedStatus`/`isTheoremLike`)
+- Validation status:
+  - `lake build VersoBlueprint` passed
+  - `lake env lean src/tests/Tests/BlueprintGraph.lean` passed
+  - `lake exe noperthedron` passed (expected existing warnings/sorries in project remain)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-dataflow-audit`
+  - `git status --short`
+  - inspect: `src/verso-blueprint/VersoBlueprint/Data.lean`
+  - inspect: `src/verso-blueprint/VersoBlueprint/Graph.lean`
+  - inspect: `src/verso-blueprint/VersoBlueprint/Lib/SummaryBuild.lean`
 
 ### `feat/lsp-folding-chain`
 

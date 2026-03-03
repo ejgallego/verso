@@ -105,33 +105,33 @@ structure ExternalCodeStatus where
   isMissing : Name → Bool := fun _ => false
   provedStatus : Name → Data.ProvedStatus := fun _ => .proved
 
-def nodeExternalDecls (node : Data.Node) : Array Name :=
+def nodeExternalDecls (node : Data.Node) : Array Data.ExternalRef :=
   match node.code with
-  | some (.external decls) => decls.map (·.canonical)
+  | some (.external decls) => decls
   | _ => #[]
 
 def nodeHasAssociatedCode (node : Data.Node) : Bool :=
   node.code.isSome
 
-def nodeHasMissingExternalDecls (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  (nodeExternalDecls node).any external.isMissing
+def nodeHasMissingExternalDecls (_external : ExternalCodeStatus) (node : Data.Node) : Bool :=
+  (nodeExternalDecls node).any (fun decl => !decl.present)
 
-def nodeHasTypeSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
+def nodeHasTypeSorries (_external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   let localHas :=
     match node.code with
     | some (.literate code) =>
       code.definedDefs.any (fun decl => decl.provedStatus.hasTypeGap) ||
       code.definedTheorems.any (fun decl => decl.provedStatus.hasTypeGap)
     | _ => false
-  localHas || (nodeExternalDecls node).any (fun decl => (external.provedStatus decl).hasTypeGap)
+  localHas || (nodeExternalDecls node).any (fun decl => decl.provedStatus.hasTypeGap)
 
-def nodeHasProofSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
+def nodeHasProofSorries (_external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   let localHas :=
     match node.code with
     | some (.literate code) =>
       code.definedTheorems.any (fun decl => decl.provedStatus.hasProofGap)
     | _ => false
-  localHas || (nodeExternalDecls node).any (fun decl => (external.provedStatus decl).hasProofGap)
+  localHas || (nodeExternalDecls node).any (fun decl => decl.provedStatus.hasProofGap)
 
 def nodeHasSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   nodeHasTypeSorries external node || nodeHasProofSorries external node
