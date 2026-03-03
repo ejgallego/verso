@@ -123,8 +123,8 @@ def nodeHasTypeSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool
   let localHas :=
     match node.code with
     | some (.literate code) =>
-      code.definedDefs.any (fun decl => decl.provedStatus.hasTypeGap) ||
-      code.definedTheorems.any (fun decl => decl.provedStatus.hasTypeGap)
+      ProvedStatus.anyTypeGap code.definedDefs (·.provedStatus) ||
+      ProvedStatus.anyTypeGap code.definedTheorems (·.provedStatus)
     | _ => false
   localHas || (nodeExternalDecls node).any (fun decl => (externalDeclProvedStatus external decl).hasTypeGap)
 
@@ -132,7 +132,7 @@ def nodeHasProofSorries (external : ExternalCodeStatus) (node : Data.Node) : Boo
   let localHas :=
     match node.code with
     | some (.literate code) =>
-      code.definedTheorems.any (fun decl => decl.provedStatus.hasProofGap)
+      ProvedStatus.anyProofGap code.definedTheorems (·.provedStatus)
     | _ => false
   localHas || (nodeExternalDecls node).any (fun decl => (externalDeclProvedStatus external decl).hasProofGap)
 

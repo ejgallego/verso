@@ -136,6 +136,49 @@ def ProvedStatus.hasProofGap : ProvedStatus → Bool
   | .axiomLike => true
   | .containsSorry info => info.any (·.location == .proof)
 
+def ProvedStatus.containsExplicitSorry : ProvedStatus → Bool
+  | .containsSorry _ => true
+  | _ => false
+
+def ProvedStatus.sorryLocationText : ProvedStatus → String
+  | .missing => "missing declaration"
+  | .axiomLike => "axiom-like (no body)"
+  | .containsSorry info =>
+    let hasType := info.any (·.location == .statement)
+    let hasProof := info.any (·.location == .proof)
+    if hasType && hasProof then
+      "in statement and proof"
+    else if hasType then
+      "in statement"
+    else if hasProof then
+      "in proof"
+    else
+      "location unknown"
+  | .proved => "location unknown"
+
+def ProvedStatus.statusLabel : ProvedStatus → String
+  | .missing => "missing"
+  | .axiomLike => "axiom-like"
+  | .containsSorry _ => "contains sorry"
+  | .proved => "proved"
+
+def ProvedStatus.sorryRefCounts : ProvedStatus → Nat × Nat
+  | .containsSorry info =>
+    info.foldl (init := (0, 0)) fun (typeRefs, proofRefs) item =>
+      match item.location with
+      | .statement => (typeRefs + item.refs?.getD 0, proofRefs)
+      | .proof => (typeRefs, proofRefs + item.refs?.getD 0)
+  | _ => (0, 0)
+
+def ProvedStatus.anyIncomplete (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
+  decls.any fun decl => (statusOf decl).isIncomplete
+
+def ProvedStatus.anyTypeGap (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
+  decls.any fun decl => (statusOf decl).hasTypeGap
+
+def ProvedStatus.anyProofGap (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
+  decls.any fun decl => (statusOf decl).hasProofGap
+
 def ProvedStatus.ofSorryFlags (hasType hasProof : Bool)
     (typeRefs? : Option Nat := none) (proofRefs? : Option Nat := none) : ProvedStatus :=
   let info : Array SorryInfo :=
