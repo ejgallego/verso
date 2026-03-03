@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (merged `feat/blueprint-dataflow-audit` into `bp`; worktree/branch cleaned up)
+Last updated: 2026-03-03 (`feat/versoblueprint-refactor` split implemented and validated)
 
 ## Active Worktrees
 
@@ -24,22 +24,26 @@ Last updated: 2026-03-03 (merged `feat/blueprint-dataflow-audit` into `bp`; work
 
 ### `feat/versoblueprint-refactor`
 
-- Status: `created` (owner action: design/implement `VersoBlueprint.lean` module split)
-- Summary: fresh isolation branch dedicated to refactoring the large top-level `VersoBlueprint.lean` import/aggregation surface.
+- Status: `validated` (owner action: review and commit split changes)
+- Summary: extracted `VersoBlueprint.lean` informal logic into `Informal/Block` and `Informal/Uses`; kept root module as import aggregator.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
 - Branch: `feat/versoblueprint-refactor`
 - Base commit/branch:
-  - branched from `bp` at `af04fe7b`
+  - rebased onto `bp` at `1b49078e`
 - Key commit:
-  - `af04fe7b` blueprint: finalize release-audit cleanup and UX fixes
+  - `1b49078e` dashboard: mark blueprint-dataflow-audit merged
 - Validation status:
-  - setup validated:
-  - copied `.lake` from root checkout
-  - `lake exe cache get` (mathlib cache available, no downloads required)
+  - branch sync validated:
+  - `git rebase bp` completed cleanly (no conflicts)
+  - split validation passed:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
   - `git status --short`
-  - start by auditing imports and public surface in `src/verso-blueprint/VersoBlueprint.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
 
 ### `feat/lsp-folding-chain`
 
