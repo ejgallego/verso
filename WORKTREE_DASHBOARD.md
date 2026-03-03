@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/versoblueprint-refactor` merged into `bp`)
+Last updated: 2026-03-03 (`feat/versoblueprint-refactor` merged and cleaned up)
 
 ## Active Worktrees
 
@@ -64,10 +64,8 @@ Last updated: 2026-03-03 (`feat/versoblueprint-refactor` merged into `bp`)
   - `lake exe noperthedron`
 - Validation on `bp` after merge:
   - `lake exe noperthedron`
-- Worktree still present (optional cleanup):
-  - `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
-- Branch still present (optional cleanup):
-  - `feat/versoblueprint-refactor`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`.
+- Deleted branch: `feat/versoblueprint-refactor`.
 - Merged `feat/blueprint-dataflow-audit` into `bp` (`9fcd85b3 -> c136a915`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
