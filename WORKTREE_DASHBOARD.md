@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/informal-code-audit` merged into `bp`, validated, and cleaned up)
+Last updated: 2026-03-03 (created `feat/blueprint-deadcode-audit-20260303`, cache/build complete, preview started)
 
 ## Active Worktrees
 
@@ -21,6 +21,27 @@ Last updated: 2026-03-03 (`feat/informal-code-audit` merged into `bp`, validated
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/blueprint-deadcode-audit-20260303`
+
+- Status: `active` (owner action: run exhaustive dead-code / use-once audit and triage candidates)
+- Summary: dedicated audit worktree for unused code, dead structure fields, and cross-file use-once definitions in Blueprint.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`
+- Branch: `feat/blueprint-deadcode-audit-20260303`
+- Base commit/branch:
+  - branched from `bp` at `e972f0ca`
+- Key commit:
+  - `e972f0ca` docs(dashboard): mark informal-code-audit merged and cleaned up
+- Validation status:
+  - bootstrap complete in this worktree:
+  - `lake exe cache get`
+  - `lake exe noperthedron`
+- Preview:
+  - `http://127.0.0.1:8095/` (session `98251`, serving `_out/html-multi`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`
+  - `git status --short`
+  - continue audit from `src/verso-blueprint/` first
 
 ### `feat/lsp-folding-chain`
 
