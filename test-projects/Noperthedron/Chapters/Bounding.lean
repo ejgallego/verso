@@ -75,7 +75,7 @@ $`\| R(\alpha)\| = \| R_a(\alpha)\| =\| M(\theta, \phi)\| = 1`.
 :::
 
 :::proof "lem:RaRalpha"
-See {citet polyhedron.without.rupert}[], Lemma 9.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 9)}[].
 :::
 
 ```lean "lem:RaRalpha"
@@ -101,7 +101,7 @@ $`\|R_a(\alpha)-R_a({\alphab})\|=\|R(\alpha)-R(\alphab)\| < \varepsilon`.
 :::
 
 :::proof "lem:RaRa"
-See {citet polyhedron.without.rupert}[], Lemma 10.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 10)}[].
 :::
 
 ```lean "lem:RaRa"
@@ -129,7 +129,7 @@ with equality only for $`a=0` or $`b=0`.
 :::
 
 :::proof "lem:jensen"
-Use the Jensen inequality. See {citet polyhedron.without.rupert}[], Lemma 11.
+Use the Jensen inequality. See {citet polyhedron.without.rupert (kind := lemma) (index := 11)}[].
 :::
 
 ```lean "lem:jensen"
@@ -147,7 +147,7 @@ with equality only for $`\alpha = \beta = 0`.
 
 :::proof "lem:RxRy_wlog"
 Using {uses "lem:jensen"}[] and {uses "lem:RaRa"}[].
-See {citet polyhedron.without.rupert}[], Lemma 12.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 12)}[].
 :::
 
 ```lean "lem:RxRy_wlog"
@@ -164,7 +164,7 @@ with equality only for $`\alpha = \beta = 0`.
 
 :::proof "lem:RxRy"
 Using {uses "lem:RxRy_wlog"}[].
-See {citet polyhedron.without.rupert}[], Lemma 12.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 12)}[].
 :::
 
 ```lean "lem:RxRy"
@@ -184,7 +184,7 @@ $`\|M(\theta, \phi)-M(\thetab,\phib)\|, \|X(\theta, \varphi)-X(\thetab,\phib)\| 
 
 :::proof "lem:sqrt2"
 Using {uses "lem:RxRy"}[].
-See {citet polyhedron.without.rupert}[], Lemma 13.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 13)}[].
 :::
 
 ```lean "lem:sqrt2"
@@ -215,7 +215,7 @@ $`\langle X(\theta, \phi),P \rangle>0`.
 
 :::proof "lem:XPgt0"
 Using {uses "lem:sqrt2"}[].
-See {citet polyhedron.without.rupert}[], Lemma 14.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 14)}[].
 :::
 
 ```lean "lem:XPgt0"
@@ -238,7 +238,7 @@ $`\| M(\theta,\phi) P \| > r`.
 
 :::proof "lem:MPgtr"
 Using {uses "lem:sqrt2"}[].
-See {citet polyhedron.without.rupert}[], Lemma 15.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 15)}[].
 Corrigendum: the triangle inequality only implies greater than or equal to.
 :::
 
@@ -258,7 +258,7 @@ $`\|R(\alpha) M(\theta, \phi)-R(\alphab)M(\thetab,\phib)\| < \sqrt{5} \varepsilo
 
 :::proof "lem:sqrt5"
 Using {uses "lem:sqrt2"}[] and {uses "lem:RxRy"}[].
-See {citet polyhedron.without.rupert}[], Lemma 16.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 16)}[].
 :::
 
 ```lean "lem:sqrt5"

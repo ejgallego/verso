@@ -127,7 +127,7 @@ Then for $`x,y\in[-4,4]`, $`\|A(x,y)-A_{\mathbb{Q}}(x,y)\|\leq\kappa`.
 
 :::proof "lem:dist_le_kappa" (leanok := true)
 Using {uses "lem:kappa7"}[] and {uses "lem:A_le_deltamn"}[].
-See {citet polyhedron.without.rupert}[], Lemma 40.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 40)}[].
 :::
 
 :::corollary "corr:kappa1kappa" (lean := "RationalApprox.R_difference_norm_bounded,RationalApprox.R'_difference_norm_bounded,RationalApprox.M_difference_norm_bounded,RationalApprox.Mθ_difference_norm_bounded,RationalApprox.Mφ_difference_norm_bounded,RationalApprox.X_difference_norm_bounded,RationalApprox.Rℚ_norm_bounded,RationalApprox.Mℚ_norm_bounded") (parent := "rational_matrix_error")
@@ -157,7 +157,7 @@ $`\|A_1\cdots A_n-B_1\cdots B_n\|\leq n\kappa\,\delta_1\cdots\delta_n`.
 :::
 
 :::proof "lem:A1AnB1Bn" (leanok := true)
-See {citet polyhedron.without.rupert}[], Lemma 42.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 42)}[].
 :::
 
 :::lemma_ "lem:boundskappa" (lean := "RationalApprox.bounds_kappa_M,RationalApprox.bounds_kappa_Mθ,RationalApprox.bounds_kappa_Mφ,RationalApprox.bounds_kappa_RM,RationalApprox.bounds_kappa_R'M,RationalApprox.bounds_kappa_RMθ,RationalApprox.bounds_kappa_RMφ") (parent := "rational_matrix_error")
@@ -169,7 +169,7 @@ hold for inner products involving $`M,M^\theta,M^\phi,R,R'` and their rational v
 
 :::proof "lem:boundskappa" (leanok := true)
 Using {uses "lem:A1AnB1Bn"}[] and {uses "corr:kappa1kappa"}[].
-See {citet polyhedron.without.rupert}[], Lemma 44.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 44)}[].
 :::
 
 :::theorem "thm:global_rational" (lean := "RationalApprox.GlobalTheorem.rational_global") (parent := "rational_global_transfer")
@@ -205,7 +205,7 @@ then the original points are $`\epsilon`-spanning.
 
 :::proof "lem:ekspanningespanning" (leanok := true)
 Using {uses "lem:A1AnB1Bn"}[], {uses "lem:eps-spanning"}[], and {uses "corr:kappa1kappa"}[].
-See {citet polyhedron.without.rupert}[], Lemma 46.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 46)}[].
 :::
 
 :::lemma_ "lem:boundskappa3" (lean := "RationalApprox.bounds_kappa3_X,RationalApprox.bounds_kappa3_M,RationalApprox.bounds_kappa3_MQ") (parent := "rational_local_approx")
@@ -220,7 +220,7 @@ Then, for parameters in $`[-4,4]`,
 
 :::proof "lem:boundskappa3" (leanok := true)
 Using {uses "lem:A1AnB1Bn"}[].
-See {citet polyhedron.without.rupert}[], Lemma 49.
+See {citet polyhedron.without.rupert (kind := lemma) (index := 49)}[].
 :::
 
 :::corollary "corr:deltakappa" (lean := "RationalApprox.delta_kappa") (parent := "rational_local_approx")
@@ -237,7 +237,7 @@ $$`
 
 :::proof "corr:deltakappa" (leanok := true)
 Using {uses "lem:boundskappa3"}[].
-See {citet polyhedron.without.rupert}[], Corollary 50.
+See {citet polyhedron.without.rupert (kind := corollary) (index := 50)}[].
 :::
 
 :::corollary "lem:boundskappa4" (lean := "RationalApprox.bounds_kappa4") (parent := "rational_local_approx")
@@ -248,7 +248,7 @@ Then $`A \geq A_{\mathbb{Q}}`.
 
 :::proof "lem:boundskappa4" (leanok := true)
 Using {uses "lem:boundskappa3"}[].
-See {citet polyhedron.without.rupert}[], Corollary 51.
+See {citet polyhedron.without.rupert (kind := corollary) (index := 51)}[].
 :::
 
 :::theorem "thm:local_rational" (lean := "RationalApprox.LocalTheorem.rational_local") (parent := "rational_local_transfer")

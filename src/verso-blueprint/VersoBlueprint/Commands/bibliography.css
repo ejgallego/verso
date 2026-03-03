@@ -45,6 +45,19 @@
   padding-left: 1.2rem;
 }
 
+.bp_bibliography_use_item {
+  margin-top: 0.18rem;
+}
+
+.bp_bibliography_use_line {
+  color: inherit;
+}
+
+.bp_bibliography_use_inline_meta {
+  color: inherit;
+  font-style: normal;
+}
+
 html[data-bp-style="modern"] .bp_bibliography_section {
   border-color: #d8cdf8;
   background: linear-gradient(180deg, #ffffff, #f8f5ff);
