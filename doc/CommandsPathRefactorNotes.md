@@ -54,20 +54,30 @@ Completed extraction checkpoints (behavior-preserving):
    - updated `ShowSummary`/`ShowBibliography` to import renderer modules and use fully qualified block constructors for robust quotation precheck
    - top-level imports updated in `VersoBlueprint.lean`
 
+9. (working tree, validated):
+   - removed legacy interactive `#bp_summary` / `#bp_graph` stubs
+   - unified per-command files:
+     - `Commands/Graph.lean` now contains graph types + renderer + part command
+     - `Commands/Summary.lean` now contains summary renderer + part command
+     - `Commands/Bibliography.lean` now contains bibliography types + renderer + part command
+   - introduced `Commands/Common.lean` for shared command JS (`openTargetDetailsJs`)
+   - split command CSS into `Commands/graph.css`, `Commands/summary.css`, `Commands/bibliography.css`
+   - bibliography now has dedicated markup classes and stylesheet (`bp_bibliography_*`)
+   - `Commands.lean` reduced to an import-only compatibility aggregator
+
 Current boundary status:
 
 - `Environment.State.data` remains the single semantic source for graph/summary derivation.
 - Shared derivation utilities now live in `Lib/`.
-- Graph/summary/bibliography command paths are split out of monolithic `Commands.lean`.
+- Graph/summary/bibliography command paths are now unified in per-command modules under `Commands/`.
 - Shared hover/preview HTML contracts now live in `Lib/HoverRender.lean`.
 - Traversal + widget preview acquisition now share a common adapter contract in `Lib/PreviewSource.lean`.
-- Graph/summary/bibliography block renderers now live in dedicated modules under `Commands/`.
-- `Commands.lean` now mainly owns shared command data types/options and shared CSS/JS payload constants.
+- `Commands.lean` is now a thin compatibility import layer.
 
 Immediate next step:
 
-1. Extract shared command payload/constants (`GraphBlockData`, `GraphDirection`, `d3DotCss`, `openTargetDetailsJs`) into a dedicated shared module (`Commands/Shared.lean` or equivalent), then make render modules depend on that.
-2. Keep `Commands.lean` as a compatibility shim temporarily, then trim it to a thin re-export once call sites are updated.
+1. Optional cleanup: factor shared command-level style tokens/classes if graph/summary/bibliography style switcher rules keep drifting together.
+2. Optional cleanup: decide whether to keep `Commands.lean` as a permanent compatibility aggregator or migrate call sites to direct `Commands/{Graph,Summary,Bibliography}` imports.
 
 ## 1) Current Data Model by Phase
 
@@ -104,7 +114,9 @@ Stored per label:
 
 Source:
 - `BlockData`, `CodeBlockData`: `src/verso-blueprint/VersoBlueprint.lean:184`
-- `GraphBlockData`, `Summary`, `BibliographyData`: `src/verso-blueprint/VersoBlueprint/Commands.lean:117`
+- `GraphBlockData`: `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`
+- `Summary`: `src/verso-blueprint/VersoBlueprint/Lib/SummaryBuild.lean`
+- `BibliographyData`: `src/verso-blueprint/VersoBlueprint/Commands/Bibliography.lean`
 
 Meaning:
 - `BlockData` and `CodeBlockData`: local per-block rendering info.
