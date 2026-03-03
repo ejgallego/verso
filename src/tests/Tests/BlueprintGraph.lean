@@ -240,19 +240,37 @@ def stateExternalCode : Environment.State := mkState [
     {
       kind := .definition
       statement := some (mkInformal #[])
-      code := some (.external #[Data.ExternalRef.ofName `Ext.good])
+      code := some (.external #[
+        { (Data.ExternalRef.ofName `Ext.good) with
+          present := true
+          provedStatus := .proved
+          isTheoremLike := false
+        }
+      ])
     }),
   (`def_ext_bad,
     {
       kind := .definition
       statement := some (mkInformal #[])
-      code := some (.external #[Data.ExternalRef.ofName `Ext.bad])
+      code := some (.external #[
+        { (Data.ExternalRef.ofName `Ext.bad) with
+          present := true
+          provedStatus := .containsSorry #[{ location := .statement }, { location := .proof }]
+          isTheoremLike := false
+        }
+      ])
     }),
   (`def_ext_missing,
     {
       kind := .definition
       statement := some (mkInformal #[])
-      code := some (.external #[Data.ExternalRef.ofName `Ext.missing])
+      code := some (.external #[
+        { (Data.ExternalRef.ofName `Ext.missing) with
+          present := false
+          provedStatus := .proved
+          isTheoremLike := false
+        }
+      ])
     })
 ]
 
@@ -284,7 +302,13 @@ def stateLeanOnlyExternalMissing : Environment.State := mkState [
   (`lean_only_ext_missing,
     {
       kind := .definition
-      code := some (.external #[Data.ExternalRef.ofName `Ext.missing])
+      code := some (.external #[
+        { (Data.ExternalRef.ofName `Ext.missing) with
+          present := false
+          provedStatus := .proved
+          isTheoremLike := false
+        }
+      ])
     })
 ]
 

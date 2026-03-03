@@ -19,35 +19,20 @@ deriving instance Lean.ToJson for Lean.DeclarationRange
 deriving instance Lean.FromJson for Lean.DeclarationRange
 deriving instance Lean.Quote for Lean.DeclarationRange
 
-inductive ExternalDeclProvenance where
-  | inWorkspace (moduleName : Name) (sourcePath : String)
-  | outWorkspace (moduleName : Name) (sourcePath? : Option String := none)
-  | unknown
-deriving Repr, Inhabited, FromJson, ToJson, Quote
+abbrev ExternalDeclProvenance := Data.ExternalDeclProvenance
+abbrev ExternalDeclLookupError := Data.ExternalDeclLookupError
 
-def ExternalDeclProvenance.moduleName? : ExternalDeclProvenance → Option Name
-  | .inWorkspace moduleName _ => some moduleName
-  | .outWorkspace moduleName _ => some moduleName
-  | .unknown => none
+def ExternalDeclProvenance.moduleName? (p : ExternalDeclProvenance) : Option Name :=
+  Data.ExternalDeclProvenance.moduleName? p
 
-def ExternalDeclProvenance.sourcePath? : ExternalDeclProvenance → Option String
-  | .inWorkspace _ sourcePath => some sourcePath
-  | .outWorkspace _ sourcePath? => sourcePath?
-  | .unknown => none
+def ExternalDeclProvenance.sourcePath? (p : ExternalDeclProvenance) : Option String :=
+  Data.ExternalDeclProvenance.sourcePath? p
 
-def ExternalDeclProvenance.label : ExternalDeclProvenance → String
-  | .inWorkspace _ _ => "in workspace"
-  | .outWorkspace _ _ => "out workspace"
-  | .unknown => "unknown provenance"
+def ExternalDeclProvenance.label (p : ExternalDeclProvenance) : String :=
+  Data.ExternalDeclProvenance.label p
 
-inductive ExternalDeclLookupError where
-  | notPresentAtRegistration
-  | notFoundInEnvironment
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
-def ExternalDeclLookupError.message : ExternalDeclLookupError → String
-  | .notPresentAtRegistration => "name was not present during directive/code-block registration"
-  | .notFoundInEnvironment => "name is not present in current environment"
+def ExternalDeclLookupError.message (err : ExternalDeclLookupError) : String :=
+  Data.ExternalDeclLookupError.message err
 
 abbrev ExternalDeclRender := Except DocGenRenderError DocGenHtml
 

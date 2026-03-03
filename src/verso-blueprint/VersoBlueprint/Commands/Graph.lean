@@ -10,7 +10,6 @@ import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.Graph
 import VersoBlueprint.Lib.HoverRender
-import VersoBlueprint.Lib.NodeFacts
 import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
@@ -1008,9 +1007,7 @@ def buildAll : CoreM (Graph × Array (Name × String)) := do
   let env ← getEnv
   let state := informalExt.getState env
   let roots : Array Name := state.data.toArray.map (·.1)
-  let externalAdapter := Informal.NodeFacts.ExternalDeclAdapter.ofEnv env
-  let external : Informal.Graph.ExternalCodeStatus := externalAdapter.graphStatus
-  let graph := Informal.Graph.buildWithExternal state roots external (resolveRef? := some)
+  let graph := Informal.Graph.build state roots (resolveRef? := some)
   return (graph, state.groups.toArray)
 
 open Verso.ArgParse

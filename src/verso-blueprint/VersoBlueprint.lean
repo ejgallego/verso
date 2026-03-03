@@ -14,6 +14,7 @@ import Lean.Elab.InfoTree.Types
 import VersoManual
 
 import VersoBlueprint.Data
+import VersoBlueprint.ExternalRefSnapshot
 import VersoBlueprint.Environment
 import VersoBlueprint.Attribute
 import VersoBlueprint.Cite
@@ -74,17 +75,6 @@ register_option verso.blueprint.externalCode.strictResolve : Bool := {
   descr := "Treat unresolved or ambiguous `(lean := ...)` external references as errors"
 }
 
-/--
-Template used to build source links for external declarations.
-Supported placeholders are: path, relpath, module, line, column.
-
-Empty template disables source link generation.
--/
-register_option verso.blueprint.externalCode.sourceLinkTemplate : String := {
-  defValue := ""
-  descr := "Template for external declaration source links ({path},{relpath},{module},{line},{column})"
-}
-
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
   label : Data.Label
@@ -121,10 +111,7 @@ private def pushExternalRefDedup (acc : Array Data.ExternalRef) (ref : Data.Exte
   match acc.findIdx? (fun entry => entry.canonical == ref.canonical) with
   | some idx =>
     let current := acc[idx]!
-    let merged : Data.ExternalRef := {
-      current with
-      presentAtRegistration := current.presentAtRegistration && ref.presentAtRegistration
-    }
+    let merged : Data.ExternalRef := Data.ExternalRef.merge current ref
     acc.set! idx merged
   | none =>
     acc.push ref
@@ -135,14 +122,9 @@ private def parsedExternalRef (ref : Data.ExternalRef) : Data.ExternalRef :=
 private def resolvedExternalRef (ref : Data.ExternalRef) (resolved : Name) : Data.ExternalRef :=
   { written := ref.written, canonical := resolved.eraseMacroScopes, origin := ref.origin }
 
-private def markExternalRefPresence [MonadEnv m] (ref : Data.ExternalRef) : m Data.ExternalRef := do
-  let env ← getEnv
-  let canonical := ref.canonical.eraseMacroScopes
-  return {
-    ref with
-    canonical
-    presentAtRegistration := (env.find? canonical).isSome
-  }
+private def markExternalRefSnapshot [MonadOptions m] (ref : Data.ExternalRef) : m Data.ExternalRef := do
+  let opts ← getOptions
+  liftM <| externalRefSnapshotAtCurrentDir opts ref
 
 private def resolveExternalNameCandidates [MonadResolveName m] [MonadOptions m]
     [MonadLog m] [AddMessageContext m]
@@ -170,10 +152,10 @@ private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [Monad
         throwError msg
       else
         logWarning m!"{msg}; keeping parsed name"
-        let ref ← markExternalRefPresence (parsedExternalRef ref)
+        let ref ← markExternalRefSnapshot (parsedExternalRef ref)
         return pushExternalRefDedup acc ref
     | [resolved] =>
-      let ref ← markExternalRefPresence (resolvedExternalRef ref resolved)
+      let ref ← markExternalRefSnapshot (resolvedExternalRef ref resolved)
       return pushExternalRefDedup acc ref
     | many =>
       let msg := m!"Label {label}: external Lean name '{ref.written}' is ambiguous ({String.intercalate ", " (many.map toString)})"
@@ -181,7 +163,7 @@ private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [Monad
         throwError msg
       else
         logWarning m!"{msg}; keeping parsed name"
-        let ref ← markExternalRefPresence (parsedExternalRef ref)
+        let ref ← markExternalRefSnapshot (parsedExternalRef ref)
         return pushExternalRefDedup acc ref
 
 def Config.parse  : ArgParse m Config :=
@@ -217,134 +199,30 @@ instance : FromArgs GroupConfig m where
 
 end
 
-private def externalSourceLinkTemplate (opts : Lean.Options) : String :=
-  opts.get
-    verso.blueprint.externalCode.sourceLinkTemplate.name
-    verso.blueprint.externalCode.sourceLinkTemplate.defValue
-
-private def workspaceRelativeSourcePath? (workspaceRoot sourcePath : System.FilePath) : Option String :=
-  let root := workspaceRoot.toString
-  let sep := System.FilePath.pathSeparator.toString
-  let rootPrefix := if root.endsWith sep then root else root ++ sep
-  let sourcePathText := sourcePath.toString
-  if sourcePathText.startsWith rootPrefix then
-    some (sourcePathText.drop rootPrefix.length).toString
-  else
-    none
-
-private def instantiateSourceLinkTemplate (template : String) (vars : Array (String × String)) : String :=
-  vars.foldl (init := template) fun acc kv =>
-    acc.replace ("{" ++ kv.1 ++ "}") kv.2
-
-private def sourceLinkHref? (opts : Lean.Options) (workspaceRoot : System.FilePath)
-    (moduleName? : Option Name) (sourcePath? : Option System.FilePath)
-    (range? : Option Lean.DeclarationRange) : Option String := do
-  let template := (externalSourceLinkTemplate opts).trimAscii.toString
-  if template.isEmpty then
-    none
-  else
-    let sourcePath ← sourcePath?
-    let relPath := (workspaceRelativeSourcePath? workspaceRoot sourcePath).getD sourcePath.toString
-    let line := (range?.map (fun r => toString r.pos.line)).getD ""
-    let column := (range?.map (fun r => toString r.pos.column)).getD ""
-    let href :=
-      instantiateSourceLinkTemplate template #[
-        ("path", sourcePath.toString),
-        ("relpath", relPath),
-        ("module", (moduleName?.map toString).getD ""),
-        ("line", line),
-        ("column", column)
-      ]
-    let href := href.trimAscii.toString
-    if href.isEmpty then none else some href
-
-private def externalDeclKindText (info : ConstantInfo) : String :=
-  match info with
-  | .defnInfo _ => "definition"
-  | .thmInfo _ => "theorem"
-  | .axiomInfo _ => "axiom"
-  | .opaqueInfo _ => "opaque"
-  | .quotInfo _ => "quotient"
-  | .inductInfo _ => "inductive"
-  | .ctorInfo _ => "constructor"
-  | .recInfo _ => "recursor"
-
-private def moduleNameForDecl? (env : Lean.Environment) (decl : Name) : Option Name := do
-  let moduleIdx ← env.getModuleIdxFor? decl
-  env.allImportedModuleNames[moduleIdx.toNat]?
-
-private def sourcePathForModule? (moduleName : Name) : IO (Option System.FilePath) := do
-  let srcSearchPath ← Lean.getSrcSearchPath
-  srcSearchPath.findModuleWithExt "lean" moduleName
-
-private def workspacePathPrefix (workspaceRoot : System.FilePath) : String :=
-  let root := workspaceRoot.toString
-  let sep := System.FilePath.pathSeparator.toString
-  if root.endsWith sep then root else root ++ sep
-
-private def isPathInWorkspace (workspaceRoot sourcePath : System.FilePath) : Bool :=
-  let root := workspaceRoot.toString
-  let rootPrefix := workspacePathPrefix workspaceRoot
-  let src := sourcePath.toString
-  src == root || src.startsWith rootPrefix
-
-private def mkProvenance (workspaceRoot : System.FilePath)
-    (moduleName? : Option Name) (sourcePath? : Option System.FilePath) : ExternalDeclProvenance :=
-  match moduleName? with
-  | none => .unknown
-  | some moduleName =>
-    match sourcePath? with
-    | some sourcePath =>
-      if isPathInWorkspace workspaceRoot sourcePath then
-        .inWorkspace moduleName sourcePath.toString
-      else
-        .outWorkspace moduleName (some sourcePath.toString)
-    | none =>
-      .outWorkspace moduleName none
-
-private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
-    (workspaceRoot : System.FilePath)
-    (decl : Data.ExternalRef) : CoreM ExternalDecl := do
+private def externalDeclStatus (decl : Data.ExternalRef) : ExternalDecl :=
   let canonical := decl.canonical
-  if !decl.presentAtRegistration then
-    return .missing decl.written .notPresentAtRegistration
-  match env.find? canonical with
-  | none =>
-    return .missing decl.written .notFoundInEnvironment
-  | some cinfo =>
-    let ranges? ← findDeclarationRanges? canonical
-    let moduleName? := moduleNameForDecl? env canonical
-    let sourcePath? ←
-      match moduleName? with
-      | some moduleName => liftM <| sourcePathForModule? moduleName
-      | none => pure none
-    let provenance := mkProvenance workspaceRoot moduleName? sourcePath?
-    let sourceHref? := sourceLinkHref? opts workspaceRoot moduleName? sourcePath? (ranges?.map (·.selectionRange))
-    let render : ExternalDeclRender ←
-      match moduleName? with
-      | none => pure (.error (.moduleUnavailable canonical))
-      | some moduleName => (renderDeclHtmlDirectFromInfoE moduleName canonical cinfo).run'
+  if !decl.present then
+    .missing decl.written .notPresentAtRegistration
+  else
+    let fallbackKind := if decl.isTheoremLike then "theorem" else "definition"
     let declInfo : ExternalDeclInfo := {
       decl := decl.written
       canonical
-      provenance
-      range? := ranges?.map (·.range)
-      selectionRange? := ranges?.map (·.selectionRange)
-      kind := externalDeclKindText cinfo
-      sourceHref?
-      provedStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus cinfo (allowOpaque := true)
-      render
+      provenance := decl.provenance
+      range? := decl.range?
+      selectionRange? := decl.selectionRange?
+      kind := decl.kind?.getD fallbackKind
+      sourceHref? := decl.sourceHref?
+      provedStatus := decl.provedStatus
+      render := decl.render
     }
-    return .info declInfo
-def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.CodeRef) : CoreM BlockCodeStatus := do
+    .info declInfo
+
+def BlockCodeStatus.ofCodeRef (codeRef? : Option Data.CodeRef) : BlockCodeStatus :=
   match codeRef? with
-  | some .userOk => return .userOk
-  | some (.external decls) =>
-    let opts ← getOptions
-    let workspaceRoot ← liftM <| IO.FS.realPath (← IO.currentDir)
-    let decls ← decls.mapM (externalDeclStatus env opts workspaceRoot)
-    return .external decls
-  | _ => return .none
+  | some .userOk => .userOk
+  | some (.external decls) => .external (decls.map externalDeclStatus)
+  | _ => .none
 
 def blueprintCss : String := r##"
 .bp_wrapper {
@@ -1173,10 +1051,9 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       Environment.setStatementElab contents
     let count ← Environment.pop blockRef
     let node? ← Environment.getNode? label
-    let env ← getEnv
     let nodeCodeRef? := node?.bind (·.code)
     let nodeKind := node?.map (·.kind) |>.getD kind
-    let codeStatus ← BlockCodeStatus.ofCodeRef env nodeCodeRef?
+    let codeStatus := BlockCodeStatus.ofCodeRef nodeCodeRef?
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
     let data : BlockData := { kind := nodeKind, label, count, isProof, codeStatus }

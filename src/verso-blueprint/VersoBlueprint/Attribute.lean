@@ -8,6 +8,7 @@ import Lean
 import Lean.DocString.Extension
 import VersoManual
 import VersoBlueprint.Environment
+import VersoBlueprint.ExternalRefSnapshot
 
 namespace Informal
 
@@ -154,9 +155,12 @@ private def registerLeanOnlyDecl (decl label : Name) (ref : Syntax) : CoreM Unit
     | throwError "unknown declaration '{decl}'"
   let declKind ← classifyDeclKind decl info
   let statement? ← statementFromDocstring? decl ref
+  let opts ← getOptions
+  let extRef ←
+    externalRefSnapshotAtCurrentDir opts (Data.ExternalRef.ofName decl .blueprintAttr)
 
   Environment.modifyM fun state => do
-    let data ← state.data.registerCodeRef label (.external #[Data.ExternalRef.ofName decl .blueprintAttr])
+    let data ← state.data.registerCodeRef label (.external #[extRef])
     let data :=
       match data.get? label with
       | some node =>

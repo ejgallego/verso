@@ -8,7 +8,6 @@ import Lean
 import Lean.Elab.Command
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
-import VersoBlueprint.Lib.NodeFacts
 
 namespace Informal.Commands
 
@@ -137,7 +136,6 @@ def addParentTheoremLikeItem (groups : NameMap (List IndexItem)) (parent : Name)
 
 def buildSummary : CoreM Summary := do
   let env ← getEnv
-  let externalAdapter := Informal.NodeFacts.ExternalDeclAdapter.ofEnv env
   let state := informalExt.getState env
   let entries := state.data.toArray
   let parentChildren := state.data.parentChildren
@@ -155,7 +153,7 @@ def buildSummary : CoreM Summary := do
           let leanObjects := (decls.map (·.canonical)).toList
           let missingDecls :=
             decls.foldl (init := []) fun acc decl =>
-              if !decl.presentAtRegistration then
+              if !decl.present then
                 {
                   label
                   kind := toString node.kind
@@ -166,10 +164,10 @@ def buildSummary : CoreM Summary := do
                 acc
           let incompleteDecls :=
             decls.foldl (init := #[]) fun acc decl =>
-              if !decl.presentAtRegistration then
+              if !decl.present then
                 acc
               else
-                let status := externalAdapter.provedStatus decl.canonical
+                let status := decl.provedStatus
                 if status.isIncomplete then
                   acc.push (decl.canonical, status)
                 else
@@ -180,7 +178,7 @@ def buildSummary : CoreM Summary := do
                 label
                 kind := toString node.kind
                 decl
-                isTheorem := externalAdapter.isTheoremLike decl
+                isTheorem := (decls.find? (fun d => d.canonical == decl)).map (·.isTheoremLike) |>.getD false
                 status
               }
           (decls.size, incompleteDecls.size, leanObjects, sorryDetails, missingDecls)
