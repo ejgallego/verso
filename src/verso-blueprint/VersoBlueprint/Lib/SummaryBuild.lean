@@ -15,15 +15,15 @@ namespace Informal.Commands
 open Lean
 open Informal Data Environment
 
-structure PendingProofItem where
+structure PendingInformalItem where
   label : Name
   kind : String
   leanObjects : List Name := []
 deriving Inhabited, FromJson, ToJson
 
 open Syntax in
-instance : Quote PendingProofItem where
-  quote s := mkCApp ``PendingProofItem.mk #[quote s.label, quote s.kind, quote s.leanObjects]
+instance : Quote PendingInformalItem where
+  quote s := mkCApp ``PendingInformalItem.mk #[quote s.label, quote s.kind, quote s.leanObjects]
 
 structure SorryItem where
   label : Name
@@ -76,7 +76,7 @@ structure Summary where
   corollaries : Nat := 0
   leanOnlyEntries : Nat := 0
   informalOnlyEntries : Nat := 0
-  pendingInformalProofEntries : List PendingProofItem := []
+  pendingInformalEntries : List PendingInformalItem := []
   leanDecls : Nat := 0
   sorries : Nat := 0
   sorryDetails : List SorryItem := []
@@ -97,7 +97,7 @@ instance : Quote Summary where
       quote s.corollaries,
       quote s.leanOnlyEntries,
       quote s.informalOnlyEntries,
-      quote s.pendingInformalProofEntries,
+      quote s.pendingInformalEntries,
       quote s.leanDecls,
       quote s.sorries,
       quote s.sorryDetails,
@@ -107,36 +107,23 @@ instance : Quote Summary where
       quote s.theoremLikeByParent
     ]
 
-def countDefSorries (decls : Array Data.LiterateDef) : Nat :=
-  decls.foldl (init := 0) fun acc decl => acc + (if decl.provedStatus.isIncomplete then 1 else 0)
+private def countSorries (decls : Array α) (statusOf : α → Data.ProvedStatus) : Nat :=
+  decls.foldl (init := 0) fun acc decl =>
+    let status := statusOf decl
+    acc + (if status.isIncomplete then 1 else 0)
 
-def countThmSorries (decls : Array Data.LiterateThm) : Nat :=
-  decls.foldl (init := 0) fun acc decl => acc + (if decl.provedStatus.isIncomplete then 1 else 0)
-
-def collectDefSorries (label : Name) (kind : String) (decls : Array Data.LiterateDef) (theoremNames : NameSet) :
+private def collectSorries (label : Name) (kind : String) (decls : Array α)
+    (nameOf : α → Name) (statusOf : α → Data.ProvedStatus) (isTheorem : α → Bool) :
     List SorryItem :=
   decls.foldl (init := []) fun acc decl =>
-    if decl.provedStatus.isIncomplete then
+    let status := statusOf decl
+    if status.isIncomplete then
       {
         label
         kind
-        decl := decl.name
-        isTheorem := theoremNames.contains decl.name
-        status := decl.provedStatus
-      } :: acc
-    else
-      acc
-
-def collectThmSorries (label : Name) (kind : String) (decls : Array Data.LiterateThm) (theoremNames : NameSet) :
-    List SorryItem :=
-  decls.foldl (init := []) fun acc decl =>
-    if decl.provedStatus.isIncomplete then
-      {
-        label
-        kind
-        decl := decl.name
-        isTheorem := theoremNames.contains decl.name
-        status := decl.provedStatus
+        decl := nameOf decl
+        isTheorem := isTheorem decl
+        status
       } :: acc
     else
       acc
@@ -199,18 +186,27 @@ def buildSummary : CoreM Summary := do
           (decls.size, incompleteDecls.size, leanObjects, sorryDetails, missingDecls)
         | some (.literate code) =>
           let theoremNames : NameSet := code.definedTheorems.foldl (init := {}) fun acc (d : Data.LiterateThm) => acc.insert d.name
+          let kind := toString node.kind
           let leanObjects := (code.definedDefs.map (·.name) ++ code.definedTheorems.map (·.name)).toList
           let leanDecls := code.definedDefs.size + code.definedTheorems.size
-          let sorries := countDefSorries code.definedDefs + countThmSorries code.definedTheorems
+          let sorries :=
+            countSorries code.definedDefs (fun (d : Data.LiterateDef) => d.provedStatus) +
+            countSorries code.definedTheorems (fun (d : Data.LiterateThm) => d.provedStatus)
           let sorryDetails :=
-            collectDefSorries label (toString node.kind) code.definedDefs theoremNames ++
-            collectThmSorries label (toString node.kind) code.definedTheorems theoremNames
+            collectSorries label kind code.definedDefs
+              (fun (d : Data.LiterateDef) => d.name)
+              (fun (d : Data.LiterateDef) => d.provedStatus)
+              (fun (d : Data.LiterateDef) => theoremNames.contains d.name) ++
+            collectSorries label kind code.definedTheorems
+              (fun (d : Data.LiterateThm) => d.name)
+              (fun (d : Data.LiterateThm) => d.provedStatus)
+              (fun (d : Data.LiterateThm) => theoremNames.contains d.name)
           (leanDecls, sorries, leanObjects, sorryDetails, ([] : List MissingLeanDeclItem))
-      let pendingInformalProofEntries : List PendingProofItem :=
+      let pendingInformalEntries : List PendingInformalItem :=
         if hasCode && ((kindNeedsInformalProof node.kind && !hasProof) || !hasStatement) then
-          { label, kind := toString node.kind, leanObjects } :: acc.pendingInformalProofEntries
+          { label, kind := toString node.kind, leanObjects } :: acc.pendingInformalEntries
         else
-          acc.pendingInformalProofEntries
+          acc.pendingInformalEntries
       let definitionIndex : List IndexItem :=
         if node.kind == Data.NodeKind.definition then
           { label, kind := toString node.kind, leanObjects } :: acc.definitionIndex
@@ -225,7 +221,7 @@ def buildSummary : CoreM Summary := do
         totalEntries := acc.totalEntries + 1
         leanOnlyEntries := acc.leanOnlyEntries + (if hasCode && !hasStatement then 1 else 0)
         informalOnlyEntries := acc.informalOnlyEntries + (if hasStatement && !hasCode then 1 else 0)
-        pendingInformalProofEntries
+        pendingInformalEntries
         leanDecls := acc.leanDecls + leanDecls
         sorries := acc.sorries + sorries
         sorryDetails := sorryDetails ++ acc.sorryDetails

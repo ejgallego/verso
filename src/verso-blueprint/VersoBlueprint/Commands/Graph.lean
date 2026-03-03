@@ -477,6 +477,10 @@ def loadD3Dot :=
         const label = graphNodeLabel(node);
         if (label) show(label);
       };
+      if (svg.getAttribute("data-bp-preview-bound") === "1") {
+        return;
+      }
+      svg.setAttribute("data-bp-preview-bound", "1");
       svg.addEventListener("mouseover", function (ev) {
         showFromTarget(ev.target);
       });
@@ -503,11 +507,24 @@ def loadD3Dot :=
       };
       const selectVariantByLabel = mapNodeTargets(activeVariant.selectOnNode);
       const hoverVariantByLabel = mapNodeTargets(activeVariant.hoverOnNode);
-      if (selectVariantByLabel.size === 0 && hoverVariantByLabel.size === 0) {
-        return;
-      }
       const svg = graphContainer.select("svg").node();
       if (!svg) return;
+      const readVariantState = function () {
+        const state = svg.__bpVariantState;
+        if (state && state.selectVariantByLabel instanceof Map && state.hoverVariantByLabel instanceof Map) {
+          return state;
+        }
+        return {
+          selectVariantByLabel: new Map(),
+          hoverVariantByLabel: new Map(),
+          lastHoverLabel: ""
+        };
+      };
+      svg.__bpVariantState = {
+        selectVariantByLabel: selectVariantByLabel,
+        hoverVariantByLabel: hoverVariantByLabel,
+        lastHoverLabel: ""
+      };
 
       const nodeLabel = function (node) {
         const label = graphNodeLabel(node);
@@ -517,12 +534,8 @@ def loadD3Dot :=
       const nodeSelectKey = function (node) {
         const label = nodeLabel(node);
         if (!label) return "";
-        return selectVariantByLabel.get(label) || "";
-      };
-      const nodeHoverKey = function (node) {
-        const label = nodeLabel(node);
-        if (!label) return "";
-        return hoverVariantByLabel.get(label) || "";
+        const state = readVariantState();
+        return state.selectVariantByLabel.get(label) || "";
       };
       const activateFromTarget = function (target, ev) {
         if (!(target instanceof Element)) return;
@@ -536,26 +549,33 @@ def loadD3Dot :=
         }
         onSelect(nextKey);
       };
-      let lastHoverLabel = "";
       const hoverFromTarget = function (target) {
         if (!(target instanceof Element)) return;
         const node = target.closest("g.node");
         if (!node) return;
         const label = nodeLabel(node);
-        const nextKey = nodeHoverKey(node);
+        if (!label) return;
+        const state = readVariantState();
+        const nextKey = state.hoverVariantByLabel.get(label) || "";
         if (!label || !nextKey) return;
-        if (label == lastHoverLabel) return;
-        lastHoverLabel = label;
+        if (label === state.lastHoverLabel) return;
+        state.lastHoverLabel = label;
         onHover(label, nextKey, node);
       };
 
       svg.querySelectorAll("g.node").forEach(function (node) {
         const selectKey = nodeSelectKey(node);
-        const hoverKey = nodeHoverKey(node);
+        const label = nodeLabel(node);
+        const state = readVariantState();
+        const hoverKey = label ? (state.hoverVariantByLabel.get(label) || "") : "";
         if (!selectKey && !hoverKey) return;
         node.style.cursor = "pointer";
         node.setAttribute("tabindex", "0");
       });
+      if (svg.getAttribute("data-bp-variant-bound") === "1") {
+        return;
+      }
+      svg.setAttribute("data-bp-variant-bound", "1");
       svg.addEventListener("click", function (ev) {
         activateFromTarget(ev.target, ev);
       });
@@ -567,7 +587,8 @@ def loadD3Dot :=
         hoverFromTarget(ev.target);
       });
       svg.addEventListener("mouseleave", function () {
-        lastHoverLabel = "";
+        const state = readVariantState();
+        state.lastHoverLabel = "";
       });
     }
 

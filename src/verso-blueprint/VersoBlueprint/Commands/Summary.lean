@@ -72,8 +72,8 @@ block_extension Block.summary (summary : Summary) where
                     else
                      {{<span></span>}}}}
                 </li> }}
-      let pendingProofRows ←
-        data.pendingInformalProofEntries.toArray.mapM fun item =>
+      let pendingInformalRows ←
+        data.pendingInformalEntries.toArray.mapM fun item =>
           mkLeanRow item.label item.kind item.leanObjects
       let sorryRows ←
         data.sorryDetails.toArray.mapM fun item => do
@@ -248,14 +248,14 @@ block_extension Block.summary (summary : Summary) where
             <summary>"Lean progress"</summary>
             <div class="bp_summary_grid">
               <div class="bp_summary_card"><span class="bp_summary_label">"Lean definitions/theorems"</span><span class="bp_summary_value">s!"{data.leanDecls}"</span></div>
-              <div class="bp_summary_card"><span class="bp_summary_label">"Entries with informal proof pending"</span><span class="bp_summary_value">s!"{data.pendingInformalProofEntries.length}"</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Entries with missing informal statement/proof"</span><span class="bp_summary_value">s!"{data.pendingInformalEntries.length}"</span></div>
               <div class="bp_summary_card bp_summary_placeholder"><span class="bp_summary_label">"Missing external Lean declarations"</span><span class="bp_summary_value">s!"{data.missingLeanDecls.length}"</span></div>
               <div class="bp_summary_card bp_summary_placeholder"><span class="bp_summary_label">"Incomplete Lean declarations"</span><span class="bp_summary_value">s!"{data.sorries}"</span></div>
             </div>
             <details class="bp_summary_subsection">
-              <summary>s!"Lean code with informal proof pending ({data.pendingInformalProofEntries.length})"</summary>
+              <summary>s!"Lean code with missing informal statement/proof ({data.pendingInformalEntries.length})"</summary>
               <ul class="bp_summary_list">
-                {{if pendingProofRows.isEmpty then {{<li class="bp_summary_empty">"No pending informal proofs."</li>}} else pendingProofRows}}
+                {{if pendingInformalRows.isEmpty then {{<li class="bp_summary_empty">"No entries missing informal statement/proof."</li>}} else pendingInformalRows}}
               </ul>
             </details>
             <details class="bp_summary_subsection bp_summary_placeholder">

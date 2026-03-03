@@ -483,40 +483,28 @@ private def mkItems (config : Cite.CiteConfig) : DocElabM (Array (TSyntax `term)
   citations.toArray.mapM fun (label, decl) =>
     `(Informal.Cite.CiteItem.mk $(quote label) $(mkIdent decl))
 
+private def citeRoleImpl (style : Cite.CitationStyle) (config : Cite.CiteConfig)
+    (extra : Array (TSyntax `inline)) : DocElabM Term := do
+  let items ← mkItems config
+  let inlines ← extra.mapM elabInline
+  ``(Verso.Doc.Inline.other
+    (Informal.Cite.Inline.bpCite
+      ([$items,*] : List Informal.Cite.CiteItem)
+      $(quote style)
+      $(quote config.kind)
+      $(quote config.index))
+    #[$inlines,*])
+
 @[role]
 def citep : RoleExpanderOf Cite.CiteConfig
-  | config, extra => do
-    let items ← mkItems config
-    ``(Verso.Doc.Inline.other
-      (Informal.Cite.Inline.bpCite
-        ([$items,*] : List Informal.Cite.CiteItem)
-        Informal.Cite.CitationStyle.parenthetical
-        $(quote config.kind)
-        $(quote config.index))
-      #[$(← extra.mapM elabInline),*])
+  | config, extra => citeRoleImpl .parenthetical config extra
 
 @[role]
 def citet : RoleExpanderOf Cite.CiteConfig
-  | config, extra => do
-    let items ← mkItems config
-    ``(Verso.Doc.Inline.other
-      (Informal.Cite.Inline.bpCite
-        ([$items,*] : List Informal.Cite.CiteItem)
-        Informal.Cite.CitationStyle.textual
-        $(quote config.kind)
-        $(quote config.index))
-      #[$(← extra.mapM elabInline),*])
+  | config, extra => citeRoleImpl .textual config extra
 
 @[role]
 def citehere : RoleExpanderOf Cite.CiteConfig
-  | config, extra => do
-    let items ← mkItems config
-    ``(Verso.Doc.Inline.other
-      (Informal.Cite.Inline.bpCite
-        ([$items,*] : List Informal.Cite.CiteItem)
-        Informal.Cite.CitationStyle.here
-        $(quote config.kind)
-        $(quote config.index))
-      #[$(← extra.mapM elabInline),*])
+  | config, extra => citeRoleImpl .here config extra
 
 end Informal

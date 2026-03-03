@@ -1027,32 +1027,25 @@ block_extension Block.informalCode (data : CodeBlockData) where
       let getDeclHref (decl : Name) : Option String :=
         Resolve.resolveExampleDeclHref? s decl
       let summaryHoverData := mkCodeHoverData label definedDefs definedTheorems getDeclHref
-      let listItems (items : Array CodeHoverDecl) : Output.Html :=
-        if items.isEmpty then
-          {{<li class="bp_code_hover_none">"none"</li>}}
-        else
-          .seq <| items.map fun item =>
-            let txt := {{<code>{{.text true item.text}}</code>}}
-            {{<li>{{if let some href := item.href then {{<a href={{href}}>{{txt}}</a>}} else txt}}</li>}}
       let progressHover : Output.Html := {{
         <div class="bp_code_hover" role="tooltip">
           <div class="bp_code_hover_title">{{.text true s!"{summaryHoverData.label}"}}</div>
           <div class="bp_code_hover_section">
             <span class="bp_code_hover_label">"Lean definitions"</span>
             <ul class="bp_code_hover_list">
-              {{listItems summaryHoverData.definedDefs}}
+              {{codeHoverDeclItems summaryHoverData.definedDefs}}
             </ul>
           </div>
           <div class="bp_code_hover_section">
             <span class="bp_code_hover_label">"Lean theorems/lemmas"</span>
             <ul class="bp_code_hover_list">
-              {{listItems summaryHoverData.definedTheorems}}
+              {{codeHoverDeclItems summaryHoverData.definedTheorems}}
             </ul>
           </div>
           <div class="bp_code_hover_section">
             <span class="bp_code_hover_label">"Sorries"</span>
             <ul class="bp_code_hover_list">
-              {{listItems summaryHoverData.sorries}}
+              {{codeHoverDeclItems summaryHoverData.sorries}}
             </ul>
           </div>
         </div>

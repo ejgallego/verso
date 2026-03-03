@@ -426,16 +426,18 @@ def mkCodePanel
     </div>
   }}
 
+def codeHoverDeclItems (items : Array CodeHoverDecl) : Output.Html :=
+  open Verso.Output.Html in
+  if items.isEmpty then
+    {{<li class="bp_code_hover_none">"none"</li>}}
+  else
+    .seq <| items.map fun item =>
+      let txt := {{<code>{{.text true item.text}}</code>}}
+      {{<li>{{if let some href := item.href then {{<a href={{href}}>{{txt}}</a>}} else txt}}</li>}}
+
 def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : Array (String × String))
     (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
-  let listItems (items : Array CodeHoverDecl) : Output.Html :=
-    if items.isEmpty then
-      {{<li class="bp_code_hover_none">"none"</li>}}
-    else
-      .seq <| items.map fun item =>
-        let txt := {{<code>{{.text true item.text}}</code>}}
-        {{<li>{{if let some href := item.href then {{<a href={{href}}>{{txt}}</a>}} else txt}}</li>}}
   let codeHover : Output.Html :=
     match cdata.codeHover with
     | none => .empty
@@ -445,19 +447,19 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
         <div class="bp_code_hover_section">
           <span class="bp_code_hover_label">"Lean definitions"</span>
           <ul class="bp_code_hover_list">
-            {{listItems hover.definedDefs}}
+            {{codeHoverDeclItems hover.definedDefs}}
           </ul>
         </div>
         <div class="bp_code_hover_section">
           <span class="bp_code_hover_label">"Lean theorems/lemmas"</span>
           <ul class="bp_code_hover_list">
-            {{listItems hover.definedTheorems}}
+            {{codeHoverDeclItems hover.definedTheorems}}
           </ul>
         </div>
         <div class="bp_code_hover_section">
           <span class="bp_code_hover_label">"Sorries"</span>
           <ul class="bp_code_hover_list">
-            {{listItems hover.sorries}}
+            {{codeHoverDeclItems hover.sorries}}
           </ul>
         </div>
       </div>

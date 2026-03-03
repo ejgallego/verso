@@ -35,7 +35,7 @@ def blueprintWidget : Component GraphParams where
   javascript := "
     import d3 from 'https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm'
     import { graphviz } from 'https://cdn.jsdelivr.net/npm/d3-graphviz@5.6.0/+esm'
-    import katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.27/+esm'
+    import katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.28/+esm'
     import * as React from 'react';
 
     export default function ({ title, label, statementHtml, dot, texPrelude }) {
