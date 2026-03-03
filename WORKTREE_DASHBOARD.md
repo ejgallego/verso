@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/lib-analysis-20260303` implemented Lib cleanup refactor and validated)
+Last updated: 2026-03-03 (`feat/lib-analysis-20260303` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -56,28 +56,18 @@ Last updated: 2026-03-03 (`feat/lib-analysis-20260303` implemented Lib cleanup r
   - `git status --short`
   - commit/stash local chapter changes before rebasing on `bp`
 
-### `feat/lib-analysis-20260303`
-
-- Status: `ready-for-review` (owner action: review diff and decide merge sequencing)
-- Summary: implemented Lib cleanup: removed dead modules/APIs, co-located summary builder with summary command, and validated end-to-end output.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/lib-analysis-20260303`
-- Branch: `feat/lib-analysis-20260303`
-- Base commit/branch:
-  - based on `bp` at `df411fe8`
-- Key commit:
-  - none yet (local changes pending commit)
-- Validation status:
-  - `lake build VersoBlueprint` (pass)
-  - `lake exe noperthedron` (pass)
-  - preview server: `http://127.0.0.1:8092/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/lib-analysis-20260303`
-  - `git status --short`
-  - `git diff -- src/verso-blueprint/VersoBlueprint/Lib src/verso-blueprint/VersoBlueprint/Commands/Summary.lean src/verso-blueprint/VersoBlueprint/Widget.lean`
-  - preview server is running in session `9175` on port `8092`
-
 ## Recently Completed
 
+- Merged `feat/lib-analysis-20260303` into `bp` (`df411fe8 -> ad1ac4e0`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Stopped preview server session `9175` (`http://127.0.0.1:8092/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/lib-analysis-20260303`.
+- Deleted branch: `feat/lib-analysis-20260303`.
 - Merged `feat/informal-code-audit-restart-20260303` into `bp` (`7a4bc3f5 -> b579013b`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
