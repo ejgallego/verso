@@ -19,6 +19,8 @@ import VersoBlueprint.Attribute
 import VersoBlueprint.Cite
 import VersoBlueprint.Commands
 import VersoBlueprint.Commands.ShowGraph
+import VersoBlueprint.Commands.ShowSummary
+import VersoBlueprint.Commands.ShowBibliography
 import VersoBlueprint.Lean
 import VersoBlueprint.NameParsing
 import VersoBlueprint.PreviewCache
