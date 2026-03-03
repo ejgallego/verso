@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` merged into `bp`, validated, and cleaned up)
+Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` created for in-depth `Commands/Summary` review, preview server running)
 
 ## Active Worktrees
 
@@ -21,6 +21,26 @@ Last updated: 2026-03-03 (`feat/blueprint-deadcode-audit-20260303` merged into `
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/commands-summary-audit-20260304`
+
+- Status: `active` (owner action: complete `Commands/Summary` deep analysis and capture findings)
+- Summary: isolated review worktree for duplication cleanup opportunities, status-logic walkthrough, and UI/CSS improvement recommendations in `Commands/Summary`.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/commands-summary-audit-20260304`
+- Branch: `feat/commands-summary-audit-20260304`
+- Base commit/branch:
+  - merge-base with `bp`: `5f472622` (`0` behind / `0` ahead)
+- Key commit:
+  - `5f472622` docs(dashboard): mark deadcode audit merged and cleaned
+- Validation status:
+  - setup:
+  - `lake exe cache get`
+  - `lake exe noperthedron`
+  - preview server: `http://127.0.0.1:8098/` (pid `266689`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/commands-summary-audit-20260304`
+  - `git status --short`
+  - `lake exe noperthedron`
 
 ### `feat/lsp-folding-chain`
 
