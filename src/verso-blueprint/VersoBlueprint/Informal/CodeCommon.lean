@@ -147,26 +147,10 @@ def provedStatusHasSorry (status : Data.ProvedStatus) : Bool :=
   status.isIncomplete
 
 def provedStatusLocationText (status : Data.ProvedStatus) : String :=
-  match status with
-  | .missing => "missing declaration"
-  | .axiomLike => "axiom-like (no body)"
-  | .containsSorry info =>
-    let hasType := info.any (·.location == .statement)
-    let hasProof := info.any (·.location == .proof)
-    if hasType && hasProof then
-      "in statement and proof"
-    else if hasType then
-      "in statement"
-    else if hasProof then
-      "in proof"
-    else
-      "location unknown"
-  | .proved => "location unknown"
+  status.sorryLocationText
 
 def provedStatusContainsSorry (status : Data.ProvedStatus) : Bool :=
-  match status with
-  | .containsSorry _ => true
-  | _ => false
+  status.containsExplicitSorry
 
 def provedStatusSummaryText (status : Data.ProvedStatus) : String :=
   match status with

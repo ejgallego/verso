@@ -219,15 +219,6 @@ private def addParentTheoremLikeItem (groups : NameMap (List IndexItem)) (parent
     NameMap (List IndexItem) :=
   groups.insert parent (item :: groups.getD parent [])
 
-private def sorryRefsByLocation (status : Data.ProvedStatus) : Nat × Nat :=
-  match status with
-  | .containsSorry info =>
-    info.foldl (init := (0, 0)) fun (typeRefs, proofRefs) s =>
-      match s.location with
-      | .statement => (typeRefs + s.refs?.getD 0, proofRefs)
-      | .proof => (typeRefs, proofRefs + s.refs?.getD 0)
-  | _ => (0, 0)
-
 def buildSummary : CoreM Summary := do
   let env ← getEnv
   let state := informalExt.getState env
@@ -631,23 +622,16 @@ block_extension Block.summary (summary : Summary) where
             match item.status with
             | .missing =>
               pure ("missing", "Missing declaration: ", "bp_summary_badge bp_summary_badge_error",
-                provedStatusLocationText item.status, "n/a", 0, 0, 0)
+                item.status.sorryLocationText, "n/a", 0, 0, 0)
             | .axiomLike =>
               pure ("axiom-like", "Axiom-like declaration: ", "bp_summary_badge bp_summary_badge_warn",
-                provedStatusLocationText item.status, "n/a", 0, 0, 0)
+                item.status.sorryLocationText, "n/a", 0, 0, 0)
             | .containsSorry _ =>
-              let hasTypeGap := item.status.hasTypeGap
-              let hasProofGap := item.status.hasProofGap
-              let (typeSorryRefs, proofSorryRefs) := sorryRefsByLocation item.status
+              let (typeSorryRefs, proofSorryRefs) := item.status.sorryRefCounts
               let sorryRefs := typeSorryRefs + proofSorryRefs
               let refsTxt := if sorryRefs > 0 then toString sorryRefs else "unknown"
-              let whereTxt :=
-                if hasTypeGap && hasProofGap then
-                  "in statement and proof"
-                else
-                  provedStatusLocationText item.status
               pure ("contains sorry", "Declaration with sorry: ", "bp_summary_badge bp_summary_badge_warn",
-                whereTxt, refsTxt, typeSorryRefs, proofSorryRefs, sorryRefs)
+                item.status.sorryLocationText, refsTxt, typeSorryRefs, proofSorryRefs, sorryRefs)
             | .proved =>
               HtmlT.logError s!"Unexpected proved status in summary sorry details for {item.decl}"
               pure ("proved", "Declaration: ", "bp_summary_badge", "proved", "0", 0, 0, 0)

@@ -66,6 +66,17 @@ def external_def_decl : Nat := 1
       defStatus == .proved
     )
 
+/-- info: true -/
+#guard_msgs in
+#eval
+  let status : Data.ProvedStatus :=
+    .containsSorry #[{ location := .statement, refs? := some 2 }, { location := .proof, refs? := some 3 }]
+  Data.NodeKind.definition.isTheoremLike = false &&
+  Data.NodeKind.theorem.isTheoremLike &&
+  status.sorryLocationText = "in statement and proof" &&
+  status.statusLabel = "contains sorry" &&
+  status.sorryRefCounts = (2, 3)
+
 def nestedPopState : Environment.State :=
   {
     data := (mkState [(`outer, { kind := .definition, statement := some (mkInformal #[]) })]).data
