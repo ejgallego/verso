@@ -8,7 +8,9 @@
   - `lake exe noperthedron`
 - Validation output:
   - Generated website is written to `_out/`
-- Very important, check section "Starting a new task"
+- Very important, check section "Starting a new task and Worktree Layout"
+- NEVER start a task WITHOUT creating a new worktree. DO NOT USE IDE CONTEXT TO GUESS WORKTREE.
+- When editing the `WORKTREE_DASHBOARD.md` ALWAYS commit the edit.
 
 ## Starting a new task and Worktree Layout (Parallel Features + Sub-Agents)
 
