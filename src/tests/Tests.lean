@@ -9,6 +9,7 @@ import Tests.Elab
 import Tests.GenericCode
 import Tests.Golden
 import Tests.CommentSkipping
+import Tests.DocGenNameRender
 import Tests.HighlightedToTeX
 import Tests.Html
 import Tests.HtmlEntities

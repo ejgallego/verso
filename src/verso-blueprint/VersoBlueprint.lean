@@ -21,6 +21,7 @@ import VersoBlueprint.Commands.Graph
 import VersoBlueprint.Commands.Summary
 import VersoBlueprint.Commands.Bibliography
 import VersoBlueprint.Informal.Code
+import VersoBlueprint.DocGenNameRender
 import VersoBlueprint.Lean
 import VersoBlueprint.NameParsing
 import VersoBlueprint.PreviewCache
@@ -419,6 +420,7 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       | _, _ => pure none
     let sourceDeclPretty? := sourceDecl?.map (truncatePreview declPreviewLimit)
     let sourceBodyPretty? := (rhsFromDeclarationSource? =<< sourceDecl?) |>.map (truncatePreview rhsPreviewLimit)
+    let renderedHtml? ← (renderDeclHtmlStringDirect? canonical).run'
     let typePretty ← prettyExprPreview env opts info.type typePreviewLimit
     let valuePretty? ←
       match info.value? (allowOpaque := true) with
@@ -437,6 +439,7 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       sourceHref?
       sourceDeclPretty?
       sourceBodyPretty?
+      renderedHtml?
       provedStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
     }
 def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.CodeRef) : CoreM BlockCodeStatus := do
@@ -785,6 +788,183 @@ details[open] > summary .bp_code_expand_hint::before {
   color: #0f172a;
 }
 
+.bp_external_decl_rendered {
+  margin: 0.22rem 0 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.bp_external_decl_rendered .declaration {
+  margin: 0;
+  padding: 0;
+}
+
+.bp_external_decl_rendered .decl {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.bp_external_decl_rendered .decl.def,
+.bp_external_decl_rendered .decl.instance {
+  border-left: 10px solid var(--text-color, #0f172a);
+  border-top: 2px solid var(--text-color, #0f172a);
+}
+
+.bp_external_decl_rendered .decl.theorem {
+  border-left: 10px solid var(--theorem-color, #8fe388);
+  border-top: 2px solid var(--theorem-color, #8fe388);
+}
+
+.bp_external_decl_rendered .decl.axiom,
+.bp_external_decl_rendered .decl.opaque {
+  border-left: 10px solid var(--axiom-and-constant-color, #f44708);
+  border-top: 2px solid var(--axiom-and-constant-color, #f44708);
+}
+
+.bp_external_decl_rendered .decl.structure,
+.bp_external_decl_rendered .decl.inductive,
+.bp_external_decl_rendered .decl.class {
+  border-left: 10px solid var(--structure-and-inductive-color, #f0a202);
+  border-top: 2px solid var(--structure-and-inductive-color, #f0a202);
+}
+
+.bp_external_decl_item_rendered .bp_external_decl_head {
+  display: none;
+}
+
+.bp_external_decl_rendered .decl_kind,
+.bp_external_decl_rendered .decl_name,
+.bp_external_decl_rendered .decl_extends {
+  font-weight: bold;
+}
+
+.bp_external_decl_rendered .decl_header {
+  text-indent: -8ex;
+  padding-left: 8ex;
+  line-height: 1.45;
+}
+
+.bp_external_decl_rendered .decl_name {
+  overflow-wrap: break-word;
+}
+
+.bp_external_decl_rendered .decl_name::after {
+  content: "\A";
+  white-space: pre;
+}
+
+.bp_external_decl_rendered .decl_type {
+  margin-top: 2px;
+  margin-left: 4ex;
+}
+
+.bp_external_decl_rendered .decl_args,
+.bp_external_decl_rendered .decl_type .decl_parent {
+  font-weight: normal;
+}
+
+.bp_external_decl_rendered .implicits,
+.bp_external_decl_rendered .impl_arg {
+  color: inherit;
+  white-space: normal;
+}
+
+.bp_external_decl_rendered .decl_type code {
+  margin-top: 0;
+}
+
+.bp_external_decl_rendered .decl_header,
+.bp_external_decl_rendered .attributes,
+.bp_external_decl_rendered .equation,
+.bp_external_decl_rendered .constructor,
+.bp_external_decl_rendered .structure_field_info,
+.bp_external_decl_rendered .structure_ext_ctor,
+.bp_external_decl_rendered code {
+  font-size: 92%;
+  font-family: "JuliaMono", var(--verso-code-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+}
+
+.bp_external_decl_rendered code,
+.bp_external_decl_rendered pre {
+  background: var(--code-bg, #f3f3f3);
+  border-radius: 5px;
+}
+
+.bp_external_decl_rendered code {
+  padding: 1px 3px;
+  font-variant-ligatures: none;
+  white-space: break-spaces;
+}
+
+.bp_external_decl_rendered pre {
+  padding: 1ex;
+  white-space: break-spaces;
+}
+
+.bp_external_decl_rendered pre code {
+  padding: 0;
+}
+
+.bp_external_decl_rendered .docstring {
+  margin-top: 0.45rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--verso-text-font-family, inherit);
+  font-size: 0.95em;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow: visible;
+  max-height: none;
+}
+
+.bp_external_decl_rendered details {
+  margin-top: 0.55rem;
+}
+
+.bp_external_decl_rendered details > summary {
+  cursor: pointer;
+  font-size: 92%;
+  font-family: "JuliaMono", var(--verso-code-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+}
+
+.bp_external_decl_rendered details > ul {
+  display: block;
+  padding-inline-start: 0;
+  margin-top: 0.45rem;
+  text-indent: -2ex;
+  padding-left: 2ex;
+}
+
+.bp_external_decl_rendered details > ul > li {
+  display: block;
+  margin-left: 2ex;
+  overflow-wrap: anywhere;
+  font-size: 92%;
+  font-family: "JuliaMono", var(--verso-code-font-family, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+}
+
+.bp_external_decl_rendered details.constructors > ul > li::before {
+  content: "| ";
+  color: #6b7280;
+}
+
+.bp_external_decl_rendered_meta {
+  margin-top: 0.24rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 0.72rem;
+}
+
+.bp_external_decl_rendered_source .bp_code_link {
+  font-size: 0.72rem;
+}
+
 .bp_content {
   padding-left: 0.65rem;
 }
@@ -958,6 +1138,7 @@ block_extension Block.informal (data : BlockData) where
                 sourceHref? := decl.sourceHref?
                 sourceDeclPretty? := decl.sourceDeclPretty?
                 sourceBodyPretty? := decl.sourceBodyPretty?
+                renderedHtml? := decl.renderedHtml?
                 provedStatus := decl.provedStatus
               }
           | _ => #[]
