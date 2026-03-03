@@ -131,7 +131,7 @@ private def resolveExternalNameCandidates [MonadResolveName m] [MonadOptions m]
 
 private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadEnv m]
     [MonadLog m] [AddMessageContext m] [MonadError m]
-    (label : Name) (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
+    (label : Name) (labelSyntax : Syntax) (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
   let strictResolve :=
     (← getOptions).get
       verso.blueprint.externalCode.strictResolve.name
@@ -142,9 +142,9 @@ private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [Monad
     | [] =>
       let msg := m!"Label {label}: external Lean name '{ref.written}' could not be resolved in current namespace/open declarations"
       if strictResolve then
-        throwError msg
+        throwErrorAt labelSyntax msg
       else
-        logWarning m!"{msg}; keeping parsed name"
+        logWarningAt labelSyntax m!"{msg}; keeping parsed name"
         let ref ← markExternalRefSnapshot (parsedExternalRef ref)
         return pushExternalRefDedup acc ref
     | [resolved] =>
@@ -153,9 +153,9 @@ private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [Monad
     | many =>
       let msg := m!"Label {label}: external Lean name '{ref.written}' is ambiguous ({String.intercalate ", " (many.map toString)})"
       if strictResolve then
-        throwError msg
+        throwErrorAt labelSyntax msg
       else
-        logWarning m!"{msg}; keeping parsed name"
+        logWarningAt labelSyntax m!"{msg}; keeping parsed name"
         let ref ← markExternalRefSnapshot (parsedExternalRef ref)
         return pushExternalRefDedup acc ref
 
@@ -175,20 +175,6 @@ def Config.parse  : ArgParse m Config :=
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
-
-structure GroupConfig where
-  label : Data.Label
-  labelSyntax : Syntax := Syntax.missing
-
-def GroupConfig.parse : ArgParse m GroupConfig :=
-  (fun (labelArg : Verso.ArgParse.WithSyntax String) =>
-    {
-      label := Name.mkSimple labelArg.val
-      labelSyntax := labelArg.syntax
-    }) <$> .positional `label (.withSyntax .string)
-
-instance : FromArgs GroupConfig m where
-  fromArgs := GroupConfig.parse
 
 end
 
@@ -830,6 +816,12 @@ def blueprintStyleSwitcherCss : String := StyleSwitcher.css
 
 def blueprintStyleSwitcherJs : String := StyleSwitcher.jsInteractive
 
+def shouldWritePreviewDataByIds [BEq α] (existingIds : Array α) (currentId : α) : Bool :=
+  existingIds.isEmpty || existingIds.contains currentId
+
+private def shouldWritePreviewData (existing? : Option Verso.Multi.Object) (id : Verso.Multi.InternalId) : Bool :=
+  shouldWritePreviewDataByIds ((existing?.map (·.ids.toArray)).getD #[]) id
+
 /- Informal custom blocks -/
 block_extension Block.informal (data : BlockData) where
   -- for TOC
@@ -845,13 +837,13 @@ block_extension Block.informal (data : BlockData) where
       let label := blockData.label
       let previewKey := PreviewCache.keyOf label blockData.isProof
       let previewData := toJson (PreviewCache.Entry.ofBlocks label blockData.isProof _contents)
-      if let .some _d := (← get).getDomainObject? informalPreviewDomain previewKey then
+      let existingPreview? := (← get).getDomainObject? informalPreviewDomain previewKey
+      if shouldWritePreviewData existingPreview? id then
         modify λ s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
-      else
+      if existingPreview?.isNone then
         let path ← (·.path) <$> read
         let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
         modify λ s => s.saveDomainObject informalPreviewDomain previewKey id
-        modify λ s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
       if let .some _d := (← get).getDomainObject? informalDomain label.toString then
         return none
       else
@@ -1022,13 +1014,13 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let blockRef ← getRef
     let label := cfg.label
     let kind? := if isProof then none else some kind
-    let resolvedExternalCode ← resolveExternalCodeList label cfg.externalCode
+    let resolvedExternalCode ← resolveExternalCodeList label cfg.labelSyntax cfg.externalCode
     let hasExternal := !resolvedExternalCode.isEmpty
     let hasLeanok := cfg.leanok.getD false
     if !cfg.invalidExternalCode.isEmpty then
-      logWarning m!"Label {label}: ignoring malformed names in '(lean := ...)' ({String.intercalate ", " cfg.invalidExternalCode.toList})"
+      logWarningAt cfg.labelSyntax m!"Label {label}: ignoring malformed names in '(lean := ...)' ({String.intercalate ", " cfg.invalidExternalCode.toList})"
     if hasExternal && hasLeanok then
-      logError m!"Label {label} cannot use '(leanok := true)' together with '(lean := ...)'"
+      logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(leanok := true)' together with '(lean := ...)'"
     let codeHint : Option Data.CodeRef :=
       if hasExternal then
         some (.external resolvedExternalCode)
@@ -1061,49 +1053,11 @@ private def expander (kind : Data.NodeKind) (isProof : Bool := false) : Directiv
     Profile.withDocElab "directive" label <|
       (expanderImpl kind isProof) cfg contents
 
-private def collapseWhitespace (s : String) : String :=
-  let s := s.replace "\n" " "
-  let s := s.replace "\r" " "
-  let s := s.replace "\t" " "
-  String.intercalate " " <| (s.splitOn " ").filter (fun chunk => !chunk.isEmpty)
-
-private def normalizeGroupChunk (s : String) : String :=
-  let s := s.trimAscii.toString
-  let s := s.replace "para{\"" ""
-  let s := s.replace "para{" ""
-  let s := s.replace "\"}" ""
-  let s := s.replace "}" ""
-  let s := s.replace "\"" ""
-  s.trimAscii.toString
-
-private def groupHeaderFromContents (contents : Array (TSyntax `block)) : String :=
-  let raw := contents.foldl (init := "") fun acc block =>
-    let chunk := normalizeGroupChunk <| (Syntax.reprint block.raw).getD ""
-    if chunk.isEmpty then
-      acc
-    else if acc.isEmpty then
-      chunk
-    else
-      acc ++ "\n" ++ chunk
-  collapseWhitespace raw
-
-private def groupExpanderImpl : DirectiveExpanderOf GroupConfig
-  | cfg, contents => do
-    let header := groupHeaderFromContents contents
-    if header.isEmpty then
-      logWarning m!"Group {cfg.label} has an empty body; using the group label as header text"
-    Environment.registerGroup cfg.label (if header.isEmpty then cfg.label.toString else header)
-    ``(Block.concat #[])
-
 @[directive] def «definition» := expander .definition
 @[directive] def «lemma_» := expander .lemma
 @[directive] def «theorem» := expander .theorem
 @[directive] def «corollary» := expander .corollary
 @[directive] def «proof» := expander .lemma (isProof := true)
-@[directive] def «group» : DirectiveExpanderOf GroupConfig
-  | cfg, contents => do
-    Profile.withDocElab "directive" "group" <|
-      groupExpanderImpl cfg contents
 
 /-- Interpreting Embedded Lean Code blocks -/
 private def leanImpl : CodeBlockExpanderOf Config
