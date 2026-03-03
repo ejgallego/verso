@@ -317,12 +317,6 @@ private def externalDeclItem (item : LinkedExternalDecl) (statusTxt : String)
     </li>
   }}
 
-private partial def docGenHtmlToOutputHtml : DocGenHtml → Output.Html
-  | .element tag _inline attrs children =>
-      .tag tag attrs (.seq (children.map docGenHtmlToOutputHtml))
-  | .text s => .text true s
-  | .raw s => .text false s
-
 private def kindTextForDecl? (decl : Data.ExternalRef) : Option String :=
   if !decl.present then
     none
@@ -409,7 +403,7 @@ def renderParts (data : BlockData) (codeHref : Option String)
             | .ok renderedHtml =>
               {{
                 <li class="bp_external_decl_item bp_external_decl_item_rendered">
-                  <div class="bp_external_decl_rendered">{{docGenHtmlToOutputHtml renderedHtml}}</div>
+                  <div class="bp_external_decl_rendered">{{renderedHtml}}</div>
                   <div class="bp_external_decl_rendered_meta">
                     <span class={{statusClass}}>{{.text true statusTxt}}</span>
                     {{if let some sourceRef := externalDeclSourceRef? item then

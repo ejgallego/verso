@@ -785,7 +785,7 @@ block_extension Block.informal (data : BlockData) where
         modify λ s => s.saveDomainObjectData informalDomain label.toString (toJson blockData)
         return none
   toTeX := none
-  extraCss := ([blueprintCss, blueprintStyleSwitcherCss] : List String)
+  extraCss := ([blueprintCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
   extraJs := ([blueprintStyleSwitcherJs] : List String)
   toHtml :=
     open Verso.Doc.Html in

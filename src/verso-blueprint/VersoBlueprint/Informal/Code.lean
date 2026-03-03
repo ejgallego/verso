@@ -88,7 +88,7 @@ block_extension Block.informalCode (data : CodeBlockData) where
       modify λ s => s.saveDomainObjectData informalCodeDomain label.toString (toJson cdata)
       pure none
   toTeX := none
-  extraCss := ([blueprintCss, blueprintStyleSwitcherCss] : List String)
+  extraCss := ([blueprintCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
   extraJs := ([blueprintStyleSwitcherJs] : List String)
   toHtml :=
     open Verso.Doc.Html in
