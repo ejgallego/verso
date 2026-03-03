@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/external-lean-html-audit-20260303` rebased on `bp`, validated, and marked ready for merge)
+Last updated: 2026-03-04 (`feat/external-lean-html-audit-20260303` merged into `bp`, validated, and cleaned up)
 
 ## Active Worktrees
 
@@ -76,27 +76,16 @@ Last updated: 2026-03-04 (`feat/external-lean-html-audit-20260303` rebased on `b
   - `git status --short`
   - commit/stash local chapter changes before rebasing on `bp`
 
-### `feat/external-lean-html-audit-20260303`
-
-- Status: `ready-for-review` (owner action: merge onto `bp`)
-- Summary: external Lean declaration rendering now supports explicit `docstring`/`docgen` modes, keeps vendor code as an upstream subset, and uses a shared wrapper for consistent definition framing.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-lean-html-audit-20260303`
-- Branch: `feat/external-lean-html-audit-20260303`
-- Base commit/branch:
-  - rebased on `bp`: `954de6e6` (`0` behind / `1` ahead)
-- Key commit:
-  - `733a6fc3` feat(external-code): add docstring/docgen render modes with shared wrapping
-- Validation status:
-  - `lake env lean src/tests/Tests/DocGenNameRender.lean`
-  - `lake exe noperthedron` (pass with existing project warnings)
-  - preview server: `http://127.0.0.1:8101/` (session `39948`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-lean-html-audit-20260303`
-  - `git status --short`
-  - `git log --oneline --decorate -n 3`
-
 ## Recently Completed
 
+- Merged `feat/external-lean-html-audit-20260303` into `bp` (`8b560e02 -> 7c2c3b06`, fast-forward).
+- Follow-up on `bp`: `8df33b93` (`test(docgen): assert payload via rendered string length`).
+- Validation on `bp` after merge:
+  - `lake env lean src/tests/Tests/DocGenNameRender.lean`
+  - `lake exe noperthedron`
+- Stopped preview server session `39948` (`http://127.0.0.1:8101/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-lean-html-audit-20260303`.
+- Deleted branch: `feat/external-lean-html-audit-20260303`.
 - Merged `feat/blueprint-deadcode-audit-20260303` into `bp` (`e972f0ca -> 85cb522b`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
