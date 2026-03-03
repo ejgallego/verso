@@ -3,15 +3,16 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: OpenAI Codex
 
-Vendored minimal single-declaration HTML renderer.
+Compatibility single-declaration renderer used by the blueprint external-code path.
+This is intentionally outside `Vendor/` so vendor files can stay upstream-identical.
 -/
 
 import Lean
-import VersoBlueprint.Vendor.DocGen4.Html
+import VersoBlueprint.Vendor.DocGen4.ToHtmlFormat
 
 open Lean
 
-namespace Informal.Vendor.DocGen4
+namespace Informal
 
 structure DeclHtmlInput where
   moduleName : Name
@@ -34,15 +35,15 @@ private def kindClass (kind : String) : String :=
   | "inductive" | "constructor" | "recursor" => "inductive"
   | _ => "def"
 
-private def codeSpan (code : String) : Html :=
+private def codeSpan (code : String) : DocGen4.Html :=
   .element "code" true #[] #[.text code]
 
-private def docStringHtml (doc? : Option String) : Array Html :=
+private def docStringHtml (doc? : Option String) : Array DocGen4.Html :=
   match doc? with
   | none => #[]
   | some txt => #[.element "pre" false #[("class", "docstring")] #[.text txt]]
 
-private def sectionListHtml (cls title : String) (items : Array String) : Array Html :=
+private def sectionListHtml (cls title : String) (items : Array String) : Array DocGen4.Html :=
   if items.isEmpty then
     #[]
   else
@@ -54,7 +55,7 @@ private def sectionListHtml (cls title : String) (items : Array String) : Array 
         ]]
 
 /-- Minimal declaration HTML rendering entry point. -/
-def docInfoToHtml (input : DeclHtmlInput) : Html :=
+def docInfoToHtml (input : DeclHtmlInput) : DocGen4.Html :=
   let headerChildren :=
     #[
       .element "span" true #[("class", "decl_kind")] #[.text input.kindDescription],
@@ -69,11 +70,11 @@ def docInfoToHtml (input : DeclHtmlInput) : Html :=
     sectionListHtml "fields" "Fields" input.fields ++
     sectionListHtml "constructors" "Constructors" input.constructors
   .element "div" false
-    #[
-      ("class", s!"declaration decl {kindClass input.kindDescription}"),
+    #[(
+      "class", s!"declaration decl {kindClass input.kindDescription}"),
       ("data-module", input.moduleName.toString),
       ("data-decl", input.declName.toString)
     ]
     children
 
-end Informal.Vendor.DocGen4
+end Informal

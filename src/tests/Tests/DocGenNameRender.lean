@@ -17,7 +17,7 @@ namespace Verso.Tests.DocGenNameRender
     let missing? ← (Informal.renderDeclHtmlNodeDirect? `No.Such.Declaration).run'
     let natAddHasPayload :=
       match natAdd? with
-      | some html => Informal.Vendor.DocGen4.Html.textLength html > 0
+      | some html => Informal.DocGenHtml.textLength html > 0
       | none => false
     pure (natAddHasPayload && prod?.isSome && missing?.isNone)
 
