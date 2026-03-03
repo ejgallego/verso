@@ -7,7 +7,9 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
-import VersoBlueprint.Commands
+import VersoBlueprint.Commands.Graph
+import VersoBlueprint.Commands.Summary
+import VersoBlueprint.Commands.Bibliography
 import VersoBlueprint.Widget
 
 -- FIXME: This should happen in a special verso code block
