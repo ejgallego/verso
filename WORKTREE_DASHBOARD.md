@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/lib-analysis-20260303` merged into `bp` and cleaned up)
+Last updated: 2026-03-03 (`feat/informal-code-audit` merged into `bp`, validated, and cleaned up)
 
 ## Active Worktrees
 
@@ -21,28 +21,6 @@ Last updated: 2026-03-03 (`feat/lib-analysis-20260303` merged into `bp` and clea
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/informal-code-audit`
-
-- Status: `validated` (owner action: review and merge)
-- Summary: split `Informal/Code.lean` into `Code` (code-block elaboration/registration) + `CodeSummary` (LEAN icon/hover rendering) + `CodeCommon` (shared models/helpers), and switched informal external-code rendering to consume canonical `Data.ExternalRef` directly.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit`
-- Branch: `feat/informal-code-audit`
-- Base commit/branch:
-  - merge-base with `bp`: `7a4bc3f5` (`0` behind / `0` ahead)
-- Key commit:
-  - `7a4bc3f5` docs: record versoblueprint-refactor cleanup
-- Validation status:
-  - `lake exe cache get` completed
-  - `lake build VersoBlueprint` passed
-  - `lake build Tests` passed
-  - `lake exe noperthedron` passed
-- Artifact link:
-  - [http://127.0.0.1:8087/](http://127.0.0.1:8087/)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit`
-  - `git status --short`
-  - `lake exe noperthedron`
 
 ### `feat/lsp-folding-chain`
 
@@ -80,6 +58,17 @@ Last updated: 2026-03-03 (`feat/lib-analysis-20260303` merged into `bp` and clea
 
 ## Recently Completed
 
+- Merged `feat/informal-code-audit` into `bp` (`66da6cd6 -> e5295f14`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Stopped preview server on `http://127.0.0.1:8087/`.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit`.
+- Deleted branch: `feat/informal-code-audit`.
 - Merged `feat/lib-analysis-20260303` into `bp` (`df411fe8 -> ad1ac4e0`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
