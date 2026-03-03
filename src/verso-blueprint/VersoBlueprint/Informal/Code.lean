@@ -1,4 +1,4 @@
-/- 
+/-
 Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: Emilio J. Gallego Arias
@@ -8,27 +8,16 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Data
+import VersoBlueprint.DocGenNameRender
 
 namespace Informal
 
 open Verso Doc Elab
 open Lean Elab
 
-structure SourceLoc where
-  line : Nat
-  column : Nat
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
-def SourceLoc.ofPosition (pos : Lean.Position) : SourceLoc :=
-  { line := pos.line, column := pos.column }
-
-structure SourceRange where
-  start : SourceLoc
-  «end» : SourceLoc
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
-def SourceRange.ofDeclarationRange (range : Lean.DeclarationRange) : SourceRange :=
-  { start := SourceLoc.ofPosition range.pos, «end» := SourceLoc.ofPosition range.endPos }
+deriving instance Lean.ToJson for Lean.DeclarationRange
+deriving instance Lean.FromJson for Lean.DeclarationRange
+deriving instance Lean.Quote for Lean.DeclarationRange
 
 inductive ExternalDeclProvenance where
   | inWorkspace (moduleName : Name) (sourcePath : String)
@@ -51,27 +40,86 @@ def ExternalDeclProvenance.label : ExternalDeclProvenance → String
   | .outWorkspace _ _ => "out workspace"
   | .unknown => "unknown provenance"
 
-structure ExternalDeclStatus where
-  decl : Name
-  canonical : Name
-  present : Bool := false
-  provenance : ExternalDeclProvenance := .unknown
-  range? : Option SourceRange := none
-  selectionRange? : Option SourceRange := none
-  kind? : Option String := none
-  typePretty? : Option String := none
-  valuePretty? : Option String := none
-  sourceHref? : Option String := none
-  sourceDeclPretty? : Option String := none
-  sourceBodyPretty? : Option String := none
-  renderedHtml? : Option String := none
-  provedStatus : Data.ProvedStatus := .proved
+inductive ExternalDeclLookupError where
+  | notPresentAtRegistration
+  | notFoundInEnvironment
 deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+def ExternalDeclLookupError.message : ExternalDeclLookupError → String
+  | .notPresentAtRegistration => "name was not present during directive/code-block registration"
+  | .notFoundInEnvironment => "name is not present in current environment"
+
+instance : ToJson (Except String String) where
+  toJson
+    | .ok html => Json.mkObj [("ok", toJson html)]
+    | .error message => Json.mkObj [("error", toJson message)]
+
+instance : FromJson (Except String String) where
+  fromJson?
+    | .obj obj =>
+      match obj.get? "ok", obj.get? "error" with
+      | some ok, none => return .ok (← fromJson? ok)
+      | none, some err => return .error (← fromJson? err)
+      | _, _ => throw "expected object with exactly one of fields 'ok' or 'error'"
+    | _ => throw "expected object"
+
+instance : Lean.Quote (Except String String) where
+  quote
+    | .ok html => Syntax.mkApp (mkCIdent ``Except.ok) #[(Lean.quote html)]
+    | .error message => Syntax.mkApp (mkCIdent ``Except.error) #[(Lean.quote message)]
+
+def renderErrorMessage? : Except String String → Option String
+  | .ok _ => none
+  | .error message => some message
+
+/-- Resolved metadata for external declarations plus docgen render outcome. -/
+structure ExternalDeclInfo where
+  /-- Name as written in `(lean := "...")` (non-canonical display form). -/
+  decl : Name
+  /-- Canonical resolved name used for environment/source lookup. -/
+  canonical : Name
+  /-- Provenance badge and optional source-path metadata. -/
+  provenance : ExternalDeclProvenance := .unknown
+  /-- Full declaration range; fallback location text when no selection range exists. -/
+  range? : Option Lean.DeclarationRange := none
+  /-- Preferred range for location/source-link text (typically the declaration head). -/
+  selectionRange? : Option Lean.DeclarationRange := none
+  /-- Human-readable declaration kind (`definition`, `theorem`, `axiom`, ...). -/
+  kind : String
+  /-- Optional source URL generated from `verso.blueprint.externalCode.sourceLinkTemplate`. -/
+  sourceHref? : Option String := none
+  /-- Incompleteness metadata used by status colors/badges/tooltips. -/
+  provedStatus : Data.ProvedStatus := .proved
+  /-- DocGen render result for this declaration (`.ok html` or `.error message`). -/
+  render : Except String String
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+/--
+Result for one external declaration reference:
+- `missing`: declaration name is unresolved in the current environment.
+- `info`: declaration resolves and carries typed metadata/render outcome.
+-/
+inductive ExternalDecl where
+  | missing (decl : Name) (error : ExternalDeclLookupError := .notFoundInEnvironment)
+  | info (info : ExternalDeclInfo)
+deriving Repr, Inhabited, FromJson, ToJson, Quote
+
+def ExternalDecl.displayName : ExternalDecl → Name
+  | .missing decl _ => decl
+  | .info declInfo => declInfo.decl
+
+def ExternalDecl.canonical? : ExternalDecl → Option Name
+  | .missing _ _ => none
+  | .info declInfo => some declInfo.canonical
+
+def ExternalDecl.info? : ExternalDecl → Option ExternalDeclInfo
+  | .missing _ _ => none
+  | .info declInfo => some declInfo
 
 inductive BlockCodeStatus where
   | none
   | userOk
-  | external (decls : Array ExternalDeclStatus)
+  | external (decls : Array ExternalDecl)
 deriving Repr, Inhabited, FromJson, ToJson, Quote
 
 structure BlockData where
@@ -127,21 +175,21 @@ structure CodeHoverData where
   definedTheorems : Array CodeHoverDecl := #[]
   sorries : Array CodeHoverDecl := #[]
 
+/--
+View model used by `Block.informal.toHtml` for one external Lean declaration.
+This extends resolved external declaration data with optional in-site links.
+-/
 structure ExternalHoverDecl where
-  decl : Name
+  decl : ExternalDecl
+  /-- Optional link to local docs/example declaration pages. -/
   href : Option String := none
-  present : Bool := false
-  provenance : ExternalDeclProvenance := .unknown
-  range? : Option SourceRange := none
-  selectionRange? : Option SourceRange := none
-  kind? : Option String := none
-  typePretty? : Option String := none
-  valuePretty? : Option String := none
-  sourceHref? : Option String := none
-  sourceDeclPretty? : Option String := none
-  sourceBodyPretty? : Option String := none
-  renderedHtml? : Option String := none
-  provedStatus : Data.ProvedStatus := .proved
+
+/-- Build hover/render data from status facts and an optional in-site declaration link. -/
+def ExternalHoverDecl.ofDecl (decl : ExternalDecl) (href : Option String := none) : ExternalHoverDecl :=
+  {
+    decl
+    href
+  }
 
 structure ComputedData where
   proved : Bool := false
@@ -235,145 +283,176 @@ def codeDeclSorryLocation (decl : CodeDeclData) : String :=
   provedStatusLocationText decl.provedStatus
 
 private def externalDeclHasSorry (decl : ExternalHoverDecl) : Bool :=
-  provedStatusHasSorry decl.provedStatus
+  match decl.decl.info? with
+  | some info => provedStatusHasSorry info.provedStatus
+  | none => false
 
 private def externalDeclSorryLocation (decl : ExternalHoverDecl) : String :=
-  provedStatusLocationText decl.provedStatus
+  match decl.decl.info? with
+  | some info => provedStatusLocationText info.provedStatus
+  | none => "location unknown"
 
-private def externalDeclStatement? (decl : ExternalHoverDecl) : Option String :=
-  match decl.sourceDeclPretty? with
-  | some sourceDecl => some sourceDecl
-  | none =>
-    match decl.typePretty? with
-    | none => none
-    | some typePretty =>
-      let keyword :=
-        match decl.kind? with
-        | some "definition" => "def"
-        | some "theorem" => "theorem"
-        | some "axiom" => "axiom"
-        | some "opaque" => "opaque"
-        | some "inductive" => "inductive"
-        | some "constructor" => "constructor"
-        | some "recursor" => "recursor"
-        | some "quotient" => "quotient"
-        | _ => "def"
-      let head := s!"{keyword} {decl.decl} : {typePretty}"
-      if decl.kind? == some "definition" then
-        match decl.valuePretty? with
-        | some valuePretty => some s!"{head} :=\n  {valuePretty}"
-        | none => some head
-      else
-        some head
+private def externalDeclRenderError? (decl : ExternalHoverDecl) : Option String :=
+  match decl.decl.info? with
+  | some info => renderErrorMessage? info.render
+  | none => none
+
+private def externalDeclLookupError? (decl : ExternalHoverDecl) : Option ExternalDeclLookupError :=
+  match decl.decl with
+  | .missing _ error => some error
+  | .info _ => none
 
 private structure ExternalDeclAggregate where
   total : Nat
   found : Nat
   missing : Nat
+  renderErrors : Nat
   withGaps : Nat
 
 private def externalDeclAggregate (decls : Array ExternalHoverDecl) : ExternalDeclAggregate :=
   let total := decls.size
-  let found := decls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
+  let found := decls.foldl (init := 0) fun acc decl =>
+    let isFound :=
+      match decl.decl with
+      | .info _ => true
+      | .missing _ _ => false
+    acc + (if isFound then 1 else 0)
+  let missing := decls.foldl (init := 0) fun acc decl =>
+    let isMissing :=
+      match decl.decl with
+      | .missing _ _ => true
+      | .info _ => false
+    acc + (if isMissing then 1 else 0)
+  let renderErrors := decls.foldl (init := 0) fun acc decl =>
+    acc + (if (externalDeclRenderError? decl).isSome then 1 else 0)
   let withGaps := decls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
   {
     total
     found
-    missing := total - found
+    missing
+    renderErrors
     withGaps
   }
 
 private def externalPanelStatus (agg : ExternalDeclAggregate) : String × String × String :=
   if agg.missing > 0 then
     ("bp_external_status_missing", "●", s!"External Lean references: {agg.found}/{agg.total} present ({agg.missing} missing)")
+  else if agg.renderErrors > 0 then
+    ("bp_external_status_error", "●", s!"External Lean references: all present, {agg.renderErrors} docgen render failures")
   else if agg.withGaps > 0 then
     ("bp_external_status_sorry", "●", s!"External Lean references: all present, {agg.withGaps} incomplete")
   else
     ("bp_external_status_ok", "●", s!"External Lean references: all {agg.total} present")
 
 private def externalCodeEntryTitle (agg : ExternalDeclAggregate) : String :=
-  if agg.found == agg.total then
-    if agg.withGaps == 0 then
-      s!"External Lean references (all present: {agg.found}/{agg.total})"
-    else
-      s!"External Lean references (all present: {agg.found}/{agg.total}; incomplete: {agg.withGaps})"
-  else
+  if agg.missing > 0 then
     s!"External Lean references ({agg.found}/{agg.total} present)"
+  else if agg.renderErrors > 0 then
+    s!"External Lean references (all present: {agg.found}/{agg.total}; docgen errors: {agg.renderErrors})"
+  else if agg.withGaps > 0 then
+    s!"External Lean references (all present: {agg.found}/{agg.total}; incomplete: {agg.withGaps})"
+  else
+    s!"External Lean references (all present: {agg.found}/{agg.total})"
 
 private def externalStatusMarkMeta (agg : ExternalDeclAggregate) : String × String :=
   if agg.missing > 0 then
     (s!"External Lean names: {agg.found} present, {agg.missing} missing", "✗")
+  else if agg.renderErrors > 0 then
+    (s!"External Lean names ({agg.total}) are present, but {agg.renderErrors} docgen renders failed", "✗")
   else if agg.withGaps > 0 then
     (s!"External Lean names ({agg.total}) are present, but {agg.withGaps} are incomplete", "⚠")
   else
     (s!"External Lean names ({agg.total}) are present", "✓")
 
 private def externalDeclStatusClass (item : ExternalHoverDecl) : String :=
-  if !item.present then
-    "bp_external_decl_missing"
-  else if externalDeclHasSorry item then
-    "bp_external_decl_sorry"
-  else
-    "bp_external_decl_ok"
+  match item.decl with
+  | .missing _ _ => "bp_external_decl_missing"
+  | .info info =>
+    if (renderErrorMessage? info.render).isSome then
+      "bp_external_decl_error"
+    else if externalDeclHasSorry item then
+      "bp_external_decl_sorry"
+    else
+      "bp_external_decl_ok"
 
 private def externalDeclHoverStatusText (item : ExternalHoverDecl) : String :=
-  if item.present then
-    if externalDeclHasSorry item then
-      if provedStatusContainsSorry item.provedStatus then
-        s!"(has Lean declaration; contains sorry {externalDeclSorryLocation item})"
-      else
-        s!"(has Lean declaration; {externalDeclSorryLocation item})"
-    else
-      "(has Lean declaration)"
+  if let some err := externalDeclRenderError? item then
+    s!"(has Lean declaration; docgen render failed: {err})"
   else
-    "(missing Lean declaration)"
+    match item.decl with
+    | .info _ =>
+      if externalDeclHasSorry item then
+        if let some info := item.decl.info? then
+          if provedStatusContainsSorry info.provedStatus then
+            s!"(has Lean declaration; contains sorry {externalDeclSorryLocation item})"
+          else
+            s!"(has Lean declaration; {externalDeclSorryLocation item})"
+        else
+          s!"(has Lean declaration; contains sorry {externalDeclSorryLocation item})"
+      else
+        "(has Lean declaration)"
+    | .missing _ _ =>
+      "(missing Lean declaration)"
 
 private def externalDeclPanelStatusText (item : ExternalHoverDecl) : String :=
-  if item.present then
-    if externalDeclHasSorry item then
-      if provedStatusContainsSorry item.provedStatus then
-        s!"contains sorry {externalDeclSorryLocation item}"
-      else
-        externalDeclSorryLocation item
-    else
-      "complete"
+  if (externalDeclRenderError? item).isSome then
+    "docgen render failed"
   else
-    "missing declaration"
+    match item.decl with
+    | .info _ =>
+      if externalDeclHasSorry item then
+        if let some info := item.decl.info? then
+          if provedStatusContainsSorry info.provedStatus then
+            s!"contains sorry {externalDeclSorryLocation item}"
+          else
+            externalDeclSorryLocation item
+        else
+          s!"contains sorry {externalDeclSorryLocation item}"
+      else
+        "complete"
+    | .missing _ _ =>
+      "missing declaration"
 
 private def externalDeclSorryInfo? (item : ExternalHoverDecl) : Option String :=
-  if externalDeclHasSorry item then
-    if provedStatusContainsSorry item.provedStatus then
-      some s!"Contains sorry ({externalDeclSorryLocation item})"
+  match item.decl.info? with
+  | none => none
+  | some info =>
+    if externalDeclHasSorry item then
+      if provedStatusContainsSorry info.provedStatus then
+        some s!"Contains sorry ({externalDeclSorryLocation item})"
+      else
+        some "Axiom-like declaration (no body)"
     else
-      some "Axiom-like declaration (no body)"
-  else
-    none
+      none
 
-private def sourcePosText (pos : SourceLoc) : String :=
+private def sourcePosText (pos : Lean.Position) : String :=
   s!"{pos.line}:{pos.column}"
 
-private def sourceRangeText (range : SourceRange) : String :=
-  s!"{sourcePosText range.start}-{sourcePosText range.end}"
+private def sourceRangeText (range : Lean.DeclarationRange) : String :=
+  s!"{sourcePosText range.pos}-{sourcePosText range.endPos}"
 
 private def externalDeclNode (item : ExternalHoverDecl) : Output.Html :=
   open Verso.Output.Html in
-  let declTxt := {{<code>{{.text true s!"{item.decl}"}}</code>}}
+  let declTxt := {{<code>{{.text true s!"{item.decl.displayName}"}}</code>}}
   if let some href := item.href then
     {{<a href={{href}}>{{declTxt}}</a>}}
   else
     declTxt
 
 private def externalDeclSourceInfo? (item : ExternalHoverDecl) : Option String :=
-  match item.provenance.moduleName?,
-    (item.selectionRange?.map sourceRangeText <|> item.range?.map sourceRangeText) with
-  | some moduleName, some rangeTxt => some s!"{moduleName} @ {rangeTxt}"
-  | some moduleName, none => some s!"{moduleName}"
-  | none, some rangeTxt => some s!"{rangeTxt}"
-  | none, none => none
+  match item.decl.info? with
+  | none => none
+  | some info =>
+    match info.provenance.moduleName?,
+      (info.selectionRange?.map sourceRangeText <|> info.range?.map sourceRangeText) with
+    | some moduleName, some rangeTxt => some s!"{moduleName} @ {rangeTxt}"
+    | some moduleName, none => some s!"{moduleName}"
+    | none, some rangeTxt => some s!"{rangeTxt}"
+    | none, none => none
 
 private def externalDeclSourceRef? (item : ExternalHoverDecl) : Option Output.Html :=
   open Verso.Output.Html in
-  item.sourceHref?.map fun href =>
+  (item.decl.info?.bind (·.sourceHref?)).map fun href =>
     {{<a class="bp_code_link" href={{href}}>"open source"</a>}}
 
 private def externalDeclSourceRefRow? (item : ExternalHoverDecl) : Option Output.Html :=
@@ -472,24 +551,32 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
     else
       .seq <| items.map fun item =>
         let statusTxt := externalDeclHoverStatusText item
+        let info? := item.decl.info?
         let hasProvenanceDetails : Bool :=
-          match item.provenance with
-          | .unknown => false
-          | _ => true
+          match info? with
+          | none => false
+          | some info =>
+            match info.provenance with
+            | .unknown => false
+            | _ => true
         let headTail : Output.Html :=
           if hasProvenanceDetails then
-            {{<span class="bp_external_badge">{{.text true item.provenance.label}}</span>}}
+            {{<span class="bp_external_badge">{{.text true ((info?.map (·.provenance.label)).getD "")}}</span>}}
           else
             .empty
-        let sourcePath? := item.provenance.sourcePath?
+        let sourcePath? := info?.bind (·.provenance.sourcePath?)
         let sourceInfo? := externalDeclSourceInfo? item
         let sorryInfo? := externalDeclSorryInfo? item
+        let renderError? := externalDeclRenderError? item
+        let lookupError? := (externalDeclLookupError? item).map ExternalDeclLookupError.message
         let body : Output.Html := {{
-          {{if let some kind := item.kind? then {{<div class="bp_external_decl_meta">"kind: " <code>{{.text true kind}}</code></div>}} else .empty}}
+          {{if let some kind := info?.map (·.kind) then {{<div class="bp_external_decl_meta">"kind: " <code>{{.text true kind}}</code></div>}} else .empty}}
           {{if let some sourceInfo := sourceInfo? then {{<div class="bp_external_decl_meta">"source: " <code>{{.text true sourceInfo}}</code></div>}} else .empty}}
           {{if let some sourcePath := sourcePath? then {{<div class="bp_external_decl_meta">"source path: " <code>{{.text true sourcePath}}</code></div>}} else .empty}}
           {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
           {{if let some sorryInfo := sorryInfo? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true sorryInfo}}</div>}} else .empty}}
+          {{if let some renderError := renderError? then {{<div class="bp_external_decl_meta bp_external_decl_error">{{.text true s!"DocGen render error: {renderError}"}}</div>}} else .empty}}
+          {{if let some lookupError := lookupError? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true s!"Lookup error: {lookupError}"}}</div>}} else .empty}}
         }}
         externalDeclItem item statusTxt body headTail
   let externalPanelListItems (items : Array ExternalHoverDecl) : Output.Html :=
@@ -499,29 +586,30 @@ def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : A
       .seq <| items.map fun item =>
         let statusTxt := externalDeclPanelStatusText item
         let statusClass := externalDeclStatusClass item
-        if let some renderedHtml := item.renderedHtml? then
-          {{
-            <li class="bp_external_decl_item bp_external_decl_item_rendered">
-              <div class="bp_external_decl_rendered">{{.text false renderedHtml}}</div>
-              <div class="bp_external_decl_rendered_meta">
-                <span class={{statusClass}}>{{.text true statusTxt}}</span>
-                {{if let some sourceRef := externalDeclSourceRef? item then
-                   {{<span class="bp_external_decl_rendered_source">{{sourceRef}}</span>}}
-                 else .empty}}
-              </div>
-            </li>
-          }}
-        else
-          let statementNode :=
-            if let some stmt := externalDeclStatement? item then
-              {{<pre class="bp_external_decl_stmt hl lean block"><code>{{.text true stmt}}</code></pre>}}
-            else if item.present then
-              {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (pretty-printer failed)"</pre>}}
-            else
-              {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (declaration not found)"</pre>}}
+        match item.decl with
+        | .info info =>
+          match info.render with
+          | .ok renderedHtml =>
+            {{
+              <li class="bp_external_decl_item bp_external_decl_item_rendered">
+                <div class="bp_external_decl_rendered">{{.text false renderedHtml}}</div>
+                <div class="bp_external_decl_rendered_meta">
+                  <span class={{statusClass}}>{{.text true statusTxt}}</span>
+                  {{if let some sourceRef := externalDeclSourceRef? item then
+                    {{<span class="bp_external_decl_rendered_source">{{sourceRef}}</span>}}
+                   else .empty}}
+                </div>
+              </li>
+            }}
+          | .error err =>
+            let body : Output.Html := {{
+              {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
+              <pre class="bp_external_decl_stmt bp_external_decl_render_error">{{.text true s!"DocGen render failed: {err}"}}</pre>
+            }}
+            externalDeclItem item statusTxt body
+        | .missing _ lookupError =>
           let body : Output.Html := {{
-            {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
-            {{statementNode}}
+            <pre class="bp_external_decl_stmt bp_code_hover_none">{{.text true s!"declaration not found ({lookupError.message})"}}</pre>
           }}
           externalDeclItem item statusTxt body
   let externalHover : Output.Html :=

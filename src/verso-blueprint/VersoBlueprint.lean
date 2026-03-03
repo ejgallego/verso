@@ -74,30 +74,6 @@ register_option verso.blueprint.externalCode.strictResolve : Bool := {
   descr := "Treat unresolved or ambiguous `(lean := ...)` external references as errors"
 }
 
-/-- Maximum pretty-printed type preview length for external declaration metadata (`0` = unlimited). -/
-register_option verso.blueprint.externalCode.previewLimit.type : Nat := {
-  defValue := 1200
-  descr := "Maximum external declaration type preview length (`0` disables truncation)"
-}
-
-/-- Maximum pretty-printed value preview length for external declaration metadata (`0` = unlimited). -/
-register_option verso.blueprint.externalCode.previewLimit.value : Nat := {
-  defValue := 1200
-  descr := "Maximum external declaration value preview length (`0` disables truncation)"
-}
-
-/-- Maximum source declaration preview length for external declaration metadata (`0` = unlimited). -/
-register_option verso.blueprint.externalCode.previewLimit.decl : Nat := {
-  defValue := 1600
-  descr := "Maximum external declaration source preview length (`0` disables truncation)"
-}
-
-/-- Maximum source RHS preview length for external declaration metadata (`0` = unlimited). -/
-register_option verso.blueprint.externalCode.previewLimit.rhs : Nat := {
-  defValue := 1200
-  descr := "Maximum external declaration RHS preview length (`0` disables truncation)"
-}
-
 /--
 Template used to build source links for external declarations.
 Supported placeholders are: path, relpath, module, line, column.
@@ -241,32 +217,6 @@ instance : FromArgs GroupConfig m where
 
 end
 
-private def truncatePreview (limit : Nat) (s : String) : String :=
-  if limit == 0 || s.length <= limit then
-    s
-  else
-    (s.take limit).toString ++ "…"
-
-private def externalTypePreviewLimit (opts : Lean.Options) : Nat :=
-  opts.get
-    verso.blueprint.externalCode.previewLimit.type.name
-    verso.blueprint.externalCode.previewLimit.type.defValue
-
-private def externalValuePreviewLimit (opts : Lean.Options) : Nat :=
-  opts.get
-    verso.blueprint.externalCode.previewLimit.value.name
-    verso.blueprint.externalCode.previewLimit.value.defValue
-
-private def externalDeclPreviewLimit (opts : Lean.Options) : Nat :=
-  opts.get
-    verso.blueprint.externalCode.previewLimit.decl.name
-    verso.blueprint.externalCode.previewLimit.decl.defValue
-
-private def externalRhsPreviewLimit (opts : Lean.Options) : Nat :=
-  opts.get
-    verso.blueprint.externalCode.previewLimit.rhs.name
-    verso.blueprint.externalCode.previewLimit.rhs.defValue
-
 private def externalSourceLinkTemplate (opts : Lean.Options) : String :=
   opts.get
     verso.blueprint.externalCode.sourceLinkTemplate.name
@@ -352,59 +302,16 @@ private def mkProvenance (workspaceRoot : System.FilePath)
     | none =>
       .outWorkspace moduleName none
 
-private def readDeclarationSource? (sourcePath : System.FilePath)
-    (range : Lean.DeclarationRange) : IO (Option String) := do
-  try
-    if !(← sourcePath.pathExists) then
-      return none
-    let source ← IO.FS.readFile sourcePath
-    let fileMap := source.toFileMap
-    let start := fileMap.ofPosition range.pos
-    let stop := fileMap.ofPosition range.endPos
-    if stop < start then
-      return none
-    let snippet := (String.Pos.Raw.extract fileMap.source start stop).trimAscii.toString
-    if snippet.isEmpty then
-      return none
-    return some snippet
-  catch _ =>
-    return none
-
-private def rhsFromDeclarationSource? (declSrc : String) : Option String :=
-  match declSrc.splitOn ":=" with
-  | [] => none
-  | [_] => none
-  | _ :: rhsParts =>
-    let rhs := (String.intercalate ":=" rhsParts).trimAscii.toString
-    if rhs.isEmpty then
-      none
-    else
-      some rhs
-
-private def prettyExprPreview (env : Lean.Environment) (opts : Lean.Options) (expr : Lean.Expr)
-    (limit : Nat := 1200) : CoreM String := do
-  if expr.approxDepth.toNat > 220 then
-    return "<omitted: expression too large for preview>"
-  try
-    let fmt ← liftM <| Lean.PrettyPrinter.ppExprLegacy env {} {} opts expr
-    return truncatePreview limit ((toString fmt).trimAscii.toString)
-  catch _ =>
-    return truncatePreview limit (toString expr)
-
 private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
     (workspaceRoot : System.FilePath)
-    (decl : Data.ExternalRef) : CoreM ExternalDeclStatus := do
-  let typePreviewLimit := externalTypePreviewLimit opts
-  let valuePreviewLimit := externalValuePreviewLimit opts
-  let declPreviewLimit := externalDeclPreviewLimit opts
-  let rhsPreviewLimit := externalRhsPreviewLimit opts
+    (decl : Data.ExternalRef) : CoreM ExternalDecl := do
   let canonical := decl.canonical
   if !decl.presentAtRegistration then
-    return { decl := decl.written, canonical, present := false }
+    return .missing decl.written .notPresentAtRegistration
   match env.find? canonical with
   | none =>
-    return { decl := decl.written, canonical, present := false }
-  | some info =>
+    return .missing decl.written .notFoundInEnvironment
+  | some cinfo =>
     let ranges? ← findDeclarationRanges? canonical
     let moduleName? := moduleNameForDecl? env canonical
     let sourcePath? ←
@@ -413,35 +320,26 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       | none => pure none
     let provenance := mkProvenance workspaceRoot moduleName? sourcePath?
     let sourceHref? := sourceLinkHref? opts workspaceRoot moduleName? sourcePath? (ranges?.map (·.selectionRange))
-    let sourceDecl? ←
-      match sourcePath?, ranges? with
-      | some sourcePath, some ranges =>
-        liftM <| readDeclarationSource? sourcePath ranges.range
-      | _, _ => pure none
-    let sourceDeclPretty? := sourceDecl?.map (truncatePreview declPreviewLimit)
-    let sourceBodyPretty? := (rhsFromDeclarationSource? =<< sourceDecl?) |>.map (truncatePreview rhsPreviewLimit)
-    let renderedHtml? ← (renderDeclHtmlStringDirect? canonical).run'
-    let typePretty ← prettyExprPreview env opts info.type typePreviewLimit
-    let valuePretty? ←
-      match info.value? (allowOpaque := true) with
-      | none => pure none
-      | some value => some <$> prettyExprPreview env opts value valuePreviewLimit
-    return {
+    let renderResult : Except DocGenRenderError String ←
+      match moduleName? with
+      | none => pure (.error (.moduleUnavailable canonical))
+      | some moduleName => (renderDeclHtmlStringDirectFromInfoE moduleName canonical cinfo).run'
+    let render : Except String String :=
+      match renderResult with
+      | .ok html => .ok html
+      | .error error => .error error.message
+    let declInfo : ExternalDeclInfo := {
       decl := decl.written
       canonical
-      present := true
       provenance
-      range? := ranges?.map (fun ranges => SourceRange.ofDeclarationRange ranges.range)
-      selectionRange? := ranges?.map (fun ranges => SourceRange.ofDeclarationRange ranges.selectionRange)
-      kind? := some (externalDeclKindText info)
-      typePretty? := some typePretty
-      valuePretty?
+      range? := ranges?.map (·.range)
+      selectionRange? := ranges?.map (·.selectionRange)
+      kind := externalDeclKindText cinfo
       sourceHref?
-      sourceDeclPretty?
-      sourceBodyPretty?
-      renderedHtml?
-      provedStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
+      provedStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus cinfo (allowOpaque := true)
+      render
     }
+    return .info declInfo
 def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.CodeRef) : CoreM BlockCodeStatus := do
   match codeRef? with
   | some .userOk => return .userOk
@@ -637,6 +535,10 @@ span[class$="_thmlabel"]::after {
   background: #dc2626;
 }
 
+.bp_external_status_error {
+  background: #7c3aed;
+}
+
 .bp_code_expand_hint {
   color: #64748b;
   font-size: 0.74rem;
@@ -727,6 +629,10 @@ details[open] > summary .bp_code_expand_hint::before {
 
 .bp_external_decl_missing {
   color: #b91c1c;
+}
+
+.bp_external_decl_error {
+  color: #7c3aed;
 }
 
 .bp_external_decl_meta {
@@ -1122,25 +1028,14 @@ block_extension Block.informal (data : BlockData) where
           | .external decls =>
             decls.map fun decl =>
               let href :=
-                match getDeclHref decl.canonical with
-                | some href => some href
-                | none => getDeclHref decl.decl
-              {
-                decl := decl.decl
-                href
-                present := decl.present
-                provenance := decl.provenance
-                range? := decl.range?
-                selectionRange? := decl.selectionRange?
-                kind? := decl.kind?
-                typePretty? := decl.typePretty?
-                valuePretty? := decl.valuePretty?
-                sourceHref? := decl.sourceHref?
-                sourceDeclPretty? := decl.sourceDeclPretty?
-                sourceBodyPretty? := decl.sourceBodyPretty?
-                renderedHtml? := decl.renderedHtml?
-                provedStatus := decl.provedStatus
-              }
+                match decl.canonical? with
+                | some canonical =>
+                  match getDeclHref canonical with
+                  | some href => some href
+                  | none => getDeclHref decl.displayName
+                | none =>
+                  getDeclHref decl.displayName
+              ExternalHoverDecl.ofDecl decl href
           | _ => #[]
         let manualStatus : Bool :=
           match data.codeStatus with
