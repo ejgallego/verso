@@ -709,7 +709,7 @@ private def shouldWritePreviewData (existing? : Option Verso.Multi.Object) (id :
   shouldWritePreviewDataByIds ((existing?.map (·.ids.toArray)).getD #[]) id
 
 private def renderInformalBlock (data : BlockData) (attrs : Array (String × String))
-    (statusMark codeEntry : Output.Html) (content : Array Output.Html) : Output.Html :=
+    (statusMark : Option BlockStatusMark) (codeEntry : Output.Html) (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
   let kindText := if data.isProof then "Proof" else s!"{data.kind}"
   let labelTextNum := s!"{data.count}"
@@ -744,7 +744,7 @@ private def renderInformalBlock (data : BlockData) (attrs : Array (String × Str
         <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
         {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
         <div class="bp_extras thm_header_extras">
-          {{statusMark}}
+          {{match statusMark with | some mark => mark.toHtml | none => .empty}}
           {{codeEntry}}
         </div>
         <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
@@ -814,24 +814,23 @@ block_extension Block.informal (data : BlockData) where
         let codeSource := BlockCodeData.ofHintAndInline data.codeData codeData?
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveInlineLeanDeclHref? s decl
-        let externalDecls : Array Data.ExternalRef :=
-          match codeSource with
-          | some source => source.externalDecls
-          | none => #[]
         let cdata := {
           codeHref
           source := codeSource
         }
-        let summaryParts := CodeSummary.renderParts data cdata getDeclHref
-        let externalParts := ExternalCode.renderParts data codeHref externalDecls getDeclHref
-        let hasExternal := match codeSource with
-          | some (.external decls) => !decls.isEmpty
-          | _ => false
-        let statusMark := if hasExternal then externalParts.statusMark else summaryParts.statusMark
-        let codeEntry := if hasExternal then externalParts.codeEntry else summaryParts.codeEntry
+        let headingParts := CodeSummary.renderParts data cdata getDeclHref
+        let externalParts? : Option ExternalCode.RenderParts :=
+          match codeSource with
+          | some (.external decls) =>
+            if decls.isEmpty then
+              none
+            else
+              some <| ExternalCode.renderParts data decls getDeclHref
+          | _ => none
+        let externalPanel := (externalParts?.map (·.externalCodePanel)).getD .empty
         let content := (← blocks.mapM goB)
-        let informalBlock := renderInformalBlock data attrs statusMark codeEntry content
-        return .seq #[informalBlock, externalParts.externalCodePanel]
+        let informalBlock := renderInformalBlock data attrs headingParts.statusMark headingParts.codeEntry content
+        return .seq #[informalBlock, externalPanel]
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
   | cfg, contents => do
@@ -839,12 +838,15 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let label := cfg.label
     let kind? := if isProof then none else some kind
     let resolvedExternalCode ← ExternalCode.resolveExternalCodeList label cfg.labelSyntax cfg.externalCode
-    let hasExternal := !resolvedExternalCode.isEmpty
+    let hasExternalRaw := !resolvedExternalCode.isEmpty
     let hasLeanok := cfg.leanok.getD false
     if !cfg.invalidExternalCode.isEmpty then
       logWarningAt cfg.labelSyntax m!"Label {label}: ignoring malformed names in '(lean := ...)' ({String.intercalate ", " cfg.invalidExternalCode.toList})"
-    if hasExternal && hasLeanok then
+    if hasExternalRaw && hasLeanok then
       logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(leanok := true)' together with '(lean := ...)'"
+    if isProof && hasExternalRaw then
+      logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(lean := ...)' in a proof block"
+    let hasExternal := hasExternalRaw && !isProof
     let codeHint : Option Data.CodeRef :=
       if hasExternal then
         some (.external resolvedExternalCode)

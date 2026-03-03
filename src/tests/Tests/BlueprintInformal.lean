@@ -43,6 +43,31 @@ Simple body.
 :::::::
 
 /--
+error: Label «bad.duplicate» has duplicate external Lean reference 'Nat.add' (canonical 'Nat.add'); previously declared as 'Nat.add'
+-/
+#guard_msgs in
+#docs (Manual) duplicateLeanRefs "Duplicate Lean Refs" :=
+:::::::
+:::definition "bad.duplicate" (lean := "Nat.add, Nat.add")
+Simple body.
+:::
+:::::::
+
+/--
+error: Label «proof.external.forbidden» cannot use '(lean := ...)' in a proof block
+-/
+#guard_msgs in
+#docs (Manual) proofLeanForbidden "Proof Lean Forbidden" :=
+:::::::
+:::lemma_ "proof.external.forbidden"
+Statement body.
+:::
+:::proof "proof.external.forbidden" (lean := "Nat.add")
+Proof body.
+:::
+:::::::
+
+/--
 error: Label «conflict.ext.inline» has both '(lean := ...)' and an associated Lean code block; preferring inline code
 -/
 #guard_msgs in

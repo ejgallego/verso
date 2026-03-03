@@ -59,21 +59,9 @@ def parseExternalCodeList (lean : Option String) : Array Data.ExternalRef × Arr
       match parseNameE ref with
       | .ok name =>
         let extRef := Data.ExternalRef.ofName name .directiveLean
-        if acc.any (fun entry => entry.canonical == extRef.canonical) then
-          (acc, invalid)
-        else
-          (acc.push extRef, invalid)
+        (acc.push extRef, invalid)
       | .error err =>
         (acc, invalid.push s!"{ref} ({err})")
-
-private def pushExternalRefDedup (acc : Array Data.ExternalRef) (ref : Data.ExternalRef) : Array Data.ExternalRef :=
-  match acc.findIdx? (fun entry => entry.canonical == ref.canonical) with
-  | some idx =>
-    let current := acc[idx]!
-    let merged : Data.ExternalRef := Data.ExternalRef.merge current ref
-    acc.set! idx merged
-  | none =>
-    acc.push ref
 
 private def parsedExternalRef (ref : Data.ExternalRef) : Data.ExternalRef :=
   { ref with canonical := ref.written.eraseMacroScopes }
@@ -99,10 +87,20 @@ private def resolveExternalNameCandidates [MonadResolveName m] [MonadOptions m] 
     else
       acc
 
+private def pushExternalRefUnique [MonadError m]
+    (label : Name) (labelSyntax : Syntax)
+    (acc : Array Data.ExternalRef) (ref : Data.ExternalRef) : m (Array Data.ExternalRef) := do
+  match acc.find? (fun entry => entry.canonical == ref.canonical) with
+  | some prev =>
+    throwErrorAt labelSyntax
+      m!"Label {label} has duplicate external Lean reference '{ref.written}' (canonical '{ref.canonical}'); previously declared as '{prev.written}'"
+  | none =>
+    return acc.push ref
+
 /--
 Resolve parsed external refs in the current namespace/open scope.
 
-Resolution keeps provenance snapshots and preserves deduplication by canonical name.
+Resolution keeps provenance snapshots and rejects duplicate canonical names as errors.
 When strict mode is disabled, unresolved/ambiguous names are kept as parsed and reported as warnings.
 -/
 def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadLiftT CoreM m] [MonadEnv m]
@@ -122,10 +120,10 @@ def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadLiftT Co
       else
         logWarningAt labelSyntax m!"{msg}; keeping parsed name"
         let ref ← markExternalRefSnapshot (parsedExternalRef ref)
-        return pushExternalRefDedup acc ref
+        pushExternalRefUnique label labelSyntax acc ref
     | [resolved] =>
       let ref ← markExternalRefSnapshot (resolvedExternalRef ref resolved)
-      return pushExternalRefDedup acc ref
+      pushExternalRefUnique label labelSyntax acc ref
     | many =>
       let msg := m!"Label {label}: external Lean name '{ref.written}' is ambiguous ({String.intercalate ", " (many.map toString)})"
       if strictResolve then
@@ -133,7 +131,7 @@ def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadLiftT Co
       else
         logWarningAt labelSyntax m!"{msg}; keeping parsed name"
         let ref ← markExternalRefSnapshot (parsedExternalRef ref)
-        return pushExternalRefDedup acc ref
+        pushExternalRefUnique label labelSyntax acc ref
 
 end
 
@@ -188,8 +186,6 @@ private def externalDeclGapStatusText? (item : LinkedExternalDecl) : Option Stri
 private def externalPanelStatus (agg : ExternalDeclAggregate) : String × String × String :=
   if agg.missing > 0 then
     ("bp_external_status_missing", "●", s!"External Lean references: {agg.found}/{agg.total} present ({agg.missing} missing)")
-  else if agg.renderErrors > 0 then
-    ("bp_external_status_error", "●", s!"External Lean references: all present, {agg.renderErrors} docgen render failures")
   else if agg.withGaps > 0 then
     ("bp_external_status_sorry", "●", s!"External Lean references: all present, {agg.withGaps} incomplete")
   else
@@ -198,22 +194,10 @@ private def externalPanelStatus (agg : ExternalDeclAggregate) : String × String
 private def externalCodeEntryTitle (agg : ExternalDeclAggregate) : String :=
   if agg.missing > 0 then
     s!"External Lean references ({agg.found}/{agg.total} present)"
-  else if agg.renderErrors > 0 then
-    s!"External Lean references (all present: {agg.found}/{agg.total}; docgen errors: {agg.renderErrors})"
   else if agg.withGaps > 0 then
     s!"External Lean references (all present: {agg.found}/{agg.total}; incomplete: {agg.withGaps})"
   else
     s!"External Lean references (all present: {agg.found}/{agg.total})"
-
-private def externalStatusMarkMeta (agg : ExternalDeclAggregate) : String × String :=
-  if agg.missing > 0 then
-    (s!"External Lean names: {agg.found} present, {agg.missing} missing", "✗")
-  else if agg.renderErrors > 0 then
-    (s!"External Lean names ({agg.total}) are present, but {agg.renderErrors} docgen renders failed", "✗")
-  else if agg.withGaps > 0 then
-    (s!"External Lean names ({agg.total}) are present, but {agg.withGaps} are incomplete", "⚠")
-  else
-    (s!"External Lean names ({agg.total}) are present", "✓")
 
 private def externalDeclStatusClass (item : LinkedExternalDecl) : String :=
   if !item.decl.present then
@@ -314,22 +298,17 @@ private def kindTextForDecl? (decl : Data.ExternalRef) : Option String :=
     some <| decl.kind?.getD (if decl.isTheoremLike then "theorem" else "definition")
 
 /--
-Rendered fragments produced by `ExternalCode.renderParts` for heading badges and the panel.
+Rendered fragments produced by `ExternalCode.renderParts` for external panel content.
 -/
 structure RenderParts where
-  statusMark : Output.Html := .empty
-  codeEntry : Output.Html := .empty
   externalCodePanel : Output.Html := .empty
 
 /--
 Render external-code UI fragments for an informal block.
 
-This function owns rendering for `(lean := ...)` references:
-- heading status mark,
-- heading Lean entry/tooltip,
-- optional external code panel body.
+This function only renders optional external code panel body for `(lean := ...)` references.
 -/
-def renderParts (data : BlockData) (codeHref : Option String)
+def renderParts (data : BlockData)
     (externalDecls : Array Data.ExternalRef) (getDeclHref : Name → Option String) : RenderParts :=
   open Verso.Output.Html in
   if externalDecls.isEmpty then
@@ -420,16 +399,6 @@ def renderParts (data : BlockData) (codeHref : Option String)
         </div>
       }}
     let codeEntryTitle := externalCodeEntryTitle externalAgg
-    let linkNode : Output.Html :=
-      if let some href := codeHref then
-        {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
-      else
-        {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
-    let codeEntry : Output.Html :=
-      {{<span class="bp_code_link_wrap">{{linkNode}}{{externalSummaryTooltip}}</span>}}
-    let (statusTitle, statusText) := externalStatusMarkMeta externalAgg
-    let statusMark : Output.Html :=
-      {{ <span class="bp_status_mark" title={{statusTitle}}>{{.text true statusText}}</span> }}
     let externalStatusIndicator : Output.Html :=
       let (iconClass, iconText, iconTitle) := externalPanelStatus externalAgg
       let icon :=
@@ -442,7 +411,7 @@ def renderParts (data : BlockData) (codeHref : Option String)
         let summaryText := s!"External Lean declarations for {data.kind} {data.count}"
         mkCodePanel summaryText codeEntryTitle externalStatusIndicator
           {{<ul class="bp_code_hover_list">{{externalPanelListItems linkedDecls}}</ul>}}
-    { statusMark, codeEntry, externalCodePanel }
+    { externalCodePanel }
 
 end ExternalCode
 end Informal

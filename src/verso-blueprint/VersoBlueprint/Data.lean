@@ -95,6 +95,8 @@ Formalization/proof status for a declaration.
 -/
 inductive ProvedStatus where
   | proved
+  /-- Declaration reference could not be resolved/present at snapshot time. -/
+  | missing
   | axiomLike
   | containsSorry (info : Array SorryInfo)
 deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
@@ -103,6 +105,7 @@ open Syntax in
 instance : Quote ProvedStatus where
   quote
     | .proved => mkCApp ``ProvedStatus.proved #[]
+    | .missing => mkCApp ``ProvedStatus.missing #[]
     | .axiomLike => mkCApp ``ProvedStatus.axiomLike #[]
     | .containsSorry info => mkCApp ``ProvedStatus.containsSorry #[quote info]
 
@@ -114,16 +117,22 @@ def ProvedStatus.isAxiomLike : ProvedStatus → Bool
   | .axiomLike => true
   | _ => false
 
+def ProvedStatus.isMissing : ProvedStatus → Bool
+  | .missing => true
+  | _ => false
+
 def ProvedStatus.isIncomplete (status : ProvedStatus) : Bool :=
   !status.isProved
 
 def ProvedStatus.hasTypeGap : ProvedStatus → Bool
   | .proved => false
+  | .missing => true
   | .axiomLike => true
   | .containsSorry info => info.any (·.location == .statement)
 
 def ProvedStatus.hasProofGap : ProvedStatus → Bool
   | .proved => false
+  | .missing => true
   | .axiomLike => true
   | .containsSorry info => info.any (·.location == .proof)
 
@@ -144,11 +153,14 @@ def ProvedStatus.ofRefCounts (typeRefs proofRefs : Nat) : ProvedStatus :=
 
 /--
 Conservative merge for duplicated status snapshots:
+- `missing` dominates,
 - `axiomLike` dominates,
 - otherwise keep any observed statement/proof incompleteness.
 -/
 def ProvedStatus.mergeConservative (a b : ProvedStatus) : ProvedStatus :=
-  if a.isAxiomLike || b.isAxiomLike then
+  if a.isMissing || b.isMissing then
+    .missing
+  else if a.isAxiomLike || b.isAxiomLike then
     .axiomLike
   else
     ProvedStatus.ofSorryFlags
@@ -315,7 +327,7 @@ instance : Lean.Quote ExternalDeclRender where
 /--
 Reference to an external declaration mentioned by a blueprint node.
 {lit}`written` preserves the user spelling, while {lit}`canonical` is scope-erased for
-environment lookup and deduplication.
+environment lookup and duplicate detection.
 -/
 structure ExternalRef where
   written : Name
@@ -382,7 +394,7 @@ def ExternalRef.withSnapshot (ref : ExternalRef) (info? : Option ConstantInfo) :
       ref with
       canonical
       present := false
-      provedStatus := .proved
+      provedStatus := .missing
       isTheoremLike := false
       kind? := none
       render := .error (.moduleUnavailable canonical)
@@ -396,51 +408,6 @@ def ExternalRef.withSnapshot (ref : ExternalRef) (info? : Option ConstantInfo) :
       isTheoremLike := match info with | .thmInfo _ => true | _ => false
       kind? := some (ConstantInfo.blueprintKindText info)
     }
-
-private def chooseProvenance (current incoming : ExternalDeclProvenance) : ExternalDeclProvenance :=
-  match current, incoming with
-  | .unknown, p => p
-  | p, .unknown => p
-  | p, _ => p
-
-private def chooseRender (current incoming : ExternalDeclRender) : ExternalDeclRender :=
-  match current, incoming with
-  | .ok _, _ => current
-  | .error _, .ok _ => incoming
-  | .error _, .error _ => current
-
-def ExternalRef.merge (current incoming : ExternalRef) : ExternalRef :=
-  let present := current.present && incoming.present
-  let provedStatus :=
-    if present then
-      ProvedStatus.mergeConservative
-        current.provedStatus
-        incoming.provedStatus
-    else
-      .proved
-  let provenance :=
-    if present then chooseProvenance current.provenance incoming.provenance else .unknown
-  let range? := if present then current.range? <|> incoming.range? else none
-  let selectionRange? := if present then current.selectionRange? <|> incoming.selectionRange? else none
-  let kind? := if present then current.kind? <|> incoming.kind? else none
-  let sourceHref? := if present then current.sourceHref? <|> incoming.sourceHref? else none
-  let render :=
-    if present then
-      chooseRender current.render incoming.render
-    else
-      .error (.moduleUnavailable current.canonical)
-  {
-    current with
-    present
-    provedStatus
-    isTheoremLike := current.isTheoremLike || incoming.isTheoremLike
-    provenance
-    range?
-    selectionRange?
-    kind?
-    sourceHref?
-    render
-  }
 
 inductive CodeRef where
   /-
@@ -491,21 +458,13 @@ section
 
 variable [Monad m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
-/-- registers an informal definition, will error if already existing -/
-private def mergeExternalRef (current incoming : ExternalRef) : ExternalRef :=
-  ExternalRef.merge current incoming
-
-private def mergeExternalRefs (xs ys : Array ExternalRef) : Array ExternalRef :=
-  ys.foldl (init := xs) fun acc y =>
-    match acc.findIdx? (fun x => x.canonical == y.canonical) with
-    | some idx => acc.set! idx (mergeExternalRef (acc[idx]!) y)
-    | none => acc.push y
-
 private def mergeCodeRef (label : Label) (current : Option CodeRef) (incoming : CodeRef) : m (Option CodeRef) := do
   match current, incoming with
   | none, incoming => return some incoming
   | some .userOk, .userOk => return current
-  | some (.external xs), .external ys => return some (.external (mergeExternalRefs xs ys))
+  | some (.external _), .external _ =>
+    logError m!"Label {label} has multiple external Lean reference declarations; external merging is not supported"
+    return current
   | some .userOk, .external ys => return some (.external ys)
   | some (.external xs), .userOk => return some (.external xs)
   | some (.literate _), .literate _ =>
