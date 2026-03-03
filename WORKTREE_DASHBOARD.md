@@ -1,18 +1,18 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (commands-path merged to `bp`, worktree removed)
+Last updated: 2026-03-03 (external-def-display validated and ready for merge on `bp`)
 
 ## Active Worktrees
 
 ### `bp` (root checkout)
 
-- Status: `active` (owner action: review/commit local notes updates)
+- Status: `active` (owner action: merge `feat/external-def-display`)
 - Path: `/home/egallego/lean/verso-blueprint`
 - Branch: `bp`
 - Base commit/branch:
   - local integration branch
 - Key commit:
-  - `2d68ac9a` refactor: drop commands compatibility module
+  - `61a5f0a7` docs: add strict worktree scope discipline
 - Validation status:
   - commands-path validation passed before merge:
   - `lake build VersoBlueprint.Commands.Common VersoBlueprint.Commands.Graph VersoBlueprint.Commands.Summary VersoBlueprint.Commands.Bibliography VersoBlueprint`
@@ -39,19 +39,20 @@ Last updated: 2026-03-03 (commands-path merged to `bp`, worktree removed)
 
 ### `feat/external-def-display`
 
-- Status: `blocked` (owner action: resolve merge conflict first)
+- Status: `ready-for-review` (owner action: merge/cherry-pick to `bp`)
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-display`
 - Branch: `feat/external-def-display`
 - Base commit/branch:
   - aligned with `bp` at `2d68ac9a`
 - Key commit:
-  - `2d68ac9a` refactor: drop commands compatibility module
+  - `74a46fb7` refactor: extract informal code renderer and refresh roadmap
 - Validation status:
-  - not rerun in this update
+  - `lake build VersoBlueprint` (pass)
+  - `lake exe noperthedron` (pass, warnings only)
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py` (known baseline fail: missing `bp_external_status_sorry` in `The-Local-Theorem`)
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-def-display`
-  - resolve `UU WORKTREE_DASHBOARD.md`
-  - continue feature edits once index is clean
+  - `git status --short`
 
 ### `feat/lsp-folding-chain`
 

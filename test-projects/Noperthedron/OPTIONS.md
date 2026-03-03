@@ -114,6 +114,14 @@ These options are now implemented and can be configured with `set_option`.
     - `set_option verso.blueprint.externalCode.previewLimit.type 800`
     - `set_option verso.blueprint.externalCode.previewLimit.decl 0`
 
+- `verso.blueprint.externalCode.sourceLinkTemplate : String` (default `""`)
+  - File: `src/verso-blueprint/VersoBlueprint.lean`.
+  - Effect: enables optional source links for external declarations.
+  - Placeholders: `{path}`, `{relpath}`, `{module}`, `{line}`, `{column}`.
+  - Convention: empty string disables source-link generation.
+  - Example:
+    - `set_option verso.blueprint.externalCode.sourceLinkTemplate "https://github.com/<org>/<repo>/blob/main/{relpath}#L{line}"`
+
 - `verso.blueprint.graph.defaultDirection : String` (default `"TB"`)
   - File: `src/verso-blueprint/VersoBlueprint/Commands.lean`.
   - Effect: default graph direction for `blueprint_graph` when no `(direction := ...)` is passed.

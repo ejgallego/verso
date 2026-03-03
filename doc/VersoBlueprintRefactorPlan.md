@@ -5,6 +5,24 @@
 This plan tracks only pending refactor work after the commands-path merge.
 Completed tasks have been removed from this document.
 
+## 2026-03-03 Consolidation Notes (`feat/external-def-display`)
+
+Completed in this worktree:
+
+1. External declaration rendering/status dedup in informal block rendering path.
+2. Optional external source link support (`verso.blueprint.externalCode.sourceLinkTemplate`).
+3. Mechanical extraction of code-render data/view layer from `VersoBlueprint.lean` to:
+   - `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`
+4. Refactor notes update with `Data.CodeRef` consumer map and redundancy list:
+   - `doc/CommandsPathRefactorNotes.md`
+
+Validation snapshot:
+
+1. `lake build VersoBlueprint` passes.
+2. `lake exe noperthedron` passes (warnings only).
+3. `python3 test-projects/Noperthedron/check_blueprint_code_panels.py` still has known baseline failure:
+   - missing `bp_external_status_sorry` in `The-Local-Theorem`.
+
 ## Current Priority
 
 1. Keep one source of truth for blueprint semantics and status derivation.
@@ -43,4 +61,4 @@ Completed tasks have been removed from this document.
 
 ## Immediate Next Action
 
-1. Implement Phase 1 task 1 (shared status record) in `VersoBlueprint/Lib/`.
+1. Introduce `buildCodeRenderData` so `Informal/Code.lean` stays pure over precomputed facts.
