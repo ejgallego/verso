@@ -9,16 +9,16 @@ import Verso
 import VersoManual
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
-import VersoBlueprint.Lib.PreviewLookup
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.PreviewRender
+import VersoBlueprint.Resolve
 
 namespace Informal.PreviewSource
 
 open Lean
 open Informal Data Environment
 
-abbrev ManualBlock := Informal.PreviewLookup.ManualBlock
+abbrev ManualBlock := Verso.Doc.Block Verso.Genre.Manual
 
 private def nonEmptyOrNone {α} (xs : Array α) : Option (Array α) :=
   if xs.isEmpty then none else some xs
@@ -31,7 +31,12 @@ private def firstNonEmptyFacet? {α}
 
 def traversalBlocks?
     (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option (Array ManualBlock) :=
-  firstNonEmptyFacet? fun facet => Informal.PreviewLookup.previewBlocksForFacet? s label facet
+  let traversalFacetBlocks? (facet : PreviewCache.Facet) : Option (Array ManualBlock) := do
+    let key := PreviewCache.key label facet
+    let obj ← s.getDomainObject? Resolve.informalPreviewDomainName key
+    let entry ← (fromJson? (α := PreviewCache.Entry) obj.data).toOption
+    return entry.blocks
+  firstNonEmptyFacet? traversalFacetBlocks?
 
 private def envFacetStxs? (node : Data.Node) (facet : PreviewCache.Facet) : Option (Array Syntax) :=
   match facet with

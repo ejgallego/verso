@@ -23,30 +23,4 @@ def parseName? (s : String) : Option Name :=
     let n := s.toName
     if n.isAnonymous then none else some n
 
-/--
-Parse a user-provided Lean name and return a detailed error when parsing fails.
--/
-def parseNameE (s : String) : Except String Name :=
-  let normalized := normalize s
-  if normalized.isEmpty then
-    .error "empty name"
-  else
-    let n := normalized.toName
-    if n.isAnonymous then
-      .error s!"invalid Lean name '{normalized}'"
-    else
-      .ok n
-
-/--
-Split a comma-separated list of user names and normalize each entry.
-
-TODO: This parser is plain CSV (`splitOn ","`) and does not support quoted commas
-inside escaped name components such as `«a,b»`.
--/
-def splitCsvNormalized (s : String) : Array String :=
-  s.splitOn ","
-  |>.toArray
-  |>.map normalize
-  |>.filter (fun p => !p.isEmpty)
-
 end Informal.NameParsing

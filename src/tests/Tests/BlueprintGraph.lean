@@ -283,6 +283,15 @@ def externalStatus : ExternalCodeStatus := {
       .proved
 }
 
+def externalStatusOverride : ExternalCodeStatus := {
+  isMissing := fun n => n == `Ext.missing || n == `Ext.override_missing
+  provedStatus := fun n =>
+    if n == `Ext.bad || n == `Ext.override_bad then
+      .containsSorry #[{ location := .statement }, { location := .proof }]
+    else
+      .proved
+}
+
 def graphExternalCode : Graph Unit := buildWithExternal stateExternalCode #[`def_ext_ok, `def_ext_bad, `def_ext_missing] externalStatus
 
 /-- info: true -/
@@ -294,6 +303,48 @@ def graphExternalCode : Graph Unit := buildWithExternal stateExternalCode #[`def
     n.color == statementBorderReadyColor &&
     n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}") &&
   hasNodeWith graphExternalCode `def_ext_missing (fun n =>
+    n.color == statementBorderReadyColor &&
+    n.fillcolor == s!"{proofBackgroundReadyColor}:{missingExternalOverlayColor}" &&
+    n.gradientangle? == some "90")
+
+def stateExternalOverride : Environment.State := mkState [
+  (`def_ext_override_bad,
+    {
+      kind := .definition
+      statement := some (mkInformal #[])
+      code := some (.external #[
+        { (Data.ExternalRef.ofName `Ext.override_bad) with
+          present := true
+          provedStatus := .proved
+          isTheoremLike := false
+        }
+      ])
+    }),
+  (`def_ext_override_missing,
+    {
+      kind := .definition
+      statement := some (mkInformal #[])
+      code := some (.external #[
+        { (Data.ExternalRef.ofName `Ext.override_missing) with
+          present := true
+          provedStatus := .proved
+          isTheoremLike := false
+        }
+      ])
+    })
+]
+
+def graphExternalOverride : Graph Unit :=
+  buildWithExternal stateExternalOverride #[`def_ext_override_bad, `def_ext_override_missing] externalStatusOverride
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  hasNodeWith graphExternalOverride `def_ext_override_bad (fun n =>
+    n.color == statementBorderReadyColor &&
+    n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}" &&
+    n.gradientangle? == some "90") &&
+  hasNodeWith graphExternalOverride `def_ext_override_missing (fun n =>
     n.color == statementBorderReadyColor &&
     n.fillcolor == s!"{proofBackgroundReadyColor}:{missingExternalOverlayColor}" &&
     n.gradientangle? == some "90")

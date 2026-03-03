@@ -18,9 +18,7 @@ structure DeclHtmlInput where
   declName : Name
   kindDescription : String
   typeText : String
-  attrs : Array String := #[]
   docString? : Option String := none
-  equations : Array String := #[]
   fields : Array String := #[]
   constructors : Array String := #[]
   deriving Inhabited, Repr
@@ -38,13 +36,6 @@ private def kindClass (kind : String) : String :=
 
 private def codeSpan (code : String) : Html :=
   .element "code" true #[] #[.text code]
-
-private def attrsHtml (attrs : Array String) : Array Html :=
-  if attrs.isEmpty then
-    #[]
-  else
-    #[.element "div" true #[("class", "attributes")]
-        #[.text s!"[{String.intercalate ", " attrs.toList}]"]]
 
 private def docStringHtml (doc? : Option String) : Array Html :=
   match doc? with
@@ -74,9 +65,7 @@ def docInfoToHtml (input : DeclHtmlInput) : Html :=
     ]
   let children :=
     #[.element "div" false #[("class", "decl_header")] headerChildren] ++
-    attrsHtml input.attrs ++
     docStringHtml input.docString? ++
-    sectionListHtml "equations" "Equations" input.equations ++
     sectionListHtml "fields" "Fields" input.fields ++
     sectionListHtml "constructors" "Constructors" input.constructors
   .element "div" false

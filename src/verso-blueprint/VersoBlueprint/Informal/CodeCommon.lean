@@ -97,25 +97,6 @@ def provedStatusContainsSorry (status : Data.ProvedStatus) : Bool :=
   | .containsSorry _ => true
   | _ => false
 
-def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
-  decls.qsort (fun a b =>
-    a.commandIndex < b.commandIndex ||
-    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
-
-def progressSegmentClass (missing hasSorry : Bool) : String :=
-  if missing then
-    "bp_code_progress_segment bp_code_progress_segment_missing"
-  else if hasSorry then
-    "bp_code_progress_segment bp_code_progress_segment_sorry"
-  else
-    "bp_code_progress_segment bp_code_progress_segment_ok"
-
-def codePanelSummary (data : BlockData) : String :=
-  if data.isProof then
-    "Code for proof"
-  else
-    s!"Code for {data.kind} {data.count}"
-
 def mkCodePanel
     (summaryText summaryTitle : String)
     (progressBar body : Output.Html)

@@ -113,25 +113,31 @@ def nodeExternalDecls (node : Data.Node) : Array Data.ExternalRef :=
 def nodeHasAssociatedCode (node : Data.Node) : Bool :=
   node.code.isSome
 
-def nodeHasMissingExternalDecls (_external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  (nodeExternalDecls node).any (fun decl => !decl.present)
+def externalDeclMissing (external : ExternalCodeStatus) (decl : Data.ExternalRef) : Bool :=
+  !decl.present || external.isMissing decl.canonical
 
-def nodeHasTypeSorries (_external : ExternalCodeStatus) (node : Data.Node) : Bool :=
+def externalDeclProvedStatus (external : ExternalCodeStatus) (decl : Data.ExternalRef) : Data.ProvedStatus :=
+  Data.ProvedStatus.mergeConservative decl.provedStatus (external.provedStatus decl.canonical)
+
+def nodeHasMissingExternalDecls (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
+  (nodeExternalDecls node).any (externalDeclMissing external)
+
+def nodeHasTypeSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   let localHas :=
     match node.code with
     | some (.literate code) =>
       code.definedDefs.any (fun decl => decl.provedStatus.hasTypeGap) ||
       code.definedTheorems.any (fun decl => decl.provedStatus.hasTypeGap)
     | _ => false
-  localHas || (nodeExternalDecls node).any (fun decl => decl.provedStatus.hasTypeGap)
+  localHas || (nodeExternalDecls node).any (fun decl => (externalDeclProvedStatus external decl).hasTypeGap)
 
-def nodeHasProofSorries (_external : ExternalCodeStatus) (node : Data.Node) : Bool :=
+def nodeHasProofSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   let localHas :=
     match node.code with
     | some (.literate code) =>
       code.definedTheorems.any (fun decl => decl.provedStatus.hasProofGap)
     | _ => false
-  localHas || (nodeExternalDecls node).any (fun decl => decl.provedStatus.hasProofGap)
+  localHas || (nodeExternalDecls node).any (fun decl => (externalDeclProvedStatus external decl).hasProofGap)
 
 def nodeHasSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   nodeHasTypeSorries external node || nodeHasProofSorries external node

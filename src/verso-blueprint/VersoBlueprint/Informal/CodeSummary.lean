@@ -62,34 +62,6 @@ private def sorrySummaryItems (decls : Array CodeDeclData) (hrefOf : Name → Op
     (s!"{decl.name} [{summaryStatusText decl.provedStatus}]", hrefOf decl.name)
 
 /--
-Plain-text summary used by panel headers and accessibility/title text for Lean code status.
--/
-def codeSummaryText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
-  if definedDefs.isEmpty && definedTheorems.isEmpty then
-    s!"{label}"
-  else
-    let definedDefNames := definedDefs.map (·.name)
-    let definedTheoremNames := definedTheorems.map (·.name)
-    let defs :=
-      if definedDefNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedDefNames.toList.map toString)
-    let thms :=
-      if definedTheoremNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedTheoremNames.toList.map toString)
-    let sorryDecls := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus))
-    let sorries :=
-      if sorryDecls.isEmpty then
-        "none"
-      else
-        String.intercalate ", " <| sorryDecls.toList.map fun d =>
-          s!"{d.name} [{summaryStatusText d.provedStatus}]"
-    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
-
-/--
 Tooltip body for the Lean summary badge. It lists definitions, theorems/lemmas, and incomplete declarations.
 -/
 def renderCodeSummaryTooltip (label : Data.Label)

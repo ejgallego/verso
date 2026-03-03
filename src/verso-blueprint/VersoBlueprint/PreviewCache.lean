@@ -23,9 +23,6 @@ def Facet.suffix : Facet → String
 def key (label : Name) (facet : Facet) : String :=
   s!"{label}--{facet.suffix}"
 
-def keyOf (label : Name) (isProof : Bool) : String :=
-  key label (if isProof then .proof else .statement)
-
 /--
 Preview payload stored during traversal.
 `blocks` are already in the Manual genre and can be rendered by later HTML consumers.
