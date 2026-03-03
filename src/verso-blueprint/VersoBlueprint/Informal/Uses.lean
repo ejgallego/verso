@@ -4,13 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: Emilio J. Gallego Arias
 -/
 
-import Lean
-import Verso
 import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.Informal.Block
 import VersoBlueprint.Profiling
-import VersoBlueprint.Resolve
 import VersoBlueprint.Widget
 
 open Verso Doc Elab
