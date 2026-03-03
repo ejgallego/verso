@@ -11,10 +11,8 @@ Status: merged into `bp` (follow-up cleanup planning only)
    - `VersoBlueprint/Commands/Summary.lean`
    - `VersoBlueprint/Commands/Bibliography.lean`
    - shared command JS in `VersoBlueprint/Commands/Common.lean`
-3. Shared derivation/render helpers now live in `VersoBlueprint/Lib/`:
+3. Shared preview/render helpers now live in `VersoBlueprint/Lib/`:
    - `PreviewLookup.lean`
-   - `NodeFacts.lean`
-   - `SummaryBuild.lean`
    - `HoverRender.lean`
    - `PreviewSource.lean`
 4. Command CSS is now per-command:
@@ -52,7 +50,7 @@ Status: merged into `bp` (follow-up cleanup planning only)
    - `src/verso-blueprint/VersoBlueprint/Graph.lean`
 4. Summary semantics:
    - `buildSummary`
-   - `src/verso-blueprint/VersoBlueprint/Lib/SummaryBuild.lean`
+   - `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`
 5. Informal HTML rendering:
    - `Block.informal.toHtml` and `Block.informalCode.toHtml`
    - `src/verso-blueprint/VersoBlueprint.lean`

@@ -269,7 +269,7 @@ def Graph.toDot (g : Graph) (resolveGroupTitle : Name → Option String := fun _
 open Informal Data Environment
 structure BuildResult where
   dot : String
-  statementPreview? : Option Informal.PreviewSource.Payload := none
+  statementPreview? : Option (Array Lean.Syntax) := none
   texPrelude : String
 
 def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResult := do

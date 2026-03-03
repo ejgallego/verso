@@ -13,9 +13,7 @@ Scope: external declaration rendering/status paths after command-path modulariza
    - `Lib/PreviewLookup.lean`
    - `Lib/HoverRender.lean`
    - `Lib/PreviewSource.lean`
-   - `Lib/NodeFacts.lean`
-   - `Lib/SummaryBuild.lean`
-3. Summary data build now uses `NodeFacts.ExternalDeclAdapter` instead of direct duplicate env helpers.
+3. Summary data build now reads external declaration snapshots directly from `Data.ExternalRef`.
 
 ## Current Rendering/Data Flow
 
@@ -29,7 +27,7 @@ Scope: external declaration rendering/status paths after command-path modulariza
 4. `Block.informal.toHtml` projects to `ExternalHoverDecl` and renders:
    - hover list (`externalHoverListItems`),
    - code panel list (`externalPanelListItems`).
-5. Global summary uses `Lib/SummaryBuild.buildSummary`.
+5. Global summary uses `Commands/Summary.buildSummary`.
 
 ## Remaining Redundancies
 
