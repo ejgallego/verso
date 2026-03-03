@@ -12,7 +12,7 @@ import VersoBlueprint.Environment
 import VersoBlueprint.Cite
 import VersoBlueprint.Graph
 import VersoBlueprint.Lib.HoverRender
-import VersoBlueprint.Lib.PreviewLookup
+import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.Lib.SummaryBuild
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
@@ -965,7 +965,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
         | some variant => variant.dot
         | Option.none => graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
       let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
-        let some blocks := Informal.PreviewLookup.previewBlocks? s node.label
+        let some blocks := Informal.PreviewSource.traversalBlocks? s node.label
           | pure acc
         let renderedBlocks ← blocks.mapM goB
         pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks)
@@ -1060,7 +1060,7 @@ block_extension Block.summary (summary : Summary) where
         Resolve.resolveExampleDeclHref? s decl
       let mkEntryRef (label : Name) := do
         let preview? : Option Output.Html ←
-          match Informal.PreviewLookup.previewBlocks? s label with
+          match Informal.PreviewSource.traversalBlocks? s label with
           | Option.none => pure none
           | some blocks =>
             let rendered ← blocks.mapM goB

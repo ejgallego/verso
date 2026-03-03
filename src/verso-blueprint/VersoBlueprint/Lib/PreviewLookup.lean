@@ -23,10 +23,15 @@ private def decodeFacet
   let entry ← (fromJson? (α := PreviewCache.Entry) obj.data).toOption
   return entry.blocks
 
+def previewBlocksForFacet?
+    (s : Verso.Genre.Manual.TraverseState) (label : Name)
+    (facet : PreviewCache.Facet) : Option (Array ManualBlock) :=
+  decodeFacet s label facet
+
 def previewBlocks?
     (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option (Array ManualBlock) :=
-  match decodeFacet s label .statement with
+  match previewBlocksForFacet? s label .statement with
   | some blocks => some blocks
-  | none => decodeFacet s label .proof
+  | none => previewBlocksForFacet? s label .proof
 
 end Informal.PreviewLookup
