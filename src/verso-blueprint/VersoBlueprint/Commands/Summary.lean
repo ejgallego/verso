@@ -334,6 +334,9 @@ block_extension Block.summary (summary : Summary) where
             | Option.none => {{ <code>s!"{item.decl}"</code> }}
           let statusInfo ←
             match item.status with
+            | .missing =>
+              pure ("missing", "Missing declaration: ", "bp_summary_badge bp_summary_badge_error",
+                provedStatusLocationText item.status, "n/a", 0, 0, 0)
             | .axiomLike =>
               pure ("axiom-like", "Axiom-like declaration: ", "bp_summary_badge bp_summary_badge_warn",
                 provedStatusLocationText item.status, "n/a", 0, 0, 0)
@@ -371,6 +374,8 @@ block_extension Block.summary (summary : Summary) where
               let links := stmtLinks ++ proofLinks
               if links.isEmpty then
                 match item.status with
+                | .missing =>
+                  #[{{ <a class="bp_code_link" href={{href}} title="Go to Lean code">"in code"</a> }}]
                 | .axiomLike =>
                   #[{{ <a class="bp_code_link" href={{href}} title="Go to Lean declaration">"declaration"</a> }}]
                 | .containsSorry _ =>

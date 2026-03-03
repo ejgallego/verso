@@ -91,6 +91,26 @@ def BlockCodeData.isUserOk : BlockCodeData → Bool
   | .userOk => true
   | _ => false
 
+structure BlockStatusMark where
+  status : Data.ProvedStatus := .proved
+  title : String
+  symbolOverride? : Option String := none
+deriving Repr, Inhabited
+
+def BlockStatusMark.text (s : BlockStatusMark) : String :=
+  match s.symbolOverride? with
+  | some txt => txt
+  | none =>
+    match s.status with
+    | .proved => "✓"
+    | .missing => "✗"
+    | .axiomLike => "⚠"
+    | .containsSorry _ => "✗"
+
+def BlockStatusMark.toHtml (s : BlockStatusMark) : Output.Html :=
+  open Verso.Output.Html in
+  {{ <span class="bp_status_mark" title={{s.title}}>{{.text true s.text}}</span> }}
+
 structure BlockData where
   kind : Data.NodeKind
   label : Data.Label
@@ -109,6 +129,7 @@ def provedStatusHasSorry (status : Data.ProvedStatus) : Bool :=
 
 def provedStatusLocationText (status : Data.ProvedStatus) : String :=
   match status with
+  | .missing => "missing declaration"
   | .axiomLike => "axiom-like (no body)"
   | .containsSorry info =>
     let hasType := info.any (·.location == .statement)
