@@ -44,6 +44,7 @@ private def codePanelSummary (data : BlockData) : String :=
 
 private def codeSummaryStatusText (status : Data.ProvedStatus) : String :=
   match status with
+  | .missing => "missing declaration"
   | .axiomLike => "axiom-like (no body)"
   | .containsSorry _ => provedStatusLocationText status
   | .proved => "unknown"
