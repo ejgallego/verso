@@ -34,8 +34,7 @@ Scope: external declaration rendering/status paths after command-path modulariza
 ## Remaining Redundancies
 
 1. Hover and panel rendering still duplicate some body-row HTML shape (metadata/details composition), even though head/status/source-fact derivation is now shared.
-2. `sourceBodyPretty?` is still produced and serialized but not rendered.
-3. CSS selectors `.bp_external_decl_details` and `.bp_external_decl_preview` remain unused.
+2. CSS selectors `.bp_external_decl_details` and `.bp_external_decl_preview` remain unused.
 
 ## Implemented in This Worktree
 
@@ -51,10 +50,12 @@ Scope: external declaration rendering/status paths after command-path modulariza
 4. Mechanical render extraction:
    - moved code-view model + renderer into `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`
    - `src/verso-blueprint/VersoBlueprint.lean` now keeps orchestration plus external ref enrichment
+5. Follow-up cleanup:
+   - removed unused `sourceBodyPretty?` payload and `verso.blueprint.externalCode.previewLimit.rhs`
+   - reduced hover/status field duplication by making `ExternalHoverDecl` extend `ExternalDeclStatus`
 
 ## Next Rendering-Focused Steps
 
 1. Introduce a builder boundary (`buildCodeRenderData`) so rendering stays pure over precomputed facts.
-2. Decide whether `sourceBodyPretty?` is needed for UI v2; remove or render it.
-3. Remove or reintroduce UI usage for `.bp_external_decl_details` / `.bp_external_decl_preview`.
-4. Add regression checks for source-link presence when template option is enabled.
+2. Remove or reintroduce UI usage for `.bp_external_decl_details` / `.bp_external_decl_preview`.
+3. Add regression checks for source-link presence when template option is enabled.

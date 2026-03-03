@@ -13,6 +13,18 @@ namespace Informal
 
 abbrev DocGenHtml := Vendor.DocGen4.Html
 
+inductive DocGenRenderError where
+  | moduleUnavailable (decl : Name)
+  | exception (decl : Name) (message : String)
+  deriving Repr, Inhabited
+
+deriving instance Lean.ToJson for DocGenRenderError
+deriving instance Lean.FromJson for DocGenRenderError
+
+def DocGenRenderError.message : DocGenRenderError → String
+  | .moduleUnavailable decl => s!"module unavailable for {decl}"
+  | .exception decl message => s!"{decl}: {message}"
+
 private def moduleNameForDecl? (env : Environment) (decl : Name) : Option Name := do
   let moduleIdx ← env.getModuleIdxFor? decl
   env.header.moduleNames[moduleIdx.toNat]?
@@ -58,6 +70,19 @@ private def mkDeclHtmlInput
     fields := fieldNames env decl
     constructors := ctorNames cinfo
   }
+
+/--
+Render one declaration directly from known declaration facts.
+Errors represent rendering failures only; declaration lookup is handled by callers.
+-/
+def renderDeclHtmlStringDirectFromInfoE
+    (moduleName : Name) (decl : Name) (cinfo : ConstantInfo) : MetaM (Except DocGenRenderError String) := do
+  try
+    let env ← getEnv
+    let input ← mkDeclHtmlInput env moduleName decl cinfo
+    return .ok (Vendor.DocGen4.Html.toString (Vendor.DocGen4.docInfoToHtml input))
+  catch ex =>
+    return .error (.exception decl (← ex.toMessageData.toString))
 
 /-- Render one declaration directly from the in-memory `Environment` (no database, no source parsing). -/
 def renderDeclHtmlNodeDirect? (decl : Name) : MetaM (Option DocGenHtml) := do

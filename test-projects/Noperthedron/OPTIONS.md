@@ -106,7 +106,6 @@ These options are now implemented and can be configured with `set_option`.
 - `verso.blueprint.externalCode.previewLimit.type : Nat` (default `1200`)
 - `verso.blueprint.externalCode.previewLimit.value : Nat` (default `1200`)
 - `verso.blueprint.externalCode.previewLimit.decl : Nat` (default `1600`)
-- `verso.blueprint.externalCode.previewLimit.rhs : Nat` (default `1200`)
   - File: `src/verso-blueprint/VersoBlueprint.lean`.
   - Effect: controls truncation limits for external declaration previews.
   - Convention: `0` disables truncation.
