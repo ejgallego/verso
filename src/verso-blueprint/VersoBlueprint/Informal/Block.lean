@@ -16,19 +16,12 @@ import VersoManual
 import VersoBlueprint.Data
 import VersoBlueprint.ExternalRefSnapshot
 import VersoBlueprint.Environment
-import VersoBlueprint.Attribute
-import VersoBlueprint.Cite
-import VersoBlueprint.Commands.Graph
-import VersoBlueprint.Commands.Summary
-import VersoBlueprint.Commands.Bibliography
 import VersoBlueprint.Informal.Code
-import VersoBlueprint.DocGenNameRender
 import VersoBlueprint.Lean
 import VersoBlueprint.NameParsing
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
-import VersoBlueprint.TexPrelude
 import VersoBlueprint.Widget
 import VersoBlueprint.Profiling
 
