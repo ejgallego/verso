@@ -11,6 +11,7 @@ import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.Cite
 import VersoBlueprint.Graph
+import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.Lib.PreviewLookup
 import VersoBlueprint.Lib.SummaryBuild
 import VersoBlueprint.PreviewCache
@@ -967,34 +968,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
         let some blocks := Informal.PreviewLookup.previewBlocks? s node.label
           | pure acc
         let renderedBlocks ← blocks.mapM goB
-        let tpl : Output.Html := {{
-          <template class="bp_graph_preview_tpl" "data-bp-preview-label"={{s!"{node.label}"}}>
-            {{renderedBlocks}}
-          </template>
-        }}
-        pure <| acc.push tpl
-      let previewStore : Output.Html :=
-        if previewTemplates.isEmpty then
-          .empty
-        else
-          {{
-            <div class="bp_graph_preview_store" hidden>
-              {{previewTemplates}}
-            </div>
-          }}
-      let previewPanel : Output.Html :=
-        if previewTemplates.isEmpty then
-          .empty
-        else
-          {{
-            <aside id="bp-graph-preview" class="bp_graph_preview" hidden>
-              <div class="bp_graph_preview_header">
-                <div class="bp_graph_preview_title"></div>
-                <button type="button" class="bp_graph_preview_close" aria-label="Close informal preview">"Close"</button>
-              </div>
-              <div class="bp_graph_preview_body"></div>
-            </aside>
-          }}
+        pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks)
+      let previewUi := Informal.HoverRender.graphPreviewUi previewTemplates
       let groupHoverPanel : Output.Html := {{
         <aside id="bp-group-hover-preview" class="bp_group_hover_preview" hidden>
           <div class="bp_group_hover_preview_header">
@@ -1055,8 +1030,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
               s!"{fallbackDot}"
             </script>
           </div>
-          {{previewStore}}
-          {{previewPanel}}
+          {{previewUi.store}}
+          {{previewUi.panel}}
           {{groupHoverPanel}}
         </div>
       }}
@@ -1084,28 +1059,17 @@ block_extension Block.summary (summary : Summary) where
       let getDeclHref (decl : Name) : Option String :=
         Resolve.resolveExampleDeclHref? s decl
       let mkEntryRef (label : Name) := do
-        -- TODO: unify preview UI behavior between graph and summary pages.
         let preview? : Option Output.Html ←
           match Informal.PreviewLookup.previewBlocks? s label with
           | Option.none => pure none
           | some blocks =>
             let rendered ← blocks.mapM goB
-            pure <| some {{
-              <div class="bp_summary_preview" role="tooltip">
-                <div class="bp_summary_preview_title"><code>s!"{label}"</code></div>
-                <div class="bp_summary_preview_body">{{rendered}}</div>
-              </div>
-            }}
+            pure <| some (Informal.HoverRender.summaryPreview label rendered)
         let labelNode : Output.Html :=
           match getEntryHref label with
           | Option.some href => {{ <a href={{href}}> <code>s!"{label}"</code> </a> }}
           | Option.none => {{ <code>s!"{label}"</code> }}
-        pure {{
-          <span class="bp_summary_preview_wrap">
-            {{labelNode}}
-            {{if let some preview := preview? then preview else .empty}}
-          </span>
-        }}
+        pure (Informal.HoverRender.summaryPreviewWrap labelNode preview?)
       let mkDeclItems (decls : List Name) :=
         decls.toArray.map fun decl =>
           match getDeclHref decl with
