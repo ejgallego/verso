@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/versoblueprint-refactor` merged and cleaned up)
+Last updated: 2026-03-03 (`feat/informal-code-audit-restart-20260303` created and validated)
 
 ## Active Worktrees
 
@@ -55,6 +55,30 @@ Last updated: 2026-03-03 (`feat/versoblueprint-refactor` merged and cleaned up)
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
   - `git status --short`
   - commit/stash local chapter changes before rebasing on `bp`
+
+### `feat/informal-code-audit-restart-20260303`
+
+- Status: `ready-for-review` (owner action: merge to `bp` after review)
+- Summary: restart worktree for critical Informal parser/runtime hardening after cross-worktree drift.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit-restart-20260303`
+- Branch: `feat/informal-code-audit-restart-20260303`
+- Base commit/branch:
+  - `bp` at `7a4bc3f5`
+- Key commits:
+  - pending local commit (informal hardening + tests)
+- Validation status:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintInformal.lean`
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Preview:
+  - URL: `http://127.0.0.1:8093/`
+  - server command: `npx http-server _out -p 8093`
+  - log: `/tmp/informal-code-audit-restart-20260303-http.log`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit-restart-20260303`
+  - `git status --short`
+  - `lake exe noperthedron`
 
 ## Recently Completed
 
