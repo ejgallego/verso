@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (citation reverse-metadata + Noperthedron advanced cite migration validated)
+Last updated: 2026-03-03 (citation reverse-details merged into `bp`; worktree cleaned up)
 
 ## Active Worktrees
 
@@ -20,24 +20,6 @@ Last updated: 2026-03-03 (citation reverse-metadata + Noperthedron advanced cite
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/citation-reverse-details`
-
-- Status: `ready-for-review` (owner action: review diff and commit/cherry-pick into `bp`)
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/citation-reverse-details`
-- Branch: `feat/citation-reverse-details`
-- Base commit/branch:
-  - branched from `bp` at `889a5814`
-- Key commit:
-  - working tree (not committed): bibliography reverse-citation metadata display + migration of Noperthedron chapter cites to structured `kind`/`index`
-- Validation status:
-  - `lake build VersoBlueprint` (pass; existing doc warnings only)
-  - `lake exe noperthedron` (pass; existing project warnings only)
-  - output check: `_out/html-multi/Blueprint-Bibliography/index.html` now includes human-readable reverse-citation details (e.g. `Cites Lemma 18`, `Cites Section 4.2`, `Cites Corollary 50`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/citation-reverse-details`
-  - `git status --short`
-  - `git diff -- src/verso-blueprint/VersoBlueprint/Cite.lean src/verso-blueprint/VersoBlueprint/Commands/Bibliography.lean src/verso-blueprint/VersoBlueprint/Commands/bibliography.css test-projects/Noperthedron/Chapters/Bounding.lean test-projects/Noperthedron/Chapters/GlobalTheorem.lean test-projects/Noperthedron/Chapters/LocalTheorem.lean test-projects/Noperthedron/Chapters/Rational.lean`
 
 ### `feat/docgen-direct-render`
 
@@ -106,6 +88,9 @@ Last updated: 2026-03-03 (citation reverse-metadata + Noperthedron advanced cite
 
 ## Recently Completed
 
+- Merged `feat/citation-reverse-details` into `bp` (`889a5814 -> c6f8a1b1`, fast-forward).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/citation-reverse-details`.
+- Deleted branch: `feat/citation-reverse-details`.
 - Merged `feat/external-def-display` into `bp` (`61a5f0a7 -> fd974295`, fast-forward).
 - Merged `feat/commands-path-refactor` into `bp` (`a3381ff3 -> 2d68ac9a`, fast-forward).
 - Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`.
