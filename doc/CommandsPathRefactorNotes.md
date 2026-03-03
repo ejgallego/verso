@@ -11,6 +11,44 @@ Scope: command/elaboration/traversal boundary audit for `VersoBlueprint`
 4. Prepare modular split of `Commands.lean` (`ShowGraph.lean`, etc.).
 5. Support shared hover rendering needs across final HTML paths.
 
+## 0) Implementation Progress (2026-03-03)
+
+Completed extraction checkpoints (behavior-preserving):
+
+1. `873ce284`:
+   - shared traversal preview decoding via `Lib/PreviewLookup.lean`
+   - graph + summary HTML paths now use a single preview lookup helper
+
+2. `b0cb3f80`:
+   - shared external declaration adapter in `Lib/NodeFacts.lean`
+   - graph/summary external status reads use one adapter abstraction
+
+3. `b88ef562`:
+   - summary model + builder moved to `Lib/SummaryBuild.lean`
+   - `Commands.lean` now consumes the shared builder instead of owning model logic
+
+4. `1b0d6902`:
+   - graph part-command path moved to `Commands/ShowGraph.lean`
+   - top-level load path updated in `VersoBlueprint.lean`
+
+5. (working tree, validated):
+   - summary command registration moved to `Commands/ShowSummary.lean`
+   - bibliography command registration moved to `Commands/ShowBibliography.lean`
+   - summary/bibliography part builders (`mkSummaryPart`, `mkBibliographyPart`) moved with their command modules
+   - top-level imports updated accordingly
+
+Current boundary status:
+
+- `Environment.State.data` remains the single semantic source for graph/summary derivation.
+- Shared derivation utilities now live in `Lib/`.
+- Graph/summary/bibliography command paths are split out of monolithic `Commands.lean`.
+- `Commands.lean` still owns block renderers and large JS/CSS payloads (next modularization pressure point).
+
+Immediate next step:
+
+1. Start the hover API extraction (`Lib/HoverRender.lean`) to remove duplicated hover markup logic between graph and summary HTML output.
+2. Continue command modularization by separating renderer-heavy sections from registration/data-model definitions where safe.
+
 ## 1) Current Data Model by Phase
 
 ### A. Elaboration-time mutable/persistent state (`Environment.State`)
