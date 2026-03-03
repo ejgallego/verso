@@ -8,6 +8,7 @@ import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.Informal.Block
 import VersoBlueprint.Informal.CodeCommon
+import VersoBlueprint.Informal.CodeSummary
 import VersoBlueprint.Lean
 import VersoBlueprint.Profiling
 import VersoBlueprint.Resolve
@@ -20,6 +21,7 @@ open _root_.Lean _root_.Lean.Elab
 open _root_.Lean.Doc.Syntax
 
 namespace Informal
+open CodeSummary
 
 block_extension Block.informalCode (data : CodeBlockData) where
   data := toJson data
@@ -57,30 +59,8 @@ block_extension Block.informalCode (data : CodeBlockData) where
       let orderedDecls := sortDeclsByCommand (definedDefs ++ definedTheorems)
       let getDeclHref (decl : Name) : Option String :=
         Resolve.resolveExampleDeclHref? s decl
-      let summaryHoverData := mkCodeHoverData label definedDefs definedTheorems getDeclHref
-      let progressHover : Output.Html := {{
-        <div class="bp_code_hover" role="tooltip">
-          <div class="bp_code_hover_title">{{.text true s!"{summaryHoverData.label}"}}</div>
-          <div class="bp_code_hover_section">
-            <span class="bp_code_hover_label">"Lean definitions"</span>
-            <ul class="bp_code_hover_list">
-              {{codeHoverDeclItems summaryHoverData.definedDefs}}
-            </ul>
-          </div>
-          <div class="bp_code_hover_section">
-            <span class="bp_code_hover_label">"Lean theorems/lemmas"</span>
-            <ul class="bp_code_hover_list">
-              {{codeHoverDeclItems summaryHoverData.definedTheorems}}
-            </ul>
-          </div>
-          <div class="bp_code_hover_section">
-            <span class="bp_code_hover_label">"Sorries"</span>
-            <ul class="bp_code_hover_list">
-              {{codeHoverDeclItems summaryHoverData.sorries}}
-            </ul>
-          </div>
-        </div>
-      }}
+      let progressSummaryTooltip : Output.Html :=
+        renderCodeSummaryTooltip label definedDefs definedTheorems getDeclHref
       let progressBar : Output.Html :=
         if orderedDecls.isEmpty then
           .empty
@@ -99,11 +79,11 @@ block_extension Block.informalCode (data : CodeBlockData) where
                 s!"{decl.name}: complete"
             {{<span class={{cls}} title={{title}} style={{s!"flex: {weight} 1 0%"}}></span>}}
           let bar := {{<span class="bp_code_progress" aria-label="Lean declaration progress">{{segments}}</span>}}
-          {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{bar}}{{progressHover}}</span>}}
-      let summaryHover := codeHoverText label definedDefs definedTheorems
+          {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{bar}}{{progressSummaryTooltip}}</span>}}
+      let summaryTitle := codeSummaryText label definedDefs definedTheorems
       let panelAttrs := attrs.push ("data-bp-proof-fold", if foldProofs then "on" else "off")
       let panelBody := .seq (← blocks.mapM goB)
-      pure <| mkCodePanel summaryText summaryHover progressBar panelBody panelAttrs
+      pure <| mkCodePanel summaryText summaryTitle progressBar panelBody panelAttrs
 
 structure CodeConfig where
   label : Data.Label

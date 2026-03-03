@@ -14,11 +14,10 @@ import Lean.Elab.InfoTree.Types
 import VersoManual
 
 import VersoBlueprint.Data
-import VersoBlueprint.ExternalRefSnapshot
 import VersoBlueprint.Environment
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Informal.CodeSummary
-import VersoBlueprint.NameParsing
+import VersoBlueprint.Informal.ExternalCode
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
@@ -34,6 +33,7 @@ open Lean.Doc.Syntax
 open Lean Elab
 
 namespace Informal
+open CodeSummary
 
 /- "Informal" Verso objects:
 
@@ -59,15 +59,6 @@ def informalCodeDomain : Name := Resolve.informalCodeDomainName
 /-- Name used in {name}`TraverseState.domains` for informal preview payloads. -/
 def informalPreviewDomain : Name := Resolve.informalPreviewDomainName
 
-/--
-If enabled, unresolved or ambiguous external Lean names in `(lean := "...")` are treated as
-errors instead of warnings.
--/
-register_option verso.blueprint.externalCode.strictResolve : Bool := {
-  defValue := false
-  descr := "Treat unresolved or ambiguous `(lean := ...)` external references as errors"
-}
-
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
   label : Data.Label
@@ -82,86 +73,9 @@ structure Config where
 section
 variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadError m] [MonadFileMap m]
 
-private def splitExternalCodeRefs (s : String) : Array String :=
-  NameParsing.splitCsvNormalized s
-
-private def parseExternalCodeList (lean : Option String) : Array Data.ExternalRef × Array String :=
-  match lean with
-  | none => (#[], #[])
-  | some s =>
-    (splitExternalCodeRefs s).foldl (init := (#[], #[])) fun (acc, invalid) ref =>
-      match NameParsing.parseNameE ref with
-      | .ok name =>
-        let extRef := Data.ExternalRef.ofName name .directiveLean
-        if acc.any (fun entry => entry.canonical == extRef.canonical) then
-          (acc, invalid)
-        else
-          (acc.push extRef, invalid)
-      | .error err =>
-        (acc, invalid.push s!"{ref} ({err})")
-
-private def pushExternalRefDedup (acc : Array Data.ExternalRef) (ref : Data.ExternalRef) : Array Data.ExternalRef :=
-  match acc.findIdx? (fun entry => entry.canonical == ref.canonical) with
-  | some idx =>
-    let current := acc[idx]!
-    let merged : Data.ExternalRef := Data.ExternalRef.merge current ref
-    acc.set! idx merged
-  | none =>
-    acc.push ref
-
-private def parsedExternalRef (ref : Data.ExternalRef) : Data.ExternalRef :=
-  { ref with canonical := ref.written.eraseMacroScopes }
-
-private def resolvedExternalRef (ref : Data.ExternalRef) (resolved : Name) : Data.ExternalRef :=
-  { written := ref.written, canonical := resolved.eraseMacroScopes, origin := ref.origin }
-
-private def markExternalRefSnapshot [MonadOptions m] (ref : Data.ExternalRef) : m Data.ExternalRef := do
-  let opts ← getOptions
-  liftM <| externalRefSnapshotAtCurrentDir opts ref
-
-private def resolveExternalNameCandidates [MonadResolveName m] [MonadOptions m]
-    [MonadLog m] [AddMessageContext m]
-    (name : Name) : m (Array Name) := do
-  let resolved ← Lean.resolveGlobalName name (enableLog := false)
-  return resolved.foldl (init := #[]) fun acc (candidate, fieldList) =>
-    if fieldList.isEmpty && !acc.contains candidate then
-      acc.push candidate
-    else
-      acc
-
-private def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadEnv m]
-    [MonadLog m] [AddMessageContext m] [MonadError m]
-    (label : Name) (labelSyntax : Syntax) (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
-  let strictResolve :=
-    (← getOptions).get
-      verso.blueprint.externalCode.strictResolve.name
-      verso.blueprint.externalCode.strictResolve.defValue
-  refs.foldlM (init := #[]) fun acc ref => do
-    let candidates ← resolveExternalNameCandidates ref.written
-    match candidates.toList with
-    | [] =>
-      let msg := m!"Label {label}: external Lean name '{ref.written}' could not be resolved in current namespace/open declarations"
-      if strictResolve then
-        throwErrorAt labelSyntax msg
-      else
-        logWarningAt labelSyntax m!"{msg}; keeping parsed name"
-        let ref ← markExternalRefSnapshot (parsedExternalRef ref)
-        return pushExternalRefDedup acc ref
-    | [resolved] =>
-      let ref ← markExternalRefSnapshot (resolvedExternalRef ref resolved)
-      return pushExternalRefDedup acc ref
-    | many =>
-      let msg := m!"Label {label}: external Lean name '{ref.written}' is ambiguous ({String.intercalate ", " (many.map toString)})"
-      if strictResolve then
-        throwErrorAt labelSyntax msg
-      else
-        logWarningAt labelSyntax m!"{msg}; keeping parsed name"
-        let ref ← markExternalRefSnapshot (parsedExternalRef ref)
-        return pushExternalRefDedup acc ref
-
 def Config.parse  : ArgParse m Config :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent =>
-    let (externalCode, invalidExternalCode) := parseExternalCodeList lean
+    let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList lean
     {
       label := Name.mkSimple labelArg.val
       labelSyntax := labelArg.syntax
@@ -797,6 +711,51 @@ def shouldWritePreviewDataByIds [BEq α] (existingIds : Array α) (currentId : �
 private def shouldWritePreviewData (existing? : Option Verso.Multi.Object) (id : Verso.Multi.InternalId) : Bool :=
   shouldWritePreviewDataByIds ((existing?.map (·.ids.toArray)).getD #[]) id
 
+private def renderInformalBlock (data : BlockData) (attrs : Array (String × String))
+    (statusMark codeEntry : Output.Html) (content : Array Output.Html) : Output.Html :=
+  open Verso.Output.Html in
+  let kindText := if data.isProof then "Proof" else s!"{data.kind}"
+  let labelTextNum := s!"{data.count}"
+  let labelText := s!"{data.label}"
+  let showLabel := !data.isProof
+  let (kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
+    if data.isProof then
+      ("proof", "proof_wrapper bp_kind_proof",
+        "proof_heading", "proof_caption", "proof_label", "proof_content")
+    else
+      match data.kind with
+      | .definition =>
+        ("definition", "definition_thmwrapper theorem-style-definition bp_kind_definition",
+          "definition_thmheading", "definition_thmcaption", "definition_thmlabel", "definition_thmcontent")
+      | .theorem =>
+        ("theorem", "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
+          "theorem_thmheading", "theorem_thmcaption", "theorem_thmlabel", "theorem_thmcontent")
+      | .lemma =>
+        ("lemma", "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
+          "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
+      | .corollary =>
+        ("corollary", "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
+          "corollary_thmheading", "corollary_thmcaption", "corollary_thmlabel", "corollary_thmcontent")
+  let wrapperClass := s!"bp_wrapper {kindCss}_thmwrapper {wrapperCss}"
+  let headingClass := s!"bp_heading {headingCss}"
+  let captionClass := s!"bp_caption {captionCss}"
+  let labelClass := s!"bp_label {labelCss}"
+  let contentClass := s!"bp_content {contentCss}"
+  {{
+    <div class={{wrapperClass}} title={{labelText}} {{attrs}}>
+      <div class={{headingClass}}>
+        <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
+        {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
+        <div class="bp_extras thm_header_extras">
+          {{statusMark}}
+          {{codeEntry}}
+        </div>
+        <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
+      </div>
+      <div class={{contentClass}}> {{ content }} </div>
+    </div>
+  }}
+
 /- Informal custom blocks -/
 block_extension Block.informal (data : BlockData) where
   -- for TOC
@@ -852,25 +811,12 @@ block_extension Block.informal (data : BlockData) where
             match fromJson? (α := CodeBlockData) obj.data with
             | .ok cdata => pure (some cdata)
             | .error err =>
-              HtmlT.logError s!"Malformed informal code data for {data.label}: {err}"
-              pure none
+                HtmlT.logError s!"Malformed informal code data for {data.label}: {err}"
+                pure none
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveExampleDeclHref? s decl
-        let codeHover : Option CodeHoverData := codeData?.map (fun cdata =>
-          mkCodeHoverData data.label cdata.definedDefs cdata.definedTheorems getDeclHref)
-        let externalDecls : Array ExternalHoverDecl :=
-          match data.codeStatus with
-          | .external decls =>
-            decls.map fun decl =>
-              let href :=
-                if decl.present then
-                  match getDeclHref decl.canonical with
-                  | some href => some href
-                  | none => getDeclHref decl.written
-                else
-                  getDeclHref decl.written
-              { decl, href }
-          | _ => #[]
+        let externalDecls : Array Data.ExternalRef :=
+          ExternalCode.externalDeclsOfCodeStatus data.codeStatus
         let manualStatus : Bool :=
           match data.codeStatus with
           | .userOk => true
@@ -887,20 +833,26 @@ block_extension Block.informal (data : BlockData) where
             (cdata.definedDefs ++ cdata.definedTheorems).any (fun decl => decl.provedStatus.hasProofGap)
         let cdata := {
           codeHref
-          codeHover
+          codeData?
           manualStatus
-          externalDecls
           hasStatementSorries
           hasProofSorries
         }
-        return toHtml data cdata attrs (← blocks.mapM goB)
+        let summaryParts := CodeSummary.renderParts data cdata getDeclHref
+        let externalParts := ExternalCode.renderParts data codeHref externalDecls getDeclHref
+        let hasExternal := !externalDecls.isEmpty
+        let statusMark := if hasExternal then externalParts.statusMark else summaryParts.statusMark
+        let codeEntry := if hasExternal then externalParts.codeEntry else summaryParts.codeEntry
+        let content := (← blocks.mapM goB)
+        let informalBlock := renderInformalBlock data attrs statusMark codeEntry content
+        return .seq #[informalBlock, externalParts.externalCodePanel]
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
   | cfg, contents => do
     let blockRef ← getRef
     let label := cfg.label
     let kind? := if isProof then none else some kind
-    let resolvedExternalCode ← resolveExternalCodeList label cfg.labelSyntax cfg.externalCode
+    let resolvedExternalCode ← ExternalCode.resolveExternalCodeList label cfg.labelSyntax cfg.externalCode
     let hasExternal := !resolvedExternalCode.isEmpty
     let hasLeanok := cfg.leanok.getD false
     if !cfg.invalidExternalCode.isEmpty then
