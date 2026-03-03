@@ -20,6 +20,7 @@ import VersoBlueprint.Cite
 import VersoBlueprint.Commands.Graph
 import VersoBlueprint.Commands.Summary
 import VersoBlueprint.Commands.Bibliography
+import VersoBlueprint.Informal.Code
 import VersoBlueprint.Lean
 import VersoBlueprint.NameParsing
 import VersoBlueprint.PreviewCache
@@ -94,6 +95,17 @@ register_option verso.blueprint.externalCode.previewLimit.decl : Nat := {
 register_option verso.blueprint.externalCode.previewLimit.rhs : Nat := {
   defValue := 1200
   descr := "Maximum external declaration RHS preview length (`0` disables truncation)"
+}
+
+/--
+Template used to build source links for external declarations.
+Supported placeholders are: path, relpath, module, line, column.
+
+Empty template disables source link generation.
+-/
+register_option verso.blueprint.externalCode.sourceLinkTemplate : String := {
+  defValue := ""
+  descr := "Template for external declaration source links ({path},{relpath},{module},{line},{column})"
 }
 
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
@@ -228,64 +240,6 @@ instance : FromArgs GroupConfig m where
 
 end
 
-structure SourceLoc where
-  line : Nat
-  column : Nat
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
-def SourceLoc.ofPosition (pos : Lean.Position) : SourceLoc :=
-  { line := pos.line, column := pos.column }
-
-structure SourceRange where
-  start : SourceLoc
-  «end» : SourceLoc
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
-def SourceRange.ofDeclarationRange (range : Lean.DeclarationRange) : SourceRange :=
-  { start := SourceLoc.ofPosition range.pos, «end» := SourceLoc.ofPosition range.endPos }
-
-inductive ExternalDeclProvenance where
-  | inWorkspace (moduleName : Name) (sourcePath : String)
-  | outWorkspace (moduleName : Name) (sourcePath? : Option String := none)
-  | unknown
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
-def ExternalDeclProvenance.moduleName? : ExternalDeclProvenance → Option Name
-  | .inWorkspace moduleName _ => some moduleName
-  | .outWorkspace moduleName _ => some moduleName
-  | .unknown => none
-
-def ExternalDeclProvenance.sourcePath? : ExternalDeclProvenance → Option String
-  | .inWorkspace _ sourcePath => some sourcePath
-  | .outWorkspace _ sourcePath? => sourcePath?
-  | .unknown => none
-
-def ExternalDeclProvenance.label : ExternalDeclProvenance → String
-  | .inWorkspace _ _ => "in workspace"
-  | .outWorkspace _ _ => "out workspace"
-  | .unknown => "unknown provenance"
-
-structure ExternalDeclStatus where
-  decl : Name
-  canonical : Name
-  present : Bool := false
-  provenance : ExternalDeclProvenance := .unknown
-  range? : Option SourceRange := none
-  selectionRange? : Option SourceRange := none
-  kind? : Option String := none
-  typePretty? : Option String := none
-  valuePretty? : Option String := none
-  sourceDeclPretty? : Option String := none
-  sourceBodyPretty? : Option String := none
-  provedStatus : Data.ProvedStatus := .proved
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
-inductive BlockCodeStatus where
-  | none
-  | userOk
-  | external (decls : Array ExternalDeclStatus)
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
 private def truncatePreview (limit : Nat) (s : String) : String :=
   if limit == 0 || s.length <= limit then
     s
@@ -311,6 +265,47 @@ private def externalRhsPreviewLimit (opts : Lean.Options) : Nat :=
   opts.get
     verso.blueprint.externalCode.previewLimit.rhs.name
     verso.blueprint.externalCode.previewLimit.rhs.defValue
+
+private def externalSourceLinkTemplate (opts : Lean.Options) : String :=
+  opts.get
+    verso.blueprint.externalCode.sourceLinkTemplate.name
+    verso.blueprint.externalCode.sourceLinkTemplate.defValue
+
+private def workspaceRelativeSourcePath? (workspaceRoot sourcePath : System.FilePath) : Option String :=
+  let root := workspaceRoot.toString
+  let sep := System.FilePath.pathSeparator.toString
+  let rootPrefix := if root.endsWith sep then root else root ++ sep
+  let sourcePathText := sourcePath.toString
+  if sourcePathText.startsWith rootPrefix then
+    some (sourcePathText.drop rootPrefix.length).toString
+  else
+    none
+
+private def instantiateSourceLinkTemplate (template : String) (vars : Array (String × String)) : String :=
+  vars.foldl (init := template) fun acc kv =>
+    acc.replace ("{" ++ kv.1 ++ "}") kv.2
+
+private def sourceLinkHref? (opts : Lean.Options) (workspaceRoot : System.FilePath)
+    (moduleName? : Option Name) (sourcePath? : Option System.FilePath)
+    (range? : Option Lean.DeclarationRange) : Option String := do
+  let template := (externalSourceLinkTemplate opts).trimAscii.toString
+  if template.isEmpty then
+    none
+  else
+    let sourcePath ← sourcePath?
+    let relPath := (workspaceRelativeSourcePath? workspaceRoot sourcePath).getD sourcePath.toString
+    let line := (range?.map (fun r => toString r.pos.line)).getD ""
+    let column := (range?.map (fun r => toString r.pos.column)).getD ""
+    let href :=
+      instantiateSourceLinkTemplate template #[
+        ("path", sourcePath.toString),
+        ("relpath", relPath),
+        ("module", (moduleName?.map toString).getD ""),
+        ("line", line),
+        ("column", column)
+      ]
+    let href := href.trimAscii.toString
+    if href.isEmpty then none else some href
 
 private def externalDeclKindText (info : ConstantInfo) : String :=
   match info with
@@ -416,6 +411,7 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       | some moduleName => liftM <| sourcePathForModule? moduleName
       | none => pure none
     let provenance := mkProvenance workspaceRoot moduleName? sourcePath?
+    let sourceHref? := sourceLinkHref? opts workspaceRoot moduleName? sourcePath? (ranges?.map (·.selectionRange))
     let sourceDecl? ←
       match sourcePath?, ranges? with
       | some sourcePath, some ranges =>
@@ -438,6 +434,7 @@ private def externalDeclStatus (env : Lean.Environment) (opts : Lean.Options)
       kind? := some (externalDeclKindText info)
       typePretty? := some typePretty
       valuePretty?
+      sourceHref?
       sourceDeclPretty?
       sourceBodyPretty?
       provedStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
@@ -451,222 +448,6 @@ def BlockCodeStatus.ofCodeRef (env : Lean.Environment) (codeRef? : Option Data.C
     let decls ← decls.mapM (externalDeclStatus env opts workspaceRoot)
     return .external decls
   | _ => return .none
-
-structure BlockData where
-  kind : Data.NodeKind
-  label : Data.Label
-  count : Nat
-  isProof : Bool := false
-  codeStatus : BlockCodeStatus := .none
-deriving FromJson, ToJson, Quote
-
-structure CodeDeclData where
-  name : Name
-  commandIndex : Nat := 0
-  weight : Nat := 1
-  provedStatus : Data.ProvedStatus := .proved
-deriving FromJson, ToJson, Quote
-
-def CodeDeclData.ofLiterateDef (d : Data.LiterateDef) : CodeDeclData :=
-  {
-    name := d.name
-    commandIndex := d.commandIndex
-    weight := max d.commandLines 1
-    provedStatus := d.provedStatus
-  }
-
-def CodeDeclData.ofLiterateThm (d : Data.LiterateThm) : CodeDeclData :=
-  {
-    name := d.name
-    commandIndex := d.commandIndex
-    weight := max d.commandLines 1
-    provedStatus := d.provedStatus
-  }
-
-structure CodeBlockData where
-  label : Data.Label
-  definedDefs : Array CodeDeclData := #[]
-  definedTheorems : Array CodeDeclData := #[]
-  foldProofs : Bool := true
-deriving FromJson, ToJson, Quote
-
-register_option verso.blueprint.foldProofs : Bool := {
-  defValue := true
-  descr := "Enable proof folding in VersoBlueprint Lean code blocks (hide text after `by` behind a toggle)"
-}
-
-structure CodeHoverDecl where
-  text : String
-  href : Option String := none
-
-structure CodeHoverData where
-  label : Data.Label
-  definedDefs : Array CodeHoverDecl := #[]
-  definedTheorems : Array CodeHoverDecl := #[]
-  sorries : Array CodeHoverDecl := #[]
-
-structure ExternalHoverDecl where
-  decl : Name
-  href : Option String := none
-  present : Bool := false
-  provenance : ExternalDeclProvenance := .unknown
-  range? : Option SourceRange := none
-  selectionRange? : Option SourceRange := none
-  kind? : Option String := none
-  typePretty? : Option String := none
-  valuePretty? : Option String := none
-  sourceDeclPretty? : Option String := none
-  sourceBodyPretty? : Option String := none
-  provedStatus : Data.ProvedStatus := .proved
-
-structure ComputedData where
-  proved : Bool := false
-  codeHref : Option String := none
-  codeHover : Option CodeHoverData := none
-  manualStatus : Bool := false
-  externalDecls : Array ExternalHoverDecl := #[]
-  hasStatementSorries : Bool := false
-  hasProofSorries : Bool := false
-
-private def provedStatusHasSorry (status : Data.ProvedStatus) : Bool :=
-  status.isIncomplete
-
-private def provedStatusLocationText (status : Data.ProvedStatus) : String :=
-  match status with
-  | .axiomLike => "axiom-like (no body)"
-  | .containsSorry info =>
-    let hasType := info.any (·.location == .statement)
-    let hasProof := info.any (·.location == .proof)
-    if hasType && hasProof then
-      "in statement and proof"
-    else if hasType then
-      "in statement"
-    else if hasProof then
-      "in proof"
-    else
-      "location unknown"
-  | .proved => "location unknown"
-
-private def provedStatusContainsSorry (status : Data.ProvedStatus) : Bool :=
-  match status with
-  | .containsSorry _ => true
-  | _ => false
-
-def mkCodeHoverData
-    (label : Data.Label)
-    (definedDefs definedTheorems : Array CodeDeclData)
-    (hrefOf : Name → Option String) : CodeHoverData :=
-  let toDecl (d : CodeDeclData) : CodeHoverDecl :=
-    { text := toString d.name, href := hrefOf d.name }
-  let toSorry (d : CodeDeclData) : CodeHoverDecl :=
-    let kind :=
-      match d.provedStatus with
-      | .axiomLike => "axiom-like (no body)"
-      | .containsSorry _ => provedStatusLocationText d.provedStatus
-      | .proved => "unknown"
-    { text := s!"{d.name} [{kind}]", href := hrefOf d.name }
-  {
-    label
-    definedDefs := definedDefs.map toDecl
-    definedTheorems := definedTheorems.map toDecl
-    sorries := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus)) |>.map toSorry
-  }
-
-def codeHoverText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
-  if definedDefs.isEmpty && definedTheorems.isEmpty then
-    s!"{label}"
-  else
-    let definedDefNames := definedDefs.map (·.name)
-    let definedTheoremNames := definedTheorems.map (·.name)
-    let defs :=
-      if definedDefNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedDefNames.toList.map toString)
-    let thms :=
-      if definedTheoremNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedTheoremNames.toList.map toString)
-    let sorryDecls := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus))
-    let sorries :=
-      if sorryDecls.isEmpty then
-        "none"
-      else
-        String.intercalate ", " <| sorryDecls.toList.map fun d =>
-          let kind :=
-            match d.provedStatus with
-            | .axiomLike => "axiom-like (no body)"
-            | .containsSorry _ => provedStatusLocationText d.provedStatus
-            | .proved => "unknown"
-          s!"{d.name} [{kind}]"
-    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
-
-private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
-  decls.qsort (fun a b =>
-    a.commandIndex < b.commandIndex ||
-    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
-
-private def codeDeclSorryLocation (decl : CodeDeclData) : String :=
-  provedStatusLocationText decl.provedStatus
-
-private def externalDeclHasSorry (decl : ExternalHoverDecl) : Bool :=
-  provedStatusHasSorry decl.provedStatus
-
-private def externalDeclSorryLocation (decl : ExternalHoverDecl) : String :=
-  provedStatusLocationText decl.provedStatus
-
-private def externalDeclStatement? (decl : ExternalHoverDecl) : Option String :=
-  match decl.sourceDeclPretty? with
-  | some sourceDecl => some sourceDecl
-  | none =>
-    match decl.typePretty? with
-    | none => none
-    | some typePretty =>
-      let keyword :=
-        match decl.kind? with
-        | some "definition" => "def"
-        | some "theorem" => "theorem"
-        | some "axiom" => "axiom"
-        | some "opaque" => "opaque"
-        | some "inductive" => "inductive"
-        | some "constructor" => "constructor"
-        | some "recursor" => "recursor"
-        | some "quotient" => "quotient"
-        | _ => "def"
-      let head := s!"{keyword} {decl.decl} : {typePretty}"
-      if decl.kind? == some "definition" then
-        match decl.valuePretty? with
-        | some valuePretty => some s!"{head} :=\n  {valuePretty}"
-        | none => some head
-      else
-        some head
-
-private def externalPanelStatus (decls : Array ExternalHoverDecl) : String × String × String :=
-  let total := decls.size
-  let found := decls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
-  let missing := total - found
-  let withGaps := decls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
-  if missing > 0 then
-    ("bp_external_status_missing", "●", s!"External Lean references: {found}/{total} present ({missing} missing)")
-  else if withGaps > 0 then
-    ("bp_external_status_sorry", "●", s!"External Lean references: all present, {withGaps} incomplete")
-  else
-    ("bp_external_status_ok", "●", s!"External Lean references: all {total} present")
-
-private def progressSegmentClass (missing hasSorry : Bool) : String :=
-  if missing then
-    "bp_code_progress_segment bp_code_progress_segment_missing"
-  else if hasSorry then
-    "bp_code_progress_segment bp_code_progress_segment_sorry"
-  else
-    "bp_code_progress_segment bp_code_progress_segment_ok"
-
-private def codePanelSummary (data : BlockData) : String :=
-  if data.isProof then
-    "Code for proof"
-  else
-    s!"Code for {data.kind} {data.count}"
 
 def blueprintCss : String := r##"
 .bp_wrapper {
@@ -1096,315 +877,6 @@ def blueprintStyleSwitcherCss : String := StyleSwitcher.css
 
 def blueprintStyleSwitcherJs : String := StyleSwitcher.jsInteractive
 
-private def mkCodePanel
-    (summaryText summaryTitle : String)
-    (progressBar body : Output.Html)
-    (attrs : Array (String × String) := #[]) : Output.Html :=
-  open Verso.Output.Html in
-  {{
-    <div class="bp_wrapper bp_code_panel_wrapper">
-      <details class="bp_code_block bp_code_panel" {{attrs}}>
-        <summary title={{summaryTitle}}>
-          <span class="bp_code_summary_text">{{.text true summaryText}}</span>
-          {{progressBar}}
-          <span class="bp_code_expand_hint"></span>
-        </summary>
-        {{body}}
-      </details>
-    </div>
-  }}
-
-def toHtml (data : BlockData) (cdata : ComputedData) (_domain : Json) (attrs : Array (String × String))
-    (content : Array Output.Html) : Output.Html :=
-  open Verso.Output.Html in
-  let sourcePosText (pos : SourceLoc) : String :=
-    s!"{pos.line}:{pos.column}"
-  let sourceRangeText (range : SourceRange) : String :=
-    s!"{sourcePosText range.start}-{sourcePosText range.end}"
-  let listItems (items : Array CodeHoverDecl) : Output.Html :=
-    if items.isEmpty then
-      {{<li class="bp_code_hover_none">"none"</li>}}
-    else
-      .seq <| items.map fun item =>
-        let txt := {{<code>{{.text true item.text}}</code>}}
-        {{<li>{{if let some href := item.href then {{<a href={{href}}>{{txt}}</a>}} else txt}}</li>}}
-  let codeHover : Output.Html :=
-    match cdata.codeHover with
-    | none => .empty
-    | some hover => {{
-      <div class="bp_code_hover" role="tooltip">
-        <div class="bp_code_hover_title">{{.text true s!"{hover.label}"}}</div>
-        <div class="bp_code_hover_section">
-          <span class="bp_code_hover_label">"Lean definitions"</span>
-          <ul class="bp_code_hover_list">
-            {{listItems hover.definedDefs}}
-          </ul>
-        </div>
-        <div class="bp_code_hover_section">
-          <span class="bp_code_hover_label">"Lean theorems/lemmas"</span>
-          <ul class="bp_code_hover_list">
-            {{listItems hover.definedTheorems}}
-          </ul>
-        </div>
-        <div class="bp_code_hover_section">
-          <span class="bp_code_hover_label">"Sorries"</span>
-          <ul class="bp_code_hover_list">
-            {{listItems hover.sorries}}
-          </ul>
-        </div>
-      </div>
-    }}
-  let externalHoverListItems (items : Array ExternalHoverDecl) : Output.Html :=
-    if items.isEmpty then
-      {{<li class="bp_code_hover_none">"none"</li>}}
-    else
-      .seq <| items.map fun item =>
-        let declTxt := {{<code>{{.text true s!"{item.decl}"}}</code>}}
-        let declNode :=
-          if let some href := item.href then
-            {{<a href={{href}}>{{declTxt}}</a>}}
-          else
-            declTxt
-        let hasSorry := externalDeclHasSorry item
-        let statusTxt :=
-          if item.present then
-            if hasSorry then
-              if provedStatusContainsSorry item.provedStatus then
-                s!"(has Lean declaration; contains sorry {externalDeclSorryLocation item})"
-              else
-                s!"(has Lean declaration; {externalDeclSorryLocation item})"
-            else
-              "(has Lean declaration)"
-          else
-            "(missing Lean declaration)"
-        let statusClass :=
-          if !item.present then "bp_external_decl_missing"
-          else if hasSorry then "bp_external_decl_sorry"
-          else "bp_external_decl_ok"
-        let hasProvenanceDetails : Bool :=
-          match item.provenance with
-          | .unknown => false
-          | _ => true
-        let provenanceLabel := item.provenance.label
-        let moduleName? := item.provenance.moduleName?
-        let sourcePath? := item.provenance.sourcePath?
-        let sourceInfo? : Option String :=
-          match moduleName?, (item.selectionRange?.map sourceRangeText <|> item.range?.map sourceRangeText) with
-          | some moduleName, some rangeTxt => some s!"{moduleName} @ {rangeTxt}"
-          | some moduleName, none => some s!"{moduleName}"
-          | none, some rangeTxt => some s!"{rangeTxt}"
-          | none, none => none
-        let sorryInfo? : Option String :=
-          if hasSorry then
-            if provedStatusContainsSorry item.provedStatus then
-              some s!"Contains sorry ({externalDeclSorryLocation item})"
-            else
-              some "Axiom-like declaration (no body)"
-          else
-            none
-        {{
-          <li class="bp_external_decl_item">
-            <div class="bp_external_decl_head">
-              {{declNode}}
-              <span class={{statusClass}}>{{.text true statusTxt}}</span>
-              {{if hasProvenanceDetails then {{<span class="bp_external_badge">{{.text true provenanceLabel}}</span>}} else .empty}}
-            </div>
-            {{if let some kind := item.kind? then {{<div class="bp_external_decl_meta">"kind: " <code>{{.text true kind}}</code></div>}} else .empty}}
-            {{if let some sourceInfo := sourceInfo? then {{<div class="bp_external_decl_meta">"source: " <code>{{.text true sourceInfo}}</code></div>}} else .empty}}
-            {{if let some sourcePath := sourcePath? then {{<div class="bp_external_decl_meta">"source path: " <code>{{.text true sourcePath}}</code></div>}} else .empty}}
-            {{if let some sorryInfo := sorryInfo? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true sorryInfo}}</div>}} else .empty}}
-          </li>
-        }}
-  let externalPanelListItems (items : Array ExternalHoverDecl) : Output.Html :=
-    if items.isEmpty then
-      {{<li class="bp_code_hover_none">"none"</li>}}
-    else
-      .seq <| items.map fun item =>
-        let declTxt := {{<code>{{.text true s!"{item.decl}"}}</code>}}
-        let declNode :=
-          if let some href := item.href then
-            {{<a href={{href}}>{{declTxt}}</a>}}
-          else
-            declTxt
-        let hasSorry := externalDeclHasSorry item
-        let statusTxt :=
-          if item.present then
-            if hasSorry then
-              if provedStatusContainsSorry item.provedStatus then
-                s!"contains sorry {externalDeclSorryLocation item}"
-              else
-                externalDeclSorryLocation item
-            else
-              "complete"
-          else
-            "missing declaration"
-        let statusClass :=
-          if !item.present then "bp_external_decl_missing"
-          else if hasSorry then "bp_external_decl_sorry"
-          else "bp_external_decl_ok"
-        let statementNode :=
-          if let some stmt := externalDeclStatement? item then
-            {{<pre class="bp_external_decl_stmt hl lean block"><code>{{.text true stmt}}</code></pre>}}
-          else if item.present then
-            {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (pretty-printer failed)"</pre>}}
-          else
-            {{<pre class="bp_external_decl_stmt bp_code_hover_none">"statement unavailable (declaration not found)"</pre>}}
-        {{
-          <li class="bp_external_decl_item">
-            <div class="bp_external_decl_head">
-              {{declNode}} " " <span class={{statusClass}}>{{.text true statusTxt}}</span>
-            </div>
-            {{statementNode}}
-          </li>
-        }}
-  let externalHover : Output.Html :=
-    if cdata.externalDecls.isEmpty then
-      .empty
-    else
-      {{
-        <div class="bp_code_hover" role="tooltip">
-          <div class="bp_code_hover_title">"External Lean references"</div>
-          <div class="bp_code_hover_section">
-            <ul class="bp_code_hover_list">
-              {{externalHoverListItems cdata.externalDecls}}
-            </ul>
-          </div>
-        </div>
-      }}
-  let manualHover : Output.Html :=
-    if cdata.manualStatus then
-      {{
-        <div class="bp_code_hover" role="tooltip">
-          <div class="bp_code_hover_title">"Lean status"</div>
-          <div class="bp_code_hover_section">
-            <span class="bp_code_hover_none">"Marked complete via (leanok := true)."</span>
-          </div>
-        </div>
-      }}
-    else
-      .empty
-  let hasExternal := !cdata.externalDecls.isEmpty
-  let hasInline := cdata.codeHref.isSome || cdata.codeHover.isSome
-  let hasCodeEntry := hasExternal || hasInline || cdata.manualStatus
-  let codeEntryHover : Output.Html :=
-    if hasExternal then
-      externalHover
-    else if cdata.codeHover.isSome then
-      codeHover
-    else if cdata.manualStatus then
-      manualHover
-    else
-      .empty
-  let codeEntryTitle : String :=
-    if hasExternal then
-      let total := cdata.externalDecls.size
-      let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
-      let withGaps := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
-      if found == total then
-        if withGaps == 0 then
-          s!"External Lean references (all present: {found}/{total})"
-        else
-          s!"External Lean references (all present: {found}/{total}; incomplete: {withGaps})"
-      else
-        s!"External Lean references ({found}/{total} present)"
-    else if cdata.manualStatus then
-      "Marked complete via (leanok := true)"
-    else
-      "Lean declarations"
-  let codeEntry : Output.Html :=
-    if !hasCodeEntry then
-      .empty
-    else
-      let linkNode : Output.Html :=
-        if let some href := cdata.codeHref then
-          {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
-        else
-          {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
-      {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryHover}}</span>}}
-  let externalStatusIndicator : Output.Html :=
-    if !hasExternal then
-      .empty
-    else
-      let (iconClass, iconText, iconTitle) := externalPanelStatus cdata.externalDecls
-      let icon :=
-        {{<span class={{s!"bp_external_status_icon {iconClass}"}} title={{iconTitle}}>{{.text true iconText}}</span>}}
-      {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{icon}}{{externalHover}}</span>}}
-  let externalCodePanel : Output.Html :=
-    if !hasExternal || data.isProof then
-      .empty
-    else
-      mkCodePanel (codePanelSummary data) codeEntryTitle externalStatusIndicator
-        {{<ul class="bp_code_hover_list">{{externalPanelListItems cdata.externalDecls}}</ul>}}
-  let kindText := if data.isProof then "Proof" else s!"{data.kind}"
-  let labelTextNum := s!"{data.count}"
-  let labelText := s!"{data.label}"
-  let showLabel := !data.isProof
-  let (kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
-    if data.isProof then
-      ("proof", "proof_wrapper bp_kind_proof",
-        "proof_heading", "proof_caption", "proof_label", "proof_content")
-    else
-      match data.kind with
-      | .definition =>
-        ("definition", "definition_thmwrapper theorem-style-definition bp_kind_definition",
-          "definition_thmheading", "definition_thmcaption", "definition_thmlabel", "definition_thmcontent")
-      | .theorem =>
-        ("theorem", "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
-          "theorem_thmheading", "theorem_thmcaption", "theorem_thmlabel", "theorem_thmcontent")
-      | .lemma =>
-        ("lemma", "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
-          "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
-      | .corollary =>
-        ("corollary", "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
-          "corollary_thmheading", "corollary_thmcaption", "corollary_thmlabel", "corollary_thmcontent")
-  let wrapperClass := s!"bp_wrapper {kindCss}_thmwrapper {wrapperCss}"
-  let headingClass := s!"bp_heading {headingCss}"
-  let captionClass := s!"bp_caption {captionCss}"
-  let labelClass := s!"bp_label {labelCss}"
-  let contentClass := s!"bp_content {contentCss}"
-  let statusMark : Output.Html :=
-    if hasExternal then
-      let total := cdata.externalDecls.size
-      let found := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if decl.present then 1 else 0)
-      let missing := total - found
-      let withGaps := cdata.externalDecls.foldl (init := 0) fun acc decl => acc + (if externalDeclHasSorry decl then 1 else 0)
-      let (title, mark) :=
-        if missing > 0 then
-          (s!"External Lean names: {found} present, {missing} missing", "✗")
-        else if withGaps > 0 then
-          (s!"External Lean names ({total}) are present, but {withGaps} are incomplete", "⚠")
-        else
-          (s!"External Lean names ({total}) are present", "✓")
-      {{ <span class="bp_status_mark" title={{title}}>{{.text true mark}}</span> }}
-    else if cdata.manualStatus then
-      {{ <span class="bp_status_mark" title="Marked complete via (leanok := true)">"✓ (manually set)"</span> }}
-    else if cdata.codeHref.isNone then
-      .empty
-    else
-      let (hasSorriesHere, whereTxt) :=
-        if data.isProof then
-          (cdata.hasProofSorries, "proof")
-        else
-          (cdata.hasStatementSorries, "statement")
-      let mark := if hasSorriesHere then "✗" else "✓"
-      let title := if hasSorriesHere then s!"Contains sorries in {whereTxt}" else s!"No sorries in {whereTxt}"
-      {{ <span class="bp_status_mark" title={{title}}>{{.text true mark}}</span> }}
-  let informalBlock : Output.Html := {{
-    <div class={{wrapperClass}} title={{labelText}} {{attrs}}>
-      <div class={{headingClass}}>
-        <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
-        {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
-        <div class="bp_extras thm_header_extras">
-          {{statusMark}}
-          {{codeEntry}}
-        </div>
-        <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
-      </div>
-      <div class={{contentClass}}> {{ content }} </div>
-    </div>
-  }}
-  .seq #[informalBlock, externalCodePanel]
-
 /- Informal custom blocks -/
 block_extension Block.informal (data : BlockData) where
   -- for TOC
@@ -1483,6 +955,7 @@ block_extension Block.informal (data : BlockData) where
                 kind? := decl.kind?
                 typePretty? := decl.typePretty?
                 valuePretty? := decl.valuePretty?
+                sourceHref? := decl.sourceHref?
                 sourceDeclPretty? := decl.sourceDeclPretty?
                 sourceBodyPretty? := decl.sourceBodyPretty?
                 provedStatus := decl.provedStatus

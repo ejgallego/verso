@@ -37,6 +37,26 @@ Status: merged into `bp` (follow-up cleanup planning only)
 4. Widget rendering path:
    - uses `PreviewSource` adapter over environment payloads
 
+## Data.CodeRef Consumer Map (2026-03-03 refresh)
+
+`Data.CodeRef` is currently consumed in five distinct paths:
+
+1. Registration/merge semantics:
+   - `Data.register` / `Data.registerCode` / `Data.registerCodeRef`
+   - `src/verso-blueprint/VersoBlueprint/Data.lean`
+2. Informal block status projection:
+   - `BlockCodeStatus.ofCodeRef`
+   - `src/verso-blueprint/VersoBlueprint.lean`
+3. Graph semantics:
+   - `nodeExternalDecls`, `nodeHasMissingExternalDecls`, `nodeHasTypeSorries`, `nodeHasProofSorries`
+   - `src/verso-blueprint/VersoBlueprint/Graph.lean`
+4. Summary semantics:
+   - `buildSummary`
+   - `src/verso-blueprint/VersoBlueprint/Lib/SummaryBuild.lean`
+5. Informal HTML rendering:
+   - `Block.informal.toHtml` and `Block.informalCode.toHtml`
+   - `src/verso-blueprint/VersoBlueprint.lean`
+
 ## Remaining Refactor Items (Pending Only)
 
 1. Converge status semantics across local block rendering and global outputs.
@@ -49,9 +69,17 @@ Status: merged into `bp` (follow-up cleanup planning only)
    - Widget statement preview rendering
 4. Revisit optional caching only after API boundaries are stable.
 
+## Consolidation Update (`feat/external-def-display`)
+
+1. Implemented extraction of code-view model and renderer to:
+   - `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`
+2. `VersoBlueprint.lean` now keeps external reference enrichment and orchestration.
+3. Remaining gap is the builder boundary:
+   - move to `buildCodeRenderData` so `toHtml` call sites become thin wrappers over pure rendering.
+
 ## Next Step Order
 
-1. Introduce a shared status record for all command and local renderers.
-2. Replace any remaining direct status recomputation with shared library calls.
+1. Introduce `buildCodeRenderData` and keep rendering pure.
+2. Replace remaining direct status recomputation with shared library calls.
 3. Add traversal-level regression tests for graph/summary/bibliography rendering paths.
 4. Only then evaluate whether additional module slicing is still warranted.
