@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (commands path refactor progress + validation)
+Last updated: 2026-03-03 (commands renderer split + validation)
 
 ## Inventory and Recommendation
 
@@ -30,18 +30,19 @@ Last updated: 2026-03-03 (commands path refactor progress + validation)
     - `f6a5de69` refactor: split summary and bibliography command modules
     - `8aa11a90` refactor: extract shared hover preview rendering helpers
   - In-progress changes:
-    - add `src/verso-blueprint/VersoBlueprint/Lib/PreviewSource.lean`
-    - route traversal preview lookup in `Commands.lean` through `PreviewSource`
-    - route widget preview acquisition/rendering in `Widget.lean` through `PreviewSource`
-    - expose `renderPreviewBlocksHtml` in `PreviewRender.lean` for shared rendering path
-    - update `doc/CommandsPathRefactorNotes.md` with new adapter checkpoint
+    - add `src/verso-blueprint/VersoBlueprint/Commands/RenderSummary.lean`
+    - add `src/verso-blueprint/VersoBlueprint/Commands/RenderBibliography.lean`
+    - move summary/bibliography block renderers out of `Commands.lean`
+    - update `ShowSummary`/`ShowBibliography` imports + block constructor qualification
+    - update docs notes for renderer extraction checkpoint
   - Validation:
-    - `lake build VersoBlueprint.Lib.PreviewLookup VersoBlueprint.PreviewRender VersoBlueprint.Lib.PreviewSource VersoBlueprint.Commands VersoBlueprint.Widget VersoBlueprint` passed on 2026-03-03
+    - `lake build VersoBlueprint.Commands.RenderSummary VersoBlueprint.Commands.RenderBibliography VersoBlueprint.Commands.ShowSummary VersoBlueprint.Commands.ShowBibliography VersoBlueprint` passed on 2026-03-03
+    - `lake env lean test-projects/Noperthedron/Contents.lean` passed on 2026-03-03
     - `lake exe noperthedron` passed on 2026-03-03 (warnings only)
   - Resume notes:
     - `cd /home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`
     - `git status --short`
-    - next target: continue renderer/data split in `Commands.lean` by extracting graph/summary renderer-heavy helpers
+    - next target: extract shared command payloads/options/assets (`GraphDirection`/`GraphBlockData`/shared JS+CSS constants) into a `Commands` shared module, then reduce `Commands.lean` to a thin compatibility layer
 
 - `feat/lsp-folding-chain`
   - Path: `/home/egallego/lean/verso-blueprint/.worktrees/lsp-folding-chain`

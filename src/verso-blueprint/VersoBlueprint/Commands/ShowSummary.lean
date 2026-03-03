@@ -8,6 +8,7 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Commands
+import VersoBlueprint.Commands.RenderSummary
 
 namespace Informal.Commands
 
@@ -21,7 +22,7 @@ def mkSummaryPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedP
   let metadata := none
   let summary ← buildSummary
   logInfo m!"Blueprint summary for {summary.totalEntries} entries"
-  let block ← ``(Verso.Doc.Block.other (Block.summary $(quote summary)) #[])
+  let block ← ``(Verso.Doc.Block.other (Informal.Commands.Block.summary $(quote summary)) #[])
   let subParts := #[]
   pure $ FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
 

@@ -8,6 +8,7 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Commands
+import VersoBlueprint.Commands.RenderBibliography
 
 namespace Informal.Commands
 
@@ -24,7 +25,8 @@ def mkBibliographyPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM Fini
   let refs : Array (TSyntax `term) ← entries.toArray.mapM fun (label, decl) =>
     `(BibliographyEntry.mk $(quote label) $(mkIdent decl))
   let block ← ``(Verso.Doc.Block.other
-    (Block.bibliography (BibliographyData.mk (entries := ([$refs,*] : List BibliographyEntry)))) #[])
+    (Informal.Commands.Block.bibliography
+      (BibliographyData.mk (entries := ([$refs,*] : List BibliographyEntry)))) #[])
   let subParts := #[]
   pure $ FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
 
