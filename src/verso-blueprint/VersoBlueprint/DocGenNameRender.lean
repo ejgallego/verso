@@ -21,6 +21,15 @@ inductive DocGenRenderError where
 deriving instance Lean.ToJson for DocGenRenderError
 deriving instance Lean.FromJson for DocGenRenderError
 
+instance : Lean.Quote DocGenRenderError where
+  quote
+    | .moduleUnavailable decl =>
+        Lean.Syntax.mkApp (Lean.mkCIdent ``DocGenRenderError.moduleUnavailable) #[Lean.quote decl]
+    | .exception decl message =>
+        Lean.Syntax.mkApp (Lean.mkCIdent ``DocGenRenderError.exception) #[Lean.quote decl, Lean.quote message]
+
+abbrev DocGenRender := Except DocGenRenderError DocGenHtml
+
 def DocGenRenderError.message : DocGenRenderError → String
   | .moduleUnavailable decl => s!"module unavailable for {decl}"
   | .exception decl message => s!"{decl}: {message}"
@@ -75,14 +84,22 @@ private def mkDeclHtmlInput
 Render one declaration directly from known declaration facts.
 Errors represent rendering failures only; declaration lookup is handled by callers.
 -/
-def renderDeclHtmlStringDirectFromInfoE
-    (moduleName : Name) (decl : Name) (cinfo : ConstantInfo) : MetaM (Except DocGenRenderError String) := do
+def renderDeclHtmlDirectFromInfoE
+    (moduleName : Name) (decl : Name) (cinfo : ConstantInfo) : MetaM DocGenRender := do
   try
     let env ← getEnv
     let input ← mkDeclHtmlInput env moduleName decl cinfo
-    return .ok (Vendor.DocGen4.Html.toString (Vendor.DocGen4.docInfoToHtml input))
+    return .ok (Vendor.DocGen4.docInfoToHtml input)
   catch ex =>
     return .error (.exception decl (← ex.toMessageData.toString))
+
+/--
+String compatibility wrapper over `renderDeclHtmlDirectFromInfoE`.
+Core external-rendering dataflow should use typed HTML payloads.
+-/
+def renderDeclHtmlStringDirectFromInfoE
+    (moduleName : Name) (decl : Name) (cinfo : ConstantInfo) : MetaM (Except DocGenRenderError String) := do
+  return (← renderDeclHtmlDirectFromInfoE moduleName decl cinfo).map Vendor.DocGen4.Html.toString
 
 /-- Render one declaration directly from the in-memory `Environment` (no database, no source parsing). -/
 def renderDeclHtmlNodeDirect? (decl : Name) : MetaM (Option DocGenHtml) := do
@@ -117,11 +134,11 @@ def renderDeclHtmlNodeFromDb? (_dbPath : System.FilePath) (_decl : Name) : IO (O
 def docGenNameRenderSmokeDecls : Array Name := #[`Nat.add, `Prod, `No.Such.Declaration]
 
 /-- Smoke demo helper for quick direct-path checks. -/
-def runDocGenNameRenderSmokeDirect : MetaM (Array (Name × Option String)) := do
+def runDocGenNameRenderSmokeDirect : MetaM (Array (Name × Option DocGenHtml)) := do
   docGenNameRenderSmokeDecls.mapM fun decl => do
-    let rendered? ← renderDeclHtmlStringDirect? decl
+    let rendered? ← renderDeclHtmlNodeDirect? decl
     if let some html := rendered? then
-      logInfo m!"[doc-gen direct smoke] {decl}: rendered ({html.length} chars)"
+      logInfo m!"[doc-gen direct smoke] {decl}: rendered ({Vendor.DocGen4.Html.textLength html} chars)"
     else
       logInfo m!"[doc-gen direct smoke] {decl}: none"
     pure (decl, rendered?)

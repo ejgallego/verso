@@ -6,6 +6,8 @@ Author: OpenAI Codex
 Vendored/adapted from doc-gen4 `DocGen4/Output/ToHtmlFormat.lean`.
 -/
 
+import Lean
+
 namespace Informal.Vendor.DocGen4
 
 /--
@@ -16,7 +18,26 @@ inductive Html where
   | element : String → Bool → Array (String × String) → Array Html → Html
   | text : String → Html
   | raw : String → Html
-  deriving Inhabited, Repr
+  deriving Inhabited, Repr, Lean.ToJson, Lean.FromJson
+
+mutual
+  private def quoteHtml : Html → Lean.TSyntax `term
+    | .element tag inline attrs children =>
+        Lean.Syntax.mkApp (Lean.mkCIdent ``Html.element)
+          #[Lean.quote tag, Lean.quote inline, Lean.quote attrs, quoteHtmlArray children]
+    | .text s =>
+        Lean.Syntax.mkApp (Lean.mkCIdent ``Html.text) #[Lean.quote s]
+    | .raw s =>
+        Lean.Syntax.mkApp (Lean.mkCIdent ``Html.raw) #[Lean.quote s]
+
+  private def quoteHtmlArray (children : Array Html) : Lean.TSyntax `term :=
+    children.foldl
+      (init := (Lean.Syntax.mkApp (Lean.mkCIdent ``Array.empty) #[] : Lean.TSyntax `term))
+      (fun acc child => Lean.Syntax.mkApp (Lean.mkCIdent ``Array.push) #[acc, quoteHtml child])
+end
+
+instance : Lean.Quote Html where
+  quote := quoteHtml
 
 instance : Coe String Html := ⟨Html.text⟩
 
