@@ -23,6 +23,56 @@ open _root_.Lean.Doc.Syntax
 namespace Informal
 open CodeSummary
 
+private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
+  decls.qsort (fun a b =>
+    a.commandIndex < b.commandIndex ||
+    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
+
+private def progressSegmentClass (missing hasSorry : Bool) : String :=
+  if missing then
+    "bp_code_progress_segment bp_code_progress_segment_missing"
+  else if hasSorry then
+    "bp_code_progress_segment bp_code_progress_segment_sorry"
+  else
+    "bp_code_progress_segment bp_code_progress_segment_ok"
+
+private def codePanelSummary (data : BlockData) : String :=
+  if data.isProof then
+    "Code for proof"
+  else
+    s!"Code for {data.kind} {data.count}"
+
+private def codeSummaryStatusText (status : Data.ProvedStatus) : String :=
+  match status with
+  | .axiomLike => "axiom-like (no body)"
+  | .containsSorry _ => provedStatusLocationText status
+  | .proved => "unknown"
+
+private def codeSummaryText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
+  if definedDefs.isEmpty && definedTheorems.isEmpty then
+    s!"{label}"
+  else
+    let definedDefNames := definedDefs.map (·.name)
+    let definedTheoremNames := definedTheorems.map (·.name)
+    let defs :=
+      if definedDefNames.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (definedDefNames.toList.map toString)
+    let thms :=
+      if definedTheoremNames.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (definedTheoremNames.toList.map toString)
+    let sorryDecls := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus))
+    let sorries :=
+      if sorryDecls.isEmpty then
+        "none"
+      else
+        String.intercalate ", " <| sorryDecls.toList.map fun d =>
+          s!"{d.name} [{codeSummaryStatusText d.provedStatus}]"
+    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
+
 block_extension Block.informalCode (data : CodeBlockData) where
   data := toJson data
   traverse id data _contents := do

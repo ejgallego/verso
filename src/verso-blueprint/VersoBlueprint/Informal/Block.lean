@@ -48,9 +48,6 @@ Elaboration, traversal, and rendering are standard, using {ref VersoManual} help
 
 /-- Domain for informal-like objects; each informal object is
   characterized by its canonical name declared by the user. -/
-def _informal : Domain := {}
-
-/-- Name used in {name}`TraverseState.domains` for informal objects. -/
 def informalDomain : Name := Resolve.informalDomainName
 
 /-- Name used in {name}`TraverseState.domains` for informal Lean code blocks. -/
@@ -769,7 +766,8 @@ block_extension Block.informal (data : BlockData) where
       pure none
     | .ok blockData =>
       let label := blockData.label
-      let previewKey := PreviewCache.keyOf label blockData.isProof
+      let previewFacet := if blockData.isProof then PreviewCache.Facet.proof else PreviewCache.Facet.statement
+      let previewKey := PreviewCache.key label previewFacet
       let previewData := toJson (PreviewCache.Entry.ofBlocks label blockData.isProof _contents)
       let existingPreview? := (← get).getDomainObject? informalPreviewDomain previewKey
       if shouldWritePreviewData existingPreview? id then
