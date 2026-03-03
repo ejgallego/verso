@@ -8,6 +8,7 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Commands
+import VersoBlueprint.Commands.RenderGraph
 
 namespace Informal.Commands
 
@@ -74,7 +75,7 @@ def mkGraphPart (stx : Syntax) (endPos : String.Pos.Raw) (direction : GraphDirec
   let (graph, groupTitles) ← buildAll
   logInfo m!"Adding {graph.size} nodes"
   let graphData : GraphBlockData := { graph, direction, groupTitles }
-  let block ← ``(Verso.Doc.Block.other (Block.graph $(quote graphData)) #[])
+  let block ← ``(Verso.Doc.Block.other (Informal.Commands.Block.graph $(quote graphData)) #[])
   let subParts := #[]
   pure $ FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
 
