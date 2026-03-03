@@ -48,6 +48,12 @@ Completed extraction checkpoints (behavior-preserving):
    - widget path now consumes previews via `PreviewSource.fromEnvironment?` + `PreviewSource.renderWidgetHtml`
    - `PreviewRender` now exposes `renderPreviewBlocksHtml` so adapter consumers can render manual preview blocks directly
 
+8. (working tree, validated):
+   - moved summary block renderer to `Commands/RenderSummary.lean`
+   - moved bibliography block renderer to `Commands/RenderBibliography.lean`
+   - updated `ShowSummary`/`ShowBibliography` to import renderer modules and use fully qualified block constructors for robust quotation precheck
+   - top-level imports updated in `VersoBlueprint.lean`
+
 Current boundary status:
 
 - `Environment.State.data` remains the single semantic source for graph/summary derivation.
@@ -55,12 +61,13 @@ Current boundary status:
 - Graph/summary/bibliography command paths are split out of monolithic `Commands.lean`.
 - Shared hover/preview HTML contracts now live in `Lib/HoverRender.lean`.
 - Traversal + widget preview acquisition now share a common adapter contract in `Lib/PreviewSource.lean`.
-- `Commands.lean` still owns block renderers and large JS/CSS payloads (next modularization pressure point).
+- Graph/summary/bibliography block renderers now live in dedicated modules under `Commands/`.
+- `Commands.lean` now mainly owns shared command data types/options and shared CSS/JS payload constants.
 
 Immediate next step:
 
-1. Continue command modularization by separating renderer-heavy sections from registration/data-model definitions where safe.
-2. Move graph/summary HTML renderer-specific helpers out of `Commands.lean` into dedicated modules.
+1. Extract shared command payload/constants (`GraphBlockData`, `GraphDirection`, `d3DotCss`, `openTargetDetailsJs`) into a dedicated shared module (`Commands/Shared.lean` or equivalent), then make render modules depend on that.
+2. Keep `Commands.lean` as a compatibility shim temporarily, then trim it to a thin re-export once call sites are updated.
 
 ## 1) Current Data Model by Phase
 
