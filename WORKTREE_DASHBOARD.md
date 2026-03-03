@@ -1,12 +1,13 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (citation + external-def-display worktrees merged and cleaned up)
+Last updated: 2026-03-03 (added `feat/versoblueprint-refactor` worktree for `VersoBlueprint.lean` split)
 
 ## Active Worktrees
 
 ### `bp` (root checkout)
 
 - Status: `active` (owner action: monitor follow-up builder-boundary work)
+- Summary: integration baseline branch with recent commands-path and renderer refactors already validated for `noperthedron`.
 - Path: `/home/egallego/lean/verso-blueprint`
 - Branch: `bp`
 - Base commit/branch:
@@ -21,9 +22,29 @@ Last updated: 2026-03-03 (citation + external-def-display worktrees merged and c
   - `git status --short`
   - `git log --oneline -1`
 
+### `feat/versoblueprint-refactor`
+
+- Status: `created` (owner action: design/implement `VersoBlueprint.lean` module split)
+- Summary: fresh isolation branch dedicated to refactoring the large top-level `VersoBlueprint.lean` import/aggregation surface.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
+- Branch: `feat/versoblueprint-refactor`
+- Base commit/branch:
+  - branched from `bp` at `af04fe7b`
+- Key commit:
+  - `af04fe7b` blueprint: finalize release-audit cleanup and UX fixes
+- Validation status:
+  - setup validated:
+  - copied `.lake` from root checkout
+  - `lake exe cache get` (mathlib cache available, no downloads required)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`
+  - `git status --short`
+  - start by auditing imports and public surface in `src/verso-blueprint/VersoBlueprint.lean`
+
 ### `feat/docgen-direct-render`
 
 - Status: `active` (owner action: finish or checkpoint WIP; branch is behind `bp`)
+- Summary: in-progress direct-render docgen work that is currently stale versus `bp` and needs a sync before continuation.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/docgen-direct-render`
 - Branch: `feat/docgen-direct-render`
 - Base commit/branch:
@@ -40,6 +61,7 @@ Last updated: 2026-03-03 (citation + external-def-display worktrees merged and c
 ### `feat/lsp-folding-chain`
 
 - Status: `active` (owner action: rebase before integration)
+- Summary: long-running folding-chain refactor with substantial local progress but significant drift from `bp`.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/lsp-folding-chain`
 - Branch: `feat/lsp-folding-chain`
 - Base commit/branch:
@@ -56,6 +78,7 @@ Last updated: 2026-03-03 (citation + external-def-display worktrees merged and c
 ### `feat/sphere-packing-blueprint`
 
 - Status: `blocked` (owner action: checkpoint dirty edits, then rebase)
+- Summary: sphere-packing blueprint branch is blocked by uncheckpointed local edits and temporary compatibility workarounds.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
 - Branch: `feat/sphere-packing-blueprint`
 - Base commit/branch:
@@ -71,6 +94,12 @@ Last updated: 2026-03-03 (citation + external-def-display worktrees merged and c
 
 ## Recently Completed
 
+- Merged `feat/release-audit` into `bp` (`6dfda830 -> af04fe7b`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/release-audit`.
+- Deleted branch: `feat/release-audit`.
 - Merged `feat/citation-reverse-details` into `bp` (`889a5814 -> c6f8a1b1`, fast-forward).
 - Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/citation-reverse-details`.
 - Deleted branch: `feat/citation-reverse-details`.

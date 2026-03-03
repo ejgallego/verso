@@ -50,8 +50,12 @@ When we create a worktree, it is possible that `lake` makes a choice to setup th
 
 ### Worktree scope discipline
 
-- Treat the user-designated worktree as the only writable and executable scope for the task.
-- Do not inspect, edit, build, rebase, or validate other worktrees unless the user explicitly asks.
+- **Default mode is strict isolation.** Unless the user explicitly specifies another worktree/path, operate only inside the current task worktree.
+- Treat the user-designated worktree as the only readable, writable, and executable scope for the task.
+- Do not inspect, edit, build, rebase, validate, or run discovery commands (`ls`, `find`, `rg`, `git`, etc.) in other worktrees unless the user explicitly asks.
+- Do not use tabs, recent history, dashboard entries, or prior turns as implicit permission for cross-worktree access.
+- If cross-worktree access is needed, require explicit user authorization with a concrete target path/worktree first.
+- When such authorization is given, limit access strictly to the explicitly named worktree/path and nothing else.
 - IDE context may include unrelated tabs/files from other worktrees; this is not a scope signal.
 - If tab context conflicts with the designated worktree, follow the designated worktree.
 - If the designated path is unclear or missing, stop and ask for the exact path before proceeding.
