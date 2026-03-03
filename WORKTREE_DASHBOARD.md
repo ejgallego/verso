@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (citation reverse-details merged into `bp`; worktree cleaned up)
+Last updated: 2026-03-03 (citation + external-def-display worktrees merged and cleaned up)
 
 ## Active Worktrees
 
@@ -36,23 +36,6 @@ Last updated: 2026-03-03 (citation reverse-details merged into `bp`; worktree cl
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/docgen-direct-render`
   - `git status --short`
   - rebase or merge `bp` after checkpointing local edits
-
-### `feat/external-def-display`
-
-- Status: `merged` (owner action: optional worktree cleanup when no longer needed)
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-display`
-- Branch: `feat/external-def-display`
-- Base commit/branch:
-  - aligned with `bp` at `2d68ac9a`
-- Key commit:
-  - `fd974295` refactor: extract informal code renderer and refresh roadmap
-- Validation status:
-  - `lake build VersoBlueprint` (pass)
-  - `lake exe noperthedron` (pass, warnings only)
-  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py` (known baseline fail: missing `bp_external_status_sorry` in `The-Local-Theorem`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-def-display`
-  - `git status --short`
 
 ### `feat/lsp-folding-chain`
 
@@ -92,6 +75,8 @@ Last updated: 2026-03-03 (citation reverse-details merged into `bp`; worktree cl
 - Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/citation-reverse-details`.
 - Deleted branch: `feat/citation-reverse-details`.
 - Merged `feat/external-def-display` into `bp` (`61a5f0a7 -> fd974295`, fast-forward).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-display`.
+- Deleted branch: `feat/external-def-display`.
 - Merged `feat/commands-path-refactor` into `bp` (`a3381ff3 -> 2d68ac9a`, fast-forward).
 - Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`.
 - Deleted branch: `feat/commands-path-refactor`.
