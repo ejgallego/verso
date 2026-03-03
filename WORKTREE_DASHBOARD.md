@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (`feat/informal-code-audit-restart-20260303` created and validated)
+Last updated: 2026-03-03 (`feat/informal-code-audit-restart-20260303` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -13,7 +13,7 @@ Last updated: 2026-03-03 (`feat/informal-code-audit-restart-20260303` created an
 - Base commit/branch:
   - local integration branch
 - Key commit:
-  - `fd974295` refactor: extract informal code renderer and refresh roadmap
+  - `b579013b` informal: harden block parsing and extract group directive
 - Validation status:
   - commands-path validation passed before merge:
   - `lake build VersoBlueprint.Commands.Common VersoBlueprint.Commands.Graph VersoBlueprint.Commands.Summary VersoBlueprint.Commands.Bibliography VersoBlueprint`
@@ -56,32 +56,18 @@ Last updated: 2026-03-03 (`feat/informal-code-audit-restart-20260303` created an
   - `git status --short`
   - commit/stash local chapter changes before rebasing on `bp`
 
-### `feat/informal-code-audit-restart-20260303`
+## Recently Completed
 
-- Status: `ready-for-review` (owner action: merge to `bp` after review)
-- Summary: restart worktree for critical Informal parser/runtime hardening after cross-worktree drift.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit-restart-20260303`
-- Branch: `feat/informal-code-audit-restart-20260303`
-- Base commit/branch:
-  - `bp` at `7a4bc3f5`
-- Key commits:
-  - pending local commit (informal hardening + tests)
-- Validation status:
+- Merged `feat/informal-code-audit-restart-20260303` into `bp` (`7a4bc3f5 -> b579013b`, fast-forward).
+- Validation on branch before merge:
   - `lake build VersoBlueprint`
   - `lake env lean src/tests/Tests/BlueprintInformal.lean`
   - `lake build Tests`
   - `lake exe noperthedron`
-- Preview:
-  - URL: `http://127.0.0.1:8093/`
-  - server command: `npx http-server _out -p 8093`
-  - log: `/tmp/informal-code-audit-restart-20260303-http.log`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit-restart-20260303`
-  - `git status --short`
+- Validation on `bp` after merge:
   - `lake exe noperthedron`
-
-## Recently Completed
-
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit-restart-20260303`.
+- Deleted branch: `feat/informal-code-audit-restart-20260303`.
 - Merged `feat/versoblueprint-refactor` into `bp` (`1b49078e -> e6708cbc`, fast-forward).
 - Validation on branch before merge:
   - `lake build VersoBlueprint`
