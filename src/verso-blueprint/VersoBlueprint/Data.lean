@@ -12,6 +12,18 @@ namespace Informal.Data
 
 open Lean
 
+deriving instance Lean.ToJson for Lean.DeclarationRange
+deriving instance Lean.FromJson for Lean.DeclarationRange
+
+open Syntax in
+instance : Lean.Quote Lean.Position where
+  quote p := mkCApp ``Lean.Position.mk #[quote p.line, quote p.column]
+
+open Syntax in
+instance : Lean.Quote Lean.DeclarationRange where
+  quote r := mkCApp ``Lean.DeclarationRange.mk
+    #[quote r.pos, quote r.charUtf16, quote r.endPos, quote r.endCharUtf16]
+
 set_option doc.verso true
 -- set_option pp.rawOnError true
 
@@ -219,7 +231,13 @@ deriving Repr, Inhabited
 inductive ExternalOrigin where
   | directiveLean
   | blueprintAttr
-deriving Repr, Inhabited, DecidableEq
+deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
+
+open Syntax in
+instance : Quote ExternalOrigin where
+  quote
+    | .directiveLean => mkCApp ``ExternalOrigin.directiveLean #[]
+    | .blueprintAttr => mkCApp ``ExternalOrigin.blueprintAttr #[]
 
 inductive ExternalDeclProvenance where
   | inWorkspace (moduleName : Name) (sourcePath : String)
@@ -271,6 +289,25 @@ def ExternalDeclLookupError.message : ExternalDeclLookupError → String
 
 abbrev ExternalDeclRender := _root_.Informal.DocGenRender
 
+instance : ToJson ExternalDeclRender where
+  toJson
+    | .ok html => Json.mkObj [("ok", toJson html)]
+    | .error error => Json.mkObj [("error", toJson error)]
+
+instance : FromJson ExternalDeclRender where
+  fromJson?
+    | .obj obj =>
+      match obj.get? "ok", obj.get? "error" with
+      | some ok, none => return .ok (← fromJson? ok)
+      | none, some err => return .error (← fromJson? err)
+      | _, _ => throw "expected object with exactly one of fields 'ok' or 'error'"
+    | _ => throw "expected object"
+
+instance : Lean.Quote ExternalDeclRender where
+  quote
+    | .ok html => Syntax.mkApp (mkCIdent ``Except.ok) #[(Lean.quote html)]
+    | .error error => Syntax.mkApp (mkCIdent ``Except.error) #[(Lean.quote error)]
+
 /--
 Reference to an external declaration mentioned by a blueprint node.
 {lit}`written` preserves the user spelling, while {lit}`canonical` is scope-erased for
@@ -311,7 +348,24 @@ structure ExternalRef where
   Snapshot of direct DocGen rendering outcome.
   -/
   render : ExternalDeclRender := .error (.moduleUnavailable canonical)
-deriving Repr, Inhabited
+deriving Repr, Inhabited, ToJson, FromJson
+
+open Syntax in
+instance : Quote ExternalRef where
+  quote ref := mkCApp ``ExternalRef.mk
+    #[ quote ref.written
+     , quote ref.canonical
+     , quote ref.origin
+     , quote ref.present
+     , quote ref.provedStatus
+     , quote ref.isTheoremLike
+     , quote ref.provenance
+     , quote ref.range?
+     , quote ref.selectionRange?
+     , quote ref.kind?
+     , quote ref.sourceHref?
+     , quote ref.render
+     ]
 
 def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean) : ExternalRef :=
   { written := name, canonical := name.eraseMacroScopes, origin }

@@ -16,8 +16,8 @@ import VersoManual
 import VersoBlueprint.Data
 import VersoBlueprint.ExternalRefSnapshot
 import VersoBlueprint.Environment
-import VersoBlueprint.Informal.Code
-import VersoBlueprint.Lean
+import VersoBlueprint.Informal.CodeCommon
+import VersoBlueprint.Informal.CodeSummary
 import VersoBlueprint.NameParsing
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
@@ -177,31 +177,6 @@ instance : FromArgs Config m where
   fromArgs := Config.parse
 
 end
-
-private def externalDeclStatus (decl : Data.ExternalRef) : ExternalDecl :=
-  let canonical := decl.canonical
-  if !decl.present then
-    .missing decl.written .notPresentAtRegistration
-  else
-    let fallbackKind := if decl.isTheoremLike then "theorem" else "definition"
-    let declInfo : ExternalDeclInfo := {
-      decl := decl.written
-      canonical
-      provenance := decl.provenance
-      range? := decl.range?
-      selectionRange? := decl.selectionRange?
-      kind := decl.kind?.getD fallbackKind
-      sourceHref? := decl.sourceHref?
-      provedStatus := decl.provedStatus
-      render := decl.render
-    }
-    .info declInfo
-
-def BlockCodeStatus.ofCodeRef (codeRef? : Option Data.CodeRef) : BlockCodeStatus :=
-  match codeRef? with
-  | some .userOk => .userOk
-  | some (.external decls) => .external (decls.map externalDeclStatus)
-  | _ => .none
 
 def blueprintCss : String := r##"
 .bp_wrapper {
@@ -866,18 +841,19 @@ block_extension Block.informal (data : BlockData) where
       | .ok data =>
         let s ← HtmlT.state
         let attrs := s.htmlId id
-        let dentry : Json := ((s.getDomainObject? informalDomain data.label.toString).map (·.data)).getD (.str "")
         let codeHref : Option String :=
           match s.resolveDomainObject informalCodeDomain data.label.toString with
           | .ok dest => some dest.relativeLink
           | .error _ => none
-        let codeData? : Option CodeBlockData :=
+        let codeData? : Option CodeBlockData ←
           match s.getDomainObject? informalCodeDomain data.label.toString with
-          | none => none
+          | none => pure none
           | some obj =>
             match fromJson? (α := CodeBlockData) obj.data with
-            | .ok cdata => some cdata
-            | .error _ => none
+            | .ok cdata => pure (some cdata)
+            | .error err =>
+              HtmlT.logError s!"Malformed informal code data for {data.label}: {err}"
+              pure none
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveExampleDeclHref? s decl
         let codeHover : Option CodeHoverData := codeData?.map (fun cdata =>
@@ -887,23 +863,18 @@ block_extension Block.informal (data : BlockData) where
           | .external decls =>
             decls.map fun decl =>
               let href :=
-                match decl.canonical? with
-                | some canonical =>
-                  match getDeclHref canonical with
+                if decl.present then
+                  match getDeclHref decl.canonical with
                   | some href => some href
-                  | none => getDeclHref decl.displayName
-                | none =>
-                  getDeclHref decl.displayName
-              ExternalHoverDecl.ofDecl decl href
+                  | none => getDeclHref decl.written
+                else
+                  getDeclHref decl.written
+              { decl, href }
           | _ => #[]
         let manualStatus : Bool :=
           match data.codeStatus with
           | .userOk => true
           | _ => false
-        let hasSorries : Bool :=
-          match codeData? with
-          | none => false
-          | some cdata => (cdata.definedDefs ++ cdata.definedTheorems).any (provedStatusHasSorry ∘ (·.provedStatus))
         let hasStatementSorries : Bool :=
           match codeData? with
           | none => false
@@ -915,7 +886,6 @@ block_extension Block.informal (data : BlockData) where
           | some cdata =>
             (cdata.definedDefs ++ cdata.definedTheorems).any (fun decl => decl.provedStatus.hasProofGap)
         let cdata := {
-          proved := codeData?.isSome && !hasSorries
           codeHref
           codeHover
           manualStatus
@@ -923,91 +893,7 @@ block_extension Block.informal (data : BlockData) where
           hasStatementSorries
           hasProofSorries
         }
-        return toHtml data cdata dentry attrs (← blocks.mapM goB)
-
-block_extension Block.informalCode (data : CodeBlockData) where
-  data := toJson data
-  traverse id data _contents := do
-    let .ok cdata@{ label, definedDefs := _, definedTheorems := _, foldProofs := _ } := fromJson? (α := CodeBlockData) data
-      | logError s!"Malformed data: {data}"
-        pure none
-    if let .some _d := (← get).getDomainObject? informalCodeDomain label.toString then
-      pure none
-    else
-      let path ← (·.path) <$> read
-      let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-code-{label}"
-      modify λ s => s.saveDomainObject informalCodeDomain label.toString id
-      modify λ s => s.saveDomainObjectData informalCodeDomain label.toString (toJson cdata)
-      pure none
-  toTeX := none
-  extraCss := ([blueprintCss, blueprintStyleSwitcherCss] : List String)
-  extraJs := ([blueprintStyleSwitcherJs] : List String)
-  toHtml :=
-    open Verso.Doc.Html in
-    open Verso.Output.Html in
-    some <| fun _goI goB id data blocks => do
-      let .ok { label, definedDefs, definedTheorems, foldProofs } := fromJson? (α := CodeBlockData) data
-        | HtmlT.logError s!"Malformed data: {data}"
-          pure .empty
-      let s ← HtmlT.state
-      let attrs := s.htmlId id
-      let summaryText :=
-        match s.getDomainObject? informalDomain label.toString with
-        | some obj =>
-          match fromJson? (α := BlockData) obj.data with
-          | .ok b => codePanelSummary b
-          | .error _ => "Code"
-        | none => "Code"
-      let orderedDecls := sortDeclsByCommand (definedDefs ++ definedTheorems)
-      let getDeclHref (decl : Name) : Option String :=
-        Resolve.resolveExampleDeclHref? s decl
-      let summaryHoverData := mkCodeHoverData label definedDefs definedTheorems getDeclHref
-      let progressHover : Output.Html := {{
-        <div class="bp_code_hover" role="tooltip">
-          <div class="bp_code_hover_title">{{.text true s!"{summaryHoverData.label}"}}</div>
-          <div class="bp_code_hover_section">
-            <span class="bp_code_hover_label">"Lean definitions"</span>
-            <ul class="bp_code_hover_list">
-              {{codeHoverDeclItems summaryHoverData.definedDefs}}
-            </ul>
-          </div>
-          <div class="bp_code_hover_section">
-            <span class="bp_code_hover_label">"Lean theorems/lemmas"</span>
-            <ul class="bp_code_hover_list">
-              {{codeHoverDeclItems summaryHoverData.definedTheorems}}
-            </ul>
-          </div>
-          <div class="bp_code_hover_section">
-            <span class="bp_code_hover_label">"Sorries"</span>
-            <ul class="bp_code_hover_list">
-              {{codeHoverDeclItems summaryHoverData.sorries}}
-            </ul>
-          </div>
-        </div>
-      }}
-      let progressBar : Output.Html :=
-        if orderedDecls.isEmpty then
-          .empty
-        else
-          let segments := orderedDecls.map fun decl =>
-            let hasSorry := provedStatusHasSorry decl.provedStatus
-            let cls := progressSegmentClass false hasSorry
-            let weight := max decl.weight 1
-            let title :=
-              if hasSorry then
-                if provedStatusContainsSorry decl.provedStatus then
-                  s!"{decl.name}: contains sorry {codeDeclSorryLocation decl}"
-                else
-                  s!"{decl.name}: {codeDeclSorryLocation decl}"
-              else
-                s!"{decl.name}: complete"
-            {{<span class={{cls}} title={{title}} style={{s!"flex: {weight} 1 0%"}}></span>}}
-          let bar := {{<span class="bp_code_progress" aria-label="Lean declaration progress">{{segments}}</span>}}
-          {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{bar}}{{progressHover}}</span>}}
-      let summaryHover := codeHoverText label definedDefs definedTheorems
-      let panelAttrs := attrs.push ("data-bp-proof-fold", if foldProofs then "on" else "off")
-      let panelBody := .seq (← blocks.mapM goB)
-      pure <| mkCodePanel summaryText summaryHover progressBar panelBody panelAttrs
+        return toHtml data cdata attrs (← blocks.mapM goB)
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
   | cfg, contents => do
@@ -1058,51 +944,5 @@ private def expander (kind : Data.NodeKind) (isProof : Bool := false) : Directiv
 @[directive] def «theorem» := expander .theorem
 @[directive] def «corollary» := expander .corollary
 @[directive] def «proof» := expander .lemma (isProof := true)
-
-/-- Interpreting Embedded Lean Code blocks -/
-private def leanImpl : CodeBlockExpanderOf Config
-  | cfg, contents => do
-    let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some (cfg.label : Lean.Name) }
-    let res ← Lean.elabCommands leanCfg contents
-    let codeBlock := res.block
-    let definedDefs := res.definedDefs.map CodeDeclData.ofLiterateDef
-    let definedTheorems := res.definedTheorems.map CodeDeclData.ofLiterateThm
-    let data : CodeBlockData := {
-      label := cfg.label
-      definedDefs
-      definedTheorems
-      foldProofs := verso.blueprint.foldProofs.get (← getOptions)
-    }
-    let codeRef ← getRef
-    Environment.registerCode cfg.label codeRef res.definedDefs res.definedTheorems
-    activateForLabelDoc cfg.label codeRef
-    ``(Block.other (Block.informalCode $(quote data)) #[$codeBlock])
-
-@[code_block]
-def lean : CodeBlockExpanderOf Config
-  | cfg, contents => do
-    Profile.withDocElab "code_block" "lean" <| leanImpl cfg contents
-
-/-- Internal Lean setup blocks:
-executed but not rendered and not tracked as blueprint code blocks. -/
-private def internalImpl : CodeBlockExpanderOf Unit
-  | _, contents => do
-    let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with «show» := false, name := none }
-    let _ ← Lean.elabCommands leanCfg contents
-    ``(Block.concat #[])
-
-@[code_block]
-def internal : CodeBlockExpanderOf Unit
-  | cfg, contents => do
-    Profile.withDocElab "code_block" "internal" <| internalImpl cfg contents
-
-private def rocqImpl : CodeBlockExpanderOf Unit
-  | _cfg, contents => do
-    ``(Block.code $contents)
-
-@[code_block]
-def rocq : CodeBlockExpanderOf Unit
-  | cfg, contents => do
-    Profile.withDocElab "code_block" "rocq" <| rocqImpl cfg contents
 
 end Informal
