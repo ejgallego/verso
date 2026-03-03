@@ -37,16 +37,22 @@ Completed extraction checkpoints (behavior-preserving):
    - summary/bibliography part builders (`mkSummaryPart`, `mkBibliographyPart`) moved with their command modules
    - top-level imports updated accordingly
 
+6. (working tree, validated):
+   - added `Lib/HoverRender.lean` as shared hover/preview markup API
+   - graph preview template/store/panel markup now routed through `HoverRender`
+   - summary preview tooltip wrapper now routed through `HoverRender`
+
 Current boundary status:
 
 - `Environment.State.data` remains the single semantic source for graph/summary derivation.
 - Shared derivation utilities now live in `Lib/`.
 - Graph/summary/bibliography command paths are split out of monolithic `Commands.lean`.
+- Shared hover/preview HTML contracts now live in `Lib/HoverRender.lean`.
 - `Commands.lean` still owns block renderers and large JS/CSS payloads (next modularization pressure point).
 
 Immediate next step:
 
-1. Start the hover API extraction (`Lib/HoverRender.lean`) to remove duplicated hover markup logic between graph and summary HTML output.
+1. Extend the hover API so traversal and widget channels can share the same preview contract (adapter boundary).
 2. Continue command modularization by separating renderer-heavy sections from registration/data-model definitions where safe.
 
 ## 1) Current Data Model by Phase

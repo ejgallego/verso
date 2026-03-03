@@ -30,16 +30,18 @@ Last updated: 2026-03-03 (commands path refactor progress + validation)
   - In-progress changes:
     - add `src/verso-blueprint/VersoBlueprint/Commands/ShowSummary.lean`
     - add `src/verso-blueprint/VersoBlueprint/Commands/ShowBibliography.lean`
+    - add `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`
     - move summary/bibliography part builders and command registrations out of `src/verso-blueprint/VersoBlueprint/Commands.lean`
+    - route graph and summary preview markup through shared hover-render helpers
     - wire top-level imports in `src/verso-blueprint/VersoBlueprint.lean`
     - update `doc/CommandsPathRefactorNotes.md` with checkpoint log
   - Validation:
-    - `lake build VersoBlueprint.Commands.ShowSummary VersoBlueprint.Commands.ShowBibliography VersoBlueprint` passed on 2026-03-03
+    - `lake build VersoBlueprint.Lib.HoverRender VersoBlueprint.Commands VersoBlueprint.Commands.ShowGraph VersoBlueprint.Commands.ShowSummary VersoBlueprint.Commands.ShowBibliography VersoBlueprint` passed on 2026-03-03
     - `lake exe noperthedron` passed on 2026-03-03 (warnings only)
   - Resume notes:
     - `cd /home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`
     - `git status --short`
-    - next target: start hover-render helper extraction (`Lib/HoverRender.lean`) and continue renderer/data split in `Commands.lean`
+    - next target: extend hover-render API to widget path and continue renderer/data split in `Commands.lean`
 
 - `feat/lsp-folding-chain`
   - Path: `/home/egallego/lean/verso-blueprint/.worktrees/lsp-folding-chain`
