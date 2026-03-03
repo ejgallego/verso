@@ -8,12 +8,24 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Cite
-import VersoBlueprint.Commands
+import VersoBlueprint.Commands.Common
 import VersoBlueprint.Resolve
 
 namespace Informal.Commands
 
 open Lean Elab Command
+open Verso.Genre.Manual.Bibliography
+
+structure BibliographyEntry where
+  label : String
+  citation : Citable
+deriving FromJson, ToJson
+
+structure BibliographyData where
+  entries : List BibliographyEntry := []
+deriving FromJson, ToJson
+
+def bibliographyCss := include_str "bibliography.css"
 
 open Verso Doc Elab Genre Manual in
 block_extension Block.bibliography (biblio : BibliographyData) where
@@ -61,25 +73,54 @@ block_extension Block.bibliography (biblio : BibliographyData) where
         pure {{
           <li id={{itemId}}>
             {{rendered}}
-            <details class="bp_summary_decls">
+            <details class="bp_bibliography_uses">
               <summary>s!"Cited from ({usageCount})"</summary>
-              <ul class="bp_summary_decl_list">
-                {{if usageRows.isEmpty then {{<li class="bp_summary_empty">"No citation uses recorded."</li>}} else usageRows}}
+              <ul class="bp_bibliography_uses_list">
+                {{if usageRows.isEmpty then {{<li class="bp_bibliography_empty">"No citation uses recorded."</li>}} else usageRows}}
               </ul>
             </details>
           </li>
         }}
       pure {{
-        <div class="bp_summary">
-          <details class="bp_summary_section" open>
+        <div class="bp_bibliography">
+          <details class="bp_bibliography_section" open>
             <summary>s!"Bibliography ({entries.size})"</summary>
-            <ul class="bp_summary_list">
-              {{if rows.isEmpty then {{<li class="bp_summary_empty">"No bibliography entries registered."</li>}} else rows}}
+            <ul class="bp_bibliography_list">
+              {{if rows.isEmpty then {{<li class="bp_bibliography_empty">"No bibliography entries registered."</li>}} else rows}}
             </ul>
           </details>
         </div>
       }}
-  extraCss := singleton ⟨d3DotCss⟩
+  extraCss := singleton ⟨bibliographyCss⟩
   extraJs := singleton ⟨openTargetDetailsJs⟩
+
+open Verso Doc Elab Syntax in
+def mkBibliographyPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do
+  let titlePreview := "Blueprint Bibliography"
+  let titleInlines ← `(inline | "Blueprint Bibliography")
+  let expandedTitle ← #[titleInlines].mapM (elabInline ·)
+  let metadata := none
+  let entries := Informal.Cite.allBibEntries (← getEnv)
+  logInfo m!"Blueprint bibliography for {entries.length} entries"
+  let refs : Array (TSyntax `term) ← entries.toArray.mapM fun (label, decl) =>
+    `(BibliographyEntry.mk $(quote label) $(mkIdent decl))
+  let block ← ``(Verso.Doc.Block.other
+    (Informal.Commands.Block.bibliography
+      (BibliographyData.mk (entries := ([$refs,*] : List BibliographyEntry)))) #[])
+  let subParts := #[]
+  pure <| FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
+
+open Verso Doc Elab Syntax PartElabM in
+@[part_command Lean.Doc.Syntax.command]
+public meta def bpBibliographyCmd : PartCommand
+  | stx@`(block|command{bp_bibliography}) => do
+    let endPos := stx.getTailPos?.get!
+    closePartsUntil 1 endPos
+    addPart (← mkBibliographyPart stx endPos)
+  | stx@`(block|command{blueprint_bibliography}) => do
+    let endPos := stx.getTailPos?.get!
+    closePartsUntil 1 endPos
+    addPart (← mkBibliographyPart stx endPos)
+  | _ => (Lean.Elab.throwUnsupportedSyntax : PartElabM Unit)
 
 end Informal.Commands

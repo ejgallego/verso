@@ -7,8 +7,10 @@ Author: Emilio J. Gallego Arias
 import Lean
 import Verso
 import VersoManual
-import VersoBlueprint.Commands
+import VersoBlueprint.Environment
+import VersoBlueprint.Graph
 import VersoBlueprint.Lib.HoverRender
+import VersoBlueprint.Lib.NodeFacts
 import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
@@ -16,6 +18,72 @@ import VersoBlueprint.StyleSwitcher
 namespace Informal.Commands
 
 open Lean Elab Command
+open Informal Data Environment
+
+abbrev GraphNode := Informal.Graph.GraphNode Name
+abbrev Graph := Informal.Graph.Graph Name
+
+inductive GraphDirection where
+  | LR
+  | RL
+  | TB
+  | BT
+deriving Inhabited, Repr, BEq, FromJson, ToJson, Quote
+
+def GraphDirection.rankdir : GraphDirection → String
+  | .LR => "LR"
+  | .RL => "RL"
+  | .TB => "TB"
+  | .BT => "BT"
+
+def GraphDirection.parse? (s : String) : Option GraphDirection :=
+  match s.toLower with
+  | "lr" | "left-right" | "horizontal" => some .LR
+  | "rl" | "right-left" => some .RL
+  | "tb" | "top-bottom" | "vertical" => some .TB
+  | "bt" | "bottom-top" => some .BT
+  | _ => none
+
+register_option verso.blueprint.graph.defaultDirection : String := {
+  defValue := "TB"
+  descr := "Default direction for `blueprint_graph` when `(direction := ...)` is omitted (LR, RL, TB, BT)"
+}
+
+structure GraphBlockData where
+  graph : Graph
+  direction : GraphDirection := .TB
+  groupTitles : Array (Name × String) := #[]
+deriving Inhabited, FromJson, ToJson, Quote
+
+def graphDotHeader (rankdir : String) : String :=
+  "strict digraph \"\" {\n" ++
+  s!"    rankdir={rankdir};\n" ++
+  "    bgcolor=\"white\";\n" ++
+  "    splines=true;\n" ++
+  "    nodesep=0.35;\n" ++
+  "    ranksep=0.45;\n" ++
+  "    node [shape=box, style=\"rounded,filled\", fontname=\"Helvetica\", fontsize=10, margin=\"0.08,0.04\", color=\"#6b7280\", penwidth=1.8];\n" ++
+  "    edge [color=\"#6b7280\", arrowhead=vee, arrowsize=0.6, penwidth=1];\n" ++
+  "    graph [fontname=\"Helvetica\"];\n" ++
+  "  "
+
+def graphToDot (g : Graph) (direction : GraphDirection := .TB)
+    (resolveHref : Name → Option String := fun _ => none)
+    (resolveGroupTitle : Name → Option String := fun _ => none) : String :=
+  Informal.Graph.Graph.toDot g (graphDotHeader direction.rankdir)
+    (groupLabel? := some resolveGroupTitle)
+    (refAttrs? := some fun ref =>
+    (resolveHref ref).map (fun href => s!"URL=\"{href}\", target=\"_self\""))
+
+structure GraphRenderVariant where
+  key : String
+  label : String
+  dot : String
+  selectOnNode : Array (String × String) := #[]
+  hoverOnNode : Array (String × String) := #[]
+deriving Inhabited, ToJson
+
+def graphCss := include_str "graph.css"
 
 def groupVariantKey : String := "group"
 def parentVariantKey (parent : Name) : String := s!"parent:{parent}"
@@ -912,8 +980,80 @@ block_extension Block.graph (graphData : GraphBlockData) where
           {{groupHoverPanel}}
         </div>
       }}
-  extraCss := ([d3DotCss, blueprintStyleSwitcherCss] : List String)
+  extraCss := ([graphCss, blueprintStyleSwitcherCss] : List String)
   extraJs := ([loadD3Dot, graphTocToggleJs, blueprintStyleSwitcherJs] : List String)
 
+def buildAll : CoreM (Graph × Array (Name × String)) := do
+  let env ← getEnv
+  let state := informalExt.getState env
+  let roots : Array Name := state.data.toArray.map (·.1)
+  let externalAdapter := Informal.NodeFacts.ExternalDeclAdapter.ofEnv env
+  let external : Informal.Graph.ExternalCodeStatus := externalAdapter.graphStatus
+  let graph := Informal.Graph.buildWithExternal state roots external (resolveRef? := some)
+  return (graph, state.groups.toArray)
+
+open Verso.ArgParse
+
+instance : FromArgVal GraphDirection Verso.Doc.Elab.PartElabM where
+  fromArgVal := {
+    description := doc!"graph direction (`LR`, `RL`, `TB`, or `BT`)"
+    signature := CanMatch.Ident ∪ CanMatch.String
+    get := fun
+      | .name id =>
+        match GraphDirection.parse? id.getId.toString with
+        | some d => pure d
+        | none => throwErrorAt id "Expected one of `LR`, `RL`, `TB`, `BT`"
+      | .str s =>
+        match GraphDirection.parse? s.getString with
+        | some d => pure d
+        | none => throwErrorAt s "Expected one of \"lr\", \"rl\", \"tb\", \"bt\""
+      | other =>
+        throwError "Expected a direction identifier or string, got {toMessageData other}"
+  }
+
+structure BlueprintGraphConfig where
+  direction : Option GraphDirection := none
+
+instance : FromArgs BlueprintGraphConfig Verso.Doc.Elab.PartElabM where
+  fromArgs := BlueprintGraphConfig.mk <$> .named' `direction true
+
+def parseGraphDirection (cfg : BlueprintGraphConfig) : Verso.Doc.Elab.PartElabM GraphDirection := do
+  match cfg.direction with
+  | none =>
+    let configured :=
+      (← getOptions).get
+        verso.blueprint.graph.defaultDirection.name
+        verso.blueprint.graph.defaultDirection.defValue
+    match GraphDirection.parse? configured with
+    | some direction => pure direction
+    | none =>
+      logWarning m!"Invalid value '{configured}' for option 'verso.blueprint.graph.defaultDirection'; expected LR, RL, TB, or BT. Falling back to TB."
+      pure .TB
+  | some direction => pure direction
+
+open Verso Doc Elab Syntax in
+def mkGraphPart (stx : Syntax) (endPos : String.Pos.Raw) (direction : GraphDirection := .TB) :
+    PartElabM FinishedPart := do
+  let titlePreview := "Dependency Graph"
+  let titleInlines ← `(inline | "Dependency Graph")
+  let expandedTitle ← #[titleInlines].mapM (elabInline ·)
+  let metadata := none
+  let (graph, groupTitles) ← buildAll
+  logInfo m!"Adding {graph.size} nodes"
+  let graphData : GraphBlockData := { graph, direction, groupTitles }
+  let block ← ``(Verso.Doc.Block.other (Informal.Commands.Block.graph $(quote graphData)) #[])
+  let subParts := #[]
+  pure <| FinishedPart.mk stx expandedTitle titlePreview metadata #[block] subParts endPos
+
+open Verso Doc Elab Syntax PartElabM in
+@[part_command Lean.Doc.Syntax.command]
+public meta def depGraph : PartCommand
+  | stx@`(block|command{blueprint_graph $args*}) => do
+    let cfg ← Verso.ArgParse.parseThe BlueprintGraphConfig (← parseArgs args)
+    let direction ← parseGraphDirection cfg
+    let endPos := stx.getTailPos?.get!
+    closePartsUntil 1 endPos
+    addPart (← mkGraphPart stx endPos direction)
+  | _ => (Lean.Elab.throwUnsupportedSyntax : PartElabM Unit)
 
 end Informal.Commands

@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-03 (commands renderer split + validation)
+Last updated: 2026-03-03 (commands module unification + css split)
 
 ## Inventory and Recommendation
 
@@ -30,19 +30,27 @@ Last updated: 2026-03-03 (commands renderer split + validation)
     - `f6a5de69` refactor: split summary and bibliography command modules
     - `8aa11a90` refactor: extract shared hover preview rendering helpers
   - In-progress changes:
-    - add `src/verso-blueprint/VersoBlueprint/Commands/RenderSummary.lean`
-    - add `src/verso-blueprint/VersoBlueprint/Commands/RenderBibliography.lean`
-    - move summary/bibliography block renderers out of `Commands.lean`
-    - update `ShowSummary`/`ShowBibliography` imports + block constructor qualification
-    - update docs notes for renderer extraction checkpoint
+    - unify split command modules into single files:
+      - `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`
+      - `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`
+      - `src/verso-blueprint/VersoBlueprint/Commands/Bibliography.lean`
+    - add `src/verso-blueprint/VersoBlueprint/Commands/Common.lean` for shared command JS
+    - split CSS into:
+      - `src/verso-blueprint/VersoBlueprint/Commands/graph.css`
+      - `src/verso-blueprint/VersoBlueprint/Commands/summary.css`
+      - `src/verso-blueprint/VersoBlueprint/Commands/bibliography.css`
+    - move/remove legacy files:
+      - remove `Commands/Show*.lean` and `Commands/Render*.lean`
+      - remove legacy `src/verso-blueprint/VersoBlueprint/graph.css`
+    - keep `src/verso-blueprint/VersoBlueprint/Commands.lean` as compatibility import layer
   - Validation:
-    - `lake build VersoBlueprint.Commands.RenderSummary VersoBlueprint.Commands.RenderBibliography VersoBlueprint.Commands.ShowSummary VersoBlueprint.Commands.ShowBibliography VersoBlueprint` passed on 2026-03-03
+    - `lake build VersoBlueprint.Commands.Common VersoBlueprint.Commands.Graph VersoBlueprint.Commands.Summary VersoBlueprint.Commands.Bibliography VersoBlueprint.Commands VersoBlueprint` passed on 2026-03-03
     - `lake env lean test-projects/Noperthedron/Contents.lean` passed on 2026-03-03
     - `lake exe noperthedron` passed on 2026-03-03 (warnings only)
   - Resume notes:
     - `cd /home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`
     - `git status --short`
-    - next target: extract shared command payloads/options/assets (`GraphDirection`/`GraphBlockData`/shared JS+CSS constants) into a `Commands` shared module, then reduce `Commands.lean` to a thin compatibility layer
+    - next target: decide whether to keep `Commands.lean` compatibility import permanently or switch call sites to direct `Commands/{Graph,Summary,Bibliography}` imports
 
 - `feat/lsp-folding-chain`
   - Path: `/home/egallego/lean/verso-blueprint/.worktrees/lsp-folding-chain`
