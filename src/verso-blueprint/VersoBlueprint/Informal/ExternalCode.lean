@@ -408,8 +408,7 @@ def renderParts (data : BlockData)
       if data.isProof then
         .empty
       else
-        let summaryText := s!"External Lean declarations for {data.kind} {data.count}"
-        mkCodePanel summaryText codeEntryTitle externalStatusIndicator
+        mkCodePanel (codePanelHeader data) codeEntryTitle externalStatusIndicator
           {{<ul class="bp_code_hover_list">{{externalPanelListItems linkedDecls}}</ul>}}
     { externalCodePanel }
 
