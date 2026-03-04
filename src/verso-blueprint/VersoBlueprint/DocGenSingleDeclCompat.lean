@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author: OpenAI Codex
+Author: Emilio J. Gallego Arias
 
 Compatibility single-declaration renderer used by the blueprint external-code path.
 This is intentionally outside `Vendor/` so vendor files can stay upstream-identical.
