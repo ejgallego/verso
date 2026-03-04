@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` merged into `bp`, validated, preview stopped, and cleaned up)
+Last updated: 2026-03-04 (`feat/informal-block-tohtml-audit-20260303` merged into `bp`, validated, preview stopped, and cleaned up)
 
 ## Active Worktrees
 
@@ -58,6 +58,19 @@ Last updated: 2026-03-04 (`feat/commands-summary-audit-20260304` merged into `bp
 
 ## Recently Completed
 
+- Merged `feat/informal-block-tohtml-audit-20260303` into `bp` (`c9c744c8 -> aa0af98e`, fast-forward).
+- Feature branch key commits:
+  - `6f618850` Refactor inline block code metadata and decl link resolution
+  - `b79709d0` Refactor informal code heading source and tighten external refs
+  - `542d2625` Handle missing proved status in informal code summary
+- Validation on branch before merge:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server process:
+  - `lake serve -- /home/egallego/lean/verso-blueprint/.worktrees/informal-block-tohtml-audit-20260303` (pid `212503`)
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/informal-block-tohtml-audit-20260303`.
+- Deleted branch: `feat/informal-block-tohtml-audit-20260303`.
 - Merged `feat/commands-summary-audit-20260304` into `bp` (`646e0ea1 -> 63449f96`, merge commit).
 - Feature branch key commit:
   - `062d9f26` refactor(summary): dedupe status logic and scope assets
