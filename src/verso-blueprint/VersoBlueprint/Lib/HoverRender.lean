@@ -17,6 +17,10 @@ structure GraphPreviewUi where
   store : Verso.Output.Html := .empty
   panel : Verso.Output.Html := .empty
 
+structure SummaryPreviewUi where
+  store : Verso.Output.Html := .empty
+  panel : Verso.Output.Html := .empty
+
 def graphPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html) : Verso.Output.Html := {{
   <template class="bp_graph_preview_tpl" "data-bp-preview-label"={{s!"{label}"}}>
     {{renderedBlocks}}
@@ -44,18 +48,44 @@ def graphPreviewUi (templates : Array Verso.Output.Html) : GraphPreviewUi :=
       }}
     }
 
-def summaryPreview (label : Name) (rendered : Array Verso.Output.Html) : Verso.Output.Html := {{
-  <div class="bp_summary_preview" role="tooltip">
-    <div class="bp_summary_preview_title"><code>s!"{label}"</code></div>
-    <div class="bp_summary_preview_body">{{rendered}}</div>
-  </div>
+def summaryPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html) : Verso.Output.Html := {{
+  <template class="bp_summary_preview_tpl" "data-bp-preview-label"={{s!"{label}"}}>
+    {{renderedBlocks}}
+  </template>
 }}
 
-def summaryPreviewWrap (labelNode : Verso.Output.Html) (preview? : Option Verso.Output.Html) : Verso.Output.Html := {{
-  <span class="bp_summary_preview_wrap">
-    {{labelNode}}
-    {{if let some preview := preview? then preview else .empty}}
-  </span>
-}}
+def summaryPreviewUi (templates : Array Verso.Output.Html) : SummaryPreviewUi :=
+  if templates.isEmpty then
+    { store := .empty, panel := .empty }
+  else
+    {
+      store := {{
+        <div class="bp_summary_preview_store" hidden>
+          {{templates}}
+        </div>
+      }}
+      panel := {{
+        <aside class="bp_summary_preview_panel" hidden>
+          <div class="bp_summary_preview_panel_header">
+            <div class="bp_summary_preview_panel_title"></div>
+            <button type="button" class="bp_summary_preview_panel_close" aria-label="Close summary preview">"Close"</button>
+          </div>
+          <div class="bp_summary_preview_panel_body"></div>
+        </aside>
+      }}
+    }
+
+def summaryPreviewWrap (labelNode : Verso.Output.Html) (previewLabel? : Option Name) : Verso.Output.Html :=
+  match previewLabel? with
+  | some label => {{
+      <span class="bp_summary_preview_wrap bp_summary_preview_wrap_active" "data-bp-preview-label"={{s!"{label}"}}>
+        {{labelNode}}
+      </span>
+    }}
+  | none => {{
+      <span class="bp_summary_preview_wrap">
+        {{labelNode}}
+      </span>
+    }}
 
 end Informal.HoverRender
