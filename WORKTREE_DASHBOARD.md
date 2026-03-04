@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` validated; unresolved `lem:congruent` reference fixed)
+Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` rebased on `bp`; ready to merge)
 
 ## Active Worktrees
 
@@ -24,7 +24,7 @@ Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` validated; unr
 
 ### `feat/noperthedron-missing-def-warning`
 
-- Status: `validated` (owner action: ready to review/cherry-pick onto `bp`)
+- Status: `rebased` (owner action: merge into `bp` and clean up worktree)
 - Summary: investigate unresolved external Lean name warning for `lem:congruent` in the Noperthedron local theorem chapter.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/noperthedron-missing-def-warning`
 - Branch: `feat/noperthedron-missing-def-warning`
