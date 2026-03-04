@@ -573,8 +573,10 @@ block_extension Block.summary (summary : Summary) where
         Resolve.resolveDomainHref? s Resolve.informalDomainName label.toString
       let getCodeHref (label : Name) : Option String :=
         Resolve.resolveDomainHref? s Resolve.informalCodeDomainName label.toString
-      let getDeclHref (decl : Name) : Option String :=
-        Resolve.resolveInlineLeanDeclHref? s decl
+      let getDeclHref (label : Name) (decl : Name) : Option String :=
+        match Resolve.resolveRenderedExternalDeclHref? s label decl with
+        | Option.some href => Option.some href
+        | Option.none => Resolve.resolveInlineLeanDeclHref? s decl
       let (previewLabels, previewTemplates) ← (data.previewLabels).foldlM
           (init := (({} : NameSet), (#[] : Array Output.Html))) fun (labels, templates) label => do
         let preview? ← Informal.PreviewSource.renderTraversalPreview? s goB label
@@ -591,9 +593,9 @@ block_extension Block.summary (summary : Summary) where
           | Option.some href => {{ <a href={{href}}> <code>s!"{label}"</code> </a> }}
           | Option.none => {{ <code>s!"{label}"</code> }}
         pure (Informal.HoverRender.summaryPreviewWrap labelNode previewLabel?)
-      let mkDeclItems (decls : List Name) :=
+      let mkDeclItems (label : Name) (decls : List Name) :=
         decls.toArray.map fun decl =>
-          match getDeclHref decl with
+          match getDeclHref label decl with
           | Option.some href => {{ <li><a href={{href}}> <code>s!"{decl}"</code> </a></li> }}
           | Option.none => {{ <li><code>s!"{decl}"</code></li> }}
       let mkLeanRow (label : Name) (kind : String) (leanObjects : List Name) := do
@@ -606,7 +608,7 @@ block_extension Block.summary (summary : Summary) where
                     <span class="bp_summary_item_meta">s!"({kind})"</span>
                   </div>
                   {{if associatedDecls then
-                     {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems leanObjects}}</ul></details>}}
+                     {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems label leanObjects}}</ul></details>}}
                     else
                      .empty}}
                   {{if let some href := codeHref then
@@ -622,7 +624,7 @@ block_extension Block.summary (summary : Summary) where
           let entryRef ← mkEntryRef item.label
           let codeHref := getCodeHref item.label
           let declLink :=
-            match getDeclHref item.decl with
+            match getDeclHref item.label item.decl with
             | Option.some href => {{ <a href={{href}}> <code>s!"{item.decl}"</code> </a> }}
             | Option.none => {{ <code>s!"{item.decl}"</code> }}
           let statusInfo ←
@@ -700,7 +702,7 @@ block_extension Block.summary (summary : Summary) where
           let entryRef ← mkEntryRef item.label
           let codeHref := getCodeHref item.label
           let canonicalNode : Output.Html :=
-            match getDeclHref item.canonical with
+            match getDeclHref item.label item.canonical with
             | Option.some href => {{ <a href={{href}}> <code>s!"{item.canonical}"</code> </a> }}
             | Option.none => {{ <code>s!"{item.canonical}"</code> }}
           let declNode : Output.Html :=
