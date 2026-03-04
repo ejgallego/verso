@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/render-preview-refactor-20260304` merged into `bp`, validated on `bp`, and cleaned up)
+Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` created with preview server for summary-page status/category updates)
 
 ## Active Worktrees
 
@@ -21,6 +21,25 @@ Last updated: 2026-03-04 (`feat/render-preview-refactor-20260304` merged into `b
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/summary-page-axioms-status-20260304`
+
+- Status: `active` (owner action: implement summary-page category/status updates and validate)
+- Summary: dedicated worktree for summary-page analysis and updates (missing/extra organization review, axiom category, and per-kind status breakdowns).
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-page-axioms-status-20260304`
+- Branch: `feat/summary-page-axioms-status-20260304`
+- Base commit/branch:
+  - branch point from `bp`: `61576b10`
+- Key commits:
+  - pending
+- Validation status:
+  - `lake exe cache get` (pass)
+  - `lake exe noperthedron` (pass with existing project warnings)
+  - preview server: `http://127.0.0.1:8112/` (session `85915`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-page-axioms-status-20260304`
+  - `git status --short`
+  - `git log --oneline bp..HEAD`
 
 ### `feat/lsp-folding-chain`
 
