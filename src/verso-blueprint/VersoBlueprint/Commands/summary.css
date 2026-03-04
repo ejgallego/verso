@@ -69,6 +69,12 @@
   color: #111827;
 }
 
+.bp_summary_status {
+  font-size: 0.76rem;
+  line-height: 1.3;
+  color: #475569;
+}
+
 .bp_summary_list {
   margin: 0.25rem 0 0.15rem;
   padding-left: 0;

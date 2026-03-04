@@ -11,6 +11,7 @@ import VersoManual
 import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
+import VersoBlueprint.Graph
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.Lib.PreviewSource
@@ -66,14 +67,38 @@ open Syntax in
 instance : Quote ParentTheoremGroup where
   quote s := mkCApp ``ParentTheoremGroup.mk #[quote s.parent, quote s.header, quote s.entries]
 
+structure EntryStatusCounts where
+  completed : Nat := 0
+  completedDepsNo : Nat := 0
+  withSorries : Nat := 0
+  noProof : Nat := 0
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote EntryStatusCounts where
+  quote s := mkCApp ``EntryStatusCounts.mk
+    #[
+      quote s.completed,
+      quote s.completedDepsNo,
+      quote s.withSorries,
+      quote s.noProof
+    ]
+
 structure Summary where
   totalEntries : Nat := 0
   definitions : Nat := 0
   lemmas : Nat := 0
   theorems : Nat := 0
   corollaries : Nat := 0
+  axioms : Nat := 0
   leanOnlyEntries : Nat := 0
   informalOnlyEntries : Nat := 0
+  totalStatus : EntryStatusCounts := {}
+  definitionStatus : EntryStatusCounts := {}
+  lemmaStatus : EntryStatusCounts := {}
+  theoremStatus : EntryStatusCounts := {}
+  corollaryStatus : EntryStatusCounts := {}
+  axiomStatus : EntryStatusCounts := {}
   pendingInformalEntries : List PendingInformalItem := []
   leanDecls : Nat := 0
   sorries : Nat := 0
@@ -81,6 +106,7 @@ structure Summary where
   missingLeanDecls : List MissingLeanDeclItem := []
   definitionIndex : List IndexItem := []
   theoremLikeIndex : List IndexItem := []
+  axiomIndex : List IndexItem := []
   theoremLikeByParent : List ParentTheoremGroup := []
 deriving Inhabited, FromJson, ToJson
 
@@ -93,8 +119,15 @@ instance : Quote Summary where
       quote s.lemmas,
       quote s.theorems,
       quote s.corollaries,
+      quote s.axioms,
       quote s.leanOnlyEntries,
       quote s.informalOnlyEntries,
+      quote s.totalStatus,
+      quote s.definitionStatus,
+      quote s.lemmaStatus,
+      quote s.theoremStatus,
+      quote s.corollaryStatus,
+      quote s.axiomStatus,
       quote s.pendingInformalEntries,
       quote s.leanDecls,
       quote s.sorries,
@@ -102,8 +135,55 @@ instance : Quote Summary where
       quote s.missingLeanDecls,
       quote s.definitionIndex,
       quote s.theoremLikeIndex,
+      quote s.axiomIndex,
       quote s.theoremLikeByParent
     ]
+
+structure EntryStatusFlags where
+  completed : Bool := false
+  completedDepsNo : Bool := false
+  withSorries : Bool := false
+  noProof : Bool := false
+  hasAxiomLike : Bool := false
+deriving Inhabited
+
+private def bumpEntryStatus (acc : EntryStatusCounts) (flags : EntryStatusFlags) : EntryStatusCounts :=
+  {
+    completed := acc.completed + (if flags.completed then 1 else 0)
+    completedDepsNo := acc.completedDepsNo + (if flags.completedDepsNo then 1 else 0)
+    withSorries := acc.withSorries + (if flags.withSorries then 1 else 0)
+    noProof := acc.noProof + (if flags.noProof then 1 else 0)
+  }
+
+private def codeRefHasAxiomLikeDecl : Data.CodeRef → Bool
+  | .userOk => false
+  | .external decls =>
+    decls.any (fun decl => decl.provedStatus.isAxiomLike)
+  | .literate code =>
+    code.definedDefs.any (fun decl => decl.provedStatus.isAxiomLike) ||
+    code.definedTheorems.any (fun decl => decl.provedStatus.isAxiomLike)
+
+private def entryStatusFlags (state : Environment.State)
+    (external : Informal.Graph.ExternalCodeStatus) (node : Data.Node) : EntryStatusFlags :=
+  let hasCode := Informal.Graph.nodeHasAssociatedCode node
+  let localFormalized := Informal.Graph.nodeLocalFormalized external node
+  let ancestorsFormalized := Informal.Graph.nodeAncestorsFormalized external state node
+  let withSorries := hasCode && Informal.Graph.nodeHasSorries external node
+  let noProof := node.kind.isTheoremLike && !hasCode
+  let hasAxiomLike :=
+    match node.code with
+    | some codeRef => codeRefHasAxiomLikeDecl codeRef
+    | none => false
+  {
+    completed := localFormalized && ancestorsFormalized
+    completedDepsNo := localFormalized && !ancestorsFormalized
+    withSorries
+    noProof
+    hasAxiomLike
+  }
+
+private def statusCountsText (counts : EntryStatusCounts) : String :=
+  s!"completed: {counts.completed}; deps incomplete: {counts.completedDepsNo}; sorries: {counts.withSorries}; no proof: {counts.noProof}"
 
 private def countSorries (decls : Array α) (statusOf : α → Data.ProvedStatus) : Nat :=
   decls.foldl (init := 0) fun acc decl =>
@@ -154,10 +234,12 @@ def buildSummary : CoreM Summary := do
   let entries := state.data.toArray
   let parentChildren := state.data.parentChildren
   let groupHeaders := state.groups
+  let external : Informal.Graph.ExternalCodeStatus := {}
   let summary := entries.foldl (init := ({} : Summary)) fun acc (label, node) =>
       let hasStatement := node.statement.isSome
       let hasProof := node.proof.isSome
       let hasCode := node.code.isSome
+      let statusFlags := entryStatusFlags state external node
       let (leanDecls, sorries, leanObjects, sorryDetails, missingLeanDecls) :=
         match node.code with
         | none => (0, 0, ([] : List Name), ([] : List SorryItem), ([] : List MissingLeanDeclItem))
@@ -228,10 +310,16 @@ def buildSummary : CoreM Summary := do
           mkIndexItem label node.kind leanObjects :: acc.theoremLikeIndex
         else
           acc.theoremLikeIndex
+      let axiomIndex : List IndexItem :=
+        if statusFlags.hasAxiomLike then
+          mkIndexItem label node.kind leanObjects :: acc.axiomIndex
+        else
+          acc.axiomIndex
       let acc := { acc with
         totalEntries := acc.totalEntries + 1
         leanOnlyEntries := acc.leanOnlyEntries + (if hasCode && !hasStatement then 1 else 0)
         informalOnlyEntries := acc.informalOnlyEntries + (if hasStatement && !hasCode then 1 else 0)
+        totalStatus := bumpEntryStatus acc.totalStatus statusFlags
         pendingInformalEntries
         leanDecls := acc.leanDecls + leanDecls
         sorries := acc.sorries + sorries
@@ -239,12 +327,37 @@ def buildSummary : CoreM Summary := do
         missingLeanDecls := missingLeanDecls ++ acc.missingLeanDecls
         definitionIndex
         theoremLikeIndex
+        axiomIndex
       }
-      match node.kind with
-      | Data.NodeKind.definition => { acc with definitions := acc.definitions + 1 }
-      | Data.NodeKind.lemma => { acc with lemmas := acc.lemmas + 1 }
-      | Data.NodeKind.theorem => { acc with theorems := acc.theorems + 1 }
-      | Data.NodeKind.corollary => { acc with corollaries := acc.corollaries + 1 }
+      let acc :=
+        match node.kind with
+        | Data.NodeKind.definition =>
+          { acc with
+            definitions := acc.definitions + 1
+            definitionStatus := bumpEntryStatus acc.definitionStatus statusFlags
+          }
+        | Data.NodeKind.lemma =>
+          { acc with
+            lemmas := acc.lemmas + 1
+            lemmaStatus := bumpEntryStatus acc.lemmaStatus statusFlags
+          }
+        | Data.NodeKind.theorem =>
+          { acc with
+            theorems := acc.theorems + 1
+            theoremStatus := bumpEntryStatus acc.theoremStatus statusFlags
+          }
+        | Data.NodeKind.corollary =>
+          { acc with
+            corollaries := acc.corollaries + 1
+            corollaryStatus := bumpEntryStatus acc.corollaryStatus statusFlags
+          }
+      if statusFlags.hasAxiomLike then
+        { acc with
+          axioms := acc.axioms + 1
+          axiomStatus := bumpEntryStatus acc.axiomStatus statusFlags
+        }
+      else
+        acc
   let theoremLikeByParent : List ParentTheoremGroup :=
     let grouped := entries.foldl (init := ({} : NameMap (List IndexItem))) fun acc (label, node) =>
       if node.kind.isTheoremLike then
@@ -615,6 +728,9 @@ block_extension Block.summary (summary : Summary) where
       let theoremLikeRows ←
         data.theoremLikeIndex.toArray.mapM fun item =>
           mkLeanRow item.label item.kind item.leanObjects
+      let axiomRows ←
+        data.axiomIndex.toArray.mapM fun item =>
+          mkLeanRow item.label item.kind item.leanObjects
       let theoremLikeByParentRows ←
         data.theoremLikeByParent.toArray.mapM fun group => do
           let rows ← group.entries.toArray.mapM fun item =>
@@ -636,11 +752,12 @@ block_extension Block.summary (summary : Summary) where
           <details class="bp_summary_section" open>
             <summary>s!"Blueprint DB entries ({data.totalEntries})"</summary>
             <div class="bp_summary_grid">
-              <div class="bp_summary_card"><span class="bp_summary_label">"Total entries"</span><span class="bp_summary_value">s!"{data.totalEntries}"</span></div>
-              <div class="bp_summary_card"><span class="bp_summary_label">"Definitions"</span><span class="bp_summary_value">s!"{data.definitions}"</span></div>
-              <div class="bp_summary_card"><span class="bp_summary_label">"Lemmas"</span><span class="bp_summary_value">s!"{data.lemmas}"</span></div>
-              <div class="bp_summary_card"><span class="bp_summary_label">"Theorems"</span><span class="bp_summary_value">s!"{data.theorems}"</span></div>
-              <div class="bp_summary_card"><span class="bp_summary_label">"Corollaries"</span><span class="bp_summary_value">s!"{data.corollaries}"</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Total entries"</span><span class="bp_summary_value">s!"{data.totalEntries}"</span><span class="bp_summary_status">{{.text true (statusCountsText data.totalStatus)}}</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Definitions"</span><span class="bp_summary_value">s!"{data.definitions}"</span><span class="bp_summary_status">{{.text true (statusCountsText data.definitionStatus)}}</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Lemmas"</span><span class="bp_summary_value">s!"{data.lemmas}"</span><span class="bp_summary_status">{{.text true (statusCountsText data.lemmaStatus)}}</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Theorems"</span><span class="bp_summary_value">s!"{data.theorems}"</span><span class="bp_summary_status">{{.text true (statusCountsText data.theoremStatus)}}</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Corollaries"</span><span class="bp_summary_value">s!"{data.corollaries}"</span><span class="bp_summary_status">{{.text true (statusCountsText data.corollaryStatus)}}</span></div>
+              <div class={{if data.axioms > 0 then "bp_summary_card bp_summary_card_warn" else "bp_summary_card"}}><span class="bp_summary_label">"Axiom-like entries"</span><span class="bp_summary_value">s!"{data.axioms}"</span><span class="bp_summary_status">{{.text true (statusCountsText data.axiomStatus)}}</span></div>
               <div class="bp_summary_card"><span class="bp_summary_label">"Lean-only entries"</span><span class="bp_summary_value">s!"{data.leanOnlyEntries}"</span></div>
               <div class="bp_summary_card"><span class="bp_summary_label">"Informal-only entries"</span><span class="bp_summary_value">s!"{data.informalOnlyEntries}"</span></div>
             </div>
@@ -654,6 +771,12 @@ block_extension Block.summary (summary : Summary) where
               <summary>s!"Theorem / Lemma / Corollary Index ({data.theoremLikeIndex.length})"</summary>
               <ul class="bp_summary_list">
                 {{if theoremLikeRows.isEmpty then {{<li class="bp_summary_empty">"No theorem/lemma/corollary entries registered."</li>}} else theoremLikeRows}}
+              </ul>
+            </details>
+            <details class={{if data.axiomIndex.isEmpty then "bp_summary_subsection" else "bp_summary_subsection bp_summary_subsection_warn"}}>
+              <summary>s!"Axiom-like Index ({data.axiomIndex.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if axiomRows.isEmpty then {{<li class="bp_summary_empty">"No axiom-like entries registered."</li>}} else axiomRows}}
               </ul>
             </details>
             <details class="bp_summary_subsection">
