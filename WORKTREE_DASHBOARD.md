@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` created; preview server started at `http://127.0.0.1:8114/`)
+Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` validated; unresolved `lem:congruent` reference fixed)
 
 ## Active Worktrees
 
@@ -24,18 +24,19 @@ Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` created; previ
 
 ### `feat/noperthedron-missing-def-warning`
 
-- Status: `active` (owner action: implement and validate missing-definition warning fix)
+- Status: `validated` (owner action: ready to review/cherry-pick onto `bp`)
 - Summary: investigate unresolved external Lean name warning for `lem:congruent` in the Noperthedron local theorem chapter.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/noperthedron-missing-def-warning`
 - Branch: `feat/noperthedron-missing-def-warning`
 - Base commit/branch:
   - branch point from `bp`: `4f743c2a`
 - Key commit:
-  - none yet
+  - `f9215100` fix(local-theorem): import congruent module for lemma reference
 - Validation status:
   - `lake exe cache get` (no downloads needed)
   - `lake exe noperthedron` reproduced warning:
   - unresolved external Lean name `Local.congruent_iff_sym_matrix_eq` at `Chapters/LocalTheorem.lean:241`
+  - `lake exe noperthedron` after fix: warning no longer appears
 - Preview:
   - `http://127.0.0.1:8114/` (server session `70614`)
 - Resume commands/notes:
