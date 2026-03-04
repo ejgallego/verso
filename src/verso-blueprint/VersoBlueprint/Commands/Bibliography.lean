@@ -126,7 +126,7 @@ def mkBibliographyPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM Fini
   let titlePreview := "Blueprint Bibliography"
   let titleInlines ← `(inline | "Blueprint Bibliography")
   let expandedTitle ← #[titleInlines].mapM (elabInline ·)
-  let metadata := none
+  let metadata : Option (TSyntax `term) := some (← `(term| { number := false }))
   let entries := Informal.Cite.allBibEntries (← getEnv)
   logInfo m!"Blueprint bibliography for {entries.length} entries"
   let refs : Array (TSyntax `term) ← entries.toArray.mapM fun (label, decl) =>
