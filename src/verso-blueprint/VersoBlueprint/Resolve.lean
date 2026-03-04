@@ -14,6 +14,16 @@ open Lean
 def informalDomainName : Name := Name.mkSimple "Informal.Block.informal"
 def informalCodeDomainName : Name := Name.mkSimple "Informal.Block.informalCode"
 def informalPreviewDomainName : Name := Name.mkSimple "Informal.Block.informalPreview"
+/- 
+Domain that stores anchors for rendered external declaration rows.
+
+We intentionally keep this separate from `inlineLeanDeclDomainName`: inline Lean links are
+declaration-centric (one destination per declaration), while rendered external rows are
+reference-centric (one destination per `(informal label, canonical declaration)` pair). This
+allows summary/graph UI to jump to the specific rendered instance, even when the same declaration
+is referenced by many blueprint entries.
+-/
+def externalRenderedDeclDomainName : Name := Name.mkSimple "Informal.Block.externalRenderedDecl"
 def bibliographyDomainName : Name := Name.mkSimple "Informal.Block.bpCitations"
 def citationUsageDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.usages"
 /--
@@ -24,6 +34,16 @@ which registers defined declarations in the Manual `example` domain through
 `Verso.Genre.Manual.saveExampleDefs`. We intentionally reuse that index here.
 -/
 def inlineLeanDeclDomainName : Name := ``Verso.Genre.Manual.example
+
+/--
+Key for one rendered external declaration target.
+
+The `decl` input should be canonicalized by callers (for example using `ExternalRef.canonical`).
+-/
+def externalRenderedDeclTargetKey (label decl : Name) : String :=
+  let labelStr := label.toString
+  let declStr := decl.toString
+  s!"{labelStr.length}:{labelStr}|{declStr.length}:{declStr}"
 
 def resolveDomainHref? (s : Verso.Genre.Manual.TraverseState) (domain : Name) (label : String) :
     Option String :=
@@ -57,5 +77,9 @@ def resolveInlineLeanDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : Na
         resolveDomainHref? s inlineLeanDeclDomainName cands[0]!
       else
         none
+
+def resolveRenderedExternalDeclHref? (s : Verso.Genre.Manual.TraverseState)
+    (label decl : Name) : Option String :=
+  resolveDomainHref? s externalRenderedDeclDomainName (externalRenderedDeclTargetKey label decl)
 
 end Informal.Resolve
