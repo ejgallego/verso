@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/render-preview-refactor-20260304` rebased on `bp`, validated, and ready for review)
+Last updated: 2026-03-04 (`feat/render-preview-refactor-20260304` merged into `bp`, validated on `bp`, and cleaned up)
 
 ## Active Worktrees
 
@@ -21,28 +21,6 @@ Last updated: 2026-03-04 (`feat/render-preview-refactor-20260304` rebased on `bp
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/render-preview-refactor-20260304`
-
-- Status: `ready-for-review` (owner action: review and merge onto `bp`)
-- Summary: hover preview rendering is consolidated through shared JS helpers, preview payloads now carry per-label `texPrelude`, and hover KaTeX rendering uses explicit fallback prelude injection when global patching is unavailable.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/render-preview-refactor-20260304`
-- Branch: `feat/render-preview-refactor-20260304`
-- Base commit/branch:
-  - merge-base with `bp`: `61576b10` (`0` behind / `4` ahead)
-- Key commits:
-  - `ce31e595` refactor(preview): share render helpers and cache summary previews
-  - `336eee98` refactor(summary-preview): switch to shared panel and template store
-  - `0b1914af` refactor(preview-js): share hover helpers across graph and summary
-  - `68aa9fe0` fix(rebase): restore code panel header API in code common
-- Validation status:
-  - `lake build VersoBlueprint.Informal.CodeCommon VersoBlueprint.Informal.ExternalCode VersoBlueprint.Commands.Common VersoBlueprint.Commands.Graph VersoBlueprint.Commands.Summary VersoBlueprint.Lib.PreviewSource VersoBlueprint.PreviewCache`
-  - `lake exe noperthedron` (pass with existing project warnings)
-  - preview server: `http://127.0.0.1:8104/` (session `53411`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/render-preview-refactor-20260304`
-  - `git status --short`
-  - `git log --oneline bp..HEAD`
 
 ### `feat/lsp-folding-chain`
 
@@ -80,6 +58,19 @@ Last updated: 2026-03-04 (`feat/render-preview-refactor-20260304` rebased on `bp
 
 ## Recently Completed
 
+- Merged `feat/render-preview-refactor-20260304` into `bp` (`61576b10 -> 00d8f313`, fast-forward).
+- Feature branch key commits:
+  - `ce31e595` refactor(preview): share render helpers and cache summary previews
+  - `336eee98` refactor(summary-preview): switch to shared panel and template store
+  - `0b1914af` refactor(preview-js): share hover helpers across graph and summary
+  - `68aa9fe0` fix(rebase): restore code panel header API in code common
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview servers for this worktree:
+  - `lake serve -- /home/egallego/lean/verso-blueprint/.worktrees/render-preview-refactor-20260304`
+  - `python3 -m http.server 8104 --directory _out`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/render-preview-refactor-20260304`.
+- Deleted branch: `feat/render-preview-refactor-20260304`.
 - Merged `feat/external-def-link-targets-20260304` into `bp` (`c55685f7 -> 11dcbf94`, fast-forward).
 - Feature branch key commit:
   - `11dcbf94` feat(summary): link external decls to rendered targets
