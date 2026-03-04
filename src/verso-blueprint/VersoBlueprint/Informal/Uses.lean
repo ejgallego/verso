@@ -66,7 +66,10 @@ inline_extension Inline.informal (data : InlineData) where
         return {{ <span> {{ ← inlines.mapM goI }} </span> }}
       | some block, true =>
         let labelText := s!"{label}"
-        let titleText := s!"{block.kind} {block.count}"
+        let titleText :=
+          match block.kind with
+          | none => s!"Proof {block.count}"
+          | some statement => s!"{statement.kind} {block.count}"
         if let some href := href then
           return {{ <span> <a href={{href}} title={{labelText}}> {{titleText}} </a> </span> }}
         else
@@ -80,7 +83,7 @@ inline_extension Inline.informal (data : InlineData) where
   toTeX := none
 
 private def Data.Node.toBlockInfo (node : Data.Node) (label : Data.Label) : BlockData :=
-  { kind := node.kind, label, count := node.count }
+  { kind := some { kind := node.kind }, label, count := node.count }
 
 private def usesImpl : RoleExpanderOf Config
   | cfg, contents => do

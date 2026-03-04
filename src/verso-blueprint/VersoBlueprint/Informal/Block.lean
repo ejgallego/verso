@@ -714,27 +714,30 @@ private def shouldWritePreviewData (existing? : Option Verso.Multi.Object) (id :
 private def renderInformalBlock (data : BlockData) (attrs : Array (String × String))
     (statusMark : Option BlockStatusMark) (codeEntry : Output.Html) (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
-  let kindText := if data.isProof then "Proof" else s!"{data.kind}"
   let labelTextNum := s!"{data.count}"
   let labelText := s!"{data.label}"
-  let showLabel := !data.isProof
-  let (kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
-    if data.isProof then
-      ("proof", "proof_wrapper bp_kind_proof",
+  let (kindText, showLabel, kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
+    match data.kind with
+    | none =>
+      ("Proof", false, "proof", "proof_wrapper bp_kind_proof",
         "proof_heading", "proof_caption", "proof_label", "proof_content")
-    else
-      match data.kind with
+    | some statement =>
+      match statement.kind with
       | .definition =>
-        ("definition", "definition_thmwrapper theorem-style-definition bp_kind_definition",
+        (s!"{statement.kind}", true, "definition",
+          "definition_thmwrapper theorem-style-definition bp_kind_definition",
           "definition_thmheading", "definition_thmcaption", "definition_thmlabel", "definition_thmcontent")
       | .theorem =>
-        ("theorem", "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
+        (s!"{statement.kind}", true, "theorem",
+          "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
           "theorem_thmheading", "theorem_thmcaption", "theorem_thmlabel", "theorem_thmcontent")
       | .lemma =>
-        ("lemma", "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
+        (s!"{statement.kind}", true, "lemma",
+          "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
           "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
       | .corollary =>
-        ("corollary", "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
+        (s!"{statement.kind}", true, "corollary",
+          "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
           "corollary_thmheading", "corollary_thmcaption", "corollary_thmlabel", "corollary_thmcontent")
   let wrapperClass := s!"bp_wrapper {kindCss}_thmwrapper {wrapperCss}"
   let headingClass := s!"bp_heading {headingCss}"
@@ -779,15 +782,14 @@ block_extension Block.informal (data : BlockData) where
         let path ← (·.path) <$> read
         let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
         modify λ s => s.saveDomainObject informalPreviewDomain previewKey id
-      if !blockData.isProof then
-        for decl in blockData.codeData.map BlockCodeData.externalDecls |>.getD #[] do
-          let key := Resolve.externalRenderedDeclTargetKey label decl.canonical
-          if ((← get).getDomainObject? informalExternalDeclDomain key).isNone then
-            let declId ← Verso.Genre.Manual.freshId
-            let path ← (·.path) <$> read
-            let _ ← Verso.Genre.Manual.externalTag declId path
-              s!"--informal-external-decl-{label}-{decl.canonical}"
-            modify λ s => s.saveDomainObject informalExternalDeclDomain key declId
+      for decl in blockData.codeData?.map BlockCodeData.externalDecls |>.getD #[] do
+        let key := Resolve.externalRenderedDeclTargetKey label decl.canonical
+        if ((← get).getDomainObject? informalExternalDeclDomain key).isNone then
+          let declId ← Verso.Genre.Manual.freshId
+          let path ← (·.path) <$> read
+          let _ ← Verso.Genre.Manual.externalTag declId path
+            s!"--informal-external-decl-{label}-{decl.canonical}"
+          modify λ s => s.saveDomainObject informalExternalDeclDomain key declId
       if let .some _d := (← get).getDomainObject? informalDomain label.toString then
         return none
       else
@@ -823,7 +825,7 @@ block_extension Block.informal (data : BlockData) where
             | .error err =>
                 HtmlT.logError s!"Malformed informal code data for {data.label}: {err}"
                 pure none
-        let codeSource := BlockCodeData.ofHintAndInline data.codeData codeData?
+        let codeSource := BlockCodeData.ofHintAndInline data.codeData? codeData?
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveInlineLeanDeclHref? s decl
         let getDeclAnchorAttrs (decl : Data.ExternalRef) : Array (String × String) :=
@@ -843,18 +845,23 @@ block_extension Block.informal (data : BlockData) where
           codeHref
           source := codeSource
         }
-        let headingParts := CodeSummary.renderParts data cdata getDeclHref
+        let headingParts? : Option CodeSummary.RenderParts :=
+          match data.kind with
+          | some _ => some <| CodeSummary.renderParts data cdata getDeclHref
+          | none => none
         let externalParts? : Option ExternalCode.RenderParts :=
-          match codeSource with
-          | some (.external decls) =>
+          match data.kind, codeSource with
+          | some _, some (.external decls) =>
             if decls.isEmpty then
               none
             else
               some <| ExternalCode.renderParts data decls getDeclHref getDeclAnchorAttrs
-          | _ => none
+          | _, _ => none
         let externalPanel := (externalParts?.map (·.externalCodePanel)).getD .empty
         let content := (← blocks.mapM goB)
-        let informalBlock := renderInformalBlock data attrs headingParts.statusMark headingParts.codeEntry content
+        let statusMark := headingParts?.bind (·.statusMark)
+        let codeEntry := (headingParts?.map (·.codeEntry)).getD .empty
+        let informalBlock := renderInformalBlock data attrs statusMark codeEntry content
         return .seq #[informalBlock, externalPanel]
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
@@ -873,7 +880,9 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(lean := ...)' in a proof block"
     let hasExternal := hasExternalRaw && !isProof
     let codeHint : Option Data.CodeRef :=
-      if hasExternal then
+      if isProof then
+        none
+      else if hasExternal then
         some (.external resolvedExternalCode)
       else if hasLeanok then
         some .userOk
@@ -889,11 +898,15 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let node? ← Environment.getNode? label
     let nodeCodeRef? := node?.bind (·.code)
     let nodeKind := node?.map (·.kind) |>.getD kind
-    let codeData := BlockCodeData.ofCodeRefHint nodeCodeRef?
+    let blockKind? : Option StatementBlockData :=
+      if isProof then
+        none
+      else
+        some { kind := nodeKind, codeData := BlockCodeData.ofCodeRefHint nodeCodeRef? }
     let texPrelude ← Environment.getTexPrelude
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := { kind := nodeKind, label, count, isProof, codeData, texPrelude }
+    let data : BlockData := { kind := blockKind?, label, count, texPrelude }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
 private def directiveName (kind : Data.NodeKind) (isProof : Bool): String :=

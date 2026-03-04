@@ -6,6 +6,7 @@ Author: David Thrane Christiansen
 import Tests.Basic
 import Tests.BlueprintInformal
 import Tests.BlueprintGraph
+import Tests.BlueprintSummaryStatus
 import Tests.BlueprintSummaryLinks
 import Tests.Elab
 import Tests.GenericCode
