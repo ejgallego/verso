@@ -16,8 +16,27 @@ def previewHoverUtilsJs : String := r##"(function () {
     root.querySelectorAll(selector).forEach(function (tpl) {
       if (!(tpl instanceof Element)) return;
       const label = tpl.getAttribute("data-bp-preview-label") || "";
-      const html = (tpl.innerHTML || "").trim();
-      const texPrelude = (tpl.getAttribute("data-bp-preview-tex-prelude") || "").trim();
+      let html = "";
+      let texPrelude = "";
+      if (tpl instanceof HTMLTemplateElement) {
+        const content = tpl.content.cloneNode(true);
+        if (content instanceof DocumentFragment) {
+          const preludeNode = content.querySelector("script.bp_preview_tex_prelude[type=\"text/plain\"]");
+          if (preludeNode instanceof Element) {
+            texPrelude = (preludeNode.textContent || "").trim();
+            preludeNode.remove();
+          }
+          const wrapper = document.createElement("div");
+          wrapper.appendChild(content);
+          html = (wrapper.innerHTML || "").trim();
+        }
+      }
+      if (!html) {
+        html = (tpl.innerHTML || "").trim();
+      }
+      if (!texPrelude) {
+        texPrelude = (tpl.getAttribute("data-bp-preview-tex-prelude") || "").trim();
+      }
       if (label && html) {
         map.set(label, { html: html, texPrelude: texPrelude });
       }
