@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` header refactor implemented, validated, and ready for discussion)
+Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` merged into `bp`, validated, preview confirmed stopped, and cleaned up)
 
 ## Active Worktrees
 
@@ -21,26 +21,6 @@ Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` header refa
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/informal-code-header-unify-20260304`
-
-- Status: `active` (owner action: review proposed HTML/CSS follow-ups after header refactor)
-- Summary: review informal block + inline/external code HTML/CSS and align both code headers to a single lemma-style source with `Code for Lemma X`.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-header-unify-20260304`
-- Branch: `feat/informal-code-header-unify-20260304`
-- Base commit/branch:
-  - from `bp` at `add12014`
-- Key commit:
-  - `e7dc0c9f` refactor(informal): unify code panel headers
-- Validation status:
-  - `lake exe cache get` (cache warm, no download)
-  - `lake exe noperthedron` (pass after header refactor)
-- Preview:
-  - `http://127.0.0.1:8110/` (server session `31758`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/informal-code-header-unify-20260304`
-  - `git status --short`
-  - `lake exe noperthedron`
 
 ### `feat/external-def-link-targets-20260304`
 
@@ -97,6 +77,18 @@ Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` header refa
 
 ## Recently Completed
 
+- Merged `feat/informal-code-header-unify-20260304` into `bp` (`238da35e -> 75f12d4d`, fast-forward).
+- Feature branch key commits:
+  - `3bbb730b` refactor(informal): unify code panel headers
+  - `75f12d4d` docs(dashboard): mark code header refactor validated
+- Rebased feature branch on `bp` before merge (`b0d65c10 -> 687d4fd5`, conflict resolved in `WORKTREE_DASHBOARD.md`).
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Preview endpoint `http://127.0.0.1:8110/` confirmed stopped (connection refused).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-header-unify-20260304`.
+- Deleted branch: `feat/informal-code-header-unify-20260304`.
 - Merged `feat/informal-block-tohtml-audit-20260303` into `bp` (`c9c744c8 -> aa0af98e`, fast-forward).
 - Feature branch key commits:
   - `6f618850` Refactor inline block code metadata and decl link resolution
