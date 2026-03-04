@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` created with preview server for summary-page status/category updates)
+Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` implemented, validated, and ready for review; rebase onto `bp` pending)
 
 ## Active Worktrees
 
@@ -24,15 +24,17 @@ Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` created wit
 
 ### `feat/summary-page-axioms-status-20260304`
 
-- Status: `active` (owner action: implement summary-page category/status updates and validate)
-- Summary: dedicated worktree for summary-page analysis and updates (missing/extra organization review, axiom category, and per-kind status breakdowns).
+- Status: `ready-for-review` (owner action: rebase on `bp`, then review/merge)
+- Summary: summary page now reports per-kind completion/dependency/sorry/no-proof status lines, adds explicit axiom-like category/index, and keeps existing detailed lists intact.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-page-axioms-status-20260304`
 - Branch: `feat/summary-page-axioms-status-20260304`
 - Base commit/branch:
-  - branch point from `bp`: `61576b10`
+  - merge-base with `bp`: `61576b10` (`6` behind / `2` ahead)
 - Key commits:
-  - pending
+  - `670a4d0d` feat(summary): add axiom category and per-kind status breakdown
+  - `2a848a2e` docs(dashboard): register summary-page-axioms-status worktree
 - Validation status:
+  - `lake build VersoBlueprint.Commands.Summary` (pass)
   - `lake exe cache get` (pass)
   - `lake exe noperthedron` (pass with existing project warnings)
   - preview server: `http://127.0.0.1:8112/` (session `85915`)
