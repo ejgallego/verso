@@ -60,15 +60,24 @@ def previewHoverUtilsJs : String := r##"(function () {
     if (!(root instanceof Element)) return;
     if (typeof katex !== "object" || typeof katex.render !== "function") return;
     const prelude = typeof texPrelude === "string" ? texPrelude.trim() : "";
+    const hasPrelude = prelude.length > 0;
     const renderWrapped = !!katex.render.__versoTexPreludeWrapped;
+    const originalRender =
+      renderWrapped && typeof katex.render.__versoTexPreludeOriginal === "function"
+        ? katex.render.__versoTexPreludeOriginal
+        : null;
+    const renderFn = hasPrelude && typeof originalRender === "function" ? originalRender : katex.render;
     const renderAll = function (selector, displayMode) {
       root.querySelectorAll(selector).forEach(function (m) {
         if (!(m instanceof Element)) return;
         if (m.getAttribute("data-bp-math-rendered") === "1") return;
         try {
           const tex = m.textContent || "";
-          const renderInput = prelude.length > 0 && !renderWrapped ? prelude + "\n" + tex : tex;
-          katex.render(renderInput, m, { throwOnError: false, displayMode: displayMode });
+          const renderInput =
+            hasPrelude && (typeof originalRender === "function" || !renderWrapped)
+              ? prelude + "\n" + tex
+              : tex;
+          renderFn(renderInput, m, { throwOnError: false, displayMode: displayMode });
           m.setAttribute("data-bp-math-rendered", "1");
         } catch (_err) {}
       });
