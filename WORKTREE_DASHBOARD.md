@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/toc-no-number-special-sections-20260304` merged into `bp`, preview stopped, and worktree cleaned)
+Last updated: 2026-03-04 (`feat/previewrender-direct-poc-20260304` cleaned up without merge per request)
 
 ## Active Worktrees
 
@@ -58,6 +58,14 @@ Last updated: 2026-03-04 (`feat/toc-no-number-special-sections-20260304` merged 
 
 ## Recently Completed
 
+- Closed `feat/previewrender-direct-poc-20260304` without merge (requested discard after experiment).
+- Feature branch note:
+  - `81f89752` docs(dashboard): register previewrender direct POC worktree
+- Validation before discard:
+  - `lake exe noperthedron`
+- Stopped preview server session `85818` (`http://127.0.0.1:8126/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/previewrender-direct-poc-20260304`.
+- Deleted branch: `feat/previewrender-direct-poc-20260304`.
 - Merged `feat/toc-no-number-special-sections-20260304` into `bp` (`d3fe626e -> 3ec15232`, fast-forward).
 - Feature branch key commits:
   - `06b20584` fix(toc): unnumber blueprint graph, summary, and bibliography sections
