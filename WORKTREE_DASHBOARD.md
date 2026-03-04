@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` merged into `bp`, validated, preview confirmed stopped, and cleaned up)
+Last updated: 2026-03-04 (`feat/external-def-link-targets-20260304` merged into `bp`, validated, preview stopped, and cleaned up)
 
 ## Active Worktrees
 
@@ -21,25 +21,6 @@ Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` merged into
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/external-def-link-targets-20260304`
-
-- Status: `created` (owner action: implement external definition link-target registration + summary wiring)
-- Summary: started task to register link targets for rendered external definitions so summary associated-declaration rows can deep-link to rendered external panels.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-20260304`
-- Branch: `feat/external-def-link-targets-20260304`
-- Base commit/branch:
-  - from `bp` @ `add12014`
-- Key commits:
-  - none yet
-- Validation status:
-  - setup: copied root `.lake`
-  - `lake exe cache get`
-  - `lake exe noperthedron`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-20260304`
-  - `git status --short`
-  - preview URL: `http://127.0.0.1:8102/` (session `69914`, serves `_out/`)
 
 ### `feat/lsp-folding-chain`
 
@@ -77,6 +58,17 @@ Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` merged into
 
 ## Recently Completed
 
+- Merged `feat/external-def-link-targets-20260304` into `bp` (`c55685f7 -> 11dcbf94`, fast-forward).
+- Feature branch key commit:
+  - `11dcbf94` feat(summary): link external decls to rendered targets
+- Rebased feature branch on `bp` before merge (`9a176052 -> 11dcbf94`).
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server process `337274` (`http://127.0.0.1:8102/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-20260304`.
+- Deleted branch: `feat/external-def-link-targets-20260304`.
 - Merged `feat/informal-code-header-unify-20260304` into `bp` (`238da35e -> 75f12d4d`, fast-forward).
 - Feature branch key commits:
   - `3bbb730b` refactor(informal): unify code panel headers
