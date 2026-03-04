@@ -13,7 +13,6 @@ import Lean.Elab.InfoTree.Types
 
 import VersoManual
 
-import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
 import VersoBlueprint.Informal.CodeCommon
@@ -56,9 +55,6 @@ def informalCodeDomain : Name := Resolve.informalCodeDomainName
 
 /-- Name used in {name}`TraverseState.domains` for informal preview payloads. -/
 def informalPreviewDomain : Name := Resolve.informalPreviewDomainName
-
-/-- Name used in {name}`TraverseState.domains` for rendered external declaration anchors. -/
-def informalExternalDeclDomain : Name := Resolve.externalRenderedDeclDomainName
 
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
@@ -772,7 +768,7 @@ block_extension Block.informal (data : BlockData) where
       let label := blockData.label
       let previewFacet := if blockData.isProof then PreviewCache.Facet.proof else PreviewCache.Facet.statement
       let previewKey := PreviewCache.key label previewFacet
-      let previewData := toJson (PreviewCache.Entry.ofBlocks label blockData.isProof _contents)
+      let previewData := toJson (PreviewCache.Entry.ofBlocks label blockData.isProof _contents blockData.texPrelude)
       let existingPreview? := (← get).getDomainObject? informalPreviewDomain previewKey
       if shouldWritePreviewData existingPreview? id then
         modify λ s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
@@ -780,15 +776,6 @@ block_extension Block.informal (data : BlockData) where
         let path ← (·.path) <$> read
         let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
         modify λ s => s.saveDomainObject informalPreviewDomain previewKey id
-      if !blockData.isProof then
-        for decl in blockData.codeData.map BlockCodeData.externalDecls |>.getD #[] do
-          let key := Resolve.externalRenderedDeclTargetKey label decl.canonical
-          if ((← get).getDomainObject? informalExternalDeclDomain key).isNone then
-            let declId ← Verso.Genre.Manual.freshId
-            let path ← (·.path) <$> read
-            let _ ← Verso.Genre.Manual.externalTag declId path
-              s!"--informal-external-decl-{label}-{decl.canonical}"
-            modify λ s => s.saveDomainObject informalExternalDeclDomain key declId
       if let .some _d := (← get).getDomainObject? informalDomain label.toString then
         return none
       else
@@ -799,7 +786,7 @@ block_extension Block.informal (data : BlockData) where
         return none
   toTeX := none
   extraCss := ([blueprintCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
-  extraJs := ([blueprintStyleSwitcherJs, Informal.Commands.openTargetDetailsJs] : List String)
+  extraJs := ([blueprintStyleSwitcherJs] : List String)
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
@@ -827,17 +814,6 @@ block_extension Block.informal (data : BlockData) where
         let codeSource := BlockCodeData.ofHintAndInline data.codeData codeData?
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveInlineLeanDeclHref? s decl
-        let getDeclAnchorAttrs (decl : Data.ExternalRef) : Array (String × String) :=
-          let attrsFor (declName : Name) : Array (String × String) :=
-            let key := Resolve.externalRenderedDeclTargetKey data.label declName
-            match s.getDomainObject? informalExternalDeclDomain key with
-            | none => #[]
-            | some obj =>
-              match obj.ids.toArray[0]? with
-              | some targetId => s.htmlId targetId
-              | none => #[]
-          let canonicalAttrs := attrsFor decl.canonical
-          if canonicalAttrs.isEmpty then attrsFor decl.written else canonicalAttrs
         let cdata := {
           codeHref
           source := codeSource
@@ -849,7 +825,7 @@ block_extension Block.informal (data : BlockData) where
             if decls.isEmpty then
               none
             else
-              some <| ExternalCode.renderParts data decls getDeclHref getDeclAnchorAttrs
+              some <| ExternalCode.renderParts data decls getDeclHref
           | _ => none
         let externalPanel := (externalParts?.map (·.externalCodePanel)).getD .empty
         let content := (← blocks.mapM goB)
@@ -889,9 +865,10 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let nodeCodeRef? := node?.bind (·.code)
     let nodeKind := node?.map (·.kind) |>.getD kind
     let codeData := BlockCodeData.ofCodeRefHint nodeCodeRef?
+    let texPrelude ← Environment.getTexPrelude
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := { kind := nodeKind, label, count, isProof, codeData }
+    let data : BlockData := { kind := nodeKind, label, count, isProof, codeData, texPrelude }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
 private def directiveName (kind : Data.NodeKind) (isProof : Bool): String :=

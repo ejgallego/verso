@@ -7,6 +7,7 @@ Author: Emilio J. Gallego Arias
 import Lean
 import Verso
 import VersoManual
+import VersoBlueprint.Commands.Common
 import VersoBlueprint.Environment
 import VersoBlueprint.Graph
 import VersoBlueprint.Lib.HoverRender
@@ -359,16 +360,14 @@ def loadD3Dot :=
     }
 
     function collectPreviewTemplates() {
-      const map = new Map();
-      const templates = document.querySelectorAll("template.bp_graph_preview_tpl[data-bp-preview-label]");
-      templates.forEach(function (tpl) {
-        const label = tpl.getAttribute("data-bp-preview-label") || "";
-        const html = (tpl.innerHTML || "").trim();
-        if (label && html) {
-          map.set(label, html);
-        }
-      });
-      return map;
+      const utils = window.bpPreviewUtils;
+      if (!utils || typeof utils.collectPreviewTemplates !== "function") {
+        return new Map();
+      }
+      return utils.collectPreviewTemplates(
+        document,
+        "template.bp_graph_preview_tpl[data-bp-preview-label]"
+      );
     }
 
     function collectGraphVariants(graphContainer) {
@@ -408,21 +407,27 @@ def loadD3Dot :=
       return textTxt || "";
     }
 
-    function renderMath(root) {
-      if (!root) return;
-      if (typeof katex !== "object" || typeof katex.render !== "function") return;
-      const renderAll = function (selector, displayMode) {
-        root.querySelectorAll(selector).forEach(function (m) {
-          if (!(m instanceof Element)) return;
-          if (m.getAttribute("data-bp-math-rendered") === "1") return;
-          try {
-            katex.render(m.textContent || "", m, { throwOnError: false, displayMode: displayMode });
-            m.setAttribute("data-bp-math-rendered", "1");
-          } catch (_err) {}
-        });
+    function parsePreviewEntry(entry) {
+      const utils = window.bpPreviewUtils;
+      if (utils && typeof utils.readPreviewTemplate === "function") {
+        return utils.readPreviewTemplate(entry);
+      }
+      if (typeof entry === "string") {
+        return { html: entry, texPrelude: "" };
+      }
+      if (!entry || typeof entry !== "object") {
+        return { html: "", texPrelude: "" };
+      }
+      return {
+        html: typeof entry.html === "string" ? entry.html : "",
+        texPrelude: typeof entry.texPrelude === "string" ? entry.texPrelude : ""
       };
-      renderAll(".math.inline", false);
-      renderAll(".math.display", true);
+    }
+
+    function renderMath(root, texPrelude) {
+      const utils = window.bpPreviewUtils;
+      if (!utils || typeof utils.renderMath !== "function") return;
+      utils.renderMath(root, texPrelude);
     }
 
     function attachPreviewHandlers(graphContainer, previewMap) {
@@ -440,11 +445,13 @@ def loadD3Dot :=
         return;
       }
       const show = function (label) {
-        const html = previewMap.get(label);
+        const entry = parsePreviewEntry(previewMap.get(label));
+        const html = entry.html;
+        const texPrelude = entry.texPrelude;
         if (!html) return;
         title.textContent = label;
         body.innerHTML = html;
-        renderMath(body);
+        renderMath(body, texPrelude);
         panel.hidden = false;
       };
       const nodes = svg.querySelectorAll("g.node");
@@ -636,7 +643,10 @@ def loadD3Dot :=
   const previewClose = previewPanelNode
     ? previewPanelNode.querySelector(".bp_graph_preview_close")
     : null;
-  if (previewClose && previewClose.getAttribute("data-bp-bound") !== "1") {
+  const previewUtils = window.bpPreviewUtils;
+  if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
+    previewUtils.bindCloseOnce(previewClose, hidePreviewPanel);
+  } else if (previewClose && previewClose.getAttribute("data-bp-bound") !== "1") {
     previewClose.setAttribute("data-bp-bound", "1");
     previewClose.addEventListener("click", function (ev) {
       ev.preventDefault();
@@ -930,9 +940,9 @@ block_extension Block.graph (graphData : GraphBlockData) where
         | some variant => variant.dot
         | Option.none => graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
       let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
-        let some renderedBlocks ← Informal.PreviewSource.renderTraversalBlocks? s goB node.label
+        let some (renderedBlocks, texPrelude) ← Informal.PreviewSource.renderTraversalPreview? s goB node.label
           | pure acc
-        pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks)
+        pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks texPrelude)
       let previewUi := Informal.HoverRender.graphPreviewUi previewTemplates
       let groupHoverPanel : Output.Html := {{
         <aside id="bp-group-hover-preview" class="bp_group_hover_preview" hidden>
@@ -1000,7 +1010,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
         </div>
       }}
   extraCss := ([graphCss, blueprintStyleSwitcherCss] : List String)
-  extraJs := ([loadD3Dot, graphTocToggleJs, blueprintStyleSwitcherJs] : List String)
+  extraJs := ([previewHoverUtilsJs, loadD3Dot, graphTocToggleJs, blueprintStyleSwitcherJs] : List String)
 
 def buildAll : CoreM (Graph × Array (Name × String)) := do
   let env ← getEnv
