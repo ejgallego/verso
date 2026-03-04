@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` validated; `Chapters.Main` is now included so `thm:exists_solution_table` has incoming edges)
+Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` ready-for-review with validated graph-edge fix)
 
 ## Active Worktrees
 
@@ -65,7 +65,8 @@ Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` validated; 
 - Base commit/branch:
   - branched from `bp` at `b7a2b42d`
 - Key commits:
-  - pending (workspace not committed yet)
+  - `90a52933` docs(dashboard): register exists-solution-table-uses worktree
+  - `7742b120` fix(noperthedron): include main chapter in blueprint graph
 - Validation status:
   - `lake exe cache get`
   - `lake exe noperthedron`
