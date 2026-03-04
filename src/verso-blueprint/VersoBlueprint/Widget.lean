@@ -294,11 +294,15 @@ def updatePanel (title label : String) (statementHtml : Json) (dot texPrelude : 
     (blueprintWidget.javascriptHash)
     (rpcEncode ({ title, label, statementHtml, dot, texPrelude } : GraphParams )) stx
 
+private def renderStatementPreviewJson (statementPreview? : Option (Array Lean.Syntax)) :
+    Lean.Elab.Term.TermElabM Json := do
+  toJson <$> Informal.PreviewSource.renderWidgetHtml statementPreview?
+
 def activateForLabelDoc (label : Name) (stx : Syntax) : Verso.Doc.Elab.DocElabM Unit := do
   if stx.getPos?.isNone then
     return ()
   let out ← buildFor label
-  let statementHtml := toJson (← Informal.PreviewSource.renderWidgetHtml out.statementPreview?)
+  let statementHtml ← renderStatementPreviewJson out.statementPreview?
   (monadLift (updatePanel s!"BluePrint widget: {label}" label.toString statementHtml out.dot out.texPrelude stx) : Verso.Doc.Elab.DocElabM Unit)
 
 show_panel_widgets [local blueprintWidget]
@@ -311,7 +315,7 @@ unsafe def elabGraph : CommandElab := fun
   | stx@`(#show_graph $label:str) => do
     let target := Name.mkSimple label.getString
     let out ← liftCoreM <| buildFor target
-    let statementHtml := toJson (← Lean.Elab.Command.liftTermElabM <| Informal.PreviewSource.renderWidgetHtml out.statementPreview?)
+    let statementHtml ← Lean.Elab.Command.liftTermElabM <| renderStatementPreviewJson out.statementPreview?
     liftCoreM <| updatePanel s!"BluePrint widget: {target}" label.getString statementHtml out.dot out.texPrelude stx
   | _ => throwUnsupportedSyntax
 

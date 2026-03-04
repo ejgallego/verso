@@ -930,9 +930,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
         | some variant => variant.dot
         | Option.none => graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
       let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
-        let some blocks := Informal.PreviewSource.traversalBlocks? s node.label
+        let some renderedBlocks ← Informal.PreviewSource.renderTraversalBlocks? s goB node.label
           | pure acc
-        let renderedBlocks ← blocks.mapM goB
         pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks)
       let previewUi := Informal.HoverRender.graphPreviewUi previewTemplates
       let groupHoverPanel : Output.Html := {{
