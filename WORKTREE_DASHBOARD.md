@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` created from `bp`, cache synced, preview started at `http://127.0.0.1:8110/`)
+Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` header refactor implemented, validated, and ready for discussion)
 
 ## Active Worktrees
 
@@ -24,17 +24,17 @@ Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` created fro
 
 ### `feat/informal-code-header-unify-20260304`
 
-- Status: `active` (owner action: analyze informal code rendering and apply shared header refactor)
+- Status: `active` (owner action: review proposed HTML/CSS follow-ups after header refactor)
 - Summary: review informal block + inline/external code HTML/CSS and align both code headers to a single lemma-style source with `Code for Lemma X`.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-header-unify-20260304`
 - Branch: `feat/informal-code-header-unify-20260304`
 - Base commit/branch:
   - from `bp` at `add12014`
 - Key commit:
-  - none yet
+  - `e7dc0c9f` refactor(informal): unify code panel headers
 - Validation status:
   - `lake exe cache get` (cache warm, no download)
-  - `lake exe noperthedron` (pass)
+  - `lake exe noperthedron` (pass after header refactor)
 - Preview:
   - `http://127.0.0.1:8110/` (server session `31758`)
 - Resume commands/notes:
