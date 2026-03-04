@@ -24,21 +24,21 @@ Last updated: 2026-03-04 (`feat/proved-status-audit-20260304` merged into `bp`, 
 
 ### `feat/external-def-link-targets-restore-20260304`
 
-- Status: `created` (owner action: restore dropped external-decl link wiring and add regression test)
-- Summary: recovery worktree after later merges dropped summary/external-declaration anchor registration and label-aware resolution.
+- Status: `ready-for-review` (owner action: merge into `bp`)
+- Summary: restored external declaration anchor registration in informal blocks and restored summary linking to those rendered targets; added regression test coverage.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-restore-20260304`
 - Branch: `feat/external-def-link-targets-restore-20260304`
 - Base commit/branch:
-  - from `bp` @ `c860c628`
-- Key commits:
-  - none yet
+  - created from `bp` at `c860c628`
+- Key commit:
+  - `b53b5bf0` fix(summary): restore external decl anchors and add regression test
 - Validation status:
-  - setup: synced `.lake` and ran `lake exe cache get`
-  - baseline: `lake exe noperthedron`
+  - `lake build Tests`
+  - `lake exe noperthedron`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-restore-20260304`
   - `git status --short`
-  - preview URL: `http://127.0.0.1:8113/` (session `36882`, serves `_out/`)
+  - `git log --oneline -2`
 
 ### `feat/lsp-folding-chain`
 
