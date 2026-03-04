@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/proved-status-audit-20260304` merged into `bp`, validated on rebased head and `bp`, preview stopped, worktree cleaned)
+Last updated: 2026-03-04 (`feat/external-def-link-targets-restore-20260304` merged into `bp`, validated on rebased head and `bp`, preview stopped, worktree cleaned)
 
 ## Active Worktrees
 
@@ -21,24 +21,6 @@ Last updated: 2026-03-04 (`feat/proved-status-audit-20260304` merged into `bp`, 
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/external-def-link-targets-restore-20260304`
-
-- Status: `ready-for-review` (owner action: merge into `bp`)
-- Summary: restored external declaration anchor registration in informal blocks and restored summary linking to those rendered targets; added regression test coverage.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-restore-20260304`
-- Branch: `feat/external-def-link-targets-restore-20260304`
-- Base commit/branch:
-  - created from `bp` at `c860c628`
-- Key commit:
-  - `b53b5bf0` fix(summary): restore external decl anchors and add regression test
-- Validation status:
-  - `lake build Tests`
-  - `lake exe noperthedron`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-restore-20260304`
-  - `git status --short`
-  - `git log --oneline -2`
 
 ### `feat/lsp-folding-chain`
 
@@ -76,6 +58,19 @@ Last updated: 2026-03-04 (`feat/proved-status-audit-20260304` merged into `bp`, 
 
 ## Recently Completed
 
+- Merged `feat/external-def-link-targets-restore-20260304` into `bp` (`e3c6d140 -> 83ba5b77`, fast-forward).
+- Feature branch key commits:
+  - `a6d9a218` fix(summary): restore external decl anchors and add regression test
+  - `83ba5b77` docs(dashboard): mark external-def-link-target restore ready
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Preview endpoint `http://127.0.0.1:8113/` confirmed stopped (connection refused).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-restore-20260304`.
+- Deleted branch: `feat/external-def-link-targets-restore-20260304`.
 - Merged `feat/proved-status-audit-20260304` into `bp` (`f4e6fa8d -> a9fbebb7`, fast-forward).
 - Feature branch key commit:
   - `a9fbebb7` refactor(informal): dedupe proved-status summary helpers
