@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` merged into `bp`, validated, and cleaned up)
+Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` created; preview server started at `http://127.0.0.1:8114/`)
 
 ## Active Worktrees
 
@@ -21,6 +21,27 @@ Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` merged into
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/noperthedron-missing-def-warning`
+
+- Status: `active` (owner action: implement and validate missing-definition warning fix)
+- Summary: investigate unresolved external Lean name warning for `lem:congruent` in the Noperthedron local theorem chapter.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/noperthedron-missing-def-warning`
+- Branch: `feat/noperthedron-missing-def-warning`
+- Base commit/branch:
+  - branch point from `bp`: `4f743c2a`
+- Key commit:
+  - none yet
+- Validation status:
+  - `lake exe cache get` (no downloads needed)
+  - `lake exe noperthedron` reproduced warning:
+  - unresolved external Lean name `Local.congruent_iff_sym_matrix_eq` at `Chapters/LocalTheorem.lean:241`
+- Preview:
+  - `http://127.0.0.1:8114/` (server session `70614`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/noperthedron-missing-def-warning`
+  - `lake exe noperthedron`
+  - `git status --short`
 
 ### `feat/lsp-folding-chain`
 
