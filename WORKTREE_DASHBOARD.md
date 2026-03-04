@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/external-def-link-targets-restore-20260304` merged into `bp`, validated on rebased head and `bp`, preview stopped, worktree cleaned)
+Last updated: 2026-03-04 (`feat/hover-texprelude-investigate-20260304` merged into `bp`, validated on rebased head and `bp`, preview stopped, worktree cleaned)
 
 ## Active Worktrees
 
@@ -58,6 +58,19 @@ Last updated: 2026-03-04 (`feat/external-def-link-targets-restore-20260304` merg
 
 ## Recently Completed
 
+- Merged `feat/hover-texprelude-investigate-20260304` into `bp` (`1523f50c -> 96de57c9`, fast-forward).
+- Feature branch key commits:
+  - `e0d7425c` fix(preview): preserve tex prelude text in hover templates
+  - `96de57c9` fix(preview): bypass wrapped katex render for explicit hover prelude
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build VersoBlueprint.Lib.HoverRender VersoBlueprint.Commands.Common VersoBlueprint.Commands.Graph VersoBlueprint.Commands.Summary`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Preview endpoint `http://127.0.0.1:8112/Blueprint-Summary/` confirmed stopped.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/hover-texprelude-investigate-20260304`.
+- Deleted branch: `feat/hover-texprelude-investigate-20260304`.
 - Merged `feat/external-def-link-targets-restore-20260304` into `bp` (`e3c6d140 -> 83ba5b77`, fast-forward).
 - Feature branch key commits:
   - `a6d9a218` fix(summary): restore external decl anchors and add regression test
