@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` rebased on `bp`; ready to merge)
+Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` merged into `bp`, validated, and cleaned up)
 
 ## Active Worktrees
 
@@ -21,28 +21,6 @@ Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` rebased on `bp
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/noperthedron-missing-def-warning`
-
-- Status: `rebased` (owner action: merge into `bp` and clean up worktree)
-- Summary: investigate unresolved external Lean name warning for `lem:congruent` in the Noperthedron local theorem chapter.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/noperthedron-missing-def-warning`
-- Branch: `feat/noperthedron-missing-def-warning`
-- Base commit/branch:
-  - branch point from `bp`: `4f743c2a`
-- Key commit:
-  - `f9215100` fix(local-theorem): import congruent module for lemma reference
-- Validation status:
-  - `lake exe cache get` (no downloads needed)
-  - `lake exe noperthedron` reproduced warning:
-  - unresolved external Lean name `Local.congruent_iff_sym_matrix_eq` at `Chapters/LocalTheorem.lean:241`
-  - `lake exe noperthedron` after fix: warning no longer appears
-- Preview:
-  - `http://127.0.0.1:8114/` (server session `70614`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/noperthedron-missing-def-warning`
-  - `lake exe noperthedron`
-  - `git status --short`
 
 ### `feat/lsp-folding-chain`
 
@@ -80,6 +58,18 @@ Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` rebased on `bp
 
 ## Recently Completed
 
+- Merged `feat/noperthedron-missing-def-warning` into `bp` (`4f743c2a -> 6a484f9b`, fast-forward).
+- Feature branch key commits:
+  - `f9215100` fix(local-theorem): import congruent module for lemma reference
+  - `6a484f9b` docs(dashboard): mark warning-fix worktree rebased
+- Rebased feature branch on `bp` before merge.
+- Validation on feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server process `360880` (`http://127.0.0.1:8114/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/noperthedron-missing-def-warning`.
+- Deleted branch: `feat/noperthedron-missing-def-warning`.
 - Merged `feat/summary-page-axioms-status-20260304` into `bp` (`ed37bfd0 -> b0b89028`, fast-forward).
 - Feature branch key commits:
   - `068732e2` feat(summary): add axiom category and per-kind status breakdown
