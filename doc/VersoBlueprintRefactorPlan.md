@@ -62,3 +62,15 @@ Validation snapshot:
 ## Immediate Next Action
 
 1. Introduce `buildCodeRenderData` so `Informal/Code.lean` stays pure over precomputed facts.
+
+## 2026-03-04 Summary Streamlining Follow-ups
+
+1. Hide zero-value summary cards/sections by default (for example, empty axiom/no-proof buckets).
+2. Merge "Missing external Lean declarations" and "Incomplete details" into a single "Blockers" section with status filters.
+3. Reduce theorem-list duplication by defaulting to one primary view:
+   - either flat theorem-like index or by-parent index (keep the other behind a toggle/secondary details block).
+4. Replace long inline status text with compact chips:
+   - `complete`, `deps`, `sorries`, `no-proof`.
+5. Add a compact-mode toggle:
+   - cards-only summary view,
+   - expandable detailed lists.
