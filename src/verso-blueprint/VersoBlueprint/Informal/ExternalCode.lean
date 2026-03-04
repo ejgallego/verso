@@ -138,6 +138,7 @@ end
 private structure LinkedExternalDecl where
   decl : Data.ExternalRef
   href : Option String := none
+  anchorAttrs : Array (String × String) := #[]
 
 private def externalDeclHasSorry (decl : LinkedExternalDecl) : Bool :=
   decl.decl.present && provedStatusHasSorry decl.decl.provedStatus
@@ -280,8 +281,9 @@ private def externalDeclItem (item : LinkedExternalDecl) (statusTxt : String)
     (body : Output.Html := .empty) (headTail : Output.Html := .empty) : Output.Html :=
   open Verso.Output.Html in
   let statusClass := externalDeclStatusClass item
+  let liAttrs := #[("class", "bp_external_decl_item")] ++ item.anchorAttrs
   {{
-    <li class="bp_external_decl_item">
+    <li {{liAttrs}}>
       <div class="bp_external_decl_head">
         {{externalDeclNode item}}
         <span class={{statusClass}}>{{.text true statusTxt}}</span>
@@ -309,7 +311,8 @@ Render external-code UI fragments for an informal block.
 This function only renders optional external code panel body for `(lean := ...)` references.
 -/
 def renderParts (data : BlockData)
-    (externalDecls : Array Data.ExternalRef) (getDeclHref : Name → Option String) : RenderParts :=
+    (externalDecls : Array Data.ExternalRef) (getDeclHref : Name → Option String)
+    (getDeclAnchorAttrs : Data.ExternalRef → Array (String × String) := fun _ => #[]) : RenderParts :=
   open Verso.Output.Html in
   if externalDecls.isEmpty then
     {}
@@ -322,7 +325,7 @@ def renderParts (data : BlockData)
           | none => getDeclHref decl.written
         else
           getDeclHref decl.written
-      { decl, href }
+      { decl, href, anchorAttrs := getDeclAnchorAttrs decl }
     let externalAgg := externalDeclAggregate linkedDecls
     let externalSummaryListItems (items : Array LinkedExternalDecl) : Output.Html :=
       if items.isEmpty then
@@ -370,8 +373,10 @@ def renderParts (data : BlockData)
           else
             match item.decl.render with
             | .ok renderedHtml =>
+              let renderedAttrs :=
+                #[("class", "bp_external_decl_item bp_external_decl_item_rendered")] ++ item.anchorAttrs
               {{
-                <li class="bp_external_decl_item bp_external_decl_item_rendered">
+                <li {{renderedAttrs}}>
                   <div class="bp_external_decl_rendered">{{renderedHtml}}</div>
                   <div class="bp_external_decl_rendered_meta">
                     <span class={{statusClass}}>{{.text true statusTxt}}</span>
