@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/toc-no-number-special-sections-20260304` validated and ready for review)
+Last updated: 2026-03-04 (`feat/toc-no-number-special-sections-20260304` merged into `bp`, preview stopped, and worktree cleaned)
 
 ## Active Worktrees
 
@@ -39,26 +39,6 @@ Last updated: 2026-03-04 (`feat/toc-no-number-special-sections-20260304` validat
   - `git status --short`
   - `git rebase bp`
 
-### `feat/toc-no-number-special-sections-20260304`
-
-- Status: `ready-for-review` (owner action: rebase + merge onto `bp`)
-- Summary: make `blueprint_graph`, `bp_summary`, and `bp_bibliography` generated sections unnumbered so TOC entries do not show numbers.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/toc-no-number-special-sections-20260304`
-- Branch: `feat/toc-no-number-special-sections-20260304`
-- Base commit/branch:
-  - merge-base with `bp`: `d3fe626e` (`0` behind / `1` ahead)
-- Key commit:
-  - `06b20584` fix(toc): unnumber blueprint graph, summary, and bibliography sections
-- Validation status:
-  - `lake exe noperthedron` passed (2026-03-04)
-  - generated HTML check confirms TOC rows are `unnumbered` for Dependency Graph, Blueprint Summary, and Blueprint Bibliography
-- Preview:
-  - `http://127.0.0.1:8125/` (server session `44287`, command: `npx http-server -p 8125 _out/html-multi`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/toc-no-number-special-sections-20260304`
-  - `git status --short`
-  - `lake exe noperthedron`
-
 ### `feat/sphere-packing-blueprint`
 
 - Status: `blocked` (owner action: checkpoint dirty edits, then rebase)
@@ -78,6 +58,18 @@ Last updated: 2026-03-04 (`feat/toc-no-number-special-sections-20260304` validat
 
 ## Recently Completed
 
+- Merged `feat/toc-no-number-special-sections-20260304` into `bp` (`d3fe626e -> 3ec15232`, fast-forward).
+- Feature branch key commits:
+  - `06b20584` fix(toc): unnumber blueprint graph, summary, and bibliography sections
+  - `3ec15232` docs(dashboard): mark toc-no-number worktree ready for review
+- Rebased feature branch on `bp` before merge (already up to date).
+- Validation on feature branch before merge:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server session `44287` (`http://127.0.0.1:8125/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/toc-no-number-special-sections-20260304`.
+- Deleted branch: `feat/toc-no-number-special-sections-20260304`.
 - Merged `feat/exists-solution-table-uses-20260304` into `bp` (`b7a2b42d -> 28d0e3ef`, fast-forward).
 - Feature branch key commits:
   - `7742b120` fix(noperthedron): include main chapter in blueprint graph
