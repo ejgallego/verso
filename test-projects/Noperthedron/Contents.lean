@@ -19,6 +19,7 @@ import Chapters.GlobalTheorem
 import Chapters.LocalTheorem
 import Chapters.Rational
 import Chapters.Computational
+import Chapters.Main
 
 open Verso.Genre
 open Verso.Genre.Manual hiding citep citet citehere
@@ -48,6 +49,7 @@ We follow for the most part the structure of {citet polyhedron.without.rupert}[]
 {include 0 Chapters.LocalTheorem}
 {include 0 Chapters.Rational}
 {include 0 Chapters.Computational}
+{include 0 Chapters.Main}
 
 {blueprint_graph}
 

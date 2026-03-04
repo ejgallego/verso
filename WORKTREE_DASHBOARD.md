@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` created; investigating missing incoming graph edges for `thm:exists_solution_table`)
+Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` validated; `Chapters.Main` is now included so `thm:exists_solution_table` has incoming edges)
 
 ## Active Worktrees
 
@@ -58,21 +58,25 @@ Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` created; in
 
 ### `feat/exists-solution-table-uses-20260304`
 
-- Status: `active` (owner action: decide whether to include `Chapters.Main` in `Contents.lean`)
-- Summary: investigate why `thm:exists_solution_table` appears isolated in dependency graph despite `uses` references in source.
+- Status: `ready-for-review` (owner action: review and merge into `bp`)
+- Summary: TeX parity fix: include `Chapters.Main` in `Contents.lean` and import `Noperthedron.Final` in `Chapters/Main.lean` so dependency edges and external links resolve.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/exists-solution-table-uses-20260304`
 - Branch: `feat/exists-solution-table-uses-20260304`
 - Base commit/branch:
   - branched from `bp` at `b7a2b42d`
 - Key commits:
-  - pending
+  - pending (workspace not committed yet)
 - Validation status:
   - `lake exe cache get`
   - `lake exe noperthedron`
+  - `lake exe noperthedron` (after adding `Chapters.Main` include and `Noperthedron.Final` import)
+  - graph payload now contains:
+    - `«thm:exists_solution_table»\" -> \"«thm:no_nopert_tight_pose»`
+    - `«thm:row_valid_imp_not_rupert»\" -> \"«thm:no_nopert_tight_pose»`
   - preview server running: `http://127.0.0.1:8122/` (`npx http-server -p 8122 _out/html-multi`, session `53968`)
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/exists-solution-table-uses-20260304`
-  - `rg -n "thm:exists_solution_table" test-projects/Noperthedron/Chapters test-projects/Noperthedron/Contents.lean`
+  - `git status --short`
   - `lake exe noperthedron`
 
 ## Recently Completed
