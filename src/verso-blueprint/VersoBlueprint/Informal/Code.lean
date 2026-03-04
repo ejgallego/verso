@@ -36,12 +36,6 @@ private def progressSegmentClass (missing hasSorry : Bool) : String :=
   else
     "bp_code_progress_segment bp_code_progress_segment_ok"
 
-private def codePanelSummary (data : BlockData) : String :=
-  if data.isProof then
-    "Code for proof"
-  else
-    s!"Code for {data.kind} {data.count}"
-
 private def codeSummaryStatusText (status : Data.ProvedStatus) : String :=
   match status with
   | .missing => "missing declaration"
@@ -100,13 +94,13 @@ block_extension Block.informalCode (data : InlineCodeData) where
           pure .empty
       let s ← HtmlT.state
       let attrs := s.htmlId id
-      let summaryText :=
+      let panelHeader :=
         match s.getDomainObject? informalDomain label.toString with
         | some obj =>
           match fromJson? (α := BlockData) obj.data with
-          | .ok b => codePanelSummary b
-          | .error _ => "Code"
-        | none => "Code"
+          | .ok b => codePanelHeader b
+          | .error _ => fallbackCodePanelHeader
+        | none => fallbackCodePanelHeader
       let orderedDecls := sortDeclsByCommand (definedDefs ++ definedTheorems)
       let getDeclHref (decl : Name) : Option String :=
         Resolve.resolveInlineLeanDeclHref? s decl
@@ -134,7 +128,7 @@ block_extension Block.informalCode (data : InlineCodeData) where
       let summaryTitle := codeSummaryText label definedDefs definedTheorems
       let panelAttrs := attrs.push ("data-bp-proof-fold", if foldProofs then "on" else "off")
       let panelBody := .seq (← blocks.mapM goB)
-      pure <| mkCodePanel summaryText summaryTitle progressBar panelBody panelAttrs
+      pure <| mkCodePanel panelHeader summaryTitle progressBar panelBody panelAttrs
 
 structure CodeConfig where
   label : Data.Label
