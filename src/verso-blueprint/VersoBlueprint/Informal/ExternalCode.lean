@@ -140,9 +140,6 @@ private structure LinkedExternalDecl where
   href : Option String := none
   anchorAttrs : Array (String × String) := #[]
 
-private def externalDeclHasSorry (decl : LinkedExternalDecl) : Bool :=
-  decl.decl.present && provedStatusHasSorry decl.decl.provedStatus
-
 private def externalDeclSorryLocation (decl : LinkedExternalDecl) : String :=
   if decl.decl.present then
     provedStatusLocationText decl.decl.provedStatus
@@ -172,11 +169,11 @@ private def externalDeclAggregate (decls : Array LinkedExternalDecl) : ExternalD
         let (found, missing) :=
           if decl.decl.present then (acc.found + 1, acc.missing) else (acc.found, acc.missing + 1)
         let renderErrors := acc.renderErrors + (if (externalDeclRenderError? decl).isSome then 1 else 0)
-        let withGaps := acc.withGaps + (if externalDeclHasSorry decl then 1 else 0)
+        let withGaps := acc.withGaps + (if externalDeclHasGap decl.decl then 1 else 0)
         { acc with found, missing, renderErrors, withGaps }
 
 private def externalDeclGapStatusText? (item : LinkedExternalDecl) : Option String :=
-  if externalDeclHasSorry item then
+  if externalDeclHasGap item.decl then
     if provedStatusContainsSorry item.decl.provedStatus then
       some s!"contains sorry {externalDeclSorryLocation item}"
     else
@@ -192,20 +189,12 @@ private def externalPanelStatus (agg : ExternalDeclAggregate) : String × String
   else
     ("bp_external_status_ok", "●", s!"External Lean references: all {agg.total} present")
 
-private def externalCodeEntryTitle (agg : ExternalDeclAggregate) : String :=
-  if agg.missing > 0 then
-    s!"External Lean references ({agg.found}/{agg.total} present)"
-  else if agg.withGaps > 0 then
-    s!"External Lean references (all present: {agg.found}/{agg.total}; incomplete: {agg.withGaps})"
-  else
-    s!"External Lean references (all present: {agg.found}/{agg.total})"
-
 private def externalDeclStatusClass (item : LinkedExternalDecl) : String :=
   if !item.decl.present then
     "bp_external_decl_missing"
   else if (renderErrorMessage? item.decl.render).isSome then
     "bp_external_decl_error"
-  else if externalDeclHasSorry item then
+  else if externalDeclHasGap item.decl then
     "bp_external_decl_sorry"
   else
     "bp_external_decl_ok"
@@ -231,7 +220,7 @@ private def externalDeclPanelStatusText (item : LinkedExternalDecl) : String :=
 private def externalDeclSorryInfo? (item : LinkedExternalDecl) : Option String :=
   if !item.decl.present then
     none
-  else if externalDeclHasSorry item then
+  else if externalDeclHasGap item.decl then
     if provedStatusContainsSorry item.decl.provedStatus then
       some s!"Contains sorry ({externalDeclSorryLocation item})"
     else
@@ -403,7 +392,8 @@ def renderParts (data : BlockData)
           </div>
         </div>
       }}
-    let codeEntryTitle := externalCodeEntryTitle externalAgg
+    let codeEntryTitle :=
+      externalCodeEntryTitle externalAgg.found externalAgg.total externalAgg.missing externalAgg.withGaps
     let externalStatusIndicator : Output.Html :=
       let (iconClass, iconText, iconTitle) := externalPanelStatus externalAgg
       let icon :=

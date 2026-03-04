@@ -36,13 +36,6 @@ private def progressSegmentClass (missing hasSorry : Bool) : String :=
   else
     "bp_code_progress_segment bp_code_progress_segment_ok"
 
-private def codeSummaryStatusText (status : Data.ProvedStatus) : String :=
-  match status with
-  | .missing => "missing declaration"
-  | .axiomLike => "axiom-like (no body)"
-  | .containsSorry _ => provedStatusLocationText status
-  | .proved => "unknown"
-
 private def codeSummaryText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
   if definedDefs.isEmpty && definedTheorems.isEmpty then
     s!"{label}"
@@ -65,7 +58,7 @@ private def codeSummaryText (label : Data.Label) (definedDefs definedTheorems : 
         "none"
       else
         String.intercalate ", " <| sorryDecls.toList.map fun d =>
-          s!"{d.name} [{codeSummaryStatusText d.provedStatus}]"
+          s!"{d.name} [{provedStatusSummaryText d.provedStatus}]"
     s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
 
 block_extension Block.informalCode (data : InlineCodeData) where
