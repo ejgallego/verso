@@ -33,13 +33,6 @@ structure RenderParts where
   statusMark : Option BlockStatusMark := none
   codeEntry : Output.Html := .empty
 
-private def summaryStatusText (status : Data.ProvedStatus) : String :=
-  match status with
-  | .missing => "missing declaration"
-  | .axiomLike => "axiom-like (no body)"
-  | .containsSorry _ => provedStatusLocationText status
-  | .proved => "unknown"
-
 private def summaryDeclItems (items : Array (String × Option String)) : Output.Html :=
   open Verso.Output.Html in
   if items.isEmpty then
@@ -58,7 +51,7 @@ private def declSummaryItems (decls : Array CodeDeclData) (hrefOf : Name → Opt
 private def sorrySummaryItems (decls : Array CodeDeclData) (hrefOf : Name → Option String)
     : Array (String × Option String) :=
   decls.filter (provedStatusHasSorry ∘ (·.provedStatus)) |>.map fun decl =>
-    (s!"{decl.name} [{summaryStatusText decl.provedStatus}]", hrefOf decl.name)
+    (s!"{decl.name} [{provedStatusSummaryText decl.provedStatus}]", hrefOf decl.name)
 
 /--
 Tooltip body for the Lean summary badge. It lists definitions, theorems/lemmas, and incomplete declarations.
@@ -107,9 +100,6 @@ private structure ExternalHeadingAggregate where
   found : Nat
   missing : Nat
   withGaps : Nat
-
-private def externalDeclHasGap (decl : Data.ExternalRef) : Bool :=
-  decl.present && provedStatusHasSorry decl.provedStatus
 
 private def externalHeadingAggregate (decls : Array Data.ExternalRef) : ExternalHeadingAggregate :=
   decls.foldl (init := { total := decls.size, found := 0, missing := 0, withGaps := 0 }) fun acc decl =>
@@ -173,14 +163,6 @@ private def externalStatusMark (agg : ExternalHeadingAggregate) : BlockStatusMar
       title := s!"External Lean names ({agg.total}) are present"
     }
 
-private def externalCodeEntryTitle (agg : ExternalHeadingAggregate) : String :=
-  if agg.missing > 0 then
-    s!"External Lean references ({agg.found}/{agg.total} present)"
-  else if agg.withGaps > 0 then
-    s!"External Lean references (all present: {agg.found}/{agg.total}; incomplete: {agg.withGaps})"
-  else
-    s!"External Lean references (all present: {agg.found}/{agg.total})"
-
 /--
 Render Lean summary UI for an informal block heading.
 
@@ -193,7 +175,7 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
   let externalDecls := cdata.source.map BlockCodeData.externalDecls |>.getD #[]
   if !externalDecls.isEmpty then
     let agg := externalHeadingAggregate externalDecls
-    let codeEntryTitle := externalCodeEntryTitle agg
+    let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withGaps
     let codeEntryTooltip := renderExternalSummaryTooltip externalDecls hrefOf
     let linkNode : Output.Html :=
       if let some href := cdata.codeHref then

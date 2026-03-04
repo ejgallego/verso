@@ -168,6 +168,24 @@ def provedStatusContainsSorry (status : Data.ProvedStatus) : Bool :=
   | .containsSorry _ => true
   | _ => false
 
+def provedStatusSummaryText (status : Data.ProvedStatus) : String :=
+  match status with
+  | .missing => "missing declaration"
+  | .axiomLike => "axiom-like (no body)"
+  | .containsSorry _ => provedStatusLocationText status
+  | .proved => "unknown"
+
+def externalDeclHasGap (decl : Data.ExternalRef) : Bool :=
+  decl.present && provedStatusHasSorry decl.provedStatus
+
+def externalCodeEntryTitle (found total missing withGaps : Nat) : String :=
+  if missing > 0 then
+    s!"External Lean references ({found}/{total} present)"
+  else if withGaps > 0 then
+    s!"External Lean references (all present: {found}/{total}; incomplete: {withGaps})"
+  else
+    s!"External Lean references (all present: {found}/{total})"
+
 def mkCodePanel
     (header : CodePanelHeader) (summaryTitle : String)
     (progressBar body : Output.Html)
