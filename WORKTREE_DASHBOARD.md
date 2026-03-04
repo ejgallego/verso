@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/informal-block-tohtml-audit-20260303` merged into `bp`, validated, preview stopped, and cleaned up)
+Last updated: 2026-03-04 (created `feat/external-def-link-targets-20260304`; cache+`noperthedron` validated; preview started)
 
 ## Active Worktrees
 
@@ -21,6 +21,25 @@ Last updated: 2026-03-04 (`feat/informal-block-tohtml-audit-20260303` merged int
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/external-def-link-targets-20260304`
+
+- Status: `created` (owner action: implement external definition link-target registration + summary wiring)
+- Summary: started task to register link targets for rendered external definitions so summary associated-declaration rows can deep-link to rendered external panels.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-20260304`
+- Branch: `feat/external-def-link-targets-20260304`
+- Base commit/branch:
+  - from `bp` @ `add12014`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup: copied root `.lake`
+  - `lake exe cache get`
+  - `lake exe noperthedron`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-20260304`
+  - `git status --short`
+  - preview URL: `http://127.0.0.1:8102/` (session `69914`, serves `_out/`)
 
 ### `feat/lsp-folding-chain`
 
