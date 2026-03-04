@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (created `feat/external-def-link-targets-20260304`; cache+`noperthedron` validated; preview started)
+Last updated: 2026-03-04 (`feat/informal-code-header-unify-20260304` created from `bp`, cache synced, preview started at `http://127.0.0.1:8110/`)
 
 ## Active Worktrees
 
@@ -21,6 +21,26 @@ Last updated: 2026-03-04 (created `feat/external-def-link-targets-20260304`; cac
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/informal-code-header-unify-20260304`
+
+- Status: `active` (owner action: analyze informal code rendering and apply shared header refactor)
+- Summary: review informal block + inline/external code HTML/CSS and align both code headers to a single lemma-style source with `Code for Lemma X`.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-header-unify-20260304`
+- Branch: `feat/informal-code-header-unify-20260304`
+- Base commit/branch:
+  - from `bp` at `add12014`
+- Key commit:
+  - none yet
+- Validation status:
+  - `lake exe cache get` (cache warm, no download)
+  - `lake exe noperthedron` (pass)
+- Preview:
+  - `http://127.0.0.1:8110/` (server session `31758`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/informal-code-header-unify-20260304`
+  - `git status --short`
+  - `lake exe noperthedron`
 
 ### `feat/external-def-link-targets-20260304`
 
