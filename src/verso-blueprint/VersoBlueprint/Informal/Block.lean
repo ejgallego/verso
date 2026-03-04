@@ -56,6 +56,9 @@ def informalCodeDomain : Name := Resolve.informalCodeDomainName
 /-- Name used in {name}`TraverseState.domains` for informal preview payloads. -/
 def informalPreviewDomain : Name := Resolve.informalPreviewDomainName
 
+/-- Name used in {name}`TraverseState.domains` for rendered external declaration anchors. -/
+def informalExternalDeclDomain : Name := Resolve.externalRenderedDeclDomainName
+
 /-- Configuration for directives / code-blocks. Q: should we allow non-labelled informal objects? -/
 structure Config where
   label : Data.Label
@@ -776,6 +779,15 @@ block_extension Block.informal (data : BlockData) where
         let path ← (·.path) <$> read
         let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
         modify λ s => s.saveDomainObject informalPreviewDomain previewKey id
+      if !blockData.isProof then
+        for decl in blockData.codeData.map BlockCodeData.externalDecls |>.getD #[] do
+          let key := Resolve.externalRenderedDeclTargetKey label decl.canonical
+          if ((← get).getDomainObject? informalExternalDeclDomain key).isNone then
+            let declId ← Verso.Genre.Manual.freshId
+            let path ← (·.path) <$> read
+            let _ ← Verso.Genre.Manual.externalTag declId path
+              s!"--informal-external-decl-{label}-{decl.canonical}"
+            modify λ s => s.saveDomainObject informalExternalDeclDomain key declId
       if let .some _d := (← get).getDomainObject? informalDomain label.toString then
         return none
       else
@@ -814,6 +826,19 @@ block_extension Block.informal (data : BlockData) where
         let codeSource := BlockCodeData.ofHintAndInline data.codeData codeData?
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveInlineLeanDeclHref? s decl
+        let getDeclAnchorAttrs (decl : Data.ExternalRef) : Array (String × String) :=
+          let attrsFor (declName : Name) : Array (String × String) :=
+            let key := Resolve.externalRenderedDeclTargetKey data.label declName
+            match s.getDomainObject? informalExternalDeclDomain key with
+            | none => #[]
+            | some obj =>
+              match obj.ids.toArray[0]? with
+              | some targetId => s.htmlId targetId
+              | none => #[]
+          -- Targets are keyed by canonical declaration name; fallback to the written name keeps
+          -- links stable if older cached objects were keyed before canonicalization.
+          let canonicalAttrs := attrsFor decl.canonical
+          if canonicalAttrs.isEmpty then attrsFor decl.written else canonicalAttrs
         let cdata := {
           codeHref
           source := codeSource
@@ -825,7 +850,7 @@ block_extension Block.informal (data : BlockData) where
             if decls.isEmpty then
               none
             else
-              some <| ExternalCode.renderParts data decls getDeclHref
+              some <| ExternalCode.renderParts data decls getDeclHref getDeclAnchorAttrs
           | _ => none
         let externalPanel := (externalParts?.map (·.externalCodePanel)).getD .empty
         let content := (← blocks.mapM goB)
