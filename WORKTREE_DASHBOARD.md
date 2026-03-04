@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/hover-texprelude-investigate-20260304` merged into `bp`, validated on rebased head and `bp`, preview stopped, worktree cleaned)
+Last updated: 2026-03-04 (`feat/graph-command-audit-20260303` rebased on latest `bp`, validated with `lake exe noperthedron`, ready for merge)
 
 ## Active Worktrees
 
@@ -21,6 +21,24 @@ Last updated: 2026-03-04 (`feat/hover-texprelude-investigate-20260304` merged in
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/graph-command-audit-20260303`
+
+- Status: `ready-for-review` (owner action: merge into `bp` and clean up worktree)
+- Summary: centralizes proved-status helper logic in `Data.ProvedStatus` and reuses it across summary and graph status code paths.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/graph-command-audit-20260303`
+- Branch: `feat/graph-command-audit-20260303`
+- Base commit/branch:
+  - merge-base with `bp`: `a4c68605` (`0` behind / `2` ahead)
+- Key commit:
+  - `ac83a1ce` refactor(status): centralize theorem-like and proved-status helpers
+- Validation status:
+  - rebased head validation passed:
+  - `lake exe noperthedron` (pass; existing project warnings only)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/graph-command-audit-20260303`
+  - `git status --short`
+  - merge candidate: `git checkout bp && git merge --ff-only feat/graph-command-audit-20260303`
 
 ### `feat/lsp-folding-chain`
 
