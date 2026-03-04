@@ -29,7 +29,7 @@ Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` implemented
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-page-axioms-status-20260304`
 - Branch: `feat/summary-page-axioms-status-20260304`
 - Base commit/branch:
-  - merge-base with `bp`: `61576b10` (`6` behind / `2` ahead)
+  - merge-base with `bp`: `61576b10` (rebase pending before merge)
 - Key commits:
   - `670a4d0d` feat(summary): add axiom category and per-kind status breakdown
   - `2a848a2e` docs(dashboard): register summary-page-axioms-status worktree
