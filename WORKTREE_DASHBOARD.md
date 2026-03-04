@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` merged into `bp`, validated, and cleaned up)
+Last updated: 2026-03-04 (created `feat/external-def-link-targets-restore-20260304`; baseline validated; preview started)
 
 ## Active Worktrees
 
@@ -21,6 +21,24 @@ Last updated: 2026-03-04 (`feat/noperthedron-missing-def-warning` merged into `b
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/external-def-link-targets-restore-20260304`
+
+- Status: `created` (owner action: restore dropped external-decl link wiring and add regression test)
+- Summary: recovery worktree after later merges dropped summary/external-declaration anchor registration and label-aware resolution.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-restore-20260304`
+- Branch: `feat/external-def-link-targets-restore-20260304`
+- Base commit/branch:
+  - from `bp` @ `c860c628`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup: synced `.lake` and ran `lake exe cache get`
+  - baseline: `lake exe noperthedron`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-restore-20260304`
+  - `git status --short`
+  - preview URL: `http://127.0.0.1:8113/` (session `36882`, serves `_out/`)
 
 ### `feat/lsp-folding-chain`
 
