@@ -117,25 +117,8 @@ structure BlockData where
   count : Nat
   isProof : Bool := false
   codeData : Option BlockCodeData := none
+  texPrelude : String := ""
 deriving FromJson, ToJson, Quote
-
-structure CodePanelHeader where
-  caption : String
-  number? : Option String := none
-deriving Repr, Inhabited
-
-def codePanelHeader (data : BlockData) : CodePanelHeader :=
-  if data.isProof then
-    { caption := "Code for proof" }
-  else
-    {
-      caption := s!"Code for {data.kind}"
-      number? := some s!"{data.count}"
-    }
-
-def fallbackCodePanelHeader : CodePanelHeader := {
-  caption := "Code"
-}
 
 register_option verso.blueprint.foldProofs : Bool := {
   defValue := true
@@ -168,19 +151,15 @@ def provedStatusContainsSorry (status : Data.ProvedStatus) : Bool :=
   | _ => false
 
 def mkCodePanel
-    (header : CodePanelHeader) (summaryTitle : String)
+    (summaryText summaryTitle : String)
     (progressBar body : Output.Html)
     (attrs : Array (String × String) := #[]) : Output.Html :=
   open Verso.Output.Html in
   {{
     <div class="bp_wrapper bp_code_panel_wrapper">
       <details class="bp_code_block bp_code_panel" {{attrs}}>
-        <summary class="bp_heading lemma_thmheading" title={{summaryTitle}}>
-          <span class="bp_caption lemma_thmcaption bp_code_summary_text">{{.text true header.caption}}</span>
-          {{if let some number := header.number? then
-              {{<span class="bp_label lemma_thmlabel bp_code_summary_label">{{.text true number}}</span>}}
-            else
-              .empty}}
+        <summary title={{summaryTitle}}>
+          <span class="bp_code_summary_text">{{.text true summaryText}}</span>
           {{progressBar}}
           <span class="bp_code_expand_hint"></span>
         </summary>

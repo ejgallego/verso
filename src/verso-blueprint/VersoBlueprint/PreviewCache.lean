@@ -33,10 +33,11 @@ structure Entry where
   label : Name
   facet : Facet
   blocks : Array (Verso.Doc.Block Verso.Genre.Manual) := #[]
+  texPrelude : String := ""
 deriving Inhabited, Repr, ToJson, FromJson
 
 def Entry.ofBlocks (label : Name) (isProof : Bool)
-    (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) : Entry :=
-  { label, facet := if isProof then .proof else .statement, blocks }
+    (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) (texPrelude : String := "") : Entry :=
+  { label, facet := if isProof then .proof else .statement, blocks, texPrelude }
 
 end Informal.PreviewCache

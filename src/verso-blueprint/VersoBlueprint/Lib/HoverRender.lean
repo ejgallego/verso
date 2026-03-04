@@ -21,8 +21,11 @@ structure SummaryPreviewUi where
   store : Verso.Output.Html := .empty
   panel : Verso.Output.Html := .empty
 
-def graphPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html) : Verso.Output.Html := {{
-  <template class="bp_graph_preview_tpl" "data-bp-preview-label"={{s!"{label}"}}>
+def graphPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html)
+    (texPrelude : String := "") : Verso.Output.Html := {{
+  <template class="bp_graph_preview_tpl"
+      "data-bp-preview-label"={{s!"{label}"}}
+      "data-bp-preview-tex-prelude"={{texPrelude}}>
     {{renderedBlocks}}
   </template>
 }}
@@ -48,8 +51,11 @@ def graphPreviewUi (templates : Array Verso.Output.Html) : GraphPreviewUi :=
       }}
     }
 
-def summaryPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html) : Verso.Output.Html := {{
-  <template class="bp_summary_preview_tpl" "data-bp-preview-label"={{s!"{label}"}}>
+def summaryPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html)
+    (texPrelude : String := "") : Verso.Output.Html := {{
+  <template class="bp_summary_preview_tpl"
+      "data-bp-preview-label"={{s!"{label}"}}
+      "data-bp-preview-tex-prelude"={{texPrelude}}>
     {{renderedBlocks}}
   </template>
 }}

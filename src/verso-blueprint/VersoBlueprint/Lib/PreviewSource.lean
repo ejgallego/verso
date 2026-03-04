@@ -20,6 +20,11 @@ open Informal Data Environment
 
 abbrev ManualBlock := Verso.Doc.Block Verso.Genre.Manual
 
+structure TraversalPreview where
+  blocks : Array ManualBlock := #[]
+  texPrelude : String := ""
+deriving Inhabited, Repr
+
 private def nonEmptyOrNone {α} (xs : Array α) : Option (Array α) :=
   if xs.isEmpty then none else some xs
 
@@ -29,22 +34,52 @@ private def firstNonEmptyFacet? {α}
   | some xs => some xs
   | none => (fetch .proof).bind nonEmptyOrNone
 
-def traversalBlocks?
-    (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option (Array ManualBlock) :=
-  let traversalFacetBlocks? (facet : PreviewCache.Facet) : Option (Array ManualBlock) := do
+private def firstNonEmptyEntry?
+    (fetch : PreviewCache.Facet → Option PreviewCache.Entry) : Option PreviewCache.Entry :=
+  match fetch .statement with
+  | some entry =>
+    if entry.blocks.isEmpty then
+      match fetch .proof with
+      | some proofEntry =>
+        if proofEntry.blocks.isEmpty then none else some proofEntry
+      | none => none
+    else
+      some entry
+  | none =>
+    match fetch .proof with
+    | some entry =>
+      if entry.blocks.isEmpty then none else some entry
+    | none => none
+
+def traversalPreview?
+    (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option TraversalPreview := do
+  let traversalFacetEntry? (facet : PreviewCache.Facet) : Option PreviewCache.Entry := do
     let key := PreviewCache.key label facet
     let obj ← s.getDomainObject? Resolve.informalPreviewDomainName key
-    let entry ← (fromJson? (α := PreviewCache.Entry) obj.data).toOption
-    return entry.blocks
-  firstNonEmptyFacet? traversalFacetBlocks?
+    (fromJson? (α := PreviewCache.Entry) obj.data).toOption
+  let entry ← firstNonEmptyEntry? traversalFacetEntry?
+  return { blocks := entry.blocks, texPrelude := entry.texPrelude }
+
+def traversalBlocks?
+    (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option (Array ManualBlock) :=
+  (traversalPreview? s label).map (·.blocks)
+
+def renderTraversalPreview? {m} [Monad m]
+    (s : Verso.Genre.Manual.TraverseState)
+    (renderBlock : ManualBlock → m Verso.Output.Html)
+    (label : Name) : m (Option (Array Verso.Output.Html × String)) := do
+  match traversalPreview? s label with
+  | none => pure none
+  | some preview =>
+    pure <| some ((← preview.blocks.mapM renderBlock), preview.texPrelude)
 
 def renderTraversalBlocks? {m} [Monad m]
     (s : Verso.Genre.Manual.TraverseState)
     (renderBlock : ManualBlock → m Verso.Output.Html)
     (label : Name) : m (Option (Array Verso.Output.Html)) := do
-  match traversalBlocks? s label with
+  match traversalPreview? s label with
   | none => pure none
-  | some blocks => pure <| some (← blocks.mapM renderBlock)
+  | some preview => pure <| some (← preview.blocks.mapM renderBlock)
 
 private def envFacetStxs? (node : Data.Node) (facet : PreviewCache.Facet) : Option (Array Syntax) :=
   match facet with
