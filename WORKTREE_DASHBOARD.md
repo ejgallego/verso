@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/graph-command-audit-20260303` merged into `bp`, validated, preview stopped, and worktree cleaned)
+Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` created; investigating missing incoming graph edges for `thm:exists_solution_table`)
 
 ## Active Worktrees
 
@@ -55,6 +55,25 @@ Last updated: 2026-03-04 (`feat/graph-command-audit-20260303` merged into `bp`, 
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
   - `git status --short`
   - commit/stash local chapter changes before rebasing on `bp`
+
+### `feat/exists-solution-table-uses-20260304`
+
+- Status: `active` (owner action: decide whether to include `Chapters.Main` in `Contents.lean`)
+- Summary: investigate why `thm:exists_solution_table` appears isolated in dependency graph despite `uses` references in source.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/exists-solution-table-uses-20260304`
+- Branch: `feat/exists-solution-table-uses-20260304`
+- Base commit/branch:
+  - branched from `bp` at `b7a2b42d`
+- Key commits:
+  - pending
+- Validation status:
+  - `lake exe cache get`
+  - `lake exe noperthedron`
+  - preview server running: `http://127.0.0.1:8122/` (`npx http-server -p 8122 _out/html-multi`, session `53968`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/exists-solution-table-uses-20260304`
+  - `rg -n "thm:exists_solution_table" test-projects/Noperthedron/Chapters test-projects/Noperthedron/Contents.lean`
+  - `lake exe noperthedron`
 
 ## Recently Completed
 
