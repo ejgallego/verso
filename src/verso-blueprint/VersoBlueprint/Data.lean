@@ -136,6 +136,29 @@ def ProvedStatus.hasProofGap : ProvedStatus → Bool
   | .axiomLike => true
   | .containsSorry info => info.any (·.location == .proof)
 
+/--
+Whether this status blocks statement-track completion for a node kind.
+
+Definitions are considered incomplete when either the type or the body has gaps;
+theorem-like statements are blocked only by statement/type gaps.
+-/
+def ProvedStatus.blocksStatementCompletion (status : ProvedStatus) (kind : NodeKind) : Bool :=
+  match kind with
+  | .definition => status.hasTypeGap || status.hasProofGap
+  | .lemma | .theorem | .corollary => status.hasTypeGap
+
+/--
+Whether this status blocks proof-track completion.
+
+This is conservative: any statement/type or proof/body gap blocks proof completion.
+-/
+def ProvedStatus.blocksProofCompletion (status : ProvedStatus) : Bool :=
+  status.hasTypeGap || status.hasProofGap
+
+/-- Compatibility helper for definition-only callers. -/
+def ProvedStatus.blocksDefinitionCompletion (status : ProvedStatus) : Bool :=
+  status.blocksStatementCompletion .definition
+
 def ProvedStatus.containsExplicitSorry : ProvedStatus → Bool
   | .containsSorry _ => true
   | _ => false
@@ -179,6 +202,17 @@ def ProvedStatus.anyTypeGap (decls : Array α) (statusOf : α → ProvedStatus) 
 def ProvedStatus.anyProofGap (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
   decls.any fun decl => (statusOf decl).hasProofGap
 
+def ProvedStatus.anyBlocksStatementCompletion (kind : NodeKind) (decls : Array α)
+    (statusOf : α → ProvedStatus) : Bool :=
+  decls.any fun decl => (statusOf decl).blocksStatementCompletion kind
+
+def ProvedStatus.anyBlocksProofCompletion (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
+  decls.any fun decl => (statusOf decl).blocksProofCompletion
+
+/-- Compatibility helper for definition-only callers. -/
+def ProvedStatus.anyBlocksDefinitionCompletion (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
+  ProvedStatus.anyBlocksStatementCompletion .definition decls statusOf
+
 def ProvedStatus.ofSorryFlags (hasType hasProof : Bool)
     (typeRefs? : Option Nat := none) (proofRefs? : Option Nat := none) : ProvedStatus :=
   let info : Array SorryInfo :=
@@ -196,8 +230,8 @@ def ProvedStatus.ofRefCounts (typeRefs proofRefs : Nat) : ProvedStatus :=
 
 /--
 Conservative merge for duplicated status snapshots:
-- `missing` dominates,
-- `axiomLike` dominates,
+- missing dominates,
+- axiomLike dominates,
 - otherwise keep any observed statement/proof incompleteness.
 -/
 def ProvedStatus.mergeConservative (a b : ProvedStatus) : ProvedStatus :=

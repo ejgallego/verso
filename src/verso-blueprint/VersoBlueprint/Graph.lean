@@ -12,8 +12,8 @@ open Lean
 open Informal Data Environment
 
 /-!
-See `GRAPH_COLORING_SPEC.md` in this directory for a human-readable spec of the
-status and warning/color mapping implemented below.
+See `GRAPH_STATUS_COMPLETION_AND_COLORING_SPEC.md` in this directory for a
+human-readable status/completion and warning/color mapping specification.
 -/
 
 /-- Upstream-compatible statement-track status (node border). -/
@@ -119,28 +119,31 @@ def externalDeclProvedStatus (external : ExternalCodeStatus) (decl : Data.Extern
 def nodeHasMissingExternalDecls (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   (nodeExternalDecls node).any (externalDeclMissing external)
 
-def nodeHasTypeSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
+def nodeHasStatementSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   let localHas :=
     match node.code with
     | some (.literate code) =>
-      ProvedStatus.anyTypeGap code.definedDefs (·.provedStatus) ||
-      ProvedStatus.anyTypeGap code.definedTheorems (·.provedStatus)
+      ProvedStatus.anyBlocksStatementCompletion node.kind code.definedDefs (·.provedStatus) ||
+      ProvedStatus.anyBlocksStatementCompletion node.kind code.definedTheorems (·.provedStatus)
     | _ => false
-  localHas || (nodeExternalDecls node).any (fun decl => (externalDeclProvedStatus external decl).hasTypeGap)
+  localHas || (nodeExternalDecls node).any fun decl =>
+    (externalDeclProvedStatus external decl).blocksStatementCompletion node.kind
 
 def nodeHasProofSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   let localHas :=
     match node.code with
     | some (.literate code) =>
-      ProvedStatus.anyProofGap code.definedTheorems (·.provedStatus)
+      ProvedStatus.anyBlocksProofCompletion code.definedDefs (·.provedStatus) ||
+      ProvedStatus.anyBlocksProofCompletion code.definedTheorems (·.provedStatus)
     | _ => false
-  localHas || (nodeExternalDecls node).any (fun decl => (externalDeclProvedStatus external decl).hasProofGap)
+  localHas || (nodeExternalDecls node).any fun decl =>
+    (externalDeclProvedStatus external decl).blocksProofCompletion
 
 def nodeHasSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  nodeHasTypeSorries external node || nodeHasProofSorries external node
+  nodeHasStatementSorries external node || nodeHasProofSorries external node
 
 def nodeLocalStatementFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  nodeHasAssociatedCode node && !nodeHasMissingExternalDecls external node && !nodeHasTypeSorries external node
+  nodeHasAssociatedCode node && !nodeHasMissingExternalDecls external node && !nodeHasStatementSorries external node
 
 def nodeLocalProofFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
   nodeHasAssociatedCode node && !nodeHasMissingExternalDecls external node && !nodeHasSorries external node

@@ -172,81 +172,80 @@ Inputs come from canonical block/code data:
 -/
 def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Option String) : RenderParts :=
   open Verso.Output.Html in
-  let externalDecls := cdata.source.map BlockCodeData.externalDecls |>.getD #[]
-  if !externalDecls.isEmpty then
-    let agg := externalHeadingAggregate externalDecls
-    let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withGaps
-    let codeEntryTooltip := renderExternalSummaryTooltip externalDecls hrefOf
-    let linkNode : Output.Html :=
-      if let some href := cdata.codeHref then
-        {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
-      else
-        {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
-    {
-      statusMark := some (externalStatusMark agg)
-      codeEntry := {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
-    }
+  if data.isProof then
+    {}
   else
-    let inlineData? := cdata.source.bind BlockCodeData.inlineData?
-    let userOk := cdata.source.map BlockCodeData.isUserOk |>.getD false
-    let hasInline := cdata.codeHref.isSome || inlineData?.isSome
-    let hasCodeEntry := hasInline || userOk
-    let codeEntryTooltip : Output.Html :=
-      match inlineData? with
-      | some codeData => renderCodeSummaryTooltip data.label codeData.definedDefs codeData.definedTheorems hrefOf
-      | none =>
-        if userOk then
-          userOkSummaryTooltip
+    let statementKind := data.statementKind?.getD .lemma
+    let externalDecls := cdata.source.map BlockCodeData.externalDecls |>.getD #[]
+    if !externalDecls.isEmpty then
+      let agg := externalHeadingAggregate externalDecls
+      let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withGaps
+      let codeEntryTooltip := renderExternalSummaryTooltip externalDecls hrefOf
+      let linkNode : Output.Html :=
+        if let some href := cdata.codeHref then
+          {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
         else
+          {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
+      {
+        statusMark := some (externalStatusMark agg)
+        codeEntry := {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
+      }
+    else
+      let inlineData? := cdata.source.bind BlockCodeData.inlineData?
+      let userOk := cdata.source.map BlockCodeData.isUserOk |>.getD false
+      let hasInline := cdata.codeHref.isSome || inlineData?.isSome
+      let hasCodeEntry := hasInline || userOk
+      let codeEntryTooltip : Output.Html :=
+        match inlineData? with
+        | some codeData => renderCodeSummaryTooltip data.label codeData.definedDefs codeData.definedTheorems hrefOf
+        | none =>
+          if userOk then
+            userOkSummaryTooltip
+          else
+            .empty
+      let codeEntryTitle : String :=
+        if hasInline then
+          "Lean declarations"
+        else if userOk then
+          "Marked complete via (leanok := true)"
+        else
+          "Lean declarations"
+      let codeEntry : Output.Html :=
+        if !hasCodeEntry then
           .empty
-    let codeEntryTitle : String :=
-      if hasInline then
-        "Lean declarations"
-      else if userOk then
-        "Marked complete via (leanok := true)"
-      else
-        "Lean declarations"
-    let codeEntry : Output.Html :=
-      if !hasCodeEntry then
-        .empty
-      else
-        let linkNode : Output.Html :=
-          if let some href := cdata.codeHref then
-            {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
-          else
-            {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
-        {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
-    let hasStatementSorries : Bool :=
-      match inlineData? with
-      | none => false
-      | some codeData =>
-        (codeData.definedDefs ++ codeData.definedTheorems).any (fun decl => decl.provedStatus.hasTypeGap)
-    let hasProofSorries : Bool :=
-      match inlineData? with
-      | none => false
-      | some codeData =>
-        (codeData.definedDefs ++ codeData.definedTheorems).any (fun decl => decl.provedStatus.hasProofGap)
-    let statusMark : Option BlockStatusMark :=
-      if userOk then
-        some {
-          status := .proved
-          title := "Marked complete via (leanok := true)"
-          symbolOverride? := some "✓ (manually set)"
-        }
-      else if cdata.codeHref.isNone then
-        none
-      else
-        let (hasSorriesHere, whereTxt) :=
-          if data.isProof then
-            (hasProofSorries, "proof")
-          else
-            (hasStatementSorries, "statement")
-        let title := if hasSorriesHere then s!"Contains sorries in {whereTxt}" else s!"No sorries in {whereTxt}"
-        some {
-          status := if hasSorriesHere then .containsSorry #[] else .proved
-          title
-        }
-    { statusMark, codeEntry }
+        else
+          let linkNode : Output.Html :=
+            if let some href := cdata.codeHref then
+              {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
+            else
+              {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
+          {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
+      let hasBlockingSorries : Bool :=
+        match inlineData? with
+        | none => false
+        | some codeData =>
+          Data.ProvedStatus.anyBlocksStatementCompletion statementKind
+            (codeData.definedDefs ++ codeData.definedTheorems) (·.provedStatus)
+      let statusMark : Option BlockStatusMark :=
+        if userOk then
+          some {
+            status := .proved
+            title := "Marked complete via (leanok := true)"
+            symbolOverride? := some "✓ (manually set)"
+          }
+        else if cdata.codeHref.isNone then
+          none
+        else
+          let title :=
+            if hasBlockingSorries then
+              "Contains sorries that block completion"
+            else
+              "No sorries that block completion"
+          some {
+            status := if hasBlockingSorries then .containsSorry #[] else .proved
+            title
+          }
+      { statusMark, codeEntry }
 
 end CodeSummary
 end Informal
