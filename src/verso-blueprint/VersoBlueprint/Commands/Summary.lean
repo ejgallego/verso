@@ -264,7 +264,183 @@ def buildSummary : CoreM Summary := do
         { parent, header, entries := items.reverse } :: acc
   return { summary with theoremLikeByParent }
 
+private def Summary.previewLabels (data : Summary) : Array Name :=
+  let allLabels : List Name :=
+    data.pendingInformalEntries.map (·.label) ++
+    data.sorryDetails.map (·.label) ++
+    data.missingLeanDecls.map (·.label) ++
+    data.definitionIndex.map (·.label) ++
+    data.theoremLikeIndex.map (·.label) ++
+    data.theoremLikeByParent.foldr (init := []) fun group acc =>
+      group.entries.map (·.label) ++ acc
+  let (_, labels) := allLabels.foldl (init := (({} : NameSet), (#[] : Array Name))) fun (seen, labels) label =>
+    if seen.contains label then
+      (seen, labels)
+    else
+      (seen.insert label, labels.push label)
+  labels
+
 def summaryCss := include_str "summary.css"
+
+def summaryPreviewJs : String := r##"(function () {
+  function bindSummaryPreview(root) {
+    if (!(root instanceof Element)) return;
+    if (root.getAttribute("data-bp-summary-preview-bound") === "1") return;
+    root.setAttribute("data-bp-summary-preview-bound", "1");
+
+    const previewUtils = window.bpPreviewUtils;
+    const previewMap =
+      previewUtils && typeof previewUtils.collectPreviewTemplates === "function"
+        ? previewUtils.collectPreviewTemplates(
+            root,
+            "template.bp_summary_preview_tpl[data-bp-preview-label]"
+          )
+        : new Map();
+    const panel = root.querySelector(".bp_summary_preview_panel");
+    const title = panel ? panel.querySelector(".bp_summary_preview_panel_title") : null;
+    const body = panel ? panel.querySelector(".bp_summary_preview_panel_body") : null;
+    const close = panel ? panel.querySelector(".bp_summary_preview_panel_close") : null;
+    if (!panel || !title || !body || previewMap.size === 0) {
+      if (panel) panel.hidden = true;
+      return;
+    }
+
+    let activeWrap = null;
+
+    function parsePreviewEntry(entry) {
+      if (previewUtils && typeof previewUtils.readPreviewTemplate === "function") {
+        return previewUtils.readPreviewTemplate(entry);
+      }
+      if (typeof entry === "string") {
+        return { html: entry, texPrelude: "" };
+      }
+      if (!entry || typeof entry !== "object") {
+        return { html: "", texPrelude: "" };
+      }
+      return {
+        html: typeof entry.html === "string" ? entry.html : "",
+        texPrelude: typeof entry.texPrelude === "string" ? entry.texPrelude : ""
+      };
+    }
+
+    function hidePanel() {
+      panel.hidden = true;
+      title.textContent = "";
+      body.innerHTML = "";
+      activeWrap = null;
+    }
+
+    function positionPanel(anchor) {
+      if (!(anchor instanceof Element)) return;
+      const rect = anchor.getBoundingClientRect();
+      const margin = 12;
+      const panelRect = panel.getBoundingClientRect();
+      const panelWidth = panelRect.width || Math.min(520, window.innerWidth - margin * 2);
+      const panelHeight = panelRect.height || Math.min(420, window.innerHeight - margin * 2);
+      let left = rect.left;
+      if (left + panelWidth > window.innerWidth - margin) {
+        left = window.innerWidth - panelWidth - margin;
+      }
+      left = Math.max(margin, left);
+      let top = rect.bottom + 10;
+      if (top + panelHeight > window.innerHeight - margin) {
+        top = rect.top - panelHeight - 10;
+      }
+      top = Math.max(margin, top);
+      panel.style.left = left + "px";
+      panel.style.top = top + "px";
+    }
+
+    function showFromWrap(wrap) {
+      if (!(wrap instanceof Element)) return;
+      const label = wrap.getAttribute("data-bp-preview-label") || "";
+      const entry = parsePreviewEntry(previewMap.get(label));
+      const html = entry.html;
+      const texPrelude = entry.texPrelude;
+      if (!label || !html) {
+        hidePanel();
+        return;
+      }
+      activeWrap = wrap;
+      title.textContent = label;
+      body.innerHTML = html;
+      if (previewUtils && typeof previewUtils.renderMath === "function") {
+        previewUtils.renderMath(body, texPrelude);
+      }
+      panel.hidden = false;
+      positionPanel(wrap);
+    }
+
+    if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
+      previewUtils.bindCloseOnce(close, hidePanel);
+    } else if (close && close.getAttribute("data-bp-bound") !== "1") {
+      close.setAttribute("data-bp-bound", "1");
+      close.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        hidePanel();
+      });
+    }
+
+    const wraps = root.querySelectorAll(".bp_summary_preview_wrap_active[data-bp-preview-label]");
+    wraps.forEach(function (wrap) {
+      if (!(wrap instanceof Element)) return;
+      if (wrap.getAttribute("data-bp-bound") === "1") return;
+      wrap.setAttribute("data-bp-bound", "1");
+      wrap.addEventListener("mouseenter", function () {
+        showFromWrap(wrap);
+      });
+      wrap.addEventListener("focusin", function () {
+        showFromWrap(wrap);
+      });
+      wrap.addEventListener("mouseleave", function (ev) {
+        const next = ev.relatedTarget;
+        if (next instanceof Element && (wrap.contains(next) || panel.contains(next))) return;
+        hidePanel();
+      });
+      wrap.addEventListener("focusout", function (ev) {
+        const next = ev.relatedTarget;
+        if (next instanceof Element && (wrap.contains(next) || panel.contains(next))) return;
+        hidePanel();
+      });
+    });
+
+    panel.addEventListener("mouseleave", function (ev) {
+      const next = ev.relatedTarget;
+      if (next instanceof Element && activeWrap && activeWrap.contains(next)) return;
+      if (next instanceof Element && panel.contains(next)) return;
+      hidePanel();
+    });
+    panel.addEventListener("focusout", function (ev) {
+      const next = ev.relatedTarget;
+      if (next instanceof Element && activeWrap && activeWrap.contains(next)) return;
+      if (next instanceof Element && panel.contains(next)) return;
+      hidePanel();
+    });
+
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        hidePanel();
+      }
+    });
+    window.addEventListener("resize", function () {
+      if (activeWrap && !panel.hidden) positionPanel(activeWrap);
+    });
+    window.addEventListener("scroll", function () {
+      if (activeWrap && !panel.hidden) positionPanel(activeWrap);
+    }, true);
+  }
+
+  function init() {
+    document.querySelectorAll(".bp_summary").forEach(bindSummaryPreview);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();"##
 
 open Verso Doc Elab Genre Manual in
 block_extension Block.summary (summary : Summary) where
@@ -284,25 +460,27 @@ block_extension Block.summary (summary : Summary) where
         Resolve.resolveDomainHref? s Resolve.informalDomainName label.toString
       let getCodeHref (label : Name) : Option String :=
         Resolve.resolveDomainHref? s Resolve.informalCodeDomainName label.toString
-      let getDeclHref (label : Name) (decl : Name) : Option String :=
-        match Resolve.resolveRenderedExternalDeclHref? s label decl with
-        | Option.some href => Option.some href
-        | Option.none => Resolve.resolveInlineLeanDeclHref? s decl
+      let getDeclHref (decl : Name) : Option String :=
+        Resolve.resolveInlineLeanDeclHref? s decl
+      let (previewLabels, previewTemplates) ← (data.previewLabels).foldlM
+          (init := (({} : NameSet), (#[] : Array Output.Html))) fun (labels, templates) label => do
+        let preview? ← Informal.PreviewSource.renderTraversalPreview? s goB label
+        match preview? with
+        | Option.none => pure (labels, templates)
+        | some (rendered, texPrelude) =>
+          pure (labels.insert label, templates.push (Informal.HoverRender.summaryPreviewTemplate label rendered texPrelude))
+      let previewUi := Informal.HoverRender.summaryPreviewUi previewTemplates
       let mkEntryRef (label : Name) := do
-        let preview? : Option Output.Html ←
-          match Informal.PreviewSource.traversalBlocks? s label with
-          | Option.none => pure none
-          | some blocks =>
-            let rendered ← blocks.mapM goB
-            pure <| some (Informal.HoverRender.summaryPreview label rendered)
+        let previewLabel? : Option Name :=
+          if previewLabels.contains label then some label else none
         let labelNode : Output.Html :=
           match getEntryHref label with
           | Option.some href => {{ <a href={{href}}> <code>s!"{label}"</code> </a> }}
           | Option.none => {{ <code>s!"{label}"</code> }}
-        pure (Informal.HoverRender.summaryPreviewWrap labelNode preview?)
-      let mkDeclItems (label : Name) (decls : List Name) :=
+        pure (Informal.HoverRender.summaryPreviewWrap labelNode previewLabel?)
+      let mkDeclItems (decls : List Name) :=
         decls.toArray.map fun decl =>
-          match getDeclHref label decl with
+          match getDeclHref decl with
           | Option.some href => {{ <li><a href={{href}}> <code>s!"{decl}"</code> </a></li> }}
           | Option.none => {{ <li><code>s!"{decl}"</code></li> }}
       let mkLeanRow (label : Name) (kind : String) (leanObjects : List Name) := do
@@ -315,7 +493,7 @@ block_extension Block.summary (summary : Summary) where
                     <span class="bp_summary_item_meta">s!"({kind})"</span>
                   </div>
                   {{if associatedDecls then
-                     {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems label leanObjects}}</ul></details>}}
+                     {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems leanObjects}}</ul></details>}}
                     else
                      .empty}}
                   {{if let some href := codeHref then
@@ -331,7 +509,7 @@ block_extension Block.summary (summary : Summary) where
           let entryRef ← mkEntryRef item.label
           let codeHref := getCodeHref item.label
           let declLink :=
-            match getDeclHref item.label item.decl with
+            match getDeclHref item.decl with
             | Option.some href => {{ <a href={{href}}> <code>s!"{item.decl}"</code> </a> }}
             | Option.none => {{ <code>s!"{item.decl}"</code> }}
           let statusInfo ←
@@ -409,7 +587,7 @@ block_extension Block.summary (summary : Summary) where
           let entryRef ← mkEntryRef item.label
           let codeHref := getCodeHref item.label
           let canonicalNode : Output.Html :=
-            match getDeclHref item.label item.canonical with
+            match getDeclHref item.canonical with
             | Option.some href => {{ <a href={{href}}> <code>s!"{item.canonical}"</code> </a> }}
             | Option.none => {{ <code>s!"{item.canonical}"</code> }}
           let declNode : Output.Html :=
@@ -453,6 +631,8 @@ block_extension Block.summary (summary : Summary) where
         <style>{{.text false summaryCss}}</style>
         <script>{{.text false openTargetDetailsJs}}</script>
         <div class="bp_summary">
+          {{previewUi.store}}
+          {{previewUi.panel}}
           <details class="bp_summary_section" open>
             <summary>s!"Blueprint DB entries ({data.totalEntries})"</summary>
             <div class="bp_summary_grid">
@@ -513,8 +693,8 @@ block_extension Block.summary (summary : Summary) where
           </details>
         </div>
       }}
-  extraCss := ([] : List String)
-  extraJs := ([] : List String)
+  extraCss := singleton ⟨summaryCss⟩
+  extraJs := ([openTargetDetailsJs, previewHoverUtilsJs, summaryPreviewJs] : List String)
 
 open Verso Doc Elab Syntax in
 def mkSummaryPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do

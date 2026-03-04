@@ -38,6 +38,14 @@ def traversalBlocks?
     return entry.blocks
   firstNonEmptyFacet? traversalFacetBlocks?
 
+def renderTraversalBlocks? {m} [Monad m]
+    (s : Verso.Genre.Manual.TraverseState)
+    (renderBlock : ManualBlock → m Verso.Output.Html)
+    (label : Name) : m (Option (Array Verso.Output.Html)) := do
+  match traversalBlocks? s label with
+  | none => pure none
+  | some blocks => pure <| some (← blocks.mapM renderBlock)
+
 private def envFacetStxs? (node : Data.Node) (facet : PreviewCache.Facet) : Option (Array Syntax) :=
   match facet with
   | .statement => node.statement.bind (nonEmptyOrNone ·.elabStx)
