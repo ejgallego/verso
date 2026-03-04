@@ -9,6 +9,7 @@ import VersoManual
 import VersoBlueprint
 import Bibliography
 import Noperthedron.Local
+import Noperthedron.Local.Congruent
 
 open Verso.Genre
 open Verso.Genre.Manual hiding citep citet citehere
