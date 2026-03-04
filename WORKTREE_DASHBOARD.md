@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` rebased onto `bp` and revalidated)
+Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` merged into `bp`, validated, and cleaned up)
 
 ## Active Worktrees
 
@@ -21,27 +21,6 @@ Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` rebased ont
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/summary-page-axioms-status-20260304`
-
-- Status: `ready-for-review` (owner action: review and merge onto `bp`)
-- Summary: summary page now reports per-kind completion/dependency/sorry/no-proof status lines, adds explicit axiom-like category/index, and keeps existing detailed lists intact.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-page-axioms-status-20260304`
-- Branch: `feat/summary-page-axioms-status-20260304`
-- Base commit/branch:
-  - merge-base with `bp`: `ed37bfd0` (rebased on `bp` on 2026-03-04)
-- Key commits:
-  - `068732e2` feat(summary): add axiom category and per-kind status breakdown
-  - `f5a06729` docs(dashboard): register summary-page-axioms-status worktree
-- Validation status:
-  - `lake build VersoBlueprint.Commands.Summary` (pass)
-  - `lake exe cache get` (pass)
-  - `lake exe noperthedron` (pass with existing project warnings; rerun after rebase)
-  - preview server: `http://127.0.0.1:8112/` (session `85915`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-page-axioms-status-20260304`
-  - `git status --short`
-  - `git log --oneline bp..HEAD`
 
 ### `feat/lsp-folding-chain`
 
@@ -79,6 +58,18 @@ Last updated: 2026-03-04 (`feat/summary-page-axioms-status-20260304` rebased ont
 
 ## Recently Completed
 
+- Merged `feat/summary-page-axioms-status-20260304` into `bp` (`ed37bfd0 -> b0b89028`, fast-forward).
+- Feature branch key commits:
+  - `068732e2` feat(summary): add axiom category and per-kind status breakdown
+  - `b0b89028` docs(plan): capture summary streamlining follow-ups
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server session `85915` (`http://127.0.0.1:8112/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/summary-page-axioms-status-20260304`.
+- Deleted branch: `feat/summary-page-axioms-status-20260304`.
 - Merged `feat/render-preview-refactor-20260304` into `bp` (`61576b10 -> 00d8f313`, fast-forward).
 - Feature branch key commits:
   - `ce31e595` refactor(preview): share render helpers and cache summary previews
