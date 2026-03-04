@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (created `feat/external-def-link-targets-restore-20260304`; baseline validated; preview started)
+Last updated: 2026-03-04 (`feat/proved-status-audit-20260304` merged into `bp`, validated on rebased head and `bp`, preview stopped, worktree cleaned)
 
 ## Active Worktrees
 
@@ -76,6 +76,17 @@ Last updated: 2026-03-04 (created `feat/external-def-link-targets-restore-202603
 
 ## Recently Completed
 
+- Merged `feat/proved-status-audit-20260304` into `bp` (`f4e6fa8d -> a9fbebb7`, fast-forward).
+- Feature branch key commit:
+  - `a9fbebb7` refactor(informal): dedupe proved-status summary helpers
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server process `345600` (`http://127.0.0.1:8111/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/proved-status-audit-20260304`.
+- Deleted branch: `feat/proved-status-audit-20260304`.
 - Merged `feat/noperthedron-missing-def-warning` into `bp` (`4f743c2a -> 6a484f9b`, fast-forward).
 - Feature branch key commits:
   - `f9215100` fix(local-theorem): import congruent module for lemma reference
