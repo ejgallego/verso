@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` merged into `bp`, validated, preview stopped, and worktree cleaned)
+Last updated: 2026-03-04 (`feat/toc-no-number-special-sections-20260304` created, validated, and preview started)
 
 ## Active Worktrees
 
@@ -38,6 +38,26 @@ Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` merged into
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/lsp-folding-chain`
   - `git status --short`
   - `git rebase bp`
+
+### `feat/toc-no-number-special-sections-20260304`
+
+- Status: `active` (owner action: review and merge)
+- Summary: make `blueprint_graph`, `bp_summary`, and `bp_bibliography` generated sections unnumbered so TOC entries do not show numbers.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/toc-no-number-special-sections-20260304`
+- Branch: `feat/toc-no-number-special-sections-20260304`
+- Base commit/branch:
+  - merge-base with `bp`: `d3fe626e` (`0` behind / `0` ahead, local edits not yet committed)
+- Key commit:
+  - pending (working tree changes in command part builders + dashboard)
+- Validation status:
+  - `lake exe noperthedron` passed (2026-03-04)
+  - generated HTML check confirms TOC rows are `unnumbered` for Dependency Graph, Blueprint Summary, and Blueprint Bibliography
+- Preview:
+  - `http://127.0.0.1:8125/` (server session `44287`, command: `npx http-server -p 8125 _out/html-multi`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/toc-no-number-special-sections-20260304`
+  - `git status --short`
+  - `lake exe noperthedron`
 
 ### `feat/sphere-packing-blueprint`
 

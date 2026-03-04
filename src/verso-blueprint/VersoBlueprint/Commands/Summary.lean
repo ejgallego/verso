@@ -810,7 +810,7 @@ def mkSummaryPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedP
   let titlePreview := "Blueprint Summary"
   let titleInlines ← `(inline | "Blueprint Summary")
   let expandedTitle ← #[titleInlines].mapM (elabInline ·)
-  let metadata := none
+  let metadata : Option (TSyntax `term) := some (← `(term| { number := false }))
   let summary ← buildSummary
   logInfo m!"Blueprint summary for {summary.totalEntries} entries"
   let block ← ``(Verso.Doc.Block.other (Informal.Commands.Block.summary $(quote summary)) #[])
