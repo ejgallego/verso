@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` ready-for-review with validated graph-edge fix)
+Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` merged into `bp`, validated, preview stopped, and worktree cleaned)
 
 ## Active Worktrees
 
@@ -56,32 +56,20 @@ Last updated: 2026-03-04 (`feat/exists-solution-table-uses-20260304` ready-for-r
   - `git status --short`
   - commit/stash local chapter changes before rebasing on `bp`
 
-### `feat/exists-solution-table-uses-20260304`
-
-- Status: `ready-for-review` (owner action: review and merge into `bp`)
-- Summary: TeX parity fix: include `Chapters.Main` in `Contents.lean` and import `Noperthedron.Final` in `Chapters/Main.lean` so dependency edges and external links resolve.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/exists-solution-table-uses-20260304`
-- Branch: `feat/exists-solution-table-uses-20260304`
-- Base commit/branch:
-  - branched from `bp` at `b7a2b42d`
-- Key commits:
-  - `90a52933` docs(dashboard): register exists-solution-table-uses worktree
-  - `7742b120` fix(noperthedron): include main chapter in blueprint graph
-- Validation status:
-  - `lake exe cache get`
-  - `lake exe noperthedron`
-  - `lake exe noperthedron` (after adding `Chapters.Main` include and `Noperthedron.Final` import)
-  - graph payload now contains:
-    - `«thm:exists_solution_table»\" -> \"«thm:no_nopert_tight_pose»`
-    - `«thm:row_valid_imp_not_rupert»\" -> \"«thm:no_nopert_tight_pose»`
-  - preview server running: `http://127.0.0.1:8122/` (`npx http-server -p 8122 _out/html-multi`, session `53968`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/exists-solution-table-uses-20260304`
-  - `git status --short`
-  - `lake exe noperthedron`
-
 ## Recently Completed
 
+- Merged `feat/exists-solution-table-uses-20260304` into `bp` (`b7a2b42d -> 28d0e3ef`, fast-forward).
+- Feature branch key commits:
+  - `7742b120` fix(noperthedron): include main chapter in blueprint graph
+  - `28d0e3ef` docs(dashboard): mark exists-solution-table fix ready
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server session `53968` (`http://127.0.0.1:8122/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/exists-solution-table-uses-20260304`.
+- Deleted branch: `feat/exists-solution-table-uses-20260304`.
 - Merged `feat/graph-command-audit-20260303` into `bp` (`a4c68605 -> 3871af85`, fast-forward).
 - Feature branch key commits:
   - `ac83a1ce` refactor(status): centralize theorem-like and proved-status helpers
