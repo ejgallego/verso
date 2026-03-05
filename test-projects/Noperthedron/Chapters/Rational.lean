@@ -186,7 +186,7 @@ $`[\bar\theta_1\pm\epsilon,\bar\phi_1\pm\epsilon,\bar\theta_2\pm\epsilon,\bar\ph
 Using {uses "thm:global"}[] and {uses "lem:boundskappa"}[].
 :::
 
-:::definition "def:ekspanning" (lean := "Local.Triangle.κSpanning") (parent := "rational_local_approx")
+:::definition "def:ekspanning" (parent := "rational_local_approx")
 Let $`\theta, \phi \in \mathbb{Q} \cap [-4,4]` and
 $`M_\mathbb{Q} := M_\mathbb{Q}(\theta, \phi)`.
 Three points $`\widetilde{P}_1, \widetilde{P}_2, \widetilde{P}_3 \in \mathbb{Q}^3`

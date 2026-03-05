@@ -266,7 +266,7 @@ def buildSummary : CoreM Summary := do
                 kind := toString node.kind
                 decl
                 isTheorem :=
-                  (decls.find? (fun d => d.canonical == decl)).bind (·.kind?) |>.map (·.isTheoremLike) |>.getD false
+                  (decls.find? (fun d => d.canonical == decl)).map (·.kind.isTheoremLike) |>.getD false
                 status
               }
           (decls.size, incompleteDecls.size, leanObjects, sorryDetails, missingDecls)

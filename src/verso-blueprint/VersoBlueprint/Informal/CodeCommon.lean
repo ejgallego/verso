@@ -111,18 +111,10 @@ def BlockStatusMark.toHtml (s : BlockStatusMark) : Output.Html :=
   open Verso.Output.Html in
   {{ <span class="bp_status_mark" title={{s.title}}>{{.text true s.text}}</span> }}
 
-/-- Statement-only payload carried by informal statement/corollary/lemma/theorem blocks. -/
-structure StatementBlockData where
-  kind : Data.NodeKind
-  codeData : Option BlockCodeData := none
-deriving Repr, Inhabited, FromJson, ToJson, Quote
-
 structure BlockData where
-  /--
-  `none` means this is a proof block.
-  For now we do not link proofs to Lean objects in this payload; this may change.
-  -/
-  kind : Option StatementBlockData := none
+  kind : Data.InProgressKind := .proof
+  /-- Optional code hint used for statement blocks (`.proof` always ignores this). -/
+  codeData : Option BlockCodeData := none
   label : Data.Label
   count : Nat
   texPrelude : String := ""
@@ -135,10 +127,10 @@ deriving Repr, Inhabited
 
 def codePanelHeader (data : BlockData) : CodePanelHeader :=
   match data.kind with
-  | none => { caption := "Code for proof" }
-  | some statement =>
+  | .proof => { caption := "Code for proof" }
+  | .statement nodeKind =>
     {
-      caption := s!"Code for {statement.kind}"
+      caption := s!"Code for {nodeKind}"
       number? := some s!"{data.count}"
     }
 

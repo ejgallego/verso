@@ -95,7 +95,7 @@ Single overlay precedence (top to bottom):
 
 Informal block heading status uses the same statement-track completion policy via `ProvedStatus.anyBlocksStatementCompletion`.
 
-Proof block payloads currently carry no code metadata by type design (`BlockData.kind = none`), so Lean code summary parts are only produced for statement blocks.
+Proof blocks now use an explicit `.proof` tag in `BlockData.kind` and carry no code metadata by type design, so Lean code summary parts are only produced for statement blocks.
 
 ## 7. Validation and Test Coverage
 

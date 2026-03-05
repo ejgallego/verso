@@ -146,7 +146,7 @@ Then the origin lies strictly in triangle $`ABC`.
 See {citet polyhedron.without.rupert (kind := lemma) (index := 26)}[].
 :::
 
-:::definition "def:eps-spanning" (lean := "Local.Triangle.Spanning") (parent := "local_spanning")
+:::definition "def:eps-spanning" (parent := "local_spanning")
 Let $`\theta, \varphi \in \mathbb{R}`, $`\varepsilon > 0`, and set $`M := M(\theta, \varphi)`.
 Three points $`P_1, P_2, P_3 \in \mathbb{R}^3` with $`\|P_1\|, \|P_2\|, \|P_3\| \leq 1`
 are called $`\varepsilon`-spanning for $`(\theta, \varphi)` if:

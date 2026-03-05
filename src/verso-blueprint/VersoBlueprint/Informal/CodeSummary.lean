@@ -173,9 +173,8 @@ Inputs come from canonical block/code data:
 def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Option String) : RenderParts :=
   open Verso.Output.Html in
   match data.kind with
-  | none => {}
-  | some statement =>
-    let statementKind := statement.kind
+  | .proof => {}
+  | .statement statementKind =>
     let externalDecls := cdata.source.map BlockCodeData.externalDecls |>.getD #[]
     if !externalDecls.isEmpty then
       let agg := externalHeadingAggregate externalDecls

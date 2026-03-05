@@ -278,8 +278,8 @@ private def theoremContext? (ctxt : TraverseContext) : Option String :=
         match fromJson? (α := Informal.BlockData) b.data with
         | .ok d =>
           match d.kind with
-          | some statement => some s!"{statement.kind} {d.count}"
-          | none => some s!"Proof {d.count}"
+          | .statement kind => some s!"{kind} {d.count}"
+          | .proof => some s!"Proof {d.count}"
         | .error _ => go rest
       else
         go rest

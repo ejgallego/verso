@@ -286,12 +286,11 @@ private def kindTextForDecl? (decl : Data.ExternalRef) : Option String :=
   if !decl.present then
     none
   else
-    match decl.kind? with
-    | some .definition => some "definition"
-    | some .lemma => some "lemma"
-    | some .theorem => some "theorem"
-    | some .corollary => some "corollary"
-    | none => none
+    match decl.kind with
+    | .definition => some "definition"
+    | .lemma => some "lemma"
+    | .theorem => some "theorem"
+    | .corollary => some "corollary"
 
 /--
 Rendered fragments produced by `ExternalCode.renderParts` for external panel content.
@@ -406,8 +405,8 @@ def renderParts (data : BlockData)
       {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{icon}}{{externalSummaryTooltip}}</span>}}
     let externalCodePanel : Output.Html :=
       match data.kind with
-      | none => .empty
-      | some _ =>
+      | .proof => .empty
+      | .statement _ =>
         mkCodePanel (codePanelHeader data) codeEntryTitle externalStatusIndicator
           {{<ul class="bp_code_hover_list">{{externalPanelListItems linkedDecls}}</ul>}}
     { externalCodePanel }

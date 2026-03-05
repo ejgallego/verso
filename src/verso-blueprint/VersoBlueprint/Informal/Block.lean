@@ -718,25 +718,25 @@ private def renderInformalBlock (data : BlockData) (attrs : Array (String × Str
   let labelText := s!"{data.label}"
   let (kindText, showLabel, kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
     match data.kind with
-    | none =>
+    | .proof =>
       ("Proof", false, "proof", "proof_wrapper bp_kind_proof",
         "proof_heading", "proof_caption", "proof_label", "proof_content")
-    | some statement =>
-      match statement.kind with
+    | .statement nodeKind =>
+      match nodeKind with
       | .definition =>
-        (s!"{statement.kind}", true, "definition",
+        (s!"{nodeKind}", true, "definition",
           "definition_thmwrapper theorem-style-definition bp_kind_definition",
           "definition_thmheading", "definition_thmcaption", "definition_thmlabel", "definition_thmcontent")
       | .theorem =>
-        (s!"{statement.kind}", true, "theorem",
+        (s!"{nodeKind}", true, "theorem",
           "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
           "theorem_thmheading", "theorem_thmcaption", "theorem_thmlabel", "theorem_thmcontent")
       | .lemma =>
-        (s!"{statement.kind}", true, "lemma",
+        (s!"{nodeKind}", true, "lemma",
           "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
           "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
       | .corollary =>
-        (s!"{statement.kind}", true, "corollary",
+        (s!"{nodeKind}", true, "corollary",
           "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
           "corollary_thmheading", "corollary_thmcaption", "corollary_thmlabel", "corollary_thmcontent")
   let wrapperClass := s!"bp_wrapper {kindCss}_thmwrapper {wrapperCss}"
@@ -774,8 +774,8 @@ block_extension Block.informal (data : BlockData) where
       let label := blockData.label
       let isProof :=
         match blockData.kind with
-        | none => true
-        | some _ => false
+        | .proof => true
+        | .statement _ => false
       let previewFacet := if isProof then PreviewCache.Facet.proof else PreviewCache.Facet.statement
       let previewKey := PreviewCache.key label previewFacet
       let previewData := toJson (PreviewCache.Entry.ofBlocks label isProof _contents blockData.texPrelude)
@@ -787,9 +787,9 @@ block_extension Block.informal (data : BlockData) where
         let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
         modify λ s => s.saveDomainObject informalPreviewDomain previewKey id
       let externalDecls :=
-        match blockData.kind with
-        | none => #[]
-        | some statement => statement.codeData.map BlockCodeData.externalDecls |>.getD #[]
+        match blockData.kind, blockData.codeData with
+        | .statement _, some codeData => codeData.externalDecls
+        | _, _ => #[]
       for decl in externalDecls do
         let key := Resolve.externalRenderedDeclTargetKey label decl.canonical
         if ((← get).getDomainObject? informalExternalDeclDomain key).isNone then
@@ -835,8 +835,8 @@ block_extension Block.informal (data : BlockData) where
                 pure none
         let codeHint? :=
           match data.kind with
-          | none => none
-          | some statement => statement.codeData
+          | .proof => none
+          | .statement _ => data.codeData
         let codeSource := BlockCodeData.ofHintAndInline codeHint? codeData?
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveInlineLeanDeclHref? s decl
@@ -859,11 +859,11 @@ block_extension Block.informal (data : BlockData) where
         }
         let headingParts? : Option CodeSummary.RenderParts :=
           match data.kind with
-          | some _ => some <| CodeSummary.renderParts data cdata getDeclHref
-          | none => none
+          | .statement _ => some <| CodeSummary.renderParts data cdata getDeclHref
+          | .proof => none
         let externalParts? : Option ExternalCode.RenderParts :=
           match data.kind, codeSource with
-          | some _, some (.external decls) =>
+          | .statement _, some (.external decls) =>
             if decls.isEmpty then
               none
             else
@@ -910,21 +910,25 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let count ← Environment.pop blockRef
     let node? ← Environment.getNode? label
     let nodeCodeRef? := node?.bind (·.code)
-    let blockKind? : Option StatementBlockData ←
+    let blockKind : Data.InProgressKind ←
       if isProof then
-        pure none
+        pure .proof
       else
         let nodeKind ←
           match node? with
-          | some node => pure node.kind
-          | none =>
-            logErrorAt cfg.labelSyntax m!"Internal error: missing node '{label}' after environment registration"
-            pure kind
-        pure <| some { kind := nodeKind, codeData := BlockCodeData.ofCodeRefHint nodeCodeRef? }
+            | some node => pure node.kind
+            | none =>
+              logErrorAt cfg.labelSyntax m!"Internal error: missing node '{label}' after environment registration"
+              pure kind
+        pure <| .statement nodeKind
+    let codeData :=
+      match blockKind with
+      | .proof => none
+      | .statement _ => BlockCodeData.ofCodeRefHint nodeCodeRef?
     let texPrelude ← Environment.getTexPrelude
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := { kind := blockKind?, label, count, texPrelude }
+    let data : BlockData := { kind := blockKind, codeData, label, count, texPrelude }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
 private def directiveName (kind : Data.NodeKind) (isProof : Bool): String :=
