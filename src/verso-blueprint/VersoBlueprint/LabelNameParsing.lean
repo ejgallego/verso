@@ -15,13 +15,6 @@ register_option verso.blueprint.trimTeXLabelPrefix : Bool := {
   descr := "Trim TeX-style prefixes for informal-label-derived Lean names (`thm:foo` -> `foo`)"
 }
 
-/--
-Parse an informal label as blueprint metadata.
-Label parsing intentionally does not trim whitespace or split namespace dots.
--/
-def parse (s : String) : Name :=
-  Name.mkSimple s
-
 /-- Return the suffix of a TeX-style `prefix:suffix` label when present and non-empty. -/
 private def texStyleSuffix? (s : String) : Option String :=
   match s.splitOn ":" with
@@ -51,15 +44,17 @@ private def maybeTrimTeXStylePrefix (opts : Lean.Options) (s : String) : String 
   else
     s
 
-namespace ForLeanCode
-
 /--
-Parse an informal label for Lean code-block registration.
-This applies the label-prefix policy internally, opaque to callers.
+Parse an informal label as blueprint metadata.
+- Without `opts`, parsing is raw (`Name.mkSimple`) with no preprocessing.
+- With `opts`, TeX-style prefix policy is applied before `Name.mkSimple`.
+This keeps label semantics and avoids namespace-dot parsing.
 -/
-def parse (opts : Lean.Options) (s : String) : Name :=
-  LabelNameParsing.parse <| maybeTrimTeXStylePrefix opts s
-
-end ForLeanCode
+def parse (s : String) (opts : Option Lean.Options := none) : Name :=
+  let parsed :=
+    match opts with
+    | some opts => maybeTrimTeXStylePrefix opts s
+    | none => s
+  Name.mkSimple parsed
 
 end Informal.LabelNameParsing
