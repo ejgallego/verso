@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/inline-command-codeblock-first-try` checkpointed after nested snapshot prototype validation)
+Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` checkpointed after prototype validation)
 
 ## Active Worktrees
 
@@ -24,24 +24,26 @@ Last updated: 2026-03-05 (`feat/inline-command-codeblock-first-try` checkpointed
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
-- Status: `active` (owner action: implement and validate block-local snapshot threading)
-- Summary: prototype worktree for threading incremental snapshot state through Verso block elaboration, starting with embedded Lean code blocks.
+- Status: `validated` (owner action: review the prototype and decide whether to add a direct incremental regression test before committing the feature branch)
+- Summary: prototype now threads block-local snapshot state through Verso block elaboration for embedded Lean code blocks in both manual and blueprint paths.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`
 - Branch: `feat/verso-block-incremental-snapshots-20260305`
 - Base commit/branch:
-  - merge-base with `bp`: `af911f1e` (`0` behind / `0` ahead)
+  - merge-base with `bp`: `af911f1e` (`2` behind / `0` ahead)
 - Key commit:
-  - none yet
+  - none yet (prototype changes currently uncommitted in the worktree)
 - Validation status:
   - `lake exe cache get`
-  - `lake exe noperthedron` (warnings only; no errors)
+  - `lake exe noperthedron` (passed; warnings only)
+  - `lake build` reaches the touched Verso/manual/blueprint targets; full build still hits an unrelated `clang` crash in `test-projects/website-literate`
 - Preview link:
   - `http://127.0.0.1:8146`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`
+  - `lake build Verso.Doc.Concrete VersoManual.InlineLean VersoBlueprint.Lean`
   - `lake exe noperthedron`
   - server session: `52605`
-  - rebased on latest `bp` after dashboard registration
+  - key files: `src/verso/Verso/Doc/Elab/Monad.lean`, `src/verso/Verso/Doc/Concrete.lean`, `src/verso-manual/VersoManual/InlineLean.lean`, `src/verso-blueprint/VersoBlueprint/Lean.lean`
 
 ### `feat/inline-command-codeblock-first-try`
 
