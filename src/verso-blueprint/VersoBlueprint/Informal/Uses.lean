@@ -26,13 +26,15 @@ structure InlineData where
 deriving FromJson, ToJson, Quote
 
 private def blockHoverTitle (block : BlockData) : String :=
-  if block.isProof then
-    s!"Proof of {block.kind} {block.count}"
-  else
-    s!"{block.kind} {block.count}"
+  match block.kind with
+  | .proof => s!"Proof {block.count}"
+  | .statement kind => s!"{kind} {block.count}"
 
 private def usePreviewId (label : Data.Label) (block : BlockData) : String :=
-  let facet := if block.isProof then "proof" else "statement"
+  let facet :=
+    match block.kind with
+    | .proof => "proof"
+    | .statement _ => "statement"
   s!"bp-uses-{Informal.HoverRender.previewKey (toString label)}-{facet}"
 
 private def useLinkPreviewFallbackBody (label : Data.Label) : Verso.Output.Html :=
