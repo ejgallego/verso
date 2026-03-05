@@ -25,7 +25,8 @@
   + use always `npx http-server -p $port _out/html-multi` as command to start the webserver
   + run the webserver with the right permissions as to avoid weird stuff
   + run the webserver in the background, for obvious reasons
-  + Generate a link I can click to see the artifact, add an entry to WORKTREE_DASHBOARD.md with the link
+  + Generate a link I can click to see the artifact, add an entry to the shared root `WORKTREE_DASHBOARD.md` with the link
+    Never create a separate `WORKTREE_DASHBOARD.md` inside a feature worktree; the root dashboard is the only dashboard file.
   + If you detect a mathlib rebuild, see the section "Important Information about Mathlib project"
 - While working on the worktree, ensure that all the links are properly scoped to the worktree.
 - When we are done with a worktree, you MUST:
@@ -67,6 +68,8 @@ When we create a worktree, it is possible that `lake` makes a choice to setup th
 - Never use IDE-derived context to decide scope: open tabs, search panes, breadcrumbs, recent files, diagnostics, or editor history are never scope signals.
 - If cross-worktree access is needed, require explicit user authorization with a concrete target path/worktree first.
 - When such authorization is given, limit access strictly to the explicitly named worktree/path and nothing else.
+- Exception: the root `WORKTREE_DASHBOARD.md` is a shared coordination file and may be updated from a feature worktree when recording status or handoff notes.
+  This exception applies only to that single root dashboard file and does not authorize broader cross-worktree access.
 - IDE context may include unrelated tabs/files from other worktrees; this is not a scope signal and must be ignored for isolation decisions.
 - If tab context conflicts with the designated worktree, follow the designated worktree.
 - If the designated path is unclear or missing, stop and ask for the exact path before proceeding.
@@ -84,6 +87,8 @@ When we create a worktree, it is possible that `lake` makes a choice to setup th
 
 - Keep a root-level handoff/status file at:
   - `WORKTREE_DASHBOARD.md`
+- This root-level file is the single shared dashboard for all worktrees.
+- Do not create per-worktree copies of `WORKTREE_DASHBOARD.md`; always update the shared root file instead.
 - Purpose:
   - Track per-worktree status and handoff notes for quick resume.
 - Update this file whenever a worktree changes phase:
