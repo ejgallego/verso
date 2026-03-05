@@ -108,10 +108,6 @@ def proofBackgroundFormalizedAncColor : String := "#166534"
 
 def definitionBackgroundColor : String := "#ffffff"
 
-def leanOnlyOverlayColor : String := "#ede9fe"
-def missingExternalOverlayColor : String := "#fee2e2"
-def localSorriesOverlayColor : String := "#fef3c7"
-
 def unresolvedFillColor : String := "#fee2e2"
 def unresolvedBorderColor : String := "#b91c1c"
 def unresolvedFontColor : String := "#7f1d1d"
@@ -163,29 +159,28 @@ def graphLegendGroups (includeMathlib : Bool := false) : Array LegendGroup :=
     },
     {
       key := "warning"
-      title := "Warning Overlays"
+      title := "Warning Markers"
       items := #[
         legendItem "Unknown reference"
           (some { background := unresolvedFillColor, borderColor := unresolvedBorderColor }),
         legendItem "Lean code, informal statement missing"
           (some {
-            background := s!"linear-gradient(180deg, {definitionBackgroundColor}, {leanOnlyOverlayColor})"
-            borderColor := statementBorderFormalizedColor
+            background := definitionBackgroundColor
+            borderStyle := "dashed"
           }),
         legendItem "Missing external Lean declaration"
           (some {
-            background := s!"linear-gradient(180deg, {proofBackgroundReadyColor}, {missingExternalOverlayColor})"
-            borderColor := statementBorderReadyColor
+            background := definitionBackgroundColor
+            borderStyle := "dotted"
           }),
         legendItem "Associated Lean code incomplete"
           (some {
-            background := s!"linear-gradient(180deg, {proofBackgroundReadyColor}, {localSorriesOverlayColor})"
-            borderColor := statementBorderReadyColor
+            background := definitionBackgroundColor
+            borderWidth := 2
           }),
         legendItem "Formalized node with incomplete ancestors"
           (some {
-            background := proofBackgroundFormalizedColor
-            borderColor := statementBorderFormalizedColor
+            background := definitionBackgroundColor
             borderWidth := 3
             borderStyle := "double"
           })
@@ -387,6 +382,16 @@ def warningTooltipParts (warnings : WarningFlags) : List String :=
   (if warnings.localSorries then [warningCodeIncompleteText] else []) ++
   (if warnings.depsWithSorries then [warningDepsText] else [])
 
+private def styleTokensForWarnings (warnings : WarningFlags) : Array String :=
+  let tokens : Array String := #["filled"]
+  let tokens :=
+    if warnings.leanOnlyNoStatement then tokens.push "dashed" else tokens
+  let tokens :=
+    if warnings.missingExternalDecl then tokens.push "dotted" else tokens
+  let tokens :=
+    if warnings.localSorries then tokens.push "bold" else tokens
+  tokens
+
 def mkStyledNode (kind : Data.NodeKind) (label : Name) (deps proofDeps : Array Name)
     (parent? : Option Name)
     (statement : StatementStatus) (proof : ProofStatus) (warnings : WarningFlags)
@@ -411,16 +416,8 @@ def mkStyledNode (kind : Data.NodeKind) (label : Name) (deps proofDeps : Array N
   else
     let shape := kindShape kind
     let baseFill := proofStatusFillColor kind proof
-    let overlayColor? :=
-      if warnings.leanOnlyNoStatement then some leanOnlyOverlayColor
-      else if warnings.missingExternalDecl then some missingExternalOverlayColor
-      else if warnings.localSorries then some localSorriesOverlayColor
-      else none
-    let fillcolor :=
-      match overlayColor? with
-      | some overlay => s!"{baseFill}:{overlay}"
-      | none => baseFill
-    let gradientangle? := overlayColor?.map (fun _ => "90")
+    let styleTokens := styleTokensForWarnings warnings
+    let style := String.intercalate "," styleTokens.toList
     let peripheries := if warnings.depsWithSorries then 2 else 1
     let tooltipParts :=
       [s!"Statement: {statement.toText}", s!"Proof: {proof.toText}"] ++ warningTooltipParts warnings
@@ -432,13 +429,13 @@ def mkStyledNode (kind : Data.NodeKind) (label : Name) (deps proofDeps : Array N
       proofDeps
       parent?
       shape
-      style := "filled"
-      fillcolor
+      style
+      fillcolor := baseFill
       color := statementStatusBorderColor statement
       penwidth := "2.2"
       fontcolor := proofStatusFontColor proof
       peripheries
-      gradientangle?
+      gradientangle? := none
       tooltip?
       ref?
     }

@@ -47,6 +47,9 @@ def hasNodeWith (g : Graph Unit) (label : Name) (p : GraphNode Unit → Bool) : 
   | some node => p node
   | none => false
 
+def styleHasToken (style token : String) : Bool :=
+  (style.splitOn ",").any (fun part => part.trimAscii.toString == token)
+
 axiom external_axiom_decl : Nat
 def external_def_decl : Nat := 1
 
@@ -164,16 +167,19 @@ def graphStatus : Graph Unit := build stateStatus #[`def_formal, `def_ready, `de
 #eval
   hasNodeWith graphStatus `lean_only (fun n =>
     n.color == statementBorderFormalizedColor &&
-    n.gradientangle? == some "90" &&
-    n.fillcolor == s!"{proofBackgroundFormalizedAncColor}:{leanOnlyOverlayColor}") &&
+    n.fillcolor == proofBackgroundFormalizedAncColor &&
+    styleHasToken n.style "dashed" &&
+    n.gradientangle?.isNone) &&
   hasNodeWith graphStatus `local_sorry (fun n =>
     n.color == statementBorderFormalizedColor &&
-    n.gradientangle? == some "90" &&
-    n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}") &&
+    n.fillcolor == proofBackgroundReadyColor &&
+    styleHasToken n.style "bold" &&
+    n.gradientangle?.isNone) &&
   hasNodeWith graphStatus `thm_type_sorry (fun n =>
     n.color == statementBorderReadyColor &&
-    n.gradientangle? == some "90" &&
-    n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}")
+    n.fillcolor == proofBackgroundReadyColor &&
+    styleHasToken n.style "bold" &&
+    n.gradientangle?.isNone)
 
 /-- info: true -/
 #guard_msgs in
@@ -309,11 +315,14 @@ def graphExternalCode : Graph Unit := buildWithExternal stateExternalCode #[`def
     n.color == statementBorderFormalizedColor) &&
   hasNodeWith graphExternalCode `def_ext_bad (fun n =>
     n.color == statementBorderReadyColor &&
-    n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}") &&
+    n.fillcolor == proofBackgroundReadyColor &&
+    styleHasToken n.style "bold" &&
+    n.gradientangle?.isNone) &&
   hasNodeWith graphExternalCode `def_ext_missing (fun n =>
     n.color == statementBorderReadyColor &&
-    n.fillcolor == s!"{proofBackgroundReadyColor}:{missingExternalOverlayColor}" &&
-    n.gradientangle? == some "90")
+    n.fillcolor == proofBackgroundReadyColor &&
+    styleHasToken n.style "dotted" &&
+    n.gradientangle?.isNone)
 
 def stateExternalOverride : Environment.State := mkState [
   (`def_ext_override_bad,
@@ -348,12 +357,14 @@ def graphExternalOverride : Graph Unit :=
 #eval
   hasNodeWith graphExternalOverride `def_ext_override_bad (fun n =>
     n.color == statementBorderReadyColor &&
-    n.fillcolor == s!"{proofBackgroundReadyColor}:{localSorriesOverlayColor}" &&
-    n.gradientangle? == some "90") &&
+    n.fillcolor == proofBackgroundReadyColor &&
+    styleHasToken n.style "bold" &&
+    n.gradientangle?.isNone) &&
   hasNodeWith graphExternalOverride `def_ext_override_missing (fun n =>
     n.color == statementBorderReadyColor &&
-    n.fillcolor == s!"{proofBackgroundReadyColor}:{missingExternalOverlayColor}" &&
-    n.gradientangle? == some "90")
+    n.fillcolor == proofBackgroundReadyColor &&
+    styleHasToken n.style "dotted" &&
+    n.gradientangle?.isNone)
 
 def stateLeanOnlyExternalMissing : Environment.State := mkState [
   (`lean_only_ext_missing,
@@ -395,9 +406,11 @@ def legendWithMathlib : Array LegendGroup := graphLegendGroups true
     defaultLegend.any fun group => (group.items.any (·.label == "In Mathlib"))
   let hasUpdatedWarning : Bool :=
     defaultLegend.any fun group => (group.items.any (·.label == "Associated Lean code incomplete"))
+  let hasWarningMarkerTitle : Bool :=
+    defaultLegend.any (·.title == "Warning Markers")
   let hasUpdatedDashedText : Bool :=
     defaultLegend.any fun group => (group.items.any (·.label == "Dashed: statement deps from box-shaped sources"))
-  !hasMathlibLabel && hasUpdatedWarning && hasUpdatedDashedText
+  !hasMathlibLabel && hasUpdatedWarning && hasWarningMarkerTitle && hasUpdatedDashedText
 
 /-- info: true -/
 #guard_msgs in
@@ -416,8 +429,8 @@ def legendWithMathlib : Array LegendGroup := graphLegendGroups true
       match item.swatch? with
       | none => false
       | some swatch =>
-        swatch.background == s!"linear-gradient(180deg, {proofBackgroundReadyColor}, {localSorriesOverlayColor})" &&
-        swatch.borderColor == statementBorderReadyColor &&
+        swatch.background == definitionBackgroundColor &&
+        swatch.borderWidth == 2 &&
         warningCodeIncompleteText == "Associated Lean code is incomplete" &&
         graphLegendGroupViewNote.length > 0
 
