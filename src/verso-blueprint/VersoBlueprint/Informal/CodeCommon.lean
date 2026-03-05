@@ -128,15 +128,6 @@ structure BlockData where
   texPrelude : String := ""
 deriving FromJson, ToJson, Quote
 
-def BlockData.isProof (data : BlockData) : Bool :=
-  data.kind.isNone
-
-def BlockData.statementKind? (data : BlockData) : Option Data.NodeKind :=
-  data.kind.map (·.kind)
-
-def BlockData.codeData? (data : BlockData) : Option BlockCodeData :=
-  data.kind.bind (·.codeData)
-
 structure CodePanelHeader where
   caption : String
   number? : Option String := none
