@@ -220,8 +220,17 @@ private def inlineStatusMark (statementKind : Data.NodeKind) (codeData : InlineC
 /--
 Compute heading status semantics from canonical block code source.
 
-Visibility gating (for example requiring a `codeHref` in some inline/no-hint
-paths) is handled by `renderParts`.
+Case semantics:
+- `.userOk`: always returns a proved mark with explicit manual override text.
+- `.inline`: evaluates statement-blocking incompleteness against `statementKind`
+  using `ProvedStatus.anyBlocksStatementCompletion`.
+- `.external`: uses `externalHeadingAggregate` + `externalStatusMark`
+  (missing references dominate; non-blocking incompleteness stays informational).
+- `none`: defaults to the non-blocking proved mark.
+
+This function computes mark semantics only. Visibility gating
+(for example requiring a `codeHref` in some inline/no-hint paths) is handled by
+`renderParts`.
 -/
 private def statusMarkFromCodeSource (statementKind : Data.NodeKind)
     (source? : Option BlockCodeData) : BlockStatusMark :=
