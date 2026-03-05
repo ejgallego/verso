@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/tex-macro-import-20260305` worktree created)
+Last updated: 2026-03-05 (`feat/external-code-visual-refresh-20260305` created for external-code visual refresh)
 
 ## Active Worktrees
 
@@ -41,6 +41,26 @@ Last updated: 2026-03-05 (`feat/tex-macro-import-20260305` worktree created)
   - `git status --short`
   - `lake build`
   - `lake exe noperthedron`
+
+### `feat/external-code-visual-refresh-20260305`
+
+- Status: `active` (owner action: review incremental visual refresh commits)
+- Summary: implementation worktree for the external-code visual redesign, staged as three reviewable commits.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-visual-refresh-20260305`
+- Branch: `feat/external-code-visual-refresh-20260305`
+- Base commit/branch:
+  - merge-base with `bp`: `0c18436e` (`0` behind / `0` ahead)
+- Key commit:
+  - none yet
+- Validation status:
+  - `lake exe cache get`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Preview link:
+  - `http://127.0.0.1:8147`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-visual-refresh-20260305`
+  - `lake exe noperthedron`
+  - server session: `68315`
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
