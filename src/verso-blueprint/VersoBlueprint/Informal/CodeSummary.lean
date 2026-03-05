@@ -114,6 +114,14 @@ private structure ExternalHeadingAggregate where
   /-- Present declarations with any sorry-side incompleteness. -/
   withSorries : Nat
 
+/-- Per-status increments: `(statementAxis, proofAxis, anyAxis)`. -/
+private def statusGapIncrements (status : Data.ProvedStatus) : Nat × Nat × Nat :=
+  match status.hasTypeGap, status.hasProofGap with
+  | false, false => (0, 0, 0)
+  | true, false => (1, 0, 1)
+  | false, true => (0, 1, 1)
+  | true, true => (1, 1, 1)
+
 private def externalHeadingAggregate (decls : Array Data.ExternalRef) : ExternalHeadingAggregate :=
   decls.foldl
       (init := {
@@ -125,15 +133,17 @@ private def externalHeadingAggregate (decls : Array Data.ExternalRef) : External
         withSorries := 0
       })
       fun acc decl =>
-    let (found, missing) :=
-      if decl.present then (acc.found + 1, acc.missing) else (acc.found, acc.missing + 1)
-    let hasTypeGap := decl.present && decl.provedStatus.hasTypeGap
-    let hasProofGap := decl.present && decl.provedStatus.hasProofGap
-    let hasGap := hasTypeGap || hasProofGap
-    let withStatementSorries := acc.withStatementSorries + (if hasTypeGap then 1 else 0)
-    let withProofSorries := acc.withProofSorries + (if hasProofGap then 1 else 0)
-    let withSorries := acc.withSorries + (if hasGap then 1 else 0)
-    { acc with found, missing, withStatementSorries, withProofSorries, withSorries }
+    if decl.present then
+      let (statementInc, proofInc, anyInc) := statusGapIncrements decl.provedStatus
+      {
+        acc with
+          found := acc.found + 1
+          withStatementSorries := acc.withStatementSorries + statementInc
+          withProofSorries := acc.withProofSorries + proofInc
+          withSorries := acc.withSorries + anyInc
+      }
+    else
+      { acc with missing := acc.missing + 1 }
 
 private def externalDeclStatusText (decl : Data.ExternalRef) : String :=
   if !decl.present then
@@ -172,22 +182,25 @@ private def renderExternalSummaryTooltip (decls : Array Data.ExternalRef)
     </div>
   }}
 
-private def completionAxisText (hasStatementSorries hasProofSorries : Bool) : String :=
-  let statementTxt := if hasStatementSorries then "with sorries" else "completed"
-  let proofTxt := if hasProofSorries then "with sorries" else "completed"
-  s!"Statement: {statementTxt}; Proof: {proofTxt}"
+private def axisCompletionText : Nat → String
+  | 0 => "completed"
+  | _ + 1 => "with sorries"
 
-private def completionStatusMark (hasStatementSorries hasProofSorries : Bool) : BlockStatusMark :=
-  if hasStatementSorries || hasProofSorries then
-    {
-      status := .containsSorry #[]
-      title := completionAxisText hasStatementSorries hasProofSorries
-      symbolOverride? := some "⚠"
-    }
-  else
+private def completionAxisText (statementSorryCount proofSorryCount : Nat) : String :=
+  s!"Statement: {axisCompletionText statementSorryCount}; Proof: {axisCompletionText proofSorryCount}"
+
+private def completionStatusMark (statementSorryCount proofSorryCount : Nat) : BlockStatusMark :=
+  match Data.ProvedStatus.ofRefCounts statementSorryCount proofSorryCount with
+  | .proved =>
     {
       status := .proved
-      title := completionAxisText false false
+      title := completionAxisText statementSorryCount proofSorryCount
+    }
+  | _ =>
+    {
+      status := .containsSorry #[]
+      title := completionAxisText statementSorryCount proofSorryCount
+      symbolOverride? := some "⚠"
     }
 
 private def externalStatusMark (agg : ExternalHeadingAggregate) : BlockStatusMark :=
@@ -197,13 +210,19 @@ private def externalStatusMark (agg : ExternalHeadingAggregate) : BlockStatusMar
       title := s!"External Lean names: {agg.found} present, {agg.missing} missing (statement/proof completion unknown)"
     }
   else
-    completionStatusMark (agg.withStatementSorries > 0) (agg.withProofSorries > 0)
+    completionStatusMark agg.withStatementSorries agg.withProofSorries
+
+private def inlineCompletionCounts (codeData : InlineCodeData) : Nat × Nat :=
+  let decls := codeData.definedDefs ++ codeData.definedTheorems
+  decls.foldl
+      (init := (0, 0))
+      fun (statementSorryCount, proofSorryCount) decl =>
+    let (statementInc, proofInc, _) := statusGapIncrements decl.provedStatus
+    (statementSorryCount + statementInc, proofSorryCount + proofInc)
 
 private def inlineStatusMark (codeData : InlineCodeData) : BlockStatusMark :=
-  let decls := codeData.definedDefs ++ codeData.definedTheorems
-  let hasStatementSorries := decls.any fun decl => decl.provedStatus.hasTypeGap
-  let hasProofSorries := decls.any fun decl => decl.provedStatus.hasProofGap
-  completionStatusMark hasStatementSorries hasProofSorries
+  let (statementSorryCount, proofSorryCount) := inlineCompletionCounts codeData
+  completionStatusMark statementSorryCount proofSorryCount
 
 /--
 Compute heading status semantics from canonical block code source using explicit
@@ -220,24 +239,21 @@ This function computes mark semantics only. Visibility gating
 (for example requiring a `codeHref` in some inline/no-hint paths) is handled by
 `renderParts`.
 -/
-private def statusMarkFromCodeSource
-    (source? : Option BlockCodeData) : BlockStatusMark :=
-  match source? with
-  | some .userOk =>
+private def statusMarkFromResolvedCodeSource : BlockCodeData → BlockStatusMark
+  | .userOk =>
     {
       status := .proved
       title := "Marked complete via (leanok := true)"
       symbolOverride? := some "✓ (manually set)"
     }
-  | some (.external decls) =>
-    if decls.isEmpty then
-      completionStatusMark false false
-    else
-      externalStatusMark (externalHeadingAggregate decls)
-  | some (.inline codeData) =>
+  | .external decls =>
+    externalStatusMark (externalHeadingAggregate decls)
+  | .inline codeData =>
     inlineStatusMark codeData
-  | none =>
-    completionStatusMark false false
+
+private def statusMarkFromCodeSource
+    (source? : Option BlockCodeData) : BlockStatusMark :=
+  source?.map statusMarkFromResolvedCodeSource |>.getD (completionStatusMark 0 0)
 
 /--
 Render Lean summary UI for an informal block heading.
