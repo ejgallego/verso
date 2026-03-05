@@ -94,13 +94,14 @@ Dependency readiness is path-sensitive:
 - formalized: `#dcfce7`
 - formalizedWithAncestors: `#166534`
 
-### 5.3 Overlay precedence
+### 5.3 Warning markers (separate from fill)
 
-Single overlay precedence (top to bottom):
+Warning signals no longer modify fill colors. Instead they are encoded via node
+border style markers on top of statement-border color + proof-fill color:
 
-1. `leanOnlyNoStatement` (`#ede9fe`)
-2. `missingExternalDecl` (`#fee2e2`)
-3. `localSorries` (`#fef3c7`)
+1. `leanOnlyNoStatement` -> `dashed` style
+2. `missingExternalDecl` -> `dotted` style
+3. `localSorries` -> `bold` style
 
 ### 5.4 Additional markers
 
