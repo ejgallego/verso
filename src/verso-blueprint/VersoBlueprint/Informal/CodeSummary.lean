@@ -199,6 +199,49 @@ private def externalStatusMark (agg : ExternalHeadingAggregate) : BlockStatusMar
       title := s!"External Lean names ({agg.total}) are present"
     }
 
+private def noBlockingStatusMark : BlockStatusMark :=
+  {
+    status := .proved
+    title := "No sorries that block completion"
+  }
+
+private def inlineStatusMark (statementKind : Data.NodeKind) (codeData : InlineCodeData) : BlockStatusMark :=
+  let hasBlockingSorries :=
+    Data.ProvedStatus.anyBlocksStatementCompletion statementKind
+      (codeData.definedDefs ++ codeData.definedTheorems) (·.provedStatus)
+  if hasBlockingSorries then
+    {
+      status := .containsSorry #[]
+      title := "Contains sorries that block completion"
+    }
+  else
+    noBlockingStatusMark
+
+/--
+Compute heading status semantics from canonical block code source.
+
+Visibility gating (for example requiring a `codeHref` in some inline/no-hint
+paths) is handled by `renderParts`.
+-/
+private def statusMarkFromCodeSource (statementKind : Data.NodeKind)
+    (source? : Option BlockCodeData) : BlockStatusMark :=
+  match source? with
+  | some .userOk =>
+    {
+      status := .proved
+      title := "Marked complete via (leanok := true)"
+      symbolOverride? := some "✓ (manually set)"
+    }
+  | some (.external decls) =>
+    if decls.isEmpty then
+      noBlockingStatusMark
+    else
+      externalStatusMark (externalHeadingAggregate statementKind decls)
+  | some (.inline codeData) =>
+    inlineStatusMark statementKind codeData
+  | none =>
+    noBlockingStatusMark
+
 /--
 Render Lean summary UI for an informal block heading.
 
@@ -222,7 +265,7 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
         else
           {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
       {
-        statusMark := some (externalStatusMark agg)
+        statusMark := some (statusMarkFromCodeSource statementKind cdata.source)
         codeEntry := {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
       }
     else
@@ -255,31 +298,14 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
             else
               {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
           {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
-      let hasBlockingSorries : Bool :=
-        match inlineData? with
-        | none => false
-        | some codeData =>
-          Data.ProvedStatus.anyBlocksStatementCompletion statementKind
-            (codeData.definedDefs ++ codeData.definedTheorems) (·.provedStatus)
+      let statusMarkCandidate := statusMarkFromCodeSource statementKind cdata.source
       let statusMark : Option BlockStatusMark :=
         if userOk then
-          some {
-            status := .proved
-            title := "Marked complete via (leanok := true)"
-            symbolOverride? := some "✓ (manually set)"
-          }
+          some statusMarkCandidate
         else if cdata.codeHref.isNone then
           none
         else
-          let title :=
-            if hasBlockingSorries then
-              "Contains sorries that block completion"
-            else
-              "No sorries that block completion"
-          some {
-            status := if hasBlockingSorries then .containsSorry #[] else .proved
-            title
-          }
+          some statusMarkCandidate
       { statusMark, codeEntry }
 
 end CodeSummary
