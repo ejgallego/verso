@@ -6,8 +6,10 @@ Author: Emilio J. Gallego Arias
 
 import Lean
 import VersoManual.Bibliography
+import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
 import VersoBlueprint.Informal.CodeCommon
+import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.Resolve
 
 open Lean Elab Command
@@ -346,6 +348,54 @@ private def pieceText (style : CitationStyle) (c : Citable) : String :=
   | .textual => s!"{who} ({year})"
   | .parenthetical | .here => s!"{who}, {year}"
 
+private def citationPreviewId (item : CiteItem) (style : CitationStyle)
+    (kind : Option CitePartKind) (index : Option String) : String :=
+  let styleKey :=
+    match style with
+    | .textual => "textual"
+    | .parenthetical => "parenthetical"
+    | .here => "here"
+  let kindKey := kind.map (fun k => Informal.HoverRender.previewKey k.text) |>.getD "none"
+  let indexKey := (normalizedLocatorIndex index).map Informal.HoverRender.previewKey |>.getD "none"
+  s!"bp-cite-{citationAnchorId item.label}-{styleKey}-{kindKey}-{indexKey}"
+
+private def citationPreviewTitle (item : CiteItem) : String :=
+  s!"Bibliography: {item.label}"
+
+private def citationPreviewBody (item : CiteItem)
+    (kind : Option CitePartKind) (index : Option String) (href? : Option String) :
+    Verso.Output.Html :=
+  open Verso.Output.Html in
+  let locator? := locatorText kind index
+  let referenceTxt := pieceText .textual item.citation
+  let targetTxt :=
+    match href? with
+    | some _ => "Jump to bibliography entry"
+    | Option.none => "Bibliography target unavailable on this page"
+  {{
+    <div class="bp_code_hover_section">
+      <span class="bp_code_hover_label">"Reference"</span>
+      <ul class="bp_code_hover_list">
+        <li>{{.text true referenceTxt}}</li>
+      </ul>
+    </div>
+    {{match locator? with
+      | some loc =>
+        {{<div class="bp_code_hover_section">
+            <span class="bp_code_hover_label">"Locator"</span>
+            <ul class="bp_code_hover_list">
+              <li>{{.text true loc}}</li>
+            </ul>
+          </div>}}
+      | Option.none => .empty}}
+    <div class="bp_code_hover_section">
+      <span class="bp_code_hover_label">"Target"</span>
+      <ul class="bp_code_hover_list">
+        <li>{{.text true targetTxt}}</li>
+      </ul>
+    </div>
+  }}
+
 open Verso Doc Elab Genre Manual in
 inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyle := .parenthetical)
     (kind : Option CitePartKind := none) (index : Option String := none) where
@@ -365,7 +415,9 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
     let summary := usageSummary ctxt
     let locatorIndex := normalizedLocatorIndex cfg.index
     for item in cfg.citations do
+      let previewId := citationPreviewId item cfg.style cfg.kind cfg.index
       modify fun st =>
+        let st := Informal.HoverRender.registerInlinePreviewOwner st path previewId id
         let st := st.saveDomainObject Resolve.citationUsageDomainName item.label id
         match href? with
         | some href =>
@@ -380,6 +432,8 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
             })
         | Option.none => st
     pure none
+  extraCss := ([Informal.Commands.inlinePreviewCss] : List String)
+  extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs] : List String)
   toTeX :=
     open Verso.Output.TeX in
     some <| fun go _id data content => do
@@ -419,6 +473,8 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
         | HtmlT.logError "Malformed data in Inline.bpCite.toHtml"
           pure .empty
       let st ← HtmlT.state
+      let ctxt ← HtmlT.context
+      let inPreviewRender ← Informal.HoverRender.inInlinePreviewRender
       let citeAnchorId? := st.externalTags[id]? |>.map (·.htmlId.toString)
       let wrapTarget (h : Output.Html) : Output.Html :=
         match citeAnchorId? with
@@ -437,9 +493,17 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
             | first :: _ => first
           s!"{cleanBase}#bp-bib-{citationAnchorId item.label}")
         let txt := pieceText cfg.style item.citation
-        match href? with
-        | some href => {{<a href={{href}}>{{.text true txt}}</a>}}
-        | Option.none => {{<span>{{.text true txt}}</span>}}
+        let linkNode : Output.Html :=
+          match href? with
+          | some href => {{<a href={{href}}>{{.text true txt}}</a>}}
+          | Option.none => {{<span>{{.text true txt}}</span>}}
+        if inPreviewRender then
+          linkNode
+        else
+          let previewId := citationPreviewId item cfg.style cfg.kind cfg.index
+          let emitTemplate := Informal.HoverRender.isInlinePreviewOwner st ctxt.path previewId id
+          let tooltip := citationPreviewBody item cfg.kind cfg.index href?
+          Informal.HoverRender.inlinePreviewNode emitTemplate linkNode tooltip previewId (citationPreviewTitle item)
       let body := joinHtml {{<span>"; "</span>}} (cfg.citations.map mkLink)
       let locatorHtml? := (locatorText cfg.kind cfg.index).map (fun loc => {{<span>{{.text true loc}}</span>}})
       let htmlNote? : Option Html ←

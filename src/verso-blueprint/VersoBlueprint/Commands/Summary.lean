@@ -571,7 +571,19 @@ block_extension Block.summary (summary : Summary) where
         | Option.none => Resolve.resolveInlineLeanDeclHref? s decl
       let (previewLabels, previewTemplates) ← (data.previewLabels).foldlM
           (init := (({} : NameSet), (#[] : Array Output.Html))) fun (labels, templates) label => do
-        let preview? ← Informal.PreviewSource.renderTraversalPreview? s goB label
+        let preview? ← Informal.PreviewSource.renderTraversalPreview? s
+          (fun b =>
+            withReader
+              (fun ctx =>
+                let tctx := ctx.traverseContext
+                { ctx with
+                  traverseContext := {
+                    tctx with
+                    blockContext := tctx.blockContext.push (.other Informal.HoverRender.inlinePreviewMarkerBlock)
+                  }
+                })
+              (goB b))
+          label
         match preview? with
         | Option.none => pure (labels, templates)
         | some (rendered, texPrelude) =>
