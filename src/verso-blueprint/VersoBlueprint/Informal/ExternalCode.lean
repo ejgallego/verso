@@ -38,13 +38,13 @@ Parse and normalize `(lean := "a,b,c")` directive values into canonical external
 
 Returns `(refs, invalidEntries)` where invalid entries keep the original token plus parse error.
 -/
-def parseExternalCodeList (opts : Lean.Options) (lean : Option String) :
+def parseExternalCodeList (lean : Option String) :
     Array Data.ExternalRef × Array String :=
   match lean with
   | none => (#[], #[])
   | some s =>
     (splitExternalCodeRefs s).foldl (init := (#[], #[])) fun (acc, invalid) ref =>
-      match NameParsing.parseLeanNameE opts ref with
+      match NameParsing.parseLeanNameE ref with
       | .ok name =>
         let extRef := Data.ExternalRef.ofName name .directiveLean
         (acc.push extRef, invalid)

@@ -29,6 +29,12 @@ Scope: external declaration rendering/status paths after command-path modulariza
    - code panel list (`externalPanelListItems`).
 5. Global summary uses `Commands/Summary.buildSummary`.
 
+## Name Ownership Boundary
+
+1. Informal object labels (blueprint node labels) are blueprint-owned metadata.
+2. `(lean := "...")` declaration names are Lean-owned identifiers.
+3. Blueprint label policies (for example TeX-prefix trimming) must not rewrite `(lean := "...")` names.
+
 ## Remaining Redundancies
 
 1. Hover and panel rendering still duplicate some body-row HTML shape (metadata/details composition), even though head/status/source-fact derivation is now shared.

@@ -72,11 +72,10 @@ structure Config where
 
 section
 variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadError m] [MonadFileMap m]
-  [MonadOptions m]
 
 def Config.parse  : ArgParse m Config :=
-  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent opts =>
-    let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList opts lean
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent =>
+    let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList lean
     {
       label := Name.mkSimple labelArg.val
       labelSyntax := labelArg.syntax
@@ -87,7 +86,6 @@ def Config.parse  : ArgParse m Config :=
       invalidExternalCode := invalidExternalCode
     }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true
         <*> .named `leanok .bool true <*> .named `parent .string true
-        <*> .lift "current elaboration options" getOptions
 
 instance : FromArgs Config m where
   fromArgs := Config.parse

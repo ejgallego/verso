@@ -134,7 +134,7 @@ Using {uses "thm:no_nopert_matrix_pose"}[].
 By {uses "thm:no_nopert_matrix_pose"}[this theorem], no pose makes the noperthedron Rupert.
 :::
 
-:::theorem "thm:nopert_not_rupert" (lean := "thm:nopert_not_rupert") (parent := "main_final_nonrupert")
+:::theorem "thm:nopert_not_rupert" (lean := "nopert_not_rupert") (parent := "main_final_nonrupert")
 The noperthedron is not a Rupert polyhedron.
 :::
 

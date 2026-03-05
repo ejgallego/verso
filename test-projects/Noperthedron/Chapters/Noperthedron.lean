@@ -440,7 +440,7 @@ without point-symmetricness "baked in" as it is in $`C_{30}`. It's more convenie
 A set $`S \subseteq \R^3` is _point-symmetric_ if $`x \in S` implies $`-x \in S`.
 :::
 
-:::definition "def:pointsymmetrize" (lean := "def:pointsymmetrize") (parent := "nopert_construction")
+:::definition "def:pointsymmetrize" (lean := "pointsymmetrize") (parent := "nopert_construction")
 
 The _pointsymmetrization_ of a collection of vertices $`v_1, \ldots, v_n \in \R^3`
 is $`v_1, \ldots, v_n, -v_1, \ldots, -v_n`.
