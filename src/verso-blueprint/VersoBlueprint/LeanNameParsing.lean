@@ -11,7 +11,7 @@ namespace Informal.LeanNameParsing
 open Lean
 
 /-- Trim leading/trailing ASCII whitespace from a Lean name fragment. -/
-def normalize (s : String) : String :=
+private def normalize (s : String) : String :=
   s.trimAscii.toString
 
 /-- Parse a Lean declaration name using Lean's standard `String.toName` parser. -/
