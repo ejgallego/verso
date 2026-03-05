@@ -19,6 +19,7 @@ import VersoManual.InlineLean.Outputs
 import VersoManual.InlineLean.Scopes
 
 import VersoBlueprint.Data
+import VersoBlueprint.ProvedStatus
 import VersoBlueprint.Profiling
 
 open Verso Doc Elab Genre.Manual

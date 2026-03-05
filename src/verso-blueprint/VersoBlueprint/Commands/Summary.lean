@@ -10,6 +10,7 @@ import Verso
 import VersoManual
 import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
+import VersoBlueprint.ProvedStatus
 import VersoBlueprint.Environment
 import VersoBlueprint.Graph
 import VersoBlueprint.Informal.CodeCommon

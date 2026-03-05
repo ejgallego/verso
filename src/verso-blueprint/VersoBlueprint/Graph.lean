@@ -5,6 +5,7 @@ Author: Emilio J. Gallego Arias
 -/
 
 import VersoBlueprint.Environment
+import VersoBlueprint.ProvedStatus
 
 namespace Informal.Graph
 
