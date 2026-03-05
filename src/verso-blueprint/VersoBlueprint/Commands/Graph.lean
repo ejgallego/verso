@@ -940,7 +940,19 @@ block_extension Block.graph (graphData : GraphBlockData) where
         | some variant => variant.dot
         | Option.none => graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
       let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
-        let some (renderedBlocks, texPrelude) ← Informal.PreviewSource.renderTraversalPreview? s goB node.label
+        let some (renderedBlocks, texPrelude) ← Informal.PreviewSource.renderTraversalPreview? s
+          (fun b =>
+            withReader
+              (fun ctx =>
+                let tctx := ctx.traverseContext
+                { ctx with
+                  traverseContext := {
+                    tctx with
+                    blockContext := tctx.blockContext.push (.other Informal.HoverRender.inlinePreviewMarkerBlock)
+                  }
+                })
+              (goB b))
+          node.label
           | pure acc
         pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks texPrelude)
       let previewUi := Informal.HoverRender.graphPreviewUi previewTemplates

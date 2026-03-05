@@ -7,6 +7,7 @@ import Tests.Basic
 import Tests.BlueprintInformal
 import Tests.BlueprintGraph
 import Tests.BlueprintSummaryStatus
+import Tests.BlueprintLinkHover
 import Tests.BlueprintSummaryLinks
 import Tests.Elab
 import Tests.GenericCode

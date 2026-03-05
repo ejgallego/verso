@@ -13,6 +13,7 @@ import Lean.Elab.InfoTree.Types
 
 import VersoManual
 
+import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
 import VersoBlueprint.Informal.CodeCommon
@@ -179,29 +180,6 @@ span[class$="_thmlabel"]::after {
 .bp_code_hover_title {
   font-weight: 700;
   margin-bottom: 0.3rem;
-}
-
-.bp_code_hover_section {
-  margin-top: 0.28rem;
-}
-
-.bp_code_hover_label {
-  font-weight: 600;
-  color: #334155;
-}
-
-.bp_code_hover_list {
-  margin: 0.12rem 0 0;
-  padding-left: 1.1rem;
-}
-
-.bp_code_hover_list code {
-  font-size: 0.76rem;
-}
-
-.bp_code_hover_none {
-  color: #64748b;
-  font-style: italic;
 }
 
 .bp_code_block summary {
@@ -808,8 +786,8 @@ block_extension Block.informal (data : BlockData) where
         modify λ s => s.saveDomainObjectData informalDomain label.toString (toJson blockData)
         return none
   toTeX := none
-  extraCss := ([blueprintCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
-  extraJs := ([blueprintStyleSwitcherJs] : List String)
+  extraCss := ([blueprintCss, Informal.Commands.inlinePreviewCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
+  extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs, blueprintStyleSwitcherJs] : List String)
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
