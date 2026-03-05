@@ -35,9 +35,10 @@
 
 ## General recommendations:
 
-- Avoid duplication
+- Avoid duplication of code, strongly
 - One one single source of truth for each data point
-- Avoid too many abbrevs
+- Avoid abbrevs for renaming, backwards-compatibility is not important yet.
+- Don't introduce new inductives unless strictly necessary
 
 ## Important Information about Mathlib project
 
