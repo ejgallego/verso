@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/hover-links-biblio-20260305` hover links implemented and validated)
+Last updated: 2026-03-05 (`feat/summary-status-hardening-20260304` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -86,6 +86,21 @@ Last updated: 2026-03-05 (`feat/hover-links-biblio-20260305` hover links impleme
 
 ## Recently Completed
 
+- Merged `feat/summary-status-hardening-20260304` into `bp` (`7224dd31 -> 62ddf0e9`, fast-forward).
+- Feature branch key commits:
+  - `a082bc0c` refactor(status): enforce proof payload invariant and centralize completion policy
+  - `2d25f9ed` refactor(data): reuse NodeKind for external refs and remove fallback defaults
+  - `62ddf0e9` refactor(external): harden kind handling and simplify block payload model
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Stopped preview server session `1102` (`http://127.0.0.1:8128/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/summary-status-hardening-20260304`.
+- Deleted branch: `feat/summary-status-hardening-20260304`.
 - Closed `feat/previewrender-direct-poc-20260304` without merge (requested discard after experiment).
 - Feature branch note:
   - `81f89752` docs(dashboard): register previewrender direct POC worktree
