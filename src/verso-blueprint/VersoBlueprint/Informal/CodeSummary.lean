@@ -99,14 +99,32 @@ private structure ExternalHeadingAggregate where
   total : Nat
   found : Nat
   missing : Nat
+  statementBlocking : Nat
+  nonBlockingIncompleteness : Nat
   withGaps : Nat
 
-private def externalHeadingAggregate (decls : Array Data.ExternalRef) : ExternalHeadingAggregate :=
-  decls.foldl (init := { total := decls.size, found := 0, missing := 0, withGaps := 0 }) fun acc decl =>
+private def externalHeadingAggregate (statementKind : Data.NodeKind)
+    (decls : Array Data.ExternalRef) : ExternalHeadingAggregate :=
+  decls.foldl
+      (init := {
+        total := decls.size
+        found := 0
+        missing := 0
+        statementBlocking := 0
+        nonBlockingIncompleteness := 0
+        withGaps := 0
+      })
+      fun acc decl =>
     let (found, missing) :=
       if decl.present then (acc.found + 1, acc.missing) else (acc.found, acc.missing + 1)
-    let withGaps := acc.withGaps + (if externalDeclHasGap decl then 1 else 0)
-    { acc with found, missing, withGaps }
+    let hasGap := externalDeclHasGap decl
+    let blocksStatement :=
+      decl.present && decl.provedStatus.blocksStatementCompletion statementKind
+    let statementBlocking := acc.statementBlocking + (if blocksStatement then 1 else 0)
+    let nonBlockingIncompleteness :=
+      acc.nonBlockingIncompleteness + (if hasGap && !blocksStatement then 1 else 0)
+    let withGaps := acc.withGaps + (if hasGap then 1 else 0)
+    { acc with found, missing, statementBlocking, nonBlockingIncompleteness, withGaps }
 
 private def externalDeclStatusText (decl : Data.ExternalRef) : String :=
   if !decl.present then
@@ -151,11 +169,16 @@ private def externalStatusMark (agg : ExternalHeadingAggregate) : BlockStatusMar
       status := .missing
       title := s!"External Lean names: {agg.found} present, {agg.missing} missing"
     }
-  else if agg.withGaps > 0 then
+  else if agg.statementBlocking > 0 then
     {
       status := .containsSorry #[]
-      title := s!"External Lean names ({agg.total}) are present, but {agg.withGaps} are incomplete"
+      title := s!"External Lean names ({agg.total}) include {agg.statementBlocking} declarations that block statement completion"
       symbolOverride? := some "⚠"
+    }
+  else if agg.nonBlockingIncompleteness > 0 then
+    {
+      status := .proved
+      title := s!"No statement blockers in external Lean names ({agg.total}); {agg.nonBlockingIncompleteness} declarations are incomplete on non-blocking axes"
     }
   else
     {
@@ -177,7 +200,7 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
   | .statement statementKind =>
     let externalDecls := cdata.source.map BlockCodeData.externalDecls |>.getD #[]
     if !externalDecls.isEmpty then
-      let agg := externalHeadingAggregate externalDecls
+      let agg := externalHeadingAggregate statementKind externalDecls
       let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withGaps
       let codeEntryTooltip := renderExternalSummaryTooltip externalDecls hrefOf
       let linkNode : Output.Html :=
