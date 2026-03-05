@@ -15,7 +15,7 @@ def normalize (s : String) : String :=
   s.trimAscii.toString
 
 /-- Parse a Lean declaration name using Lean's standard `String.toName` parser. -/
-def parse? (s : String) : Option Name :=
+private def parse? (s : String) : Option Name :=
   let s := normalize s
   if s.isEmpty then
     none
