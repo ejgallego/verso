@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/external-code-rendering-review-20260305` created for external-code visual review)
+Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` created for block-level incrementality work)
 
 ## Active Worktrees
 
@@ -41,6 +41,26 @@ Last updated: 2026-03-05 (`feat/external-code-rendering-review-20260305` created
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-rendering-review-20260305`
   - `lake exe noperthedron`
   - review screenshots under `tmp/visual-review/`
+
+### `feat/verso-block-incremental-snapshots-20260305`
+
+- Status: `active` (owner action: implement and validate block-local snapshot threading)
+- Summary: prototype worktree for threading incremental snapshot state through Verso block elaboration, starting with embedded Lean code blocks.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`
+- Branch: `feat/verso-block-incremental-snapshots-20260305`
+- Base commit/branch:
+  - merge-base with `bp`: `8fbcdc5e` (`0` behind / `0` ahead)
+- Key commit:
+  - none yet
+- Validation status:
+  - `lake exe cache get`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Preview link:
+  - `http://127.0.0.1:8146`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`
+  - `lake exe noperthedron`
+  - server session: `52605`
 
 ### `feat/lsp-folding-chain`
 
