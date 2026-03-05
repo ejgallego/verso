@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` created for block-level incrementality work)
+Last updated: 2026-03-05 (`feat/external-code-rendering-review-20260305` closed after external-code visual review)
 
 ## Active Worktrees
 
@@ -21,26 +21,6 @@ Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` crea
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/external-code-rendering-review-20260305`
-
-- Status: `active` (owner action: review external-code visual analysis)
-- Summary: visual audit worktree focused on the expanded external Lean declaration panels and their fit within blueprint statement chrome.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-rendering-review-20260305`
-- Branch: `feat/external-code-rendering-review-20260305`
-- Base commit/branch:
-  - merge-base with `bp`: `f9424d17` (`0` behind / `0` ahead)
-- Key commit:
-  - none yet (analysis-only worktree)
-- Validation status:
-  - `lake exe cache get`
-  - `lake exe noperthedron` (warnings only; no errors)
-- Preview link:
-  - `http://127.0.0.1:8145`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-rendering-review-20260305`
-  - `lake exe noperthedron`
-  - review screenshots under `tmp/visual-review/`
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
@@ -99,6 +79,14 @@ Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` crea
 
 ## Recently Completed
 
+- Closed `feat/external-code-rendering-review-20260305` without merge (analysis-only review task).
+- Validation in the review worktree:
+  - `lake exe cache get`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Visual review used local headless screenshots of collapsed and expanded external-code panels.
+- Stopped preview server `http://127.0.0.1:8145/`.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-rendering-review-20260305`.
+- Deleted branch: `feat/external-code-rendering-review-20260305`.
 - Merged `feat/preview-modes-placement-20260305` into `bp` (`7915c4e6 -> f7b4e353`, fast-forward).
 - Feature branch key commits:
   - `aefa9e30` refactor(preview-hover): dedupe shared preview helpers and facet API
