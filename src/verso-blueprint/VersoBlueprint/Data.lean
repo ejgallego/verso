@@ -60,7 +60,7 @@ def NodeKind.isTheoremLike : NodeKind → Bool
 inductive InProgressKind where
   | statement (kind : NodeKind)
   | proof
-deriving Inhabited, Repr
+deriving Inhabited, Repr, ToJson, FromJson
 
 open Syntax in
 instance : Quote NodeKind where
@@ -69,6 +69,12 @@ instance : Quote NodeKind where
     | .lemma => mkCApp ``NodeKind.lemma #[]
     | .theorem => mkCApp ``NodeKind.theorem #[]
     | .corollary => mkCApp ``NodeKind.corollary #[]
+
+open Syntax in
+instance : Quote InProgressKind where
+  quote
+    | .statement kind => mkCApp ``InProgressKind.statement #[quote kind]
+    | .proof => mkCApp ``InProgressKind.proof #[]
 
 /-- Where an incompleteness marker appears in a declaration. -/
 inductive SorryWhere where
@@ -306,6 +312,16 @@ def ConstantInfo.blueprintNodeKind? : ConstantInfo → Option NodeKind
   | .ctorInfo _ => none
   | .recInfo _ => none
 
+def ConstantInfo.blueprintKindText : ConstantInfo → String
+  | .defnInfo _ => "definition"
+  | .thmInfo _ => "theorem"
+  | .axiomInfo _ => "axiom"
+  | .opaqueInfo _ => "opaque"
+  | .quotInfo _ => "quotient"
+  | .inductInfo _ => "inductive"
+  | .ctorInfo _ => "constructor"
+  | .recInfo _ => "recursor"
+
 structure Code where
   stx : Syntax
   definedDefs : Array LiterateDef := #[]
@@ -422,7 +438,7 @@ structure ExternalRef where
   /--
   Snapshot of declaration kind and optional source link.
   -/
-  kind? : Option NodeKind := none
+  kind : NodeKind := .definition
   sourceHref? : Option String := none
   /--
   Snapshot of direct DocGen rendering outcome.
@@ -441,34 +457,13 @@ instance : Quote ExternalRef where
      , quote ref.provenance
      , quote ref.range?
      , quote ref.selectionRange?
-     , quote ref.kind?
+     , quote ref.kind
      , quote ref.sourceHref?
      , quote ref.render
      ]
 
 def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean) : ExternalRef :=
-  { written := name, canonical := name.eraseMacroScopes, origin }
-
-def ExternalRef.withSnapshot (ref : ExternalRef) (info? : Option ConstantInfo) : ExternalRef :=
-  let canonical := ref.canonical.eraseMacroScopes
-  match info? with
-  | none =>
-    {
-      ref with
-      canonical
-      present := false
-      provedStatus := .missing
-      kind? := none
-      render := .error (.moduleUnavailable canonical)
-    }
-  | some info =>
-    {
-      ref with
-      canonical
-      present := true
-      provedStatus := ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
-      kind? := ConstantInfo.blueprintNodeKind? info
-    }
+  { written := name, canonical := name.eraseMacroScopes, origin, kind := .definition }
 
 inductive CodeRef where
   /-

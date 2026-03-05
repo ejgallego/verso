@@ -17,7 +17,7 @@ set_option doc.verso true
 
 #docs (Genre.Manual) externalSummaryLinksDoc "External Summary Links" :=
 :::::::
-:::definition "def:external.summary" (lean := "Nat.succ")
+:::definition "def:external.summary" (lean := "Nat.add")
 External declaration wiring test.
 :::
 

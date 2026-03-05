@@ -107,9 +107,26 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
   let canonical := ref.canonical.eraseMacroScopes
   match env.find? canonical with
   | none =>
-    pure <| Data.ExternalRef.withSnapshot { ref with canonical } none
+    pure {
+      ref with
+      canonical
+      present := false
+      provedStatus := .missing
+      render := .error (.moduleUnavailable canonical)
+    }
   | some cinfo =>
-    let ref := Data.ExternalRef.withSnapshot { ref with canonical } (some cinfo)
+    let nodeKind ←
+      match Informal.Data.ConstantInfo.blueprintNodeKind? cinfo with
+      | some kind => pure kind
+      | none =>
+        throwError m!"Unsupported external Lean reference '{ref.written}' (canonical '{canonical}') with kind '{Informal.Data.ConstantInfo.blueprintKindText cinfo}'. Only definitions and theorems are currently supported."
+    let ref : Data.ExternalRef := {
+      ref with
+      canonical
+      present := true
+      provedStatus := Informal.Data.ConstantInfo.blueprintProvedStatus cinfo (allowOpaque := true)
+      kind := nodeKind
+    }
     let ranges? ← findDeclarationRanges? canonical
     let moduleName? := moduleNameForDecl? env canonical
     let sourcePath? ←

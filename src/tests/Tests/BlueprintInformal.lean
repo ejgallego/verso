@@ -73,7 +73,7 @@ error: Label «conflict.ext.inline» has both '(lean := ...)' and an associated 
 #guard_msgs in
 #docs (Manual) conflictExternalThenInline "Conflict External Then Inline" :=
 :::::::
-:::definition "conflict.ext.inline" (lean := "Nat.succ")
+:::definition "conflict.ext.inline" (lean := "Nat.add")
 Simple body.
 :::
 
@@ -92,7 +92,7 @@ error: Label «conflict.inline.ext» has both an associated Lean code block and 
 def conflictInlineThenExternalValue : Nat := Nat.succ 1
 ```
 
-:::definition "conflict.inline.ext" (lean := "Nat.succ")
+:::definition "conflict.inline.ext" (lean := "Nat.add")
 Simple body.
 :::
 :::::::

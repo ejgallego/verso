@@ -68,8 +68,8 @@ inline_extension Inline.informal (data : InlineData) where
         let labelText := s!"{label}"
         let titleText :=
           match block.kind with
-          | none => s!"Proof {block.count}"
-          | some statement => s!"{statement.kind} {block.count}"
+          | .proof => s!"Proof {block.count}"
+          | .statement kind => s!"{kind} {block.count}"
         if let some href := href then
           return {{ <span> <a href={{href}} title={{labelText}}> {{titleText}} </a> </span> }}
         else
@@ -83,7 +83,7 @@ inline_extension Inline.informal (data : InlineData) where
   toTeX := none
 
 private def Data.Node.toBlockInfo (node : Data.Node) (label : Data.Label) : BlockData :=
-  { kind := some { kind := node.kind }, label, count := node.count }
+  { kind := .statement node.kind, label, count := node.count }
 
 private def usesImpl : RoleExpanderOf Config
   | cfg, contents => do
