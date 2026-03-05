@@ -52,7 +52,7 @@ set_option verso.blueprint.foldProofs true
   - Used in: `Chapters/Noperthedron.lean` (explicit but currently same as default).
 - `set_option verso.blueprint.trimTeXLabelPrefix true`
   - Purpose: trim TeX-style prefixes in informal-label-derived Lean names (`thm:foo` -> `foo`) for inline code-block labels.
-  - Definition: `src/verso-blueprint/VersoBlueprint/NameParsing.lean`.
+  - Definition: `src/verso-blueprint/VersoBlueprint/LabelNameParsing.lean`.
   - Default: `false`.
   - Used in: all chapter files and `Contents.lean` to normalize prefixed inline code labels.
 
@@ -105,11 +105,13 @@ These options are now implemented and can be configured with `set_option`.
 - `verso.blueprint.externalCode.strictResolve : Bool` (default `false`)
   - File: `src/verso-blueprint/VersoBlueprint.lean`.
   - Effect: unresolved/ambiguous names in `(lean := "...")` become hard errors (instead of warnings + fallback).
+  - Current limitation: `(lean := "...")` still uses comma-separated strings as a temporary list workaround.
+  - Planned follow-up: remove comma-splitting once Verso supports list arguments for directives.
   - Example:
     - `set_option verso.blueprint.externalCode.strictResolve true`
 
 - `verso.blueprint.trimTeXLabelPrefix : Bool` (default `false`)
-  - File: `src/verso-blueprint/VersoBlueprint/NameParsing.lean`.
+  - File: `src/verso-blueprint/VersoBlueprint/LabelNameParsing.lean`.
   - Effect: trims TeX-style prefixes from informal-label-derived Lean names (`thm:foo` -> `foo`) for inline code labels.
   - Non-effect: does not rewrite `(lean := "...")` external declaration names.
   - Example:

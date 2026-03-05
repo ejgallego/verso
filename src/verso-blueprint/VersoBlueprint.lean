@@ -27,7 +27,8 @@ import VersoBlueprint.Informal.Group
 import VersoBlueprint.Informal.Uses
 import VersoBlueprint.DocGenNameRender
 import VersoBlueprint.Lean
-import VersoBlueprint.NameParsing
+import VersoBlueprint.LabelNameParsing
+import VersoBlueprint.LeanNameParsing
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher

@@ -8,6 +8,7 @@ import VersoManual
 
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
+import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.Profiling
 
 open Verso Doc Elab
@@ -28,7 +29,7 @@ variable [Monad m] [MonadError m]
 def GroupConfig.parse : ArgParse m GroupConfig :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) =>
     {
-      label := Name.mkSimple labelArg.val
+      label := LabelNameParsing.parse labelArg.val
       labelSyntax := labelArg.syntax
     }) <$> .positional `label (.withSyntax .string)
 

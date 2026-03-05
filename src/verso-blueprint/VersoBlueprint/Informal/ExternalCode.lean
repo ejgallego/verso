@@ -9,7 +9,7 @@ import Verso
 import VersoManual
 import VersoBlueprint.ExternalRefSnapshot
 import VersoBlueprint.Informal.CodeCommon
-import VersoBlueprint.NameParsing
+import VersoBlueprint.LeanNameParsing
 
 namespace Informal
 
@@ -27,12 +27,6 @@ namespace ExternalCode
 open Verso Doc Elab
 open Lean Elab
 
-private def splitExternalCodeRefs (s : String) : Array String :=
-  s.splitOn ","
-  |>.toArray
-  |>.map NameParsing.normalize
-  |>.filter (fun p => !p.isEmpty)
-
 /--
 Parse and normalize `(lean := "a,b,c")` directive values into canonical external refs.
 
@@ -43,8 +37,8 @@ def parseExternalCodeList (lean : Option String) :
   match lean with
   | none => (#[], #[])
   | some s =>
-    (splitExternalCodeRefs s).foldl (init := (#[], #[])) fun (acc, invalid) ref =>
-      match NameParsing.parseLeanDeclNameE ref with
+    (LeanNameParsing.splitCommaSeparatedList s).foldl (init := (#[], #[])) fun (acc, invalid) ref =>
+      match LeanNameParsing.parseE ref with
       | .ok name =>
         let extRef := Data.ExternalRef.ofName name .directiveLean
         (acc.push extRef, invalid)
