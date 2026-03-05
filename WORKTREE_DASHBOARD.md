@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` checkpointed after prototype validation)
+Last updated: 2026-03-05 (`feat/tex-macro-import-20260305` worktree created)
 
 ## Active Worktrees
 
@@ -21,6 +21,26 @@ Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` chec
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/tex-macro-import-20260305`
+
+- Status: `created` (owner action: implement importable TeX prelude registry and per-math injection refactor)
+- Summary: move blueprint math prelude handling from transient document blocks and global KaTeX patching onto importable Lean commands plus per-node HTML math payloads.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/tex-macro-import-20260305-wt`
+- Branch: `feat/tex-macro-import-20260305`
+- Base commit/branch:
+  - merge-base with `bp`: `0c18436e` (`0` behind / `0` ahead)
+- Key commit:
+  - none yet
+- Validation status:
+  - worktree created; validation pending
+- Preview link:
+  - pending
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/tex-macro-import-20260305-wt`
+  - `git status --short`
+  - `lake build`
+  - `lake exe noperthedron`
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
