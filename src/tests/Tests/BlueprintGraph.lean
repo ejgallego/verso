@@ -379,4 +379,46 @@ def warningLeanOnlyExternalMissing : WarningFlags :=
   warningLeanOnlyExternalMissing.leanOnlyNoStatement &&
   warningLeanOnlyExternalMissing.missingExternalDecl
 
+def legendGroupByKey (groups : Array LegendGroup) (key : String) : Option LegendGroup :=
+  groups.find? (·.key == key)
+
+def legendItemByLabel (group : LegendGroup) (label : String) : Option LegendItem :=
+  group.items.find? (·.label == label)
+
+def defaultLegend : Array LegendGroup := graphLegendGroups false
+def legendWithMathlib : Array LegendGroup := graphLegendGroups true
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  let hasMathlibLabel : Bool :=
+    defaultLegend.any fun group => (group.items.any (·.label == "In Mathlib"))
+  let hasUpdatedWarning : Bool :=
+    defaultLegend.any fun group => (group.items.any (·.label == "Associated Lean code incomplete"))
+  let hasUpdatedDashedText : Bool :=
+    defaultLegend.any fun group => (group.items.any (·.label == "Dashed: statement deps from box-shaped sources"))
+  !hasMathlibLabel && hasUpdatedWarning && hasUpdatedDashedText
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  legendWithMathlib.any fun group => (group.items.any (·.label == "In Mathlib"))
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  match legendGroupByKey defaultLegend "warning" with
+  | none => false
+  | some warningGroup =>
+    match legendItemByLabel warningGroup "Associated Lean code incomplete" with
+    | none => false
+    | some item =>
+      match item.swatch? with
+      | none => false
+      | some swatch =>
+        swatch.background == s!"linear-gradient(180deg, {proofBackgroundReadyColor}, {localSorriesOverlayColor})" &&
+        swatch.borderColor == statementBorderReadyColor &&
+        warningCodeIncompleteText == "Associated Lean code is incomplete" &&
+        graphLegendGroupViewNote.length > 0
+
 end Verso.Tests.BlueprintGraph

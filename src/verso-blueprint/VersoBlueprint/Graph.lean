@@ -68,6 +68,34 @@ instance [Quote Ref] : Quote (GraphNode Ref) where
 
 abbrev Graph (Ref : Type) := Array (GraphNode Ref)
 
+structure LegendSwatch where
+  background : String := "#ffffff"
+  borderColor : String := "#6b7280"
+  borderWidth : Nat := 1
+  borderStyle : String := "solid"
+  borderRadius : String := "0.2rem"
+deriving Inhabited, Repr, ToJson, FromJson
+
+structure LegendItem where
+  label : String
+  swatch? : Option LegendSwatch := none
+deriving Inhabited, Repr, ToJson, FromJson
+
+structure LegendGroup where
+  key : String
+  title : String
+  items : Array LegendItem
+deriving Inhabited, Repr, ToJson, FromJson
+
+def LegendSwatch.inlineStyle (swatch : LegendSwatch) : String :=
+  String.intercalate "; " [
+    s!"background: {swatch.background}",
+    s!"border-color: {swatch.borderColor}",
+    s!"border-width: {swatch.borderWidth}px",
+    s!"border-style: {swatch.borderStyle}",
+    s!"border-radius: {swatch.borderRadius}"
+  ]
+
 def statementBorderBlockedColor : String := "#f59e0b"
 def statementBorderReadyColor : String := "#2563eb"
 def statementBorderFormalizedColor : String := "#16a34a"
@@ -88,7 +116,94 @@ def unresolvedFillColor : String := "#fee2e2"
 def unresolvedBorderColor : String := "#b91c1c"
 def unresolvedFontColor : String := "#7f1d1d"
 
+def warningLeanOnlyText : String := "Lean code present but informal statement is missing"
+def warningMissingExternalText : String := "Associated Lean declaration is missing from the current environment"
+def warningCodeIncompleteText : String := "Associated Lean code is incomplete"
 def warningDepsText : String := "Dependencies are not fully formalized"
+
+private def legendItem (label : String) (swatch? : Option LegendSwatch := none) : LegendItem :=
+  { label, swatch? }
+
+def graphLegendGroups (includeMathlib : Bool := false) : Array LegendGroup :=
+  let statementItems :=
+    #[
+      legendItem "Blocked" (some { borderColor := statementBorderBlockedColor }),
+      legendItem "Ready to formalize" (some { borderColor := statementBorderReadyColor }),
+      legendItem "Formalized" (some { borderColor := statementBorderFormalizedColor })
+    ]
+  let statementItems :=
+    if includeMathlib then
+      statementItems.push (legendItem "In Mathlib" (some { borderColor := statementBorderMathlibColor }))
+    else
+      statementItems
+  #[
+    {
+      key := "shape"
+      title := "Shapes"
+      items := #[
+        legendItem "Definition" (some { borderRadius := "0.2rem" }),
+        legendItem "Theorem / lemma / corollary" (some { borderRadius := "999px" })
+      ]
+    },
+    {
+      key := "statement"
+      title := "Statement Border"
+      items := statementItems
+    },
+    {
+      key := "proof"
+      title := "Background Status"
+      items := #[
+        legendItem "Not ready" (some { background := proofBackgroundNeutralColor }),
+        legendItem "Ready to formalize" (some { background := proofBackgroundReadyColor }),
+        legendItem "Formalized" (some { background := proofBackgroundFormalizedColor }),
+        legendItem "Formalized + ancestors"
+          (some { background := proofBackgroundFormalizedAncColor, borderColor := statementBorderMathlibColor })
+      ]
+    },
+    {
+      key := "warning"
+      title := "Warning Overlays"
+      items := #[
+        legendItem "Unknown reference"
+          (some { background := unresolvedFillColor, borderColor := unresolvedBorderColor }),
+        legendItem "Lean code, informal statement missing"
+          (some {
+            background := s!"linear-gradient(180deg, {definitionBackgroundColor}, {leanOnlyOverlayColor})"
+            borderColor := statementBorderFormalizedColor
+          }),
+        legendItem "Missing external Lean declaration"
+          (some {
+            background := s!"linear-gradient(180deg, {proofBackgroundReadyColor}, {missingExternalOverlayColor})"
+            borderColor := statementBorderReadyColor
+          }),
+        legendItem "Associated Lean code incomplete"
+          (some {
+            background := s!"linear-gradient(180deg, {proofBackgroundReadyColor}, {localSorriesOverlayColor})"
+            borderColor := statementBorderReadyColor
+          }),
+        legendItem "Formalized node with incomplete ancestors"
+          (some {
+            background := proofBackgroundFormalizedColor
+            borderColor := statementBorderFormalizedColor
+            borderWidth := 3
+            borderStyle := "double"
+          })
+      ]
+    },
+    {
+      key := "edge"
+      title := "Edges"
+      items := #[
+        legendItem "Solid: statement deps from theorem-like sources",
+        legendItem "Dashed: statement deps from box-shaped sources",
+        legendItem "Dotted: proof-only deps"
+      ]
+    }
+  ]
+
+def graphLegendGroupViewNote : String :=
+  "Group View uses aggregate diamond nodes; colors are averaged over child nodes."
 
 def statementDeps (node : Data.Node) : Array Name :=
   ((node.statement.map (·.deps)).getD #[]).map (fun d => (d : Name))
@@ -267,9 +382,9 @@ def ProofStatus.toText : ProofStatus → String
   | .formalizedWithAncestors => "formalized + ancestors"
 
 def warningTooltipParts (warnings : WarningFlags) : List String :=
-  (if warnings.leanOnlyNoStatement then ["Lean code present but informal statement is missing"] else []) ++
-  (if warnings.missingExternalDecl then ["Associated Lean declaration is missing from the current environment"] else []) ++
-  (if warnings.localSorries then ["Associated Lean code still contains sorries"] else []) ++
+  (if warnings.leanOnlyNoStatement then [warningLeanOnlyText] else []) ++
+  (if warnings.missingExternalDecl then [warningMissingExternalText] else []) ++
+  (if warnings.localSorries then [warningCodeIncompleteText] else []) ++
   (if warnings.depsWithSorries then [warningDepsText] else [])
 
 def mkStyledNode (kind : Data.NodeKind) (label : Name) (deps proofDeps : Array Name)

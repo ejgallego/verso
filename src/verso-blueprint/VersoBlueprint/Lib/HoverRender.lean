@@ -108,7 +108,7 @@ def graphPreviewUi (templates : Array Verso.Output.Html) : GraphPreviewUi :=
         </div>
       }}
       panel := {{
-        <aside id="bp-graph-preview" class="bp_graph_preview" hidden>
+        <aside class="bp_graph_preview" hidden>
           <div class="bp_graph_preview_header">
             <div class="bp_graph_preview_title"></div>
             <button type="button" class="bp_graph_preview_close" aria-label="Close informal preview">"Close"</button>

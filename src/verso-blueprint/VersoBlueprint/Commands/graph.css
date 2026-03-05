@@ -27,7 +27,7 @@ html.bp-graph-toc-hidden .with-toc > main {
   padding-left: 0;
 }
 
-div#graph {
+.bp_graph_canvas {
   width: 100%;
   height: 90vh;
   resize: both;
@@ -148,6 +148,12 @@ div#graph {
   font-size: 0.88rem;
 }
 
+.bp_graph_legend_note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #475569;
+}
+
 .bp_graph_controls {
   margin-top: 0.75rem;
   display: inline-flex;
@@ -204,73 +210,6 @@ div#graph {
   background: #ffffff;
 }
 
-.bp_graph_legend_shape_box {
-  border-radius: 0.2rem;
-}
-
-.bp_graph_legend_shape_ellipse {
-  border-radius: 999px;
-}
-
-.bp_graph_legend_stmt_blocked {
-  border-color: #f59e0b;
-}
-
-.bp_graph_legend_stmt_ready {
-  border-color: #2563eb;
-}
-
-.bp_graph_legend_stmt_formalized {
-  border-color: #16a34a;
-}
-
-.bp_graph_legend_stmt_mathlib {
-  border-color: #14532d;
-}
-
-.bp_graph_legend_proof_none {
-  background: #f8fafc;
-}
-
-.bp_graph_legend_proof_ready {
-  background: #dbeafe;
-}
-
-.bp_graph_legend_proof_formalized {
-  background: #dcfce7;
-}
-
-.bp_graph_legend_proof_anc {
-  background: #166534;
-  border-color: #14532d;
-}
-
-.bp_graph_legend_warn_unknown {
-  background: #fee2e2;
-  border-color: #b91c1c;
-}
-
-.bp_graph_legend_warn_lean_only {
-  background: linear-gradient(180deg, #ffffff, #ede9fe);
-  border-color: #16a34a;
-}
-
-.bp_graph_legend_warn_missing_external {
-  background: linear-gradient(180deg, #dbeafe, #fee2e2);
-  border-color: #2563eb;
-}
-
-.bp_graph_legend_warn_local_sorries {
-  background: linear-gradient(180deg, #dbeafe, #fef3c7);
-  border-color: #2563eb;
-}
-
-.bp_graph_legend_warn_deps {
-  background: #dcfce7;
-  border: 3px double #16a34a;
-}
-
-
 html[data-bp-style="blueprint"] .bp_graph_legend_item {
   color: #111827;
 }
@@ -298,5 +237,5 @@ html[data-bp-style="bold"] .bp_graph_legend_item {
 }
 
 html[data-bp-style="bold"] .bp_graph_legend_swatch {
-  border: 2px solid #0f172a;
+  border-width: 2px;
 }
