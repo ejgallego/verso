@@ -51,11 +51,4 @@ def maybeTrimTeXStylePrefix (opts : Lean.Options) (s : String) : String :=
   else
     s
 
-/--
-Normalize an informal label for Lean code-block registration.
-This keeps label parsing semantics (`mkSimple`) and avoids namespace-dot parsing.
--/
-def normalizeForLeanCode (opts : Lean.Options) (label : Name) : Name :=
-  Name.mkSimple <| maybeTrimTeXStylePrefix opts label.toString
-
 end Informal.LabelNameParsing
