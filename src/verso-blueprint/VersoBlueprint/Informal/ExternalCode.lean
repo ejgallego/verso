@@ -286,7 +286,12 @@ private def kindTextForDecl? (decl : Data.ExternalRef) : Option String :=
   if !decl.present then
     none
   else
-    some <| decl.kind?.getD (if decl.isTheoremLike then "theorem" else "definition")
+    match decl.kind? with
+    | some .definition => some "definition"
+    | some .lemma => some "lemma"
+    | some .theorem => some "theorem"
+    | some .corollary => some "corollary"
+    | none => none
 
 /--
 Rendered fragments produced by `ExternalCode.renderParts` for external panel content.

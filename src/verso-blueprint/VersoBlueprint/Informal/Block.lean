@@ -910,12 +910,17 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let count ← Environment.pop blockRef
     let node? ← Environment.getNode? label
     let nodeCodeRef? := node?.bind (·.code)
-    let nodeKind := node?.map (·.kind) |>.getD kind
-    let blockKind? : Option StatementBlockData :=
+    let blockKind? : Option StatementBlockData ←
       if isProof then
-        none
+        pure none
       else
-        some { kind := nodeKind, codeData := BlockCodeData.ofCodeRefHint nodeCodeRef? }
+        let nodeKind ←
+          match node? with
+          | some node => pure node.kind
+          | none =>
+            logErrorAt cfg.labelSyntax m!"Internal error: missing node '{label}' after environment registration"
+            pure kind
+        pure <| some { kind := nodeKind, codeData := BlockCodeData.ofCodeRefHint nodeCodeRef? }
     let texPrelude ← Environment.getTexPrelude
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef

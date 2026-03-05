@@ -291,15 +291,15 @@ Proof/body-side incompleteness for blueprint status checks.
 def ConstantInfo.blueprintHasProofSorry (info : ConstantInfo) (allowOpaque : Bool := false) : Bool :=
   (ConstantInfo.blueprintProvedStatus info (allowOpaque := allowOpaque)).hasProofGap
 
-def ConstantInfo.blueprintKindText : ConstantInfo → String
-  | .defnInfo _ => "definition"
-  | .thmInfo _ => "theorem"
-  | .axiomInfo _ => "axiom"
-  | .opaqueInfo _ => "opaque"
-  | .quotInfo _ => "quotient"
-  | .inductInfo _ => "inductive"
-  | .ctorInfo _ => "constructor"
-  | .recInfo _ => "recursor"
+def ConstantInfo.blueprintNodeKind? : ConstantInfo → Option NodeKind
+  | .defnInfo _ => some .definition
+  | .thmInfo _ => some .theorem
+  | .axiomInfo _ => none
+  | .opaqueInfo _ => none
+  | .quotInfo _ => none
+  | .inductInfo _ => none
+  | .ctorInfo _ => none
+  | .recInfo _ => none
 
 structure Code where
   stx : Syntax
@@ -406,10 +406,6 @@ structure ExternalRef where
   -/
   provedStatus : ProvedStatus := .proved
   /--
-  Snapshot of theorem-likeness at registration time.
-  -/
-  isTheoremLike : Bool := false
-  /--
   Snapshot of declaration provenance metadata.
   -/
   provenance : ExternalDeclProvenance := .unknown
@@ -421,7 +417,7 @@ structure ExternalRef where
   /--
   Snapshot of declaration kind and optional source link.
   -/
-  kind? : Option String := none
+  kind? : Option NodeKind := none
   sourceHref? : Option String := none
   /--
   Snapshot of direct DocGen rendering outcome.
@@ -437,7 +433,6 @@ instance : Quote ExternalRef where
      , quote ref.origin
      , quote ref.present
      , quote ref.provedStatus
-     , quote ref.isTheoremLike
      , quote ref.provenance
      , quote ref.range?
      , quote ref.selectionRange?
@@ -458,7 +453,6 @@ def ExternalRef.withSnapshot (ref : ExternalRef) (info? : Option ConstantInfo) :
       canonical
       present := false
       provedStatus := .missing
-      isTheoremLike := false
       kind? := none
       render := .error (.moduleUnavailable canonical)
     }
@@ -468,8 +462,7 @@ def ExternalRef.withSnapshot (ref : ExternalRef) (info? : Option ConstantInfo) :
       canonical
       present := true
       provedStatus := ConstantInfo.blueprintProvedStatus info (allowOpaque := true)
-      isTheoremLike := match info with | .thmInfo _ => true | _ => false
-      kind? := some (ConstantInfo.blueprintKindText info)
+      kind? := ConstantInfo.blueprintNodeKind? info
     }
 
 inductive CodeRef where
@@ -583,13 +576,18 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
   match data.get? label, statement, proof with
   -- First statement for a fresh label.
   | none, some statement, none =>
-    let count := nextCount
-    let node ← applyHints {
-      statement := some statement
-      count
-      kind := kind?.getD .lemma
-    }
-    return data.insert label node
+    match kind? with
+    | none =>
+      logError m!"Internal error: missing node kind while registering statement for {label}"
+      return data
+    | some kind =>
+      let count := nextCount
+      let node ← applyHints {
+        statement := some statement
+        count
+        kind
+      }
+      return data.insert label node
   -- Proof without a corresponding statement is weird, ignore?
   | none, none, some _ =>
     logError m!"No statement for proof with label {label}"
@@ -600,7 +598,10 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
       let count := if node.count == 0 then nextCount else node.count
       let node ← applyHints {
         node with
-          kind := kind?.getD node.kind
+          kind :=
+            match kind? with
+            | some kind => kind
+            | none => node.kind
           count
           statement := some statement
       }
