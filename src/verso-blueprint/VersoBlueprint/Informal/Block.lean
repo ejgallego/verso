@@ -18,6 +18,7 @@ import VersoBlueprint.Environment
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Informal.CodeSummary
 import VersoBlueprint.Informal.ExternalCode
+import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
@@ -77,11 +78,11 @@ def Config.parse  : ArgParse m Config :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent =>
     let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList lean
     {
-      label := Name.mkSimple labelArg.val
+      label := LabelNameParsing.parse labelArg.val
       labelSyntax := labelArg.syntax
       lean := lean
       leanok := leanok
-      parent := parent.map Name.mkSimple
+      parent := parent.map LabelNameParsing.parse
       externalCode := externalCode
       invalidExternalCode := invalidExternalCode
     }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true

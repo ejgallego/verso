@@ -9,8 +9,8 @@ import VersoBlueprint.Environment
 import VersoBlueprint.Informal.Block
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Informal.CodeSummary
+import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.Lean
-import VersoBlueprint.NameParsing
 import VersoBlueprint.Profiling
 import VersoBlueprint.Resolve
 import VersoBlueprint.Widget
@@ -134,10 +134,10 @@ variable [Monad m] [MonadError m] [MonadOptions m]
 
 def CodeConfig.parse : ArgParse m CodeConfig :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) opts =>
-    let label := Name.mkSimple labelArg.val
+    let label := LabelNameParsing.parse labelArg.val
     {
       label
-      leanLabel := NameParsing.normalizeInformalLabelName opts label
+      leanLabel := LabelNameParsing.normalizeForLeanCode opts label
       labelSyntax := labelArg.syntax
     }) <$> .positional `label (.withSyntax .string)
       <*> .lift "current elaboration options" getOptions

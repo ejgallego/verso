@@ -9,6 +9,7 @@ import Lean.DocString.Extension
 import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.ExternalRefSnapshot
+import VersoBlueprint.LabelNameParsing
 
 namespace Informal
 
@@ -179,7 +180,7 @@ private def registerLeanOnlyDecl (decl label : Name) (ref : Syntax) : CoreM Unit
 
 private def labelFromAttr (stx : Syntax) : CoreM Name := do
   match stx with
-  | `(attr| blueprint $lbl:str) => pure (Name.mkSimple lbl.getString)
+  | `(attr| blueprint $lbl:str) => pure (LabelNameParsing.parse lbl.getString)
   | _ => throwError "invalid syntax for '[blueprint]' attribute"
 
 open Lean in
