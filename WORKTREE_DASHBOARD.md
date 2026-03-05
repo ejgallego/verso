@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/tex-label-trim-20260305` rebased on `bp` and ready for merge)
+Last updated: 2026-03-05 (`feat/tex-label-trim-20260305` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -21,29 +21,6 @@ Last updated: 2026-03-05 (`feat/tex-label-trim-20260305` rebased on `bp` and rea
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/tex-label-trim-20260305`
-
-- Status: `ready-for-review` (owner action: merge onto `bp`)
-- Summary: split label-vs-lean parsing into dedicated modules; keep informal labels raw (`mkSimple`) while `(lean := "...")` uses Lean parsing with comma-list workaround; hide label preprocessing behind a single `LabelNameParsing.parse` API.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/tex-label-trim-20260305`
-- Branch: `feat/tex-label-trim-20260305`
-- Base commit/branch:
-  - rebased on `bp` at `07861069`
-- Key commits:
-  - `5e5a5c0b` feat(blueprint): trim TeX-style label prefixes for Lean-facing names
-  - `579f1c5a` fix(names): keep lean external refs untouched
-  - `0cc26f1d` refactor(name-parsing): split lean and label modules
-  - `9a4fe816` refactor(labels): collapse to single parse entrypoint
-  - `f7870ee2` refactor(lean-names): make normalize private
-- Validation status:
-  - `lake env lean src/tests/Tests/BlueprintInformal.lean`
-  - `lake exe noperthedron`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/tex-label-trim-20260305`
-  - `git status --short`
-  - `git log --oneline --max-count=10`
-  - preview: `http://127.0.0.1:8127/` (via `npx http-server -p 8127 _out/html-multi`, pid `637842`)
 
 ### `feat/hover-links-biblio-20260305`
 
@@ -109,6 +86,22 @@ Last updated: 2026-03-05 (`feat/tex-label-trim-20260305` rebased on `bp` and rea
 
 ## Recently Completed
 
+- Merged `feat/tex-label-trim-20260305` into `bp` (`07861069 -> e6ce7c47`, fast-forward).
+- Feature branch key commits:
+  - `5e5a5c0b` feat(blueprint): trim TeX-style label prefixes for Lean-facing names
+  - `579f1c5a` fix(names): keep lean external refs untouched
+  - `0cc26f1d` refactor(name-parsing): split lean and label modules
+  - `9a4fe816` refactor(labels): collapse to single parse entrypoint
+  - `f7870ee2` refactor(lean-names): make normalize private
+- Rebased feature branch on `bp` before merge.
+- Final parser verification:
+  - `(lean := "...")` path parses only via `LeanNameParsing.splitCommaSeparatedList` + `LeanNameParsing.parseE` in `Informal/ExternalCode.lean`
+  - informal label paths parse only via `LabelNameParsing.parse` in `Informal/{Block,Code,Group}.lean` and `Attribute.lean`
+- Validation on feature branch:
+  - `lake exe noperthedron` (warnings only, no errors)
+- Stopped preview server process `637842` (`http://127.0.0.1:8127/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/tex-label-trim-20260305`.
+- Deleted branch: `feat/tex-label-trim-20260305`.
 - Merged `feat/summary-status-hardening-20260304` into `bp` (`7224dd31 -> 62ddf0e9`, fast-forward).
 - Feature branch key commits:
   - `a082bc0c` refactor(status): enforce proof payload invariant and centralize completion policy
