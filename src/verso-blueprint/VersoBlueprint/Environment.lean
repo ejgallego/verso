@@ -13,10 +13,7 @@ namespace Informal.Environment
 open Lean
 open Informal.Data
 
-inductive InProgressKind where
-  | statement (kind : NodeKind)
-  | proof
-deriving Inhabited, Repr
+abbrev InProgressKind := Data.InProgressKind
 
 structure InProgress where
   label : Label
@@ -130,11 +127,7 @@ def pop (ref : Syntax) : m Nat := do
           deps := cur.deps
           elabStx := cur.elabStx
         }
-        let (kind?, statement, proof) :=
-          match cur.kind with
-          | .statement nodeKind => (some nodeKind, some payload, none)
-          | .proof => (none, none, some payload)
-        let data ← state.data.register cur.label kind? statement proof cur.codeHint cur.parent
+        let data ← state.data.register cur.label cur.kind payload cur.codeHint cur.parent
         return { state with data, stack }
   getCount
 
