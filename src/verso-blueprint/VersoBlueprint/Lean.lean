@@ -168,18 +168,19 @@ private def getDefinedDeclsImpl (fileMap : FileMap) (before after : Environment)
         if refs.proofRefs.isEmpty then fallbackRefs else refs.proofRefs
       else
         #[]
-    let (typeSorryRefs, proofSorryRefs) :=
-      if hasGap then
-        match info with
-        | .thmInfo _ => (typeRefs, proofRefs)
-        | _ => (if hasTypeGap || hasProofGap then fallbackRefs else #[], #[])
-      else
-        (#[], #[])
+    let typeSorryRefs :=
+      if hasGap then typeRefs else #[]
+    let proofSorryRefs :=
+      if hasGap then proofRefs else #[]
     let provedStatus : Data.ProvedStatus :=
       if baseStatus.isAxiomLike then
         .axiomLike
       else
-        _root_.Informal.Data.ProvedStatus.ofRefCounts typeSorryRefs.size proofSorryRefs.size
+        _root_.Informal.Data.ProvedStatus.ofSorryFlags
+          hasTypeGap
+          hasProofGap
+          (if hasTypeGap then some typeSorryRefs.size else none)
+          (if hasProofGap then some proofSorryRefs.size else none)
     match info with
     | .thmInfo _ =>
       theorems := theorems.push ({
