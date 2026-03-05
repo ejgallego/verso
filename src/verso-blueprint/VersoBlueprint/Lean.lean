@@ -27,8 +27,8 @@ open Lean Elab
 open SubVerso.Highlighting
 
 open Verso.SyntaxUtils (parserInputString)
-open _root_.Verso.Genre.Manual (warnLongLines)
-open _root_.Verso.Genre.Manual.InlineLean (saveOutputs)
+open Verso.Genre.Manual (warnLongLines)
+open Verso.Genre.Manual.InlineLean (saveOutputs)
 open Verso.Genre.Manual.InlineLean.Scopes (getScopes setScopes)
 
 namespace Informal.Lean
@@ -148,7 +148,7 @@ private def getDefinedDeclsImpl (fileMap : FileMap) (before after : Environment)
       continue
     if name.isInternalOrNum || name.hasMacroScopes then
       continue
-    let baseStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus info
+    let baseStatus := Data.ConstantInfo.blueprintProvedStatus info
     let hasTypeGap := baseStatus.hasTypeGap
     let hasProofGap := baseStatus.hasProofGap
     let hasGap := baseStatus.isIncomplete
@@ -177,7 +177,7 @@ private def getDefinedDeclsImpl (fileMap : FileMap) (before after : Environment)
       if baseStatus.isAxiomLike then
         .axiomLike
       else
-        _root_.Informal.Data.ProvedStatus.ofSorryFlags
+        Data.ProvedStatus.ofSorryFlags
           hasTypeGap
           hasProofGap
           (if hasTypeGap then some typeSorryRefs.size else none)

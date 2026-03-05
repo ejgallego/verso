@@ -15,8 +15,8 @@ import VersoBlueprint.Widget
 
 open Verso Doc Elab
 open Verso.Genre Manual
-open _root_.Lean _root_.Lean.Elab
-open _root_.Lean.Doc.Syntax
+open Lean Lean.Elab
+open Lean.Doc.Syntax
 
 namespace Informal
 

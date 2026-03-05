@@ -219,7 +219,7 @@ def ExternalDeclLookupError.message : ExternalDeclLookupError → String
   | .notPresentAtRegistration => "name was not present during directive/code-block registration"
   | .notFoundInEnvironment => "name is not present in current environment"
 
-abbrev ExternalDeclRender := _root_.Informal.DocGenRender
+abbrev ExternalDeclRender := Informal.DocGenRender
 
 instance : ToJson ExternalDeclRender where
   toJson

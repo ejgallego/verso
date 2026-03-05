@@ -59,8 +59,8 @@ def external_def_decl : Nat := 1
       | return false
     let some defInfo := env.find? `Verso.Tests.BlueprintGraph.external_def_decl
       | return false
-    let axiomStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus axiomInfo (allowOpaque := true)
-    let defStatus := _root_.Informal.Data.ConstantInfo.blueprintProvedStatus defInfo (allowOpaque := true)
+    let axiomStatus := ConstantInfo.blueprintProvedStatus axiomInfo (allowOpaque := true)
+    let defStatus := ConstantInfo.blueprintProvedStatus defInfo (allowOpaque := true)
     pure (
       axiomStatus == .axiomLike &&
       defStatus == .proved
