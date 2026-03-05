@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/external-code-visual-refresh-20260305` ready for review with three incremental commits)
+Last updated: 2026-03-05 (`feat/tex-macro-import-20260305` merged into `bp` after validation and cleanup)
 
 ## Active Worktrees
 
@@ -21,26 +21,6 @@ Last updated: 2026-03-05 (`feat/external-code-visual-refresh-20260305` ready for
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/tex-macro-import-20260305`
-
-- Status: `created` (owner action: implement importable TeX prelude registry and per-math injection refactor)
-- Summary: move blueprint math prelude handling from transient document blocks and global KaTeX patching onto importable Lean commands plus per-node HTML math payloads.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/tex-macro-import-20260305-wt`
-- Branch: `feat/tex-macro-import-20260305`
-- Base commit/branch:
-  - merge-base with `bp`: `0c18436e` (`0` behind / `0` ahead)
-- Key commit:
-  - none yet
-- Validation status:
-  - worktree created; validation pending
-- Preview link:
-  - pending
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/tex-macro-import-20260305-wt`
-  - `git status --short`
-  - `lake build`
-  - `lake exe noperthedron`
 
 ### `feat/external-code-visual-refresh-20260305`
 
@@ -146,6 +126,20 @@ Last updated: 2026-03-05 (`feat/external-code-visual-refresh-20260305` ready for
   - commit/stash local chapter changes before rebasing on `bp`
 
 ## Recently Completed
+
+- Merged `feat/tex-macro-import-20260305` into `bp` (`938b63cf -> 88b678b5`, fast-forward).
+- Feature branch key commit:
+  - `88b678b5` refactor(blueprint): import tex macros per math node
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Validation on `bp` after merge:
+  - `lake build`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Stopped preview server session `11100` (`http://127.0.0.1:8148/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/tex-macro-import-20260305-wt`.
+- Deleted branch: `feat/tex-macro-import-20260305`.
 
 - Closed `feat/external-code-rendering-review-20260305` without merge (analysis-only review task).
 - Validation in the review worktree:
