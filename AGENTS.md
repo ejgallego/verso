@@ -22,7 +22,7 @@
     - `/home/egallego/lean/verso/.worktrees/<feature>`
     This keeps all worktrees under the same writable root, so Codex sub-agents can edit without sandbox path issues.
   + Copy the root `.lake` directory to `/home/egallego/lean/verso/.worktrees/<feature>` , so we don't rebuild mathlib
-  + Build the preview artifact into the shared root output tree with `lake exe noperthedron --output-dir <repo-root>/_out/<feature>`
+  + Build the preview artifact into the shared root output tree with `lake exe noperthedron --output <repo-root>/_out/<feature>`
   + Keep a single shared webserver serving the root `_out` directory
   + use always `npx http-server -p $port _out` as command to start the shared webserver
   + run the webserver with the right permissions as to avoid weird stuff

@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/external-code-renderer-switch-20260305` created for simple external-code shell + renderer toggle)
+Last updated: 2026-03-05 (`feat/cleanup-noperthedron-shared-out` validated and obsolete shared-preview worktree cleaned up)
 
 ## Active Worktrees
 
@@ -147,6 +147,16 @@ Last updated: 2026-03-05 (`feat/external-code-renderer-switch-20260305` created 
   - commit/stash local chapter changes before rebasing on `bp`
 
 ## Recently Completed
+
+- Cleaned up the obsolete shared-preview worktree after confirming `noperthedron` should use `--output` rather than a new alias.
+- Validation on `feat/cleanup-noperthedron-shared-out`:
+  - `lake exe cache get`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/cleanup-noperthedron-shared-out` (warnings only; no errors)
+- Removed preview output directories:
+  - `/home/egallego/lean/verso-blueprint/_out/noperthedron-shared-out`
+  - `/home/egallego/lean/verso-blueprint/_out/cleanup-noperthedron-shared-out`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/noperthedron-shared-out`.
+- Deleted branch: `feat/noperthedron-shared-out`.
 
 - Merged `feat/tex-macro-import-20260305` into `bp` (`938b63cf -> 88b678b5`, fast-forward).
 - Feature branch key commit:
