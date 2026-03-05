@@ -57,13 +57,15 @@ Last updated: 2026-03-05 (`feat/external-code-renderer-switch-20260305` created 
 - Key commit:
   - none yet
 - Validation status:
-  - worktree created; validation pending
+  - `lake exe cache get`
+  - `lake exe noperthedron` (warnings only; no errors)
 - Preview link:
-  - pending
+  - `http://127.0.0.1:8148`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-renderer-switch-20260305`
   - `git status --short`
   - `lake exe noperthedron`
+  - server session: `95651`
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
