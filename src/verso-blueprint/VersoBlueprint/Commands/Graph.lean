@@ -998,10 +998,10 @@ block_extension Block.graph (graphData : GraphBlockData) where
           </div>
           <div id="graph">
             <script type="application/json" class="bp-graph-variants">
-              s!"{graphVariantJson}"
+              {{.text false s!"{graphVariantJson}"}}
             </script>
             <script type="text/plain" class="dot-source">
-              s!"{fallbackDot}"
+              {{.text false s!"{fallbackDot}"}}
             </script>
           </div>
           {{previewUi.store}}

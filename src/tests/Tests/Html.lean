@@ -99,7 +99,8 @@ info: |
 <html>
   <head>
     <meta charset="UTF-8">
-    <script></script></head>
+    <script></script>
+    </head>
   <body lang="en" class="thing" data-foo="data foo">
     <input type="checkbox" checked=""><p>
       foo bar<br>hey</p>
