@@ -880,7 +880,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
   | cfg, contents => do
     let blockRef ← getRef
     let label := cfg.label
-    let envKind : Environment.InProgressKind :=
+    let envKind : Data.InProgressKind :=
       if isProof then .proof else .statement kind
     let resolvedExternalCode ← ExternalCode.resolveExternalCodeList label cfg.labelSyntax cfg.externalCode
     let hasExternalRaw := !resolvedExternalCode.isEmpty

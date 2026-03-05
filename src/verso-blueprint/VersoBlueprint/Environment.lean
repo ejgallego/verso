@@ -13,11 +13,9 @@ namespace Informal.Environment
 open Lean
 open Informal.Data
 
-abbrev InProgressKind := Data.InProgressKind
-
 structure InProgress where
   label : Label
-  kind : InProgressKind := .proof
+  kind : Data.InProgressKind := .proof
   codeHint : Option CodeRef := none
   parent : Option Parent := none
   deps : Array Label := #[]
@@ -73,7 +71,7 @@ def modifyM (f : State -> m State) : m Unit := do
   modifyEnv (informalExt.setState · st)
 
 -- XXX: needs: test
-def checkLabelAndNesting (label : Label) (kind : InProgressKind) : m Unit := do
+def checkLabelAndNesting (label : Label) (kind : Data.InProgressKind) : m Unit := do
   let { data, stack, .. } := informalExt.getState (← getEnv)
   match (kind, data.get? label, stack.isEmpty) with
   | (.statement _, none, true) => return ()
@@ -92,7 +90,7 @@ def checkLabelAndNesting (label : Label) (kind : InProgressKind) : m Unit := do
   | (_, _, false) => logError m!"Cannot declare nested definitions"
 
 -- stack operators, to associate {uses} role to the currently opened label
-def push (label : Label) (kind : InProgressKind)
+def push (label : Label) (kind : Data.InProgressKind)
     (codeHint : Option CodeRef := none) (parent : Option Parent := none) : m Unit := do
   checkLabelAndNesting label kind
   modify fun data =>
