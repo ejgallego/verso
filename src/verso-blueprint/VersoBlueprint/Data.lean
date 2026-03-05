@@ -57,6 +57,11 @@ def NodeKind.isTheoremLike : NodeKind → Bool
   | .lemma | .theorem | .corollary => true
   | .definition => false
 
+inductive InProgressKind where
+  | statement (kind : NodeKind)
+  | proof
+deriving Inhabited, Repr
+
 open Syntax in
 instance : Quote NodeKind where
   quote
@@ -560,8 +565,7 @@ def Data.registerCodeRef (data : Data) (label : Label) (codeRef : CodeRef) : m D
     let code ← mergeCodeRef label node.code codeRef
     return data.insert label { node with code }
 
-def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
-    (statement : Option InformalData) (proof : Option InformalData)
+def Data.register (data : Data) (label : Label) (kind : InProgressKind) (payload : InformalData)
     (codeHint : Option CodeRef := none) (parent : Option Parent := none) : m Data := do
   let applyHints (node : Node) : m Node := do
     match codeHint with
@@ -573,44 +577,36 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
       let parent ← mergeParent label node.parent parent
       return { node with code, parent }
   let nextCount := data.size + 1
-  match data.get? label, statement, proof with
+  match data.get? label, kind with
   -- First statement for a fresh label.
-  | none, some statement, none =>
-    match kind? with
-    | none =>
-      logError m!"Internal error: missing node kind while registering statement for {label}"
-      return data
-    | some kind =>
-      let count := nextCount
-      let node ← applyHints {
-        statement := some statement
-        count
-        kind
-      }
-      return data.insert label node
+  | none, .statement nodeKind =>
+    let count := nextCount
+    let node ← applyHints {
+      statement := some payload
+      count
+      kind := nodeKind
+    }
+    return data.insert label node
   -- Proof without a corresponding statement is weird, ignore?
-  | none, none, some _ =>
+  | none, .proof =>
     logError m!"No statement for proof with label {label}"
     return data
   -- Late statement fill for an existing placeholder node.
-  | some node, some statement, none =>
+  | some node, .statement nodeKind =>
     if node.statement.isNone then
       let count := if node.count == 0 then nextCount else node.count
       let node ← applyHints {
         node with
-          kind :=
-            match kind? with
-            | some kind => kind
-            | none => node.kind
+          kind := nodeKind
           count
-          statement := some statement
+          statement := some payload
       }
       return data.insert label node
     else
       -- logError m!"Duplicated entry for {label}"
       return data
   -- Register proof for an existing statement.
-  | some node, none, some proof =>
+  | some node, .proof =>
     if node.proof.isSome then
       -- logError m!"{label} already has a proof"
       return data
@@ -620,21 +616,9 @@ def Data.register (data : Data) (label : Label) (kind? : Option NodeKind)
     else
       let node ← applyHints {
         node with
-          proof := some proof
+          proof := some payload
       }
       return data.insert label node
-  | none, none, none =>
-    logError m!"Invalid registration state for {label}: missing both statement and proof for a new label"
-    return data
-  | none, some _, some _ =>
-    logError m!"Invalid registration state for {label}: cannot register statement and proof simultaneously for a new label"
-    return data
-  | some _, none, none =>
-    logError m!"Invalid registration state for {label}: update must provide either statement or proof"
-    return data
-  | some _, some _, some _ =>
-    logError m!"Invalid registration state for {label}: cannot register statement and proof simultaneously"
-    return data
 
 /-- Register Lean code and code metadata for an informal object label. -/
 def Data.registerCode (data : Data) (label : Label) (code : Syntax)
