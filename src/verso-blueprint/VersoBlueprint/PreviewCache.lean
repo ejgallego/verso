@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean
 import VersoManual
+import VersoBlueprint.Data
 
 namespace Informal.PreviewCache
 
@@ -19,6 +20,10 @@ deriving Inhabited, Repr, BEq, ToJson, FromJson
 def Facet.suffix : Facet → String
   | .statement => "statement"
   | .proof => "proof"
+
+def Facet.ofInProgressKind : Informal.Data.InProgressKind → Facet
+  | .statement _ => .statement
+  | .proof => .proof
 
 def key (label : Name) (facet : Facet) : String :=
   s!"{label}--{facet.suffix}"
@@ -36,8 +41,8 @@ structure Entry where
   texPrelude : String := ""
 deriving Inhabited, Repr, ToJson, FromJson
 
-def Entry.ofBlocks (label : Name) (isProof : Bool)
+def Entry.ofBlocks (label : Name) (facet : Facet)
     (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) (texPrelude : String := "") : Entry :=
-  { label, facet := if isProof then .proof else .statement, blocks, texPrelude }
+  { label, facet, blocks, texPrelude }
 
 end Informal.PreviewCache

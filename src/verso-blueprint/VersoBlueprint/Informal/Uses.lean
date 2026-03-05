@@ -10,6 +10,7 @@ import VersoBlueprint.Environment
 import VersoBlueprint.Informal.Block
 import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.Lib.PreviewSource
+import VersoBlueprint.PreviewCache
 import VersoBlueprint.Profiling
 import VersoBlueprint.Widget
 
@@ -31,11 +32,8 @@ private def blockHoverTitle (block : BlockData) : String :=
   | .statement kind => s!"{kind} {block.count}"
 
 private def usePreviewId (label : Data.Label) (block : BlockData) : String :=
-  let facet :=
-    match block.kind with
-    | .proof => "proof"
-    | .statement _ => "statement"
-  s!"bp-uses-{Informal.HoverRender.previewKey (toString label)}-{facet}"
+  let facet := PreviewCache.Facet.ofInProgressKind block.kind
+  s!"bp-uses-{Informal.HoverRender.previewKey (toString label)}-{facet.suffix}"
 
 private def useLinkPreviewFallbackBody (label : Data.Label) : Verso.Output.Html :=
   open Verso.Output.Html in
@@ -107,48 +105,26 @@ inline_extension Inline.informal (data : InlineData) where
         else
           Informal.PreviewSource.renderTraversalPreview? st
             (fun b =>
-              withReader
-                (fun ctx =>
-                  let tctx := ctx.traverseContext
-                  { ctx with
-                    traverseContext := {
-                      tctx with
-                      blockContext := tctx.blockContext.push (.other Informal.HoverRender.inlinePreviewMarkerBlock)
-                    }
-                  })
+              Informal.HoverRender.withInlinePreviewRenderContext
                 (Verso.Doc.Html.ToHtml.toHtml (genre := Verso.Genre.Manual) b))
             label
       let renderedInlines ← inlines.mapM goI
-      match resolvedBlock, inlines.isEmpty with
-      | none, true =>
-        return {{ <span> "[??]" </span> }}
-      | none, false =>
-        return {{ <span> {{renderedInlines}} </span> }}
-      | some block, true =>
-        let labelText := s!"{label}"
-        let titleText :=
-          match block.kind with
-          | .proof => s!"Proof {block.count}"
-          | .statement kind => s!"{kind} {block.count}"
-        let plainLink : Verso.Output.Html :=
-          if let some href := href then
-            {{<a href={{href}} title={{labelText}}>{{titleText}}</a>}}
-          else
-            {{<span title={{labelText}}>{{titleText}}</span>}}
-        if inPreviewRender then
-          return {{<span>{{plainLink}}</span>}}
-        let previewId := usePreviewId label block
-        let emitTemplate := Informal.HoverRender.isInlinePreviewOwner st ctxt.path previewId id
-        let (previewBody, texPrelude) :=
-          match preview? with
-          | some (rendered, texPrelude) => (Verso.Output.Html.seq rendered, texPrelude)
-          | Option.none => (useLinkPreviewFallbackBody label, "")
-        let hovered := wrapUseLinkPreview plainLink previewBody label block emitTemplate texPrelude
-        return {{<span>{{hovered}}</span>}}
-      | some block, false =>
+      match resolvedBlock with
+      | none =>
+        if inlines.isEmpty then
+          return {{ <span> "[??]" </span> }}
+        else
+          return {{ <span> {{renderedInlines}} </span> }}
+      | some block =>
         let labelText := s!"{label}"
         let plainContent : Verso.Output.Html :=
-          if let some href := href then
+          if inlines.isEmpty then
+            let titleText := blockHoverTitle block
+            if let some href := href then
+              {{<a href={{href}} title={{labelText}}>{{titleText}}</a>}}
+            else
+              {{<span title={{labelText}}>{{titleText}}</span>}}
+          else if let some href := href then
             {{<a href={{href}} title={{labelText}}>{{renderedInlines}}</a>}}
           else
             renderedInlines

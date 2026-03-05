@@ -395,13 +395,24 @@ def summaryPreviewJs : String := r##"(function () {
     root.setAttribute("data-bp-summary-preview-bound", "1");
 
     const previewUtils = window.bpPreviewUtils;
+    if (
+      !previewUtils ||
+      typeof previewUtils.collectPreviewTemplates !== "function" ||
+      typeof previewUtils.readPreviewTemplate !== "function" ||
+      typeof previewUtils.renderMath !== "function" ||
+      typeof previewUtils.positionAnchoredPanel !== "function" ||
+      typeof previewUtils.shouldKeepOpen !== "function" ||
+      typeof previewUtils.readPanelBehavior !== "function" ||
+      typeof previewUtils.resetPanelPosition !== "function" ||
+      typeof previewUtils.configureCloseButton !== "function"
+    ) {
+      return;
+    }
     const previewMap =
-      previewUtils && typeof previewUtils.collectPreviewTemplates === "function"
-        ? previewUtils.collectPreviewTemplates(
-            root,
-            "template.bp_summary_preview_tpl[data-bp-preview-label]"
-          )
-        : new Map();
+      previewUtils.collectPreviewTemplates(
+        root,
+        "template.bp_summary_preview_tpl[data-bp-preview-label]"
+      );
     const panel = root.querySelector(".bp_summary_preview_panel");
     const title = panel ? panel.querySelector(".bp_summary_preview_panel_title") : null;
     const body = panel ? panel.querySelector(".bp_summary_preview_panel_body") : null;
@@ -410,24 +421,9 @@ def summaryPreviewJs : String := r##"(function () {
       if (panel) panel.hidden = true;
       return;
     }
+    const behavior = previewUtils.readPanelBehavior(panel, { mode: "hover", placement: "anchored" });
 
     let activeWrap = null;
-
-    function parsePreviewEntry(entry) {
-      if (previewUtils && typeof previewUtils.readPreviewTemplate === "function") {
-        return previewUtils.readPreviewTemplate(entry);
-      }
-      if (typeof entry === "string") {
-        return { html: entry, texPrelude: "" };
-      }
-      if (!entry || typeof entry !== "object") {
-        return { html: "", texPrelude: "" };
-      }
-      return {
-        html: typeof entry.html === "string" ? entry.html : "",
-        texPrelude: typeof entry.texPrelude === "string" ? entry.texPrelude : ""
-      };
-    }
 
     function hidePanel() {
       panel.hidden = true;
@@ -437,30 +433,17 @@ def summaryPreviewJs : String := r##"(function () {
     }
 
     function positionPanel(anchor) {
-      if (!(anchor instanceof Element)) return;
-      const rect = anchor.getBoundingClientRect();
-      const margin = 12;
-      const panelRect = panel.getBoundingClientRect();
-      const panelWidth = panelRect.width || Math.min(520, window.innerWidth - margin * 2);
-      const panelHeight = panelRect.height || Math.min(420, window.innerHeight - margin * 2);
-      let left = rect.left;
-      if (left + panelWidth > window.innerWidth - margin) {
-        left = window.innerWidth - panelWidth - margin;
+      if (!behavior.isAnchored) {
+        previewUtils.resetPanelPosition(panel);
+        return;
       }
-      left = Math.max(margin, left);
-      let top = rect.bottom + 10;
-      if (top + panelHeight > window.innerHeight - margin) {
-        top = rect.top - panelHeight - 10;
-      }
-      top = Math.max(margin, top);
-      panel.style.left = left + "px";
-      panel.style.top = top + "px";
+      previewUtils.positionAnchoredPanel(panel, anchor, 12, 10);
     }
 
     function showFromWrap(wrap) {
       if (!(wrap instanceof Element)) return;
       const label = wrap.getAttribute("data-bp-preview-label") || "";
-      const entry = parsePreviewEntry(previewMap.get(label));
+      const entry = previewUtils.readPreviewTemplate(previewMap.get(label));
       const html = entry.html;
       const texPrelude = entry.texPrelude;
       if (!label || !html) {
@@ -470,23 +453,12 @@ def summaryPreviewJs : String := r##"(function () {
       activeWrap = wrap;
       title.textContent = label;
       body.innerHTML = html;
-      if (previewUtils && typeof previewUtils.renderMath === "function") {
-        previewUtils.renderMath(body, texPrelude);
-      }
+      previewUtils.renderMath(body, texPrelude);
       panel.hidden = false;
       positionPanel(wrap);
     }
 
-    if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
-      previewUtils.bindCloseOnce(close, hidePanel);
-    } else if (close && close.getAttribute("data-bp-bound") !== "1") {
-      close.setAttribute("data-bp-bound", "1");
-      close.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        hidePanel();
-      });
-    }
+    previewUtils.configureCloseButton(close, hidePanel, behavior);
 
     const wraps = root.querySelectorAll(".bp_summary_preview_wrap_active[data-bp-preview-label]");
     wraps.forEach(function (wrap) {
@@ -500,27 +472,25 @@ def summaryPreviewJs : String := r##"(function () {
         showFromWrap(wrap);
       });
       wrap.addEventListener("mouseleave", function (ev) {
-        const next = ev.relatedTarget;
-        if (next instanceof Element && (wrap.contains(next) || panel.contains(next))) return;
+        if (!behavior.isHover) return;
+        if (previewUtils.shouldKeepOpen(ev.relatedTarget, wrap, panel)) return;
         hidePanel();
       });
       wrap.addEventListener("focusout", function (ev) {
-        const next = ev.relatedTarget;
-        if (next instanceof Element && (wrap.contains(next) || panel.contains(next))) return;
+        if (!behavior.isHover) return;
+        if (previewUtils.shouldKeepOpen(ev.relatedTarget, wrap, panel)) return;
         hidePanel();
       });
     });
 
     panel.addEventListener("mouseleave", function (ev) {
-      const next = ev.relatedTarget;
-      if (next instanceof Element && activeWrap && activeWrap.contains(next)) return;
-      if (next instanceof Element && panel.contains(next)) return;
+      if (!behavior.isHover) return;
+      if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeWrap, panel)) return;
       hidePanel();
     });
     panel.addEventListener("focusout", function (ev) {
-      const next = ev.relatedTarget;
-      if (next instanceof Element && activeWrap && activeWrap.contains(next)) return;
-      if (next instanceof Element && panel.contains(next)) return;
+      if (!behavior.isHover) return;
+      if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeWrap, panel)) return;
       hidePanel();
     });
 
@@ -530,10 +500,10 @@ def summaryPreviewJs : String := r##"(function () {
       }
     });
     window.addEventListener("resize", function () {
-      if (activeWrap && !panel.hidden) positionPanel(activeWrap);
+      if (behavior.isAnchored && activeWrap && !panel.hidden) positionPanel(activeWrap);
     });
     window.addEventListener("scroll", function () {
-      if (activeWrap && !panel.hidden) positionPanel(activeWrap);
+      if (behavior.isAnchored && activeWrap && !panel.hidden) positionPanel(activeWrap);
     }, true);
   }
 
@@ -573,17 +543,7 @@ block_extension Block.summary (summary : Summary) where
       let (previewLabels, previewTemplates) ← (data.previewLabels).foldlM
           (init := (({} : NameSet), (#[] : Array Output.Html))) fun (labels, templates) label => do
         let preview? ← Informal.PreviewSource.renderTraversalPreview? s
-          (fun b =>
-            withReader
-              (fun ctx =>
-                let tctx := ctx.traverseContext
-                { ctx with
-                  traverseContext := {
-                    tctx with
-                    blockContext := tctx.blockContext.push (.other Informal.HoverRender.inlinePreviewMarkerBlock)
-                  }
-                })
-              (goB b))
+          (fun b => Informal.HoverRender.withInlinePreviewRenderContext (goB b))
           label
         match preview? with
         | Option.none => pure (labels, templates)

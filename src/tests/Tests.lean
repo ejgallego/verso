@@ -10,6 +10,7 @@ import Tests.BlueprintGraph
 import Tests.BlueprintInlinePrecision
 import Tests.BlueprintSummaryStatus
 import Tests.BlueprintLinkHover
+import Tests.BlueprintPreviewWiring
 import Tests.BlueprintSummaryLinks
 import Tests.Elab
 import Tests.GenericCode

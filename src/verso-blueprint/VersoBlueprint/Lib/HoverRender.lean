@@ -21,6 +21,34 @@ structure SummaryPreviewUi where
   store : Verso.Output.Html := .empty
   panel : Verso.Output.Html := .empty
 
+/--
+Preview visibility behavior:
+- `hover`: transient panel, auto-hide on leave/focusout, no close control.
+- `pinned`: persistent panel, explicit close control.
+-/
+inductive PreviewMode where
+  | hover
+  | pinned
+deriving Inhabited, Repr, BEq, ToJson, FromJson
+
+def PreviewMode.dataValue : PreviewMode → String
+  | .hover => "hover"
+  | .pinned => "pinned"
+
+/--
+Preview placement behavior:
+- `anchored`: positioned relative to the active trigger.
+- `docked`: pinned to a stable panel location.
+-/
+inductive PreviewPlacement where
+  | anchored
+  | docked
+deriving Inhabited, Repr, BEq, ToJson, FromJson
+
+def PreviewPlacement.dataValue : PreviewPlacement → String
+  | .anchored => "anchored"
+  | .docked => "docked"
+
 private def hexDigits : Array Char := "0123456789ABCDEF".toList.toArray
 
 private def toHex (n : Nat) : String := Id.run do
@@ -63,6 +91,20 @@ def inInlinePreviewRender [Monad m] :
     | some "1" => true
     | _ => false
 
+def withInlinePreviewRenderContext {m α}
+    (act : Verso.Doc.Html.HtmlT Verso.Genre.Manual m α) :
+    Verso.Doc.Html.HtmlT Verso.Genre.Manual m α :=
+  withReader
+    (fun ctx =>
+      let tctx := ctx.traverseContext
+      { ctx with
+        traverseContext := {
+          tctx with
+          blockContext := tctx.blockContext.push (.other inlinePreviewMarkerBlock)
+        }
+      })
+    act
+
 def inlinePreviewStoreKey (path : Array String) (previewId : String) : String :=
   s!"{String.intercalate "/" path.toList}::{previewId}"
 
@@ -97,7 +139,8 @@ def graphPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Htm
   </template>
 }}
 
-def graphPreviewUi (templates : Array Verso.Output.Html) : GraphPreviewUi :=
+def graphPreviewUi (templates : Array Verso.Output.Html)
+    (mode : PreviewMode := .pinned) (placement : PreviewPlacement := .docked) : GraphPreviewUi :=
   if templates.isEmpty then
     { store := .empty, panel := .empty }
   else
@@ -108,7 +151,10 @@ def graphPreviewUi (templates : Array Verso.Output.Html) : GraphPreviewUi :=
         </div>
       }}
       panel := {{
-        <aside class="bp_graph_preview" hidden>
+        <aside class="bp_graph_preview"
+            "data-bp-preview-mode"={{mode.dataValue}}
+            "data-bp-preview-placement"={{placement.dataValue}}
+            hidden>
           <div class="bp_graph_preview_header">
             <div class="bp_graph_preview_title"></div>
             <button type="button" class="bp_graph_preview_close" aria-label="Close informal preview">"Close"</button>
@@ -127,7 +173,8 @@ def summaryPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.H
   </template>
 }}
 
-def summaryPreviewUi (templates : Array Verso.Output.Html) : SummaryPreviewUi :=
+def summaryPreviewUi (templates : Array Verso.Output.Html)
+    (mode : PreviewMode := .hover) (placement : PreviewPlacement := .anchored) : SummaryPreviewUi :=
   if templates.isEmpty then
     { store := .empty, panel := .empty }
   else
@@ -138,7 +185,10 @@ def summaryPreviewUi (templates : Array Verso.Output.Html) : SummaryPreviewUi :=
         </div>
       }}
       panel := {{
-        <aside class="bp_summary_preview_panel" hidden>
+        <aside class="bp_summary_preview_panel"
+            "data-bp-preview-mode"={{mode.dataValue}}
+            "data-bp-preview-placement"={{placement.dataValue}}
+            hidden>
           <div class="bp_summary_preview_panel_header">
             <div class="bp_summary_preview_panel_title"></div>
             <button type="button" class="bp_summary_preview_panel_close" aria-label="Close summary preview">"Close"</button>

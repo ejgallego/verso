@@ -134,6 +134,12 @@
   padding: 0.65rem 0.75rem;
 }
 
+.bp_summary_preview_panel[data-bp-preview-placement="docked"] {
+  top: 0.9rem;
+  right: 0.9rem;
+  left: auto;
+}
+
 .bp_summary_preview_panel_header {
   display: flex;
   align-items: center;
@@ -162,6 +168,10 @@
   line-height: 1;
   padding: 0.25rem 0.45rem;
   cursor: pointer;
+}
+
+.bp_summary_preview_panel[data-bp-preview-mode="hover"] .bp_summary_preview_panel_close {
+  display: none;
 }
 
 .bp_summary_preview_panel_body {

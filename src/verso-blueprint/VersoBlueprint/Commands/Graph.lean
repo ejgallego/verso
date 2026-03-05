@@ -429,7 +429,7 @@ def loadD3Dot :=
       utils.renderMath(root, texPrelude);
     }
 
-    function attachPreviewHandlers(graphContainer, panel, previewMap) {
+    function attachPreviewHandlers(graphContainer, panel, previewMap, panelBehavior) {
       if (!panel) return;
       const title = panel.querySelector(".bp_graph_preview_title");
       const body = panel.querySelector(".bp_graph_preview_body");
@@ -442,15 +442,29 @@ def loadD3Dot :=
         hidePreviewPanel(panel);
         return;
       }
-      const show = function (label) {
+      const behavior = panelBehavior || {
+        isPinned: true,
+        isHover: false,
+        isAnchored: false,
+        isDocked: true
+      };
+      let activeNode = null;
+      const show = function (label, anchorNode) {
         const entry = parsePreviewEntry(previewMap.get(label));
         const html = entry.html;
         const texPrelude = entry.texPrelude;
         if (!html) return;
+        activeNode = anchorNode instanceof Element ? anchorNode : null;
         title.textContent = label;
         body.innerHTML = html;
         renderMath(body, texPrelude);
         panel.hidden = false;
+        const previewUtils = window.bpPreviewUtils;
+        if (behavior.isAnchored && previewUtils && typeof previewUtils.positionAnchoredPanel === "function" && activeNode) {
+          previewUtils.positionAnchoredPanel(panel, activeNode, 12, 10);
+        } else if (previewUtils && typeof previewUtils.resetPanelPosition === "function") {
+          previewUtils.resetPanelPosition(panel);
+        }
       };
       const nodes = svg.querySelectorAll("g.node");
       nodes.forEach(function (node) {
@@ -479,7 +493,7 @@ def loadD3Dot :=
         const node = target.closest("g.node");
         if (!node) return;
         const label = graphNodeLabel(node);
-        if (label) show(label);
+        if (label) show(label, node);
       };
       if (svg.getAttribute("data-bp-preview-bound") === "1") {
         return;
@@ -491,9 +505,48 @@ def loadD3Dot :=
       svg.addEventListener("focusin", function (ev) {
         showFromTarget(ev.target);
       });
+      if (behavior.isHover) {
+        const previewUtils = window.bpPreviewUtils;
+        svg.addEventListener("mouseout", function (ev) {
+          if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
+          if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeNode, panel)) return;
+          hidePreviewPanel(panel);
+          activeNode = null;
+        });
+        svg.addEventListener("focusout", function (ev) {
+          if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
+          if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeNode, panel)) return;
+          hidePreviewPanel(panel);
+          activeNode = null;
+        });
+        panel.addEventListener("mouseleave", function (ev) {
+          if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
+          if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeNode, panel)) return;
+          hidePreviewPanel(panel);
+          activeNode = null;
+        });
+        panel.addEventListener("focusout", function (ev) {
+          if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
+          if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeNode, panel)) return;
+          hidePreviewPanel(panel);
+          activeNode = null;
+        });
+      }
+      window.addEventListener("resize", function () {
+        const previewUtils = window.bpPreviewUtils;
+        if (!behavior.isAnchored || !activeNode || panel.hidden) return;
+        if (!previewUtils || typeof previewUtils.positionAnchoredPanel !== "function") return;
+        previewUtils.positionAnchoredPanel(panel, activeNode, 12, 10);
+      });
+      window.addEventListener("scroll", function () {
+        const previewUtils = window.bpPreviewUtils;
+        if (!behavior.isAnchored || !activeNode || panel.hidden) return;
+        if (!previewUtils || typeof previewUtils.positionAnchoredPanel !== "function") return;
+        previewUtils.positionAnchoredPanel(panel, activeNode, 12, 10);
+      }, true);
     }
 
-    function attachVariantSelectors(graphContainer, variantsByKey, activeVariant, onSelect, onHover) {
+    function attachVariantSelectors(graphContainer, variantsByKey, activeVariant, onSelect, onHover, onHoverLeave) {
       if (!activeVariant) {
         return;
       }
@@ -593,6 +646,7 @@ def loadD3Dot :=
       svg.addEventListener("mouseleave", function () {
         const state = readVariantState();
         state.lastHoverLabel = "";
+        if (typeof onHoverLeave === "function") onHoverLeave();
       });
     }
 
@@ -647,17 +701,36 @@ def loadD3Dot :=
       ? previewPanelNode.querySelector(".bp_graph_preview_close")
       : null;
     const previewUtils = window.bpPreviewUtils;
-    if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
-      previewUtils.bindCloseOnce(previewClose, function () {
-        hidePreviewPanel(previewPanelNode);
-      });
-    } else if (previewClose && previewClose.getAttribute("data-bp-bound") !== "1") {
-      previewClose.setAttribute("data-bp-bound", "1");
-      previewClose.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        hidePreviewPanel(previewPanelNode);
-      });
+    const previewPanelBehavior =
+      previewUtils && typeof previewUtils.readPanelBehavior === "function"
+        ? previewUtils.readPanelBehavior(previewPanelNode, { mode: "pinned", placement: "docked" })
+        : { mode: "pinned", placement: "docked", isPinned: true, isHover: false, isAnchored: false, isDocked: true };
+    if (previewUtils && typeof previewUtils.configureCloseButton === "function") {
+      previewUtils.configureCloseButton(
+        previewClose,
+        function () { hidePreviewPanel(previewPanelNode); },
+        previewPanelBehavior
+      );
+    } else if (previewClose) {
+      if (previewPanelBehavior.isPinned) {
+        if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
+          previewUtils.bindCloseOnce(previewClose, function () {
+            hidePreviewPanel(previewPanelNode);
+          });
+        } else if (previewClose.getAttribute("data-bp-bound") !== "1") {
+          previewClose.setAttribute("data-bp-bound", "1");
+          previewClose.addEventListener("click", function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            hidePreviewPanel(previewPanelNode);
+          });
+        }
+      } else {
+        previewClose.hidden = true;
+        previewClose.style.display = "none";
+        previewClose.setAttribute("aria-hidden", "true");
+        previewClose.tabIndex = -1;
+      }
     }
 
     const rawVariants = collectGraphVariants(graphContainer);
@@ -712,6 +785,10 @@ def loadD3Dot :=
     const groupHoverGraph = groupHoverPanel
       ? groupHoverPanel.querySelector(".bp_group_hover_preview_graph")
       : null;
+    const groupHoverBehavior =
+      previewUtils && typeof previewUtils.readPanelBehavior === "function"
+        ? previewUtils.readPanelBehavior(groupHoverPanel, { mode: "pinned", placement: "anchored" })
+        : { mode: "pinned", placement: "anchored", isPinned: true, isHover: false, isAnchored: true, isDocked: false };
     let groupHoverGraphviz = null;
     let groupHoverShownKey = "";
     let groupHoverShownLabel = "";
@@ -723,12 +800,25 @@ def loadD3Dot :=
       groupHoverShownKey = "";
       groupHoverShownLabel = "";
     };
-    if (groupHoverClose) {
-      groupHoverClose.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        hideGroupHoverPreview();
-      });
+    if (previewUtils && typeof previewUtils.configureCloseButton === "function") {
+      previewUtils.configureCloseButton(groupHoverClose, hideGroupHoverPreview, groupHoverBehavior);
+    } else if (groupHoverClose) {
+      if (groupHoverBehavior.isPinned) {
+        if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
+          previewUtils.bindCloseOnce(groupHoverClose, hideGroupHoverPreview);
+        } else {
+          groupHoverClose.addEventListener("click", function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            hideGroupHoverPreview();
+          });
+        }
+      } else {
+        groupHoverClose.hidden = true;
+        groupHoverClose.style.display = "none";
+        groupHoverClose.setAttribute("aria-hidden", "true");
+        groupHoverClose.tabIndex = -1;
+      }
     }
     window.addEventListener("keydown", function (ev) {
       if (ev.key === "Escape") {
@@ -739,6 +829,12 @@ def loadD3Dot :=
 
     const positionGroupHoverPreview = function (anchorNode) {
       if (!groupHoverPanel || !(anchorNode instanceof Element)) return;
+      if (!groupHoverBehavior.isAnchored) {
+        if (previewUtils && typeof previewUtils.resetPanelPosition === "function") {
+          previewUtils.resetPanelPosition(groupHoverPanel);
+        }
+        return;
+      }
       const blockRect = graphBlock.getBoundingClientRect();
       const nodeRect = anchorNode.getBoundingClientRect();
       const panelRect = groupHoverPanel.getBoundingClientRect();
@@ -814,13 +910,14 @@ def loadD3Dot :=
         .fit(false)
         .on("end", function () {
           applyGraphZoomHeuristic(graphContainer, width, height, activeVariant.key);
-          attachPreviewHandlers(graphContainer, previewPanelNode, previewMap);
+          attachPreviewHandlers(graphContainer, previewPanelNode, previewMap, previewPanelBehavior);
           attachVariantSelectors(
             graphContainer,
             variantsByKey,
             activeVariant,
             switchVariant,
-            showGroupHoverPreview
+            showGroupHoverPreview,
+            groupHoverBehavior.isHover ? hideGroupHoverPreview : null
           );
         });
       gv.renderDot(activeVariant.dot);
@@ -829,13 +926,14 @@ def loadD3Dot :=
       // Fallback for runtimes where the graphviz `end` event is unreliable.
       setTimeout(function () {
         applyGraphZoomHeuristic(graphContainer, width, height, activeVariant.key);
-        attachPreviewHandlers(graphContainer, previewPanelNode, previewMap);
+        attachPreviewHandlers(graphContainer, previewPanelNode, previewMap, previewPanelBehavior);
         attachVariantSelectors(
           graphContainer,
           variantsByKey,
           activeVariant,
           switchVariant,
-          showGroupHoverPreview
+          showGroupHoverPreview,
+          groupHoverBehavior.isHover ? hideGroupHoverPreview : null
         );
       }, 120);
     }
@@ -983,23 +1081,16 @@ block_extension Block.graph (graphData : GraphBlockData) where
         | Option.none => graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
       let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
         let some (renderedBlocks, texPrelude) ← Informal.PreviewSource.renderTraversalPreview? s
-          (fun b =>
-            withReader
-              (fun ctx =>
-                let tctx := ctx.traverseContext
-                { ctx with
-                  traverseContext := {
-                    tctx with
-                    blockContext := tctx.blockContext.push (.other Informal.HoverRender.inlinePreviewMarkerBlock)
-                  }
-                })
-              (goB b))
+          (fun b => Informal.HoverRender.withInlinePreviewRenderContext (goB b))
           node.label
           | pure acc
         pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks texPrelude)
       let previewUi := Informal.HoverRender.graphPreviewUi previewTemplates
       let groupHoverPanel : Output.Html := {{
-        <aside class="bp_group_hover_preview" hidden>
+        <aside class="bp_group_hover_preview"
+            "data-bp-preview-mode"="pinned"
+            "data-bp-preview-placement"="anchored"
+            hidden>
           <div class="bp_group_hover_preview_header">
             <div class="bp_group_hover_preview_title"></div>
             <button type="button" class="bp_group_hover_preview_close" aria-label="Close group preview">"Close"</button>
