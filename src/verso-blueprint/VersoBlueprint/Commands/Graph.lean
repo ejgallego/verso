@@ -412,21 +412,15 @@ def loadD3Dot :=
         return utils.readPreviewTemplate(entry);
       }
       if (typeof entry === "string") {
-        return { html: entry, texPrelude: "" };
+        return entry;
       }
-      if (!entry || typeof entry !== "object") {
-        return { html: "", texPrelude: "" };
-      }
-      return {
-        html: typeof entry.html === "string" ? entry.html : "",
-        texPrelude: typeof entry.texPrelude === "string" ? entry.texPrelude : ""
-      };
+      return "";
     }
 
-    function renderMath(root, texPrelude) {
+    function renderMath(root) {
       const utils = window.bpPreviewUtils;
       if (!utils || typeof utils.renderMath !== "function") return;
-      utils.renderMath(root, texPrelude);
+      utils.renderMath(root);
     }
 
     function attachPreviewHandlers(graphContainer, panel, previewMap, panelBehavior) {
@@ -450,14 +444,12 @@ def loadD3Dot :=
       };
       let activeNode = null;
       const show = function (label, anchorNode) {
-        const entry = parsePreviewEntry(previewMap.get(label));
-        const html = entry.html;
-        const texPrelude = entry.texPrelude;
+        const html = parsePreviewEntry(previewMap.get(label));
         if (!html) return;
         activeNode = anchorNode instanceof Element ? anchorNode : null;
         title.textContent = label;
         body.innerHTML = html;
-        renderMath(body, texPrelude);
+        renderMath(body);
         panel.hidden = false;
         const previewUtils = window.bpPreviewUtils;
         if (behavior.isAnchored && previewUtils && typeof previewUtils.positionAnchoredPanel === "function" && activeNode) {
@@ -1080,11 +1072,11 @@ block_extension Block.graph (graphData : GraphBlockData) where
         | some variant => variant.dot
         | Option.none => graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
       let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
-        let some (renderedBlocks, texPrelude) ← Informal.PreviewSource.renderTraversalPreview? s
+        let some renderedBlocks ← Informal.PreviewSource.renderTraversalPreview? s
           (fun b => Informal.HoverRender.withInlinePreviewRenderContext (goB b))
           node.label
           | pure acc
-        pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks texPrelude)
+        pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks)
       let previewUi := Informal.HoverRender.graphPreviewUi previewTemplates
       let groupHoverPanel : Output.Html := {{
         <aside class="bp_group_hover_preview"

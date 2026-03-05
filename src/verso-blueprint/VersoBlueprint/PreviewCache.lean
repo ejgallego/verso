@@ -38,11 +38,10 @@ structure Entry where
   label : Name
   facet : Facet
   blocks : Array (Verso.Doc.Block Verso.Genre.Manual) := #[]
-  texPrelude : String := ""
 deriving Inhabited, Repr, ToJson, FromJson
 
 def Entry.ofBlocks (label : Name) (facet : Facet)
-    (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) (texPrelude : String := "") : Entry :=
-  { label, facet, blocks, texPrelude }
+    (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) : Entry :=
+  { label, facet, blocks }
 
 end Informal.PreviewCache

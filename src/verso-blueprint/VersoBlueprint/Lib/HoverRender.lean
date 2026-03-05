@@ -130,11 +130,9 @@ def isInlinePreviewOwner (state : Verso.Genre.Manual.TraverseState)
   | some owner => owner == id
   | Option.none => true
 
-def graphPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html)
-    (texPrelude : String := "") : Verso.Output.Html := {{
+def graphPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html) : Verso.Output.Html := {{
   <template class="bp_graph_preview_tpl"
       "data-bp-preview-label"={{s!"{label}"}}>
-    <script type="text/plain" class="bp_preview_tex_prelude">{{.text false texPrelude}}</script>
     {{renderedBlocks}}
   </template>
 }}
@@ -164,11 +162,9 @@ def graphPreviewUi (templates : Array Verso.Output.Html)
       }}
     }
 
-def summaryPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html)
-    (texPrelude : String := "") : Verso.Output.Html := {{
+def summaryPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html) : Verso.Output.Html := {{
   <template class="bp_summary_preview_tpl"
       "data-bp-preview-label"={{s!"{label}"}}>
-    <script type="text/plain" class="bp_preview_tex_prelude">{{.text false texPrelude}}</script>
     {{renderedBlocks}}
   </template>
 }}
@@ -211,10 +207,8 @@ def summaryPreviewWrap (labelNode : Verso.Output.Html) (previewLabel? : Option N
       </span>
     }}
 
-def inlinePreviewTemplate (previewId : String) (body : Verso.Output.Html)
-    (texPrelude : String := "") : Verso.Output.Html := {{
+def inlinePreviewTemplate (previewId : String) (body : Verso.Output.Html) : Verso.Output.Html := {{
   <template class="bp_inline_preview_tpl" "data-bp-preview-id"={{previewId}}>
-    <script type="text/plain" class="bp_preview_tex_prelude">{{.text false texPrelude}}</script>
     {{body}}
   </template>
 }}
@@ -226,15 +220,15 @@ def inlinePreviewRef (node : Verso.Output.Html) (previewId previewTitle : String
 }}
 
 def inlinePreviewEntry (node body : Verso.Output.Html)
-    (previewId previewTitle : String) (texPrelude : String := "") : Verso.Output.Html := {{
+    (previewId previewTitle : String) : Verso.Output.Html := {{
   {{inlinePreviewRef node previewId previewTitle}}
-  {{inlinePreviewTemplate previewId body texPrelude}}
+  {{inlinePreviewTemplate previewId body}}
 }}
 
 def inlinePreviewNode (emitTemplate : Bool) (node body : Verso.Output.Html)
-    (previewId previewTitle : String) (texPrelude : String := "") : Verso.Output.Html :=
+    (previewId previewTitle : String) : Verso.Output.Html :=
   if emitTemplate then
-    inlinePreviewEntry node body previewId previewTitle texPrelude
+    inlinePreviewEntry node body previewId previewTitle
   else
     inlinePreviewRef node previewId previewTitle
 

@@ -118,7 +118,6 @@ structure BlockData where
   codeData : Option BlockCodeData := none
   label : Data.Label
   count : Nat
-  texPrelude : String := ""
 deriving FromJson, ToJson, Quote
 
 structure CodePanelHeader where

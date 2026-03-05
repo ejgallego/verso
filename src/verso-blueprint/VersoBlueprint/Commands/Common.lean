@@ -21,15 +21,9 @@ def previewHoverUtilsJs : String := r##"(function () {
       if (!(tpl instanceof Element)) return;
       const label = tpl.getAttribute(keyName) || "";
       let html = "";
-      let texPrelude = "";
       if (tpl instanceof HTMLTemplateElement) {
         const content = tpl.content.cloneNode(true);
         if (content instanceof DocumentFragment) {
-          const preludeNode = content.querySelector("script.bp_preview_tex_prelude[type=\"text/plain\"]");
-          if (preludeNode instanceof Element) {
-            texPrelude = (preludeNode.textContent || "").trim();
-            preludeNode.remove();
-          }
           const wrapper = document.createElement("div");
           wrapper.appendChild(content);
           html = (wrapper.innerHTML || "").trim();
@@ -38,11 +32,8 @@ def previewHoverUtilsJs : String := r##"(function () {
       if (!html) {
         html = (tpl.innerHTML || "").trim();
       }
-      if (!texPrelude) {
-        texPrelude = (tpl.getAttribute("data-bp-preview-tex-prelude") || "").trim();
-      }
       if (label && html) {
-        map.set(label, { html: html, texPrelude: texPrelude });
+        map.set(label, html);
       }
     });
     return map;
@@ -50,38 +41,27 @@ def previewHoverUtilsJs : String := r##"(function () {
 
   function readPreviewTemplate(entry) {
     if (typeof entry === "string") {
-      return { html: entry, texPrelude: "" };
+      return entry;
     }
-    if (!entry || typeof entry !== "object") {
-      return { html: "", texPrelude: "" };
+    if (entry && typeof entry === "object" && typeof entry.html === "string") {
+      return entry.html;
     }
-    const html = typeof entry.html === "string" ? entry.html : "";
-    const texPrelude = typeof entry.texPrelude === "string" ? entry.texPrelude : "";
-    return { html: html, texPrelude: texPrelude };
+    return "";
   }
 
-  function renderMath(root, texPrelude) {
+  function renderMath(root) {
     if (!(root instanceof Element)) return;
     if (typeof katex !== "object" || typeof katex.render !== "function") return;
-    const prelude = typeof texPrelude === "string" ? texPrelude.trim() : "";
-    const hasPrelude = prelude.length > 0;
-    const renderWrapped = !!katex.render.__versoTexPreludeWrapped;
-    const originalRender =
-      renderWrapped && typeof katex.render.__versoTexPreludeOriginal === "function"
-        ? katex.render.__versoTexPreludeOriginal
-        : null;
-    const renderFn = hasPrelude && typeof originalRender === "function" ? originalRender : katex.render;
     const renderAll = function (selector, displayMode) {
       root.querySelectorAll(selector).forEach(function (m) {
         if (!(m instanceof Element)) return;
         if (m.getAttribute("data-bp-math-rendered") === "1") return;
         try {
           const tex = m.textContent || "";
-          const renderInput =
-            hasPrelude && (typeof originalRender === "function" || !renderWrapped)
-              ? prelude + "\n" + tex
-              : tex;
-          renderFn(renderInput, m, { throwOnError: false, displayMode: displayMode });
+          const preludeAttr = m.getAttribute("data-bp-tex-prelude");
+          const prelude = typeof preludeAttr === "string" ? preludeAttr.trim() : "";
+          const renderInput = prelude ? prelude + "\n" + tex : tex;
+          katex.render(renderInput, m, { throwOnError: false, displayMode: displayMode });
           m.setAttribute("data-bp-math-rendered", "1");
         } catch (_err) {}
       });
@@ -448,9 +428,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
         hidePanel();
         return;
       }
-      const entry = previewUtils.readPreviewTemplate(previewMap.get(key));
-      const html = entry.html;
-      const texPrelude = entry.texPrelude;
+      const html = previewUtils.readPreviewTemplate(previewMap.get(key));
       if (!html) {
         hidePanel();
         return;
@@ -459,7 +437,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
       const heading = trigger.getAttribute("data-bp-preview-title") || key;
       title.textContent = heading;
       body.innerHTML = html;
-      previewUtils.renderMath(body, texPrelude);
+      previewUtils.renderMath(body);
       panel.hidden = false;
       positionPanel(trigger);
     }

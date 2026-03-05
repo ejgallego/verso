@@ -22,7 +22,6 @@ abbrev ManualBlock := Verso.Doc.Block Verso.Genre.Manual
 
 structure TraversalPreview where
   blocks : Array ManualBlock := #[]
-  texPrelude : String := ""
 deriving Inhabited, Repr
 
 private def nonEmptyOrNone {α} (xs : Array α) : Option (Array α) :=
@@ -58,7 +57,7 @@ def traversalPreview?
     let obj ← s.getDomainObject? Resolve.informalPreviewDomainName key
     (fromJson? (α := PreviewCache.Entry) obj.data).toOption
   let entry ← firstNonEmptyEntry? traversalFacetEntry?
-  return { blocks := entry.blocks, texPrelude := entry.texPrelude }
+  return { blocks := entry.blocks }
 
 def traversalBlocks?
     (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option (Array ManualBlock) :=
@@ -67,11 +66,11 @@ def traversalBlocks?
 def renderTraversalPreview? {m} [Monad m]
     (s : Verso.Genre.Manual.TraverseState)
     (renderBlock : ManualBlock → m Verso.Output.Html)
-    (label : Name) : m (Option (Array Verso.Output.Html × String)) := do
+    (label : Name) : m (Option (Array Verso.Output.Html)) := do
   match traversalPreview? s label with
   | none => pure none
   | some preview =>
-    pure <| some ((← preview.blocks.mapM renderBlock), preview.texPrelude)
+    pure <| some (← preview.blocks.mapM renderBlock)
 
 def renderTraversalBlocks? {m} [Monad m]
     (s : Verso.Genre.Manual.TraverseState)

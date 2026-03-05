@@ -15,10 +15,14 @@ open Informal
 
 set_option doc.verso true
 
+tex_prelude r#"
+\newcommand{\previewmacro}{\mathsf{Preview}}
+"#
+
 #docs (Genre.Manual) previewWiringDoc "Blueprint Preview Wiring" :=
 :::::::
 :::definition "def:preview.base"
-Base statement used by summary and graph previews.
+Base statement using $`\previewmacro` in summary and graph previews.
 :::
 
 :::lemma_ "lem:preview.next"
@@ -101,6 +105,10 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       hasSubstr out "data-bp-preview-mode=\"hover\"" &&
       hasSubstr out "data-bp-preview-placement=\"anchored\"" &&
       hasSubstr out "bp_summary_preview_wrap_active" &&
+      hasSubstr out "data-bp-tex-prelude" &&
+      hasSubstr out "\\newcommand{\\previewmacro}{\\mathsf{Preview}}" &&
+      !hasSubstr out "bp_preview_tex_prelude" &&
+      !hasSubstr out "verso-tex-prelude" &&
       match summaryJs?, previewUtilsJs? with
       | some summaryJs, some previewUtilsJs =>
         hasSubstr summaryJs "previewUtils.readPanelBehavior(panel, { mode: \"hover\", placement: \"anchored\" })" &&
@@ -130,6 +138,8 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       hasSubstr out "class=\"bp_group_hover_preview\"" &&
       hasSubstr out "data-bp-preview-placement=\"anchored\"" &&
       hasSubstr out "class=\"bp-graph-variants\"" &&
+      hasSubstr out "data-bp-tex-prelude" &&
+      !hasSubstr out "bp_preview_tex_prelude" &&
       match graphJs? with
       | some graphJs =>
         hasSubstr graphJs "return utils.readPreviewTemplate(entry);" &&

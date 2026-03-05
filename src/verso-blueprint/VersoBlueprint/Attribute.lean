@@ -10,6 +10,7 @@ import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.ExternalRefSnapshot
 import VersoBlueprint.LabelNameParsing
+import VersoBlueprint.Math
 
 namespace Informal
 
@@ -46,8 +47,8 @@ private partial def inlineToManualStx (inl : Lean.Doc.Inline Lean.ElabInline) : 
     let content ← content.mapM inlineToManualStx
     `(Verso.Doc.Inline.bold #[$content,*])
   | .code s => `(Verso.Doc.Inline.code $(quote s))
-  | .math .inline s => `(Verso.Doc.Inline.math Verso.Doc.MathMode.inline $(quote s))
-  | .math .display s => `(Verso.Doc.Inline.math Verso.Doc.MathMode.display $(quote s))
+  | .math .inline s => Informal.Math.mkBpMathInlineTerm .inline s
+  | .math .display s => Informal.Math.mkBpMathInlineTerm .display s
   | .linebreak s => `(Verso.Doc.Inline.linebreak $(quote s))
   | .link content url =>
     let content ← content.mapM inlineToManualStx

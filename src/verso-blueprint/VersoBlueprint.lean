@@ -16,6 +16,8 @@ import VersoManual
 import VersoBlueprint.Data
 import VersoBlueprint.ProvedStatus
 import VersoBlueprint.ExternalRefSnapshot
+import VersoBlueprint.Macros
+import VersoBlueprint.Math
 import VersoBlueprint.Environment
 import VersoBlueprint.Attribute
 import VersoBlueprint.Cite
@@ -33,7 +35,6 @@ import VersoBlueprint.LeanNameParsing
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
-import VersoBlueprint.TexPrelude
 import VersoBlueprint.Widget
 import VersoBlueprint.Profiling
 
