@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/graph-legend-review-20260305` merged into `bp` and cleaned up)
+Last updated: 2026-03-05 (`feat/preview-modes-placement-20260305` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -58,6 +58,21 @@ Last updated: 2026-03-05 (`feat/graph-legend-review-20260305` merged into `bp` a
 
 ## Recently Completed
 
+- Merged `feat/preview-modes-placement-20260305` into `bp` (`7915c4e6 -> f7b4e353`, fast-forward).
+- Feature branch key commits:
+  - `aefa9e30` refactor(preview-hover): dedupe shared preview helpers and facet API
+  - `f7b4e353` test(preview): align graph wiring assertions with block-scoped DOM
+- Rebased consolidated feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake build Tests`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Stopped preview server process `858274` (`http://127.0.0.1:8142/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/preview-modes-placement-20260305`.
+- Deleted branch: `feat/preview-modes-placement-20260305`.
 - Merged `feat/graph-legend-review-20260305` into `bp` (`054b0c02 -> d2a373b3`, fast-forward).
 - Feature branch key commits:
   - `4c5f0360` refactor(graph-legend): centralize legend contract and scope graph UI
