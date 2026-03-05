@@ -15,22 +15,39 @@ namespace CodeSummary
 open Verso Doc Elab
 open Lean Elab
 
+/-!
+`CodeSummary` computes the heading-level Lean badge fragments for informal blocks.
+
+Public API:
+- `ComputedData`: normalized code inputs for one block heading.
+- `RenderParts`: rendered heading fragments consumed by callers.
+- `renderCodeSummaryTooltip`: tooltip body for inline declaration summaries.
+- `renderParts`: main entry point that derives status badge + Lean link node.
+-/
+
 /--
 Canonical inputs used to compute Lean summary UI for one informal block.
 
 `source` is the resolved optional code source for this block (`none` / `some userOk` /
 `some inline` / `some external`).
 Inline declaration summaries come from `.inline`; `codeHref` is used for heading link rendering.
+
+Callers should pass `source` after applying code-source precedence
+(typically via `BlockCodeData.ofHintAndInline`).
 -/
 structure ComputedData where
+  /-- URL to the rendered Lean panel for this block, when available. -/
   codeHref : Option String := none
+  /-- Canonical resolved source used for status and tooltip semantics. -/
   source : Option BlockCodeData := none
 
 /--
 Rendered fragments produced by `CodeSummary.renderParts` for an informal block heading.
 -/
 structure RenderParts where
+  /-- Optional status icon rendered next to the statement heading. -/
   statusMark : Option BlockStatusMark := none
+  /-- Optional Lean badge/link node (`L∃∀N`) with tooltip wrapper. -/
   codeEntry : Output.Html := .empty
 
 private def summaryDeclItems (items : Array (String × Option String)) : Output.Html :=
@@ -55,6 +72,8 @@ private def sorrySummaryItems (decls : Array CodeDeclData) (hrefOf : Name → Op
 
 /--
 Tooltip body for the Lean summary badge. It lists definitions, theorems/lemmas, and incomplete declarations.
+
+`hrefOf` is used to attach per-declaration links when targets are known.
 -/
 def renderCodeSummaryTooltip (label : Data.Label)
     (definedDefs definedTheorems : Array CodeDeclData) (hrefOf : Name → Option String) : Output.Html :=
@@ -270,6 +289,12 @@ Render Lean summary UI for an informal block heading.
 Inputs come from canonical block/code data:
 - `codeHref`: link to the generated Lean code block when available.
 - `source`: resolved optional code source (inline/userOk/external).
+
+Output policy:
+- `.proof` headings return an empty `RenderParts`.
+- statement headings with external refs always render a status mark and an external-summary tooltip.
+- inline/no-hint headings hide the status mark when `codeHref` is absent,
+  except for manual `(leanok := true)` where the explicit override mark is kept.
 -/
 def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Option String) : RenderParts :=
   open Verso.Output.Html in
