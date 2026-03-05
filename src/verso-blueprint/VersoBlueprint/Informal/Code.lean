@@ -135,9 +135,10 @@ variable [Monad m] [MonadError m] [MonadOptions m]
 def CodeConfig.parse : ArgParse m CodeConfig :=
   (fun (labelArg : Verso.ArgParse.WithSyntax String) opts =>
     let label := LabelNameParsing.parse labelArg.val
+    let leanLabel := LabelNameParsing.parse <| LabelNameParsing.maybeTrimTeXStylePrefix opts labelArg.val
     {
       label
-      leanLabel := LabelNameParsing.normalizeForLeanCode opts label
+      leanLabel
       labelSyntax := labelArg.syntax
     }) <$> .positional `label (.withSyntax .string)
       <*> .lift "current elaboration options" getOptions
