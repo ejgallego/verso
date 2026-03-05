@@ -7,9 +7,14 @@ import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
-# TODO: adjust default path to built site relative to this directory
-DEFAULT_SITE_DIR = "../_out/html-multi"
-REDIRECTS_JSON_PATH = DEFAULT_SITE_DIR + "/xref.json"
+def default_site_dir() -> Path:
+    repo_root = Path(__file__).resolve().parents[1]
+    if repo_root.parent.name == ".worktrees":
+        return repo_root.parents[1] / "_out" / repo_root.name / "html-multi"
+    return repo_root / "_out" / "html-multi"
+
+
+DEFAULT_SITE_DIR = default_site_dir()
 
 
 def find_free_port():
@@ -18,9 +23,12 @@ def find_free_port():
         s.bind(('127.0.0.1', 0))
         return s.getsockname()[1]
 
-def load_redirects():
+def load_redirects(site_dir: str | Path):
     """Load redirects from JSON file and return a list of (source, target) tuples."""
-    json_path = Path(__file__).parent / REDIRECTS_JSON_PATH
+    json_path = Path(site_dir)
+    if not json_path.is_absolute():
+        json_path = (Path(__file__).parent / json_path).resolve()
+    json_path = json_path / "xref.json"
     with open(json_path) as f:
         data = json.load(f)
 
@@ -29,7 +37,7 @@ def load_redirects():
 
 def get_sample_redirects(n=10):
     """Get a random sample of n redirects for testing."""
-    redirects = load_redirects()
+    redirects = load_redirects(DEFAULT_SITE_DIR)
     if len(redirects) <= n:
         return redirects
     return random.sample(redirects, n)
@@ -44,7 +52,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--site-dir",
         action="store",
-        default=DEFAULT_SITE_DIR,
+        default=str(DEFAULT_SITE_DIR),
         help="Path to the built site directory"
     )
     parser.addoption(
@@ -78,7 +86,9 @@ def pytest_generate_tests(metafunc):
     """Generate test cases for each sampled redirect."""
     if "redirect_case" in metafunc.fixturenames:
         n = metafunc.config.getoption("--num-redirects")
-        redirects = get_sample_redirects(n)
+        redirects = load_redirects(metafunc.config.getoption("--site-dir"))
+        if len(redirects) > n:
+            redirects = random.sample(redirects, n)
         # Create readable test IDs
         ids = [f"{source}->{target}" for source, target in redirects]
         metafunc.parametrize("redirect_case", redirects, ids=ids)
@@ -93,7 +103,9 @@ def server(request):
         return
 
     site_dir = request.config.getoption("--site-dir")
-    site_dir = Path(__file__).parent / site_dir
+    site_dir = Path(site_dir)
+    if not site_dir.is_absolute():
+        site_dir = (Path(__file__).parent / site_dir).resolve()
     port = request.config.getoption("--port")
 
     if port is None:

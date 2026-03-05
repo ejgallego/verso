@@ -17,9 +17,15 @@ def load(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def main() -> int:
+def default_site_root() -> Path:
     repo_root = Path(__file__).resolve().parents[2]
-    out_root = repo_root / "_out" / "html-multi"
+    if repo_root.parent.name == ".worktrees":
+        return repo_root.parents[1] / "_out" / repo_root.name / "html-multi"
+    return repo_root / "_out" / "html-multi"
+
+
+def main() -> int:
+    out_root = default_site_root()
     local_theorem = load(out_root / "The-Local-Theorem" / "index.html")
     bounding = load(out_root / "Bounding-Rotations" / "index.html")
 
