@@ -26,8 +26,6 @@ structure GraphParams where
   statementHtml : Json
   /-- DOT source to render. -/
   dot : String
-  /-- TeX macro prelude shared with KaTeX rendering. -/
-  texPrelude : String := ""
   /-- Shared graph legend payload from `VersoBlueprint.Graph`. -/
   legend : Json := Json.arr #[]
   deriving Server.RpcEncodable
@@ -40,7 +38,7 @@ def blueprintWidget : Component GraphParams where
     import katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.28/+esm'
     import * as React from 'react';
 
-    export default function ({ title, label, statementHtml, dot, texPrelude, legend }) {
+    export default function ({ title, label, statementHtml, dot, legend }) {
         const graphRef = React.useRef(null);
 
         function loadStyle(url) {
@@ -62,22 +60,6 @@ def blueprintWidget : Component GraphParams where
                .renderDot(dot);
            }
         }, [dot]);
-
-        const prelude = typeof texPrelude === 'string' ? texPrelude.trim() : '';
-        const debug = (() => {
-          if (window.__versoTexPreludeDebug) return true;
-          try {
-            return window.localStorage && window.localStorage.getItem('verso.texPrelude.debug') === '1';
-          } catch (_err) {
-            return false;
-          }
-        })();
-        const log = (...args) => {
-          if (debug && window.console && typeof window.console.log === 'function') {
-            window.console.log('[bp widget texPrelude]', ...args);
-          }
-        };
-        log('widget mounted', { preludeLen: prelude.length });
 
         const rootStyle = { display: 'grid', gap: '0.6rem', fontSize: '0.9rem', lineHeight: 1.45 };
         const statementStyle = {
@@ -190,22 +172,13 @@ def blueprintWidget : Component GraphParams where
             if (node.tag === 'code' && classes.includes('math')) {
               const tex = extractText(node.content);
               const displayMode = classes.includes('display');
+              const preludeAttr = attrs.find(a => a && a.name === 'data-bp-tex-prelude');
+              const prelude = typeof preludeAttr?.value === 'string' ? preludeAttr.value.trim() : '';
               let rendered = tex;
-              const renderToStringWrapped =
-                !!(katex && typeof katex.renderToString === 'function' && katex.renderToString.__versoTexPreludeWrapped);
-              const renderInput = (prelude.length > 0 && !renderToStringWrapped) ? `${prelude}\n${tex}` : tex;
-              log('math render input', {
-                texLen: tex.length,
-                renderInputLen: renderInput.length,
-                displayMode,
-                renderToStringWrapped,
-                prependedHere: prelude.length > 0 && !renderToStringWrapped
-              });
+              const renderInput = prelude.length > 0 ? `${prelude}\n${tex}` : tex;
               try {
                 rendered = katex.renderToString(renderInput, { throwOnError: false, displayMode });
-              } catch (err) {
-                log('renderToString error', err);
-              }
+              } catch (_err) {}
               return React.createElement(displayMode ? 'div' : 'span', {
                 key,
                 dangerouslySetInnerHTML: { __html: rendered }
@@ -282,7 +255,6 @@ open Informal Data Environment
 structure BuildResult where
   dot : String
   statementPreview? : Option (Array Lean.Syntax) := none
-  texPrelude : String
   legend : Json
 
 def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResult := do
@@ -297,17 +269,16 @@ def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResul
       throwError m!"No Label Found for '{label}'. Known labels (first {available.size}): {String.intercalate ", " available.toList}"
   let graph : Graph := Informal.Graph.build state #[label]
   let dot := graph.toDot (fun group => state.groups.get? group)
-  let texPrelude ← Environment.getTexPrelude
   let statementPreview? := Informal.PreviewSource.fromEnvironment? env label
   let includeMathlibLegend := graph.any (fun node => node.color == Informal.Graph.statementBorderMathlibColor)
   let legend := toJson (Informal.Graph.graphLegendGroups includeMathlibLegend)
-  pure { dot, statementPreview?, texPrelude, legend }
+  pure { dot, statementPreview?, legend }
 
 open Server in
-def updatePanel (title label : String) (statementHtml legend : Json) (dot texPrelude : String) stx :=
+def updatePanel (title label : String) (statementHtml legend : Json) (dot : String) stx :=
   Widget.savePanelWidgetInfo
     (blueprintWidget.javascriptHash)
-    (rpcEncode ({ title, label, statementHtml, dot, texPrelude, legend } : GraphParams )) stx
+    (rpcEncode ({ title, label, statementHtml, dot, legend } : GraphParams )) stx
 
 private def renderStatementPreviewJson (statementPreview? : Option (Array Lean.Syntax)) :
     Lean.Elab.Term.TermElabM Json := do
@@ -318,7 +289,7 @@ def activateForLabelDoc (label : Name) (stx : Syntax) : Verso.Doc.Elab.DocElabM 
     return ()
   let out ← buildFor label
   let statementHtml ← renderStatementPreviewJson out.statementPreview?
-  (monadLift (updatePanel s!"BluePrint widget: {label}" label.toString statementHtml out.legend out.dot out.texPrelude stx) : Verso.Doc.Elab.DocElabM Unit)
+  (monadLift (updatePanel s!"BluePrint widget: {label}" label.toString statementHtml out.legend out.dot stx) : Verso.Doc.Elab.DocElabM Unit)
 
 show_panel_widgets [local blueprintWidget]
 
@@ -331,7 +302,7 @@ unsafe def elabGraph : CommandElab := fun
     let target := Name.mkSimple label.getString
     let out ← liftCoreM <| buildFor target
     let statementHtml ← Lean.Elab.Command.liftTermElabM <| renderStatementPreviewJson out.statementPreview?
-    liftCoreM <| updatePanel s!"BluePrint widget: {target}" label.getString statementHtml out.legend out.dot out.texPrelude stx
+    liftCoreM <| updatePanel s!"BluePrint widget: {target}" label.getString statementHtml out.legend out.dot stx
   | _ => throwUnsupportedSyntax
 
 -- #show_graph exampleGraph

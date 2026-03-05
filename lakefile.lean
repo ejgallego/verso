@@ -182,7 +182,7 @@ lean_exe «tutorial-example» where
 -- An example of a "math blueprint" project built in Verso
 lean_lib Noperthedron where
   srcDir := "test-projects/Noperthedron"
-  roots := #[`Contents, `Chapters, `Noperthedron, `Bibliography]
+  roots := #[`Contents, `Chapters, `Noperthedron, `Bibliography, `Macros]
 
 @[default_target]
 lean_exe noperthedron where

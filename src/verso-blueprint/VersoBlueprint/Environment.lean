@@ -24,9 +24,10 @@ deriving Inhabited, Repr
 
 structure State where
   data : Data := Data.empty
+  localData : NameMap Node := {}
   groups : NameMap String := {}
+  localGroups : NameMap String := {}
   stack : List InProgress := []
-  texPrelude : Array String := #[]
 deriving Inhabited, Repr
 
 inductive Entry where
@@ -38,8 +39,16 @@ initialize informalExt : PersistentEnvExtension Entry Entry State ←
   registerPersistentEnvExtension {
     mkInitial := pure {}
     addEntryFn state := fun
-      | .node label node => { state with data := state.data.insert label node }
-      | .group label header => { state with groups := state.groups.insert label header }
+      | .node label node =>
+        { state with
+          data := state.data.insert label node
+          localData := state.localData.insert label node
+        }
+      | .group label header =>
+        { state with
+          groups := state.groups.insert label header
+          localGroups := state.localGroups.insert label header
+        }
     addImportedFn entries := do
       let (data, groups) := entries.foldl (init := (({} : NameMap Node), ({} : NameMap String))) fun acc entry =>
         entry.foldl (init := acc) fun (dataAcc, groupAcc) item =>
@@ -49,11 +58,11 @@ initialize informalExt : PersistentEnvExtension Entry Entry State ←
       pure { data, groups }
     -- Strip transient elaboration cache before exporting nodes to the environment.
     exportEntriesFnEx env := fun state _level =>
-      let nodeEntries := state.data.toArray.map fun (name, node) =>
+      let nodeEntries := state.localData.toArray.map fun (name, node) =>
         let statement := node.statement.map fun s => { s with elabStx := #[] }
         let proof := node.proof.map fun p => { p with elabStx := #[] }
         Entry.node name { node with statement, proof }
-      let groupEntries := state.groups.toArray.map fun (label, header) =>
+      let groupEntries := state.localGroups.toArray.map fun (label, header) =>
         Entry.group label header
       nodeEntries ++ groupEntries
   }
@@ -126,7 +135,11 @@ def pop (ref : Syntax) : m Nat := do
           elabStx := cur.elabStx
         }
         let data ← state.data.register cur.label cur.kind payload cur.codeHint cur.parent
-        return { state with data, stack }
+        let localData :=
+          match data.get? cur.label with
+          | some node => state.localData.insert cur.label node
+          | none => state.localData
+        return { state with data, localData, stack }
   getCount
 
 def peek : m (Option InProgress) := do
@@ -159,7 +172,11 @@ def registerCode (label : Label) (code : Syntax)
     (definedDefs : Array LiterateDef := #[]) (definedTheorems : Array LiterateThm := #[]) : m Unit := do
   modifyM fun state => do
     let data ← state.data.registerCode label code definedDefs definedTheorems
-    return { state with data }
+    let localData :=
+      match data.get? label with
+      | some node => state.localData.insert label node
+      | none => state.localData
+    return { state with data, localData }
 
 def getNode? (label : Label) : m (Option Node) := do
   return (informalExt.getState (← getEnv)).data.get? label
@@ -169,29 +186,16 @@ def registerGroup (label : Label) (header : String) : m Unit := do
   modifyM fun state => do
     match state.groups.get? label with
     | none =>
-      return { state with groups := state.groups.insert label header }
+      return {
+        state with
+        groups := state.groups.insert label header
+        localGroups := state.localGroups.insert label header
+      }
     | some currentHeader =>
       if currentHeader = header then
         logWarning m!"Group {label} is declared multiple times with the same header; keeping '{currentHeader}'"
       else
         logError m!"Group {label} has conflicting headers: existing '{currentHeader}', new '{header}'"
       return state
-
-def addTexPrelude (texPrelude : String) : m Unit := do
-  let texPrelude := texPrelude.trimAscii.toString
-  if texPrelude.isEmpty then
-    pure ()
-  else
-    modify fun state => { state with texPrelude := state.texPrelude.push texPrelude }
-
-private def joinChunks (chunks : Array String) : String :=
-  chunks.foldl (init := "") fun acc chunk =>
-    if acc.isEmpty then
-      chunk
-    else
-      acc ++ "\n" ++ chunk
-
-def getTexPrelude : m String := do
-  return joinChunks (informalExt.getState (← getEnv)).texPrelude
 
 end EnvOps

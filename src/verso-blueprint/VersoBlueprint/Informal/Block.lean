@@ -753,7 +753,7 @@ block_extension Block.informal (data : BlockData) where
       let label := blockData.label
       let previewFacet := PreviewCache.Facet.ofInProgressKind blockData.kind
       let previewKey := PreviewCache.key label previewFacet
-      let previewData := toJson (PreviewCache.Entry.ofBlocks label previewFacet _contents blockData.texPrelude)
+      let previewData := toJson (PreviewCache.Entry.ofBlocks label previewFacet _contents)
       let existingPreview? := (← get).getDomainObject? informalPreviewDomain previewKey
       if shouldWritePreviewData existingPreview? id then
         modify λ s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
@@ -900,10 +900,9 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       match blockKind with
       | .proof => none
       | .statement _ => BlockCodeData.ofCodeRefHint nodeCodeRef?
-    let texPrelude ← Environment.getTexPrelude
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := { kind := blockKind, codeData, label, count, texPrelude }
+    let data : BlockData := { kind := blockKind, codeData, label, count }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
 private def directiveName (kind : Data.NodeKind) (isProof : Bool): String :=

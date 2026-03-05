@@ -47,11 +47,11 @@ private def useLinkPreviewFallbackBody (label : Data.Label) : Verso.Output.Html 
   }}
 
 private def wrapUseLinkPreview (node previewBody : Verso.Output.Html)
-    (label : Data.Label) (block : BlockData) (emitTemplate : Bool) (texPrelude : String := "") :
+    (label : Data.Label) (block : BlockData) (emitTemplate : Bool) :
     Verso.Output.Html :=
   let pid := usePreviewId label block
   let ptitle := blockHoverTitle block
-  Informal.HoverRender.inlinePreviewNode emitTemplate node previewBody pid ptitle texPrelude
+  Informal.HoverRender.inlinePreviewNode emitTemplate node previewBody pid ptitle
 
 inline_extension Inline.informal (data : InlineData) where
   data := toJson data
@@ -132,11 +132,11 @@ inline_extension Inline.informal (data : InlineData) where
           return {{<span>{{plainContent}}</span>}}
         let previewId := usePreviewId label block
         let emitTemplate := Informal.HoverRender.isInlinePreviewOwner st ctxt.path previewId id
-        let (previewBody, texPrelude) :=
+        let previewBody :=
           match preview? with
-          | some (rendered, texPrelude) => (Verso.Output.Html.seq rendered, texPrelude)
-          | Option.none => (useLinkPreviewFallbackBody label, "")
-        let hovered := wrapUseLinkPreview plainContent previewBody label block emitTemplate texPrelude
+          | some rendered => Verso.Output.Html.seq rendered
+          | Option.none => useLinkPreviewFallbackBody label
+        let hovered := wrapUseLinkPreview plainContent previewBody label block emitTemplate
         return {{<span>{{hovered}}</span>}}
   toTeX := none
 

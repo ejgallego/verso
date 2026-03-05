@@ -443,9 +443,7 @@ def summaryPreviewJs : String := r##"(function () {
     function showFromWrap(wrap) {
       if (!(wrap instanceof Element)) return;
       const label = wrap.getAttribute("data-bp-preview-label") || "";
-      const entry = previewUtils.readPreviewTemplate(previewMap.get(label));
-      const html = entry.html;
-      const texPrelude = entry.texPrelude;
+      const html = previewUtils.readPreviewTemplate(previewMap.get(label));
       if (!label || !html) {
         hidePanel();
         return;
@@ -453,7 +451,7 @@ def summaryPreviewJs : String := r##"(function () {
       activeWrap = wrap;
       title.textContent = label;
       body.innerHTML = html;
-      previewUtils.renderMath(body, texPrelude);
+      previewUtils.renderMath(body);
       panel.hidden = false;
       positionPanel(wrap);
     }
@@ -547,8 +545,8 @@ block_extension Block.summary (summary : Summary) where
           label
         match preview? with
         | Option.none => pure (labels, templates)
-        | some (rendered, texPrelude) =>
-          pure (labels.insert label, templates.push (Informal.HoverRender.summaryPreviewTemplate label rendered texPrelude))
+        | some rendered =>
+          pure (labels.insert label, templates.push (Informal.HoverRender.summaryPreviewTemplate label rendered))
       let previewUi := Informal.HoverRender.summaryPreviewUi previewTemplates
       let mkEntryRef (label : Name) := do
         let previewLabel? : Option Name :=
