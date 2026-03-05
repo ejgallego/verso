@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/hover-links-biblio-20260305` created for hover expansion)
+Last updated: 2026-03-05 (`feat/hover-links-biblio-20260305` hover links implemented and validated)
 
 ## Active Worktrees
 
@@ -24,17 +24,25 @@ Last updated: 2026-03-05 (`feat/hover-links-biblio-20260305` created for hover e
 
 ### `feat/hover-links-biblio-20260305`
 
-- Status: `active` (owner action: implement hover for theorem/lemma links and bibliography links; audit extra hover candidates)
-- Summary: fresh feature worktree to extend the existing hover preview infra from summary/graph nodes to more inline link targets.
+- Status: `validated` (owner action: review hover behavior in preview and decide whether to extend to additional link families)
+- Summary: inline hover support added for `{uses ...}` theorem/lemma/definition links and `{citet/citep/citehere ...}` bibliography links via shared tooltip wrappers.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/hover-links-biblio-20260305`
 - Branch: `feat/hover-links-biblio-20260305`
 - Base commit/branch:
   - branched from `bp` at `087f026d` (2026-03-05)
 - Key commit:
   - `087f026d` fix(html): move script raw handling to blueprint use sites
+  - worktree currently has uncommitted changes in:
+    - `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
+    - `src/verso-blueprint/VersoBlueprint/Cite.lean`
+    - `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
+    - `src/tests/Tests/BlueprintLinkHover.lean`
+    - `src/tests/Tests.lean`
 - Validation status:
   - `lake exe cache get`
+  - `lake build Tests`
   - `lake exe noperthedron`
+  - `rg -n "bp_inline_hover_wrap|Bibliography:|Blueprint label" _out/html-multi/The-Global-Theorem/index.html`
   - preview server running: `http://127.0.0.1:8125/` (process `http-serv` pid `631386`)
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/hover-links-biblio-20260305`
