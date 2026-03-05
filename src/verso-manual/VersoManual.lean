@@ -872,6 +872,7 @@ where
 
   opts (cfg : RenderConfig) : List String → ReaderT ExtensionImpls IO RenderConfig
     | ("--output"::dir::more) => opts { cfg with destination := dir } more
+    | ("--output-dir"::dir::more) => opts { cfg with destination := dir } more
     | ("--depth"::n::more) => opts { cfg with htmlDepth := n.toNat! } more
 
     | ("--with-tex"::more) => opts { cfg with emitTeX := true } more
