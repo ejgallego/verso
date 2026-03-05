@@ -162,6 +162,60 @@ def inlinePreviewCss : String := r##"
   font-size: 0.8rem;
 }
 
+.bp_bibliography_hover_entry {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.45rem;
+  background: #f8fafc;
+}
+
+.bp_bibliography_hover_entry .citation {
+  display: block;
+  line-height: 1.35;
+}
+
+.bp_bibliography_hover_meta {
+  margin-top: 0.42rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.42rem;
+  flex-wrap: wrap;
+}
+
+.bp_bibliography_hover_meta_label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.bp_bibliography_hover_meta_value {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.bp_bibliography_hover_action {
+  margin-top: 0.48rem;
+}
+
+.bp_bibliography_hover_action_link {
+  color: #1d4ed8;
+  font-weight: 600;
+  font-size: 0.76rem;
+}
+
+.bp_bibliography_hover_action_link:hover {
+  text-decoration: underline;
+}
+
+.bp_bibliography_hover_action_missing {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-style: italic;
+}
+
 .bp_code_hover_section {
   margin-top: 0.28rem;
 }
