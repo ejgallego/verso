@@ -196,26 +196,6 @@ def inlinePreviewCss : String := r##"
   color: #0f172a;
 }
 
-.bp_bibliography_hover_action {
-  margin-top: 0.48rem;
-}
-
-.bp_bibliography_hover_action_link {
-  color: #1d4ed8;
-  font-weight: 600;
-  font-size: 0.76rem;
-}
-
-.bp_bibliography_hover_action_link:hover {
-  text-decoration: underline;
-}
-
-.bp_bibliography_hover_action_missing {
-  color: #64748b;
-  font-size: 0.76rem;
-  font-style: italic;
-}
-
 .bp_code_hover_section {
   margin-top: 0.28rem;
 }

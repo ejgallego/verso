@@ -363,16 +363,10 @@ private def citationPreviewTitle (item : CiteItem) : String :=
   s!"Bibliography: {item.label}"
 
 private def citationPreviewBody (entryHtml : Verso.Output.Html)
-    (kind : Option CitePartKind) (index : Option String) (href? : Option String) :
+    (kind : Option CitePartKind) (index : Option String) :
     Verso.Output.Html :=
   open Verso.Output.Html in
   let locator? := locatorText kind index
-  let targetNode :=
-    match href? with
-    | some href =>
-      {{<a href={{href}} class="bp_bibliography_hover_action_link">"Open bibliography entry"</a>}}
-    | Option.none =>
-      {{<span class="bp_bibliography_hover_action_missing">"Bibliography target unavailable on this page"</span>}}
   {{
     <div class="bp_bibliography_hover">
       <div class="bp_bibliography_hover_entry">
@@ -385,9 +379,6 @@ private def citationPreviewBody (entryHtml : Verso.Output.Html)
               <span class="bp_bibliography_hover_meta_value">{{.text true loc}}</span>
             </div>}}
         | Option.none => .empty}}
-      <div class="bp_bibliography_hover_action">
-        {{targetNode}}
-      </div>
     </div>
   }}
 
@@ -498,7 +489,7 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
           let previewId := citationPreviewId item cfg.style cfg.kind cfg.index
           let emitTemplate := Informal.HoverRender.isInlinePreviewOwner st ctxt.path previewId id
           let entryHtml ← item.citation.bibHtml goI
-          let tooltip := citationPreviewBody entryHtml cfg.kind cfg.index href?
+          let tooltip := citationPreviewBody entryHtml cfg.kind cfg.index
           pure <| Informal.HoverRender.inlinePreviewNode
             emitTemplate linkNode tooltip previewId (citationPreviewTitle item)
       let links ← cfg.citations.mapM mkLink
