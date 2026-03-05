@@ -362,37 +362,32 @@ private def citationPreviewId (item : CiteItem) (style : CitationStyle)
 private def citationPreviewTitle (item : CiteItem) : String :=
   s!"Bibliography: {item.label}"
 
-private def citationPreviewBody (item : CiteItem)
+private def citationPreviewBody (entryHtml : Verso.Output.Html)
     (kind : Option CitePartKind) (index : Option String) (href? : Option String) :
     Verso.Output.Html :=
   open Verso.Output.Html in
   let locator? := locatorText kind index
-  let referenceTxt := pieceText .textual item.citation
-  let targetTxt :=
+  let targetNode :=
     match href? with
-    | some _ => "Jump to bibliography entry"
-    | Option.none => "Bibliography target unavailable on this page"
+    | some href =>
+      {{<a href={{href}} class="bp_bibliography_hover_action_link">"Open bibliography entry"</a>}}
+    | Option.none =>
+      {{<span class="bp_bibliography_hover_action_missing">"Bibliography target unavailable on this page"</span>}}
   {{
-    <div class="bp_code_hover_section">
-      <span class="bp_code_hover_label">"Reference"</span>
-      <ul class="bp_code_hover_list">
-        <li>{{.text true referenceTxt}}</li>
-      </ul>
-    </div>
-    {{match locator? with
-      | some loc =>
-        {{<div class="bp_code_hover_section">
-            <span class="bp_code_hover_label">"Locator"</span>
-            <ul class="bp_code_hover_list">
-              <li>{{.text true loc}}</li>
-            </ul>
-          </div>}}
-      | Option.none => .empty}}
-    <div class="bp_code_hover_section">
-      <span class="bp_code_hover_label">"Target"</span>
-      <ul class="bp_code_hover_list">
-        <li>{{.text true targetTxt}}</li>
-      </ul>
+    <div class="bp_bibliography_hover">
+      <div class="bp_bibliography_hover_entry">
+        {{entryHtml}}
+      </div>
+      {{match locator? with
+        | some loc =>
+          {{<div class="bp_bibliography_hover_meta">
+              <span class="bp_bibliography_hover_meta_label">"Locator"</span>
+              <span class="bp_bibliography_hover_meta_value">{{.text true loc}}</span>
+            </div>}}
+        | Option.none => .empty}}
+      <div class="bp_bibliography_hover_action">
+        {{targetNode}}
+      </div>
     </div>
   }}
 
@@ -480,7 +475,7 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
         match citeAnchorId? with
         | some anchorId => {{<span id={{anchorId}}>{{h}}</span>}}
         | Option.none => h
-      let mkLink (item : CiteItem) : Output.Html :=
+      let mkLink (item : CiteItem) := do
         let base? :=
           match Resolve.resolveDomainHref? st Verso.Genre.Manual.sectionDomain "Contents--Blueprint-Bibliography" with
           | some href => some href
@@ -498,13 +493,16 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
           | some href => {{<a href={{href}}>{{.text true txt}}</a>}}
           | Option.none => {{<span>{{.text true txt}}</span>}}
         if inPreviewRender then
-          linkNode
+          pure linkNode
         else
           let previewId := citationPreviewId item cfg.style cfg.kind cfg.index
           let emitTemplate := Informal.HoverRender.isInlinePreviewOwner st ctxt.path previewId id
-          let tooltip := citationPreviewBody item cfg.kind cfg.index href?
-          Informal.HoverRender.inlinePreviewNode emitTemplate linkNode tooltip previewId (citationPreviewTitle item)
-      let body := joinHtml {{<span>"; "</span>}} (cfg.citations.map mkLink)
+          let entryHtml ← item.citation.bibHtml goI
+          let tooltip := citationPreviewBody entryHtml cfg.kind cfg.index href?
+          pure <| Informal.HoverRender.inlinePreviewNode
+            emitTemplate linkNode tooltip previewId (citationPreviewTitle item)
+      let links ← cfg.citations.mapM mkLink
+      let body := joinHtml {{<span>"; "</span>}} links
       let locatorHtml? := (locatorText cfg.kind cfg.index).map (fun loc => {{<span>{{.text true loc}}</span>}})
       let htmlNote? : Option Html ←
         if content.isEmpty then
