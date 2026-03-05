@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/sorry-analysis-20260305` merged into `bp` and cleaned up)
+Last updated: 2026-03-05 (`feat/graph-legend-review-20260305` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -58,6 +58,20 @@ Last updated: 2026-03-05 (`feat/sorry-analysis-20260305` merged into `bp` and cl
 
 ## Recently Completed
 
+- Merged `feat/graph-legend-review-20260305` into `bp` (`054b0c02 -> d2a373b3`, fast-forward).
+- Feature branch key commits:
+  - `4c5f0360` refactor(graph-legend): centralize legend contract and scope graph UI
+  - `d2a373b3` refactor(graph): move warnings from fill overlays to border markers
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Stopped preview server process `839443` (`http://127.0.0.1:8120/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/graph-legend-review-20260305`.
+- Deleted branch: `feat/graph-legend-review-20260305`.
 - Merged `feat/sorry-analysis-20260305` into `bp` (`ced2875e -> ee394bd0`, fast-forward).
 - Feature branch key commits:
   - `6c3959da` refactor(status): split and document ProvedStatus API
