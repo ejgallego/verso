@@ -7,6 +7,7 @@ Author: Emilio J. Gallego Arias
 import Lean
 import VersoManual.Bibliography
 import VersoBlueprint.Data
+import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Resolve
 
 open Lean Elab Command
@@ -241,12 +242,6 @@ private structure HeaderLocation where
   title : String
   number : Option String := none
 
-private structure InformalBlockUsage where
-  kind : Data.NodeKind
-  count : Nat
-  isProof : Bool := false
-deriving Inhabited, FromJson
-
 private def headerTitle (h : PartHeader) : String :=
   (h.metadata.bind (·.shortContextTitle) <|> h.metadata.bind (·.shortTitle)).getD h.titleString
 
@@ -280,13 +275,11 @@ private def theoremContext? (ctxt : TraverseContext) : Option String :=
     | [] => none
     | .other b :: rest =>
       if b.name.toString == "Informal.Block.informal" then
-        match fromJson? (α := InformalBlockUsage) b.data with
+        match fromJson? (α := Informal.BlockData) b.data with
         | .ok d =>
-          let base := s!"{d.kind} {d.count}"
-          if d.isProof then
-            some s!"Proof of {base}"
-          else
-            some base
+          match d.kind with
+          | some statement => some s!"{statement.kind} {d.count}"
+          | none => some s!"Proof {d.count}"
         | .error _ => go rest
       else
         go rest

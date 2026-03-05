@@ -255,7 +255,6 @@ def stateExternalCode : Environment.State := mkState [
         { (Data.ExternalRef.ofName `Ext.good) with
           present := true
           provedStatus := .proved
-          isTheoremLike := false
         }
       ])
     }),
@@ -267,7 +266,6 @@ def stateExternalCode : Environment.State := mkState [
         { (Data.ExternalRef.ofName `Ext.bad) with
           present := true
           provedStatus := .containsSorry #[{ location := .statement }, { location := .proof }]
-          isTheoremLike := false
         }
       ])
     }),
@@ -279,7 +277,6 @@ def stateExternalCode : Environment.State := mkState [
         { (Data.ExternalRef.ofName `Ext.missing) with
           present := false
           provedStatus := .proved
-          isTheoremLike := false
         }
       ])
     })
@@ -327,7 +324,6 @@ def stateExternalOverride : Environment.State := mkState [
         { (Data.ExternalRef.ofName `Ext.override_bad) with
           present := true
           provedStatus := .proved
-          isTheoremLike := false
         }
       ])
     }),
@@ -339,7 +335,6 @@ def stateExternalOverride : Environment.State := mkState [
         { (Data.ExternalRef.ofName `Ext.override_missing) with
           present := true
           provedStatus := .proved
-          isTheoremLike := false
         }
       ])
     })
@@ -368,7 +363,6 @@ def stateLeanOnlyExternalMissing : Environment.State := mkState [
         { (Data.ExternalRef.ofName `Ext.missing) with
           present := false
           provedStatus := .proved
-          isTheoremLike := false
         }
       ])
     })
