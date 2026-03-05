@@ -113,15 +113,14 @@ Informal block heading status uses the same statement-track completion policy vi
 
 Proof blocks now use an explicit `.proof` tag in `BlockData.kind` and carry no code metadata by type design, so Lean code summary parts are only produced for statement blocks.
 
-### 6.1 Known mismatch (current behavior)
+### 6.1 External heading parity policy
 
-- Inline heading badges use statement-track blocking policy (`anyBlocksStatementCompletion`).
-- External heading badges currently use aggregate "any incomplete external declaration" logic.
-- Consequence: theorem-like nodes with proof-only gaps can show:
-  - inline path: "no sorries that block completion" (statement-complete),
-  - external path: warning/incomplete badge.
-
-This is tracked as status-semantics debt and should be unified behind one shared status API.
+- External heading badges now follow the same statement-track rule as inline badges:
+  - warning only when external declarations block statement completion,
+  - theorem-like proof-only gaps are non-blocking for statement completion.
+- Missing external declarations remain a hard warning state.
+- Non-blocking external incompleteness is surfaced in tooltip/title text without downgrading
+  statement completion status.
 
 ## 7. Validation and Test Coverage
 
