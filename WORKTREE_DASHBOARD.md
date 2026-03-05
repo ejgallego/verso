@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (`feat/external-code-polish-20260306` validated; previous renderer-switch worktree marked superseded)
+Last updated: 2026-03-06 (`feat/external-code-polish-20260306` rebased on `bp` and revalidated)
 
 ## Active Worktrees
 
@@ -73,13 +73,19 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` validated; previo
 ### `feat/external-code-polish-20260306`
 
 - Status: `ready-for-review` (owner action: review naming/layout polish and compare against the superseded renderer-switch pass if needed)
-- Summary: polish pass for external code panels, focused on summary wording, panel captions, metadata placement, and signature printing.
+- Summary: rebased review branch carrying the full external-code refresh/render-switch/polish series, plus a small regression-harness fix for worktree-local output detection.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
 - Branch: `feat/external-code-polish-20260306`
 - Base commit/branch:
-  - branched from `feat/external-code-renderer-switch-20260305` at `bb04f3d3`
+  - rebased on `bp` at `2f898776`
 - Key commit:
-  - `93b79fb5` refactor(external-code): simplify copy and rendered metadata
+  - `a0cac361` style(external-code): improve panel readability and mobile spacing
+  - `73b60675` feat(external-code): add native headers and summary badges
+  - `673dab4c` refactor(external-code): flatten rendered declaration wrapper
+  - `42fbe95e` style(external-code): simplify rendered wrapper surface
+  - `30e1a245` feat(external-code): add verso and docgen renderer switch
+  - `38dd055d` refactor(external-code): simplify copy and rendered metadata
+  - `2409ef6a` test(noperthedron): detect local worktree output path
 - Validation status:
   - `lake exe cache get`
   - `lake exe noperthedron` (warnings only; no errors)
@@ -88,7 +94,7 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` validated; previo
   - `http://127.0.0.1:8149`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
-  - `git show --stat --oneline -1`
+  - `git log --oneline --reverse bp..HEAD`
   - `lake exe noperthedron`
   - server session: `1316`
 
