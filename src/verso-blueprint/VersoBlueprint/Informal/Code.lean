@@ -145,7 +145,9 @@ end
 /-- Interpreting Embedded Lean Code blocks -/
 private def leanImpl : CodeBlockExpanderOf CodeConfig
   | cfg, contents => do
-    let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some (cfg.label : Lean.Name) }
+    let opts ← getOptions
+    let leanLabel := maybeTrimTeXStyleLabelName opts cfg.label
+    let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some leanLabel }
     let res ← Lean.elabCommands leanCfg contents
     let codeBlock := res.block
     let definedDefs := res.definedDefs.map CodeDeclData.ofLiterateDef

@@ -143,6 +143,33 @@ register_option verso.blueprint.foldProofs : Bool := {
   descr := "Enable proof folding in VersoBlueprint Lean code blocks (hide text after `by` behind a toggle)"
 }
 
+register_option verso.blueprint.trimTeXLabelPrefix : Bool := {
+  defValue := false
+  descr := "Trim TeX-style label prefixes for Lean-facing names (`thm:foo` -> `foo`)"
+}
+
+private def texStyleLabelSuffix? (s : String) : Option String :=
+  match s.splitOn ":" with
+  | [] => none
+  | _ :: [] => none
+  | pref :: suffixParts =>
+    let suffix := String.intercalate ":" suffixParts
+    if pref.isEmpty || suffix.isEmpty then
+      none
+    else
+      some suffix
+
+def trimTeXStyleLabelName (name : Name) : Name :=
+  match texStyleLabelSuffix? name.toString with
+  | some suffix => suffix.toName
+  | none => name
+
+def maybeTrimTeXStyleLabelName (opts : Lean.Options) (name : Name) : Name :=
+  if opts.get verso.blueprint.trimTeXLabelPrefix.name verso.blueprint.trimTeXLabelPrefix.defValue then
+    trimTeXStyleLabelName name
+  else
+    name
+
 def provedStatusHasSorry (status : Data.ProvedStatus) : Bool :=
   status.isIncomplete
 
