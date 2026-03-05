@@ -189,16 +189,25 @@ private def axisCompletionText : Nat → String
 private def completionAxisText (statementSorryCount proofSorryCount : Nat) : String :=
   s!"Statement: {axisCompletionText statementSorryCount}; Proof: {axisCompletionText proofSorryCount}"
 
+/--
+Build completion status from declaration-level axis counts.
+
+Counts are only used as presence signals (non-zero means "with sorries" on that axis);
+they are not interpreted as precise sorry-reference totals.
+-/
+private def completionStatusFromCounts (statementSorryCount proofSorryCount : Nat) : Data.ProvedStatus :=
+  Data.ProvedStatus.ofSorryFlags (statementSorryCount > 0) (proofSorryCount > 0)
+
 private def completionStatusMark (statementSorryCount proofSorryCount : Nat) : BlockStatusMark :=
-  match Data.ProvedStatus.ofRefCounts statementSorryCount proofSorryCount with
-  | .proved =>
+  let status := completionStatusFromCounts statementSorryCount proofSorryCount
+  if status.isProved then
     {
-      status := .proved
+      status
       title := completionAxisText statementSorryCount proofSorryCount
     }
-  | _ =>
+  else
     {
-      status := .containsSorry #[]
+      status
       title := completionAxisText statementSorryCount proofSorryCount
       symbolOverride? := some "⚠"
     }
