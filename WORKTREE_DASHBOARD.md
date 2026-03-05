@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/biblio-hover-preview` merged into `bp` and cleaned up)
+Last updated: 2026-03-05 (`feat/sorry-analysis-20260305` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -58,6 +58,22 @@ Last updated: 2026-03-05 (`feat/biblio-hover-preview` merged into `bp` and clean
 
 ## Recently Completed
 
+- Merged `feat/sorry-analysis-20260305` into `bp` (`ced2875e -> ee394bd0`, fast-forward).
+- Feature branch key commits:
+  - `6c3959da` refactor(status): split and document ProvedStatus API
+  - `9280ecc5` refactor(status): switch heading mark to statement/proof sorry semantics
+  - `52798463` fix(status): preserve sorry location payload in heading marks
+  - `ee394bd0` docs(code-summary): document public API contracts
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Stopped preview server processes `655290` and `655305` (`http://127.0.0.1:8131/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/sorry-analysis-20260305`.
+- Deleted branch: `feat/sorry-analysis-20260305`.
 - Merged `feat/biblio-hover-preview` into `bp` (`5cbe8477 -> 1aae8d88`, fast-forward).
 - Feature branch key commits:
   - `3b89d113` feat(cite): render richer bibliography hover previews
