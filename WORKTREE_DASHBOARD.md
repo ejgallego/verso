@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (created `feat/biblio-hover-preview` for bibliography hover rendering improvements)
+Last updated: 2026-03-05 (`feat/biblio-hover-preview` validated and ready for review)
 
 ## Active Worktrees
 
@@ -24,18 +24,21 @@ Last updated: 2026-03-05 (created `feat/biblio-hover-preview` for bibliography h
 
 ### `feat/biblio-hover-preview`
 
-- Status: `active` (owner action: implement and validate bibliography hover preview rendering updates)
+- Status: `ready-for-review` (owner action: review and merge into `bp`)
 - Summary: focused fix branch for bibliography link hover rendering quality in blueprint output.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/biblio-hover-preview`
 - Branch: `feat/biblio-hover-preview`
 - Base commit/branch:
   - `bp` at branch-point commit `5cbe8477`
 - Key commit:
-  - `none yet`
+  - `3b89d113` feat(cite): render richer bibliography hover previews
 - Validation status:
-  - bootstrap validation passed:
-  - `lake exe cache get`
+  - validation passed:
+  - `lake build VersoBlueprint.Cite VersoBlueprint.Commands.Common`
   - `lake exe noperthedron`
+  - warnings only from existing `Noperthedron` `sorry`/lint noise; no new errors
+  - bootstrap setup:
+  - `lake exe cache get`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/biblio-hover-preview`
   - preview: `http://127.0.0.1:8136/`
