@@ -97,6 +97,33 @@ Simple body.
 :::
 :::::::
 
+set_option verso.blueprint.trimTeXLabelPrefix true
+
+#guard_msgs in
+#docs (Manual) trimTexStyleExternalName "Trim TeX-style External Name" :=
+:::::::
+:::theorem "trim.external.name" (lean := "thm:Nat.add")
+Simple body.
+:::
+:::::::
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show CoreM Bool from do
+    let state := Informal.Environment.informalExt.getState (← getEnv)
+    let some node := state.data.get? (Name.mkSimple "trim.external.name")
+      | pure false
+    let some code := node.code
+      | pure false
+    match code with
+    | .external decls =>
+      pure <| decls.any (fun decl => decl.written == ``Nat.add && decl.canonical == ``Nat.add)
+    | _ =>
+      pure false
+
+set_option verso.blueprint.trimTeXLabelPrefix false
+
 #docs (Manual) groupHeaderDoc "Group Header" :=
 :::::::
 :::group "grp.quoted"

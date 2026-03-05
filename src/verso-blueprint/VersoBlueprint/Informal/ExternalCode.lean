@@ -46,17 +46,30 @@ private def splitExternalCodeRefs (s : String) : Array String :=
   |>.map normalizeNameFragment
   |>.filter (fun p => !p.isEmpty)
 
+private def trimTexStylePrefix (s : String) : String :=
+  match s.splitOn ":" with
+  | [] => s
+  | _ :: [] => s
+  | pref :: suffixParts =>
+    let suffix := String.intercalate ":" suffixParts
+    if pref.isEmpty || suffix.isEmpty then
+      s
+    else
+      suffix
+
 /--
 Parse and normalize `(lean := "a,b,c")` directive values into canonical external refs.
 
 Returns `(refs, invalidEntries)` where invalid entries keep the original token plus parse error.
 -/
-def parseExternalCodeList (lean : Option String) : Array Data.ExternalRef × Array String :=
+def parseExternalCodeList (lean : Option String) (trimTeXLabelPrefix : Bool := false) :
+    Array Data.ExternalRef × Array String :=
   match lean with
   | none => (#[], #[])
   | some s =>
     (splitExternalCodeRefs s).foldl (init := (#[], #[])) fun (acc, invalid) ref =>
-      match parseNameE ref with
+      let parsedRef := if trimTeXLabelPrefix then trimTexStylePrefix ref else ref
+      match parseNameE parsedRef with
       | .ok name =>
         let extRef := Data.ExternalRef.ofName name .directiveLean
         (acc.push extRef, invalid)
@@ -106,11 +119,14 @@ When strict mode is disabled, unresolved/ambiguous names are kept as parsed and 
 def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadLiftT CoreM m] [MonadEnv m]
     [MonadLog m] [AddMessageContext m] [MonadError m]
     (label : Name) (labelSyntax : Syntax) (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
+  let opts ← getOptions
   let strictResolve :=
-    (← getOptions).get
+    opts.get
       verso.blueprint.externalCode.strictResolve.name
       verso.blueprint.externalCode.strictResolve.defValue
   refs.foldlM (init := #[]) fun acc ref => do
+    let written := maybeTrimTeXStyleLabelName opts ref.written
+    let ref := { ref with written, canonical := written.eraseMacroScopes }
     let candidates ← resolveExternalNameCandidates ref.written
     match candidates.toList with
     | [] =>

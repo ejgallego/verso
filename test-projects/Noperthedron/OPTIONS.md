@@ -50,6 +50,11 @@ set_option verso.blueprint.foldProofs true
   - Definition: `src/verso-blueprint/VersoBlueprint.lean`.
   - Default: `true`.
   - Used in: `Chapters/Noperthedron.lean` (explicit but currently same as default).
+- `set_option verso.blueprint.trimTeXLabelPrefix true`
+  - Purpose: trim TeX-style prefixes in Lean-facing names (`thm:foo` -> `foo`) for code labels and `(lean := "...")` refs.
+  - Definition: `src/verso-blueprint/VersoBlueprint/Informal/CodeCommon.lean`.
+  - Default: `false`.
+  - Used in: all chapter files and `Contents.lean`.
 
 ## Coverage snapshot (2026-03-02)
 
@@ -102,6 +107,12 @@ These options are now implemented and can be configured with `set_option`.
   - Effect: unresolved/ambiguous names in `(lean := "...")` become hard errors (instead of warnings + fallback).
   - Example:
     - `set_option verso.blueprint.externalCode.strictResolve true`
+
+- `verso.blueprint.trimTeXLabelPrefix : Bool` (default `false`)
+  - File: `src/verso-blueprint/VersoBlueprint/Informal/CodeCommon.lean`.
+  - Effect: trims TeX-style prefixes from Lean-facing names (`thm:foo` -> `foo`) for inline code labels and `(lean := "...")` external refs.
+  - Example:
+    - `set_option verso.blueprint.trimTeXLabelPrefix true`
 
 - `verso.blueprint.externalCode.previewLimit.type : Nat` (default `1200`)
 - `verso.blueprint.externalCode.previewLimit.value : Nat` (default `1200`)
