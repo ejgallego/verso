@@ -772,9 +772,13 @@ block_extension Block.informal (data : BlockData) where
       pure none
     | .ok blockData =>
       let label := blockData.label
-      let previewFacet := if blockData.isProof then PreviewCache.Facet.proof else PreviewCache.Facet.statement
+      let isProof :=
+        match blockData.kind with
+        | none => true
+        | some _ => false
+      let previewFacet := if isProof then PreviewCache.Facet.proof else PreviewCache.Facet.statement
       let previewKey := PreviewCache.key label previewFacet
-      let previewData := toJson (PreviewCache.Entry.ofBlocks label blockData.isProof _contents blockData.texPrelude)
+      let previewData := toJson (PreviewCache.Entry.ofBlocks label isProof _contents blockData.texPrelude)
       let existingPreview? := (← get).getDomainObject? informalPreviewDomain previewKey
       if shouldWritePreviewData existingPreview? id then
         modify λ s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
@@ -782,7 +786,11 @@ block_extension Block.informal (data : BlockData) where
         let path ← (·.path) <$> read
         let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
         modify λ s => s.saveDomainObject informalPreviewDomain previewKey id
-      for decl in blockData.codeData?.map BlockCodeData.externalDecls |>.getD #[] do
+      let externalDecls :=
+        match blockData.kind with
+        | none => #[]
+        | some statement => statement.codeData.map BlockCodeData.externalDecls |>.getD #[]
+      for decl in externalDecls do
         let key := Resolve.externalRenderedDeclTargetKey label decl.canonical
         if ((← get).getDomainObject? informalExternalDeclDomain key).isNone then
           let declId ← Verso.Genre.Manual.freshId
@@ -825,7 +833,11 @@ block_extension Block.informal (data : BlockData) where
             | .error err =>
                 HtmlT.logError s!"Malformed informal code data for {data.label}: {err}"
                 pure none
-        let codeSource := BlockCodeData.ofHintAndInline data.codeData? codeData?
+        let codeHint? :=
+          match data.kind with
+          | none => none
+          | some statement => statement.codeData
+        let codeSource := BlockCodeData.ofHintAndInline codeHint? codeData?
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveInlineLeanDeclHref? s decl
         let getDeclAnchorAttrs (decl : Data.ExternalRef) : Array (String × String) :=

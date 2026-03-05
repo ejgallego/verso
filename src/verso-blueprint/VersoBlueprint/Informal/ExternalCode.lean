@@ -400,9 +400,9 @@ def renderParts (data : BlockData)
         {{<span class={{s!"bp_external_status_icon {iconClass}"}} title={{iconTitle}}>{{.text true iconText}}</span>}}
       {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{icon}}{{externalSummaryTooltip}}</span>}}
     let externalCodePanel : Output.Html :=
-      if data.isProof then
-        .empty
-      else
+      match data.kind with
+      | none => .empty
+      | some _ =>
         mkCodePanel (codePanelHeader data) codeEntryTitle externalStatusIndicator
           {{<ul class="bp_code_hover_list">{{externalPanelListItems linkedDecls}}</ul>}}
     { externalCodePanel }
