@@ -137,7 +137,7 @@ def CodeConfig.parse : ArgParse m CodeConfig :=
     let label := Name.mkSimple labelArg.val
     {
       label
-      leanLabel := NameParsing.maybeTrimTeXStyleName opts label
+      leanLabel := NameParsing.normalizeInformalLabelName opts label
       labelSyntax := labelArg.syntax
     }) <$> .positional `label (.withSyntax .string)
       <*> .lift "current elaboration options" getOptions

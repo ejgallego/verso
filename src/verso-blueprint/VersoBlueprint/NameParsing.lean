@@ -49,7 +49,7 @@ def maybeTrimTeXStylePrefix (opts : Lean.Options) (s : String) : String :=
     s
 
 /-- Parse a user-provided dotted Lean name using Lean's standard `String.toName` parser. -/
-def parseName? (s : String) : Option Name :=
+private def parseAnyName? (s : String) : Option Name :=
   let s := normalize s
   if s.isEmpty then
     none
@@ -57,33 +57,38 @@ def parseName? (s : String) : Option Name :=
     let n := s.toName
     if n.isAnonymous then none else some n
 
-/-- Like `parseName?`, but returns an error string preserving prior caller behavior. -/
-def parseNameE (s : String) : Except String Name :=
+/-- Like `parseAnyName?`, but returns an error string preserving prior caller behavior. -/
+private def parseAnyNameE (s : String) : Except String Name :=
   let normalized := normalize s
   if normalized.isEmpty then
     .error "empty name"
   else
-    match parseName? normalized with
+    match parseAnyName? normalized with
     | some n => .ok n
     | none => .error s!"invalid Lean name '{normalized}'"
 
 /--
-Parse a user-provided Lean declaration name without blueprint-specific rewrites.
+Parse a Lean declaration name without blueprint-specific rewrites.
 -/
-def parseLeanName? (s : String) : Option Name :=
-  parseName? s
+def parseLeanDeclName? (s : String) : Option Name :=
+  parseAnyName? s
 
-/-- Like `parseLeanName?`, but returns an error string preserving prior caller behavior. -/
-def parseLeanNameE (s : String) : Except String Name :=
-  parseNameE s
+/-- Like `parseLeanDeclName?`, but returns an error string preserving prior caller behavior. -/
+def parseLeanDeclNameE (s : String) : Except String Name :=
+  parseAnyNameE s
 
-/-- Parse an informal label-derived Lean name while applying the TeX-prefix trimming policy. -/
-def parseLabelName? (opts : Lean.Options) (s : String) : Option Name :=
-  parseName? <| maybeTrimTeXStylePrefix opts (normalize s)
+/--
+Parse an informal object label into a Lean name, applying blueprint label policy.
+This API is intentionally distinct from Lean declaration-name parsing.
+-/
+def parseInformalLabelAsLeanName? (opts : Lean.Options) (s : String) : Option Name :=
+  parseAnyName? <| maybeTrimTeXStylePrefix opts (normalize s)
 
-/-- Apply TeX-prefix trimming policy to a label-derived Lean `Name`. -/
-def maybeTrimTeXStyleName (opts : Lean.Options) (name : Name) : Name :=
-  match parseLabelName? opts name.toString with
+/--
+Normalize an existing informal label (already encoded as `Name`) for Lean code-block registration.
+-/
+def normalizeInformalLabelName (opts : Lean.Options) (name : Name) : Name :=
+  match parseInformalLabelAsLeanName? opts name.toString with
   | some parsed => parsed
   | none => name
 
