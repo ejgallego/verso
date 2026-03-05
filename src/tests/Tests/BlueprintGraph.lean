@@ -81,8 +81,8 @@ def nestedPopState : Environment.State :=
   {
     data := (mkState [(`outer, { kind := .definition, statement := some (mkInformal #[]) })]).data
     stack := [
-      { label := `inner, kind? := some .lemma, isProof := false },
-      { label := `outer, kind? := some .definition, isProof := false }
+      { label := `inner, kind := .statement .lemma },
+      { label := `outer, kind := .statement .definition }
     ]
   }
 

@@ -13,10 +13,14 @@ namespace Informal.Environment
 open Lean
 open Informal.Data
 
+inductive InProgressKind where
+  | statement (kind : NodeKind)
+  | proof
+deriving Inhabited, Repr
+
 structure InProgress where
   label : Label
-  kind? : Option NodeKind := none
-  isProof : Bool := false
+  kind : InProgressKind := .proof
   codeHint : Option CodeRef := none
   parent : Option Parent := none
   deps : Array Label := #[]
@@ -72,31 +76,30 @@ def modifyM (f : State -> m State) : m Unit := do
   modifyEnv (informalExt.setState · st)
 
 -- XXX: needs: test
-def checkLabelAndNesting (label : Label) (isProof : Bool) : m Unit := do
+def checkLabelAndNesting (label : Label) (kind : InProgressKind) : m Unit := do
   let { data, stack, .. } := informalExt.getState (← getEnv)
-  match (isProof, data.get? label, stack.isEmpty) with
-  | (false, none, true) => return ()
-  | (false, some node, true) =>
+  match (kind, data.get? label, stack.isEmpty) with
+  | (.statement _, none, true) => return ()
+  | (.statement _, some node, true) =>
     if node.statement.isNone then
       return ()
     else
       logError m!"Label {label} already defined"
-  | (true, some node, true) =>
+  | (.proof, some node, true) =>
     if node.proof.isSome then
       logError m!"Label {label} already has a proof"
     else if node.statement.isNone then
       logError m!"Cannot add proof for {label}: statement/dependencies are missing"
     else return ()
-  | (true, none, true) => logError m!"Cannot find proof for label {label}"
+  | (.proof, none, true) => logError m!"Cannot find proof for label {label}"
   | (_, _, false) => logError m!"Cannot declare nested definitions"
 
 -- stack operators, to associate {uses} role to the currently opened label
-def push (label : Label) (kind? : Option NodeKind) (isProof : Bool)
+def push (label : Label) (kind : InProgressKind)
     (codeHint : Option CodeRef := none) (parent : Option Parent := none) : m Unit := do
-  -- logInfo m!"push for {label} {isProof}"
-  checkLabelAndNesting label isProof
+  checkLabelAndNesting label kind
   modify fun data =>
-    let pdata := { label, kind?, isProof, codeHint, parent }
+    let pdata := { label, kind, codeHint, parent }
     { data with stack := pdata :: data.stack }
 
 def getCount : m Nat := do
@@ -127,9 +130,11 @@ def pop (ref : Syntax) : m Nat := do
           deps := cur.deps
           elabStx := cur.elabStx
         }
-        let statement := if cur.isProof then none else some payload
-        let proof := if cur.isProof then some payload else none
-        let data ← state.data.register cur.label cur.kind? statement proof cur.codeHint cur.parent
+        let (kind?, statement, proof) :=
+          match cur.kind with
+          | .statement nodeKind => (some nodeKind, some payload, none)
+          | .proof => (none, none, some payload)
+        let data ← state.data.register cur.label kind? statement proof cur.codeHint cur.parent
         return { state with data, stack }
   getCount
 
@@ -153,9 +158,9 @@ def setStatementElab (stxs : Array Syntax) : m Unit := do
   match (informalExt.getState (← getEnv)).stack with
   | [] => pure ()
   | cur :: rest =>
-    if cur.isProof then
-      pure ()
-    else
+    match cur.kind with
+    | .proof => pure ()
+    | .statement _ =>
       let cur := { cur with elabStx := stxs }
       modify fun state => { state with stack := cur :: rest }
 
