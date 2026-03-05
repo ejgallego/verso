@@ -49,7 +49,7 @@ This policy applies uniformly to both local literate declarations and external d
 
 Design guidance:
 
-- Completion decisions must be driven by `blocksStatementCompletion` / `blocksProofCompletion`, not raw "is incomplete" checks.
+- Graph completion decisions must be driven by `blocksStatementCompletion` / `blocksProofCompletion`, not raw "is incomplete" checks.
 - UI copy should avoid implying inline-level precision for external references.
 
 ## 3. Graph-Level Predicates
@@ -109,18 +109,20 @@ Single overlay precedence (top to bottom):
 
 ## 6. Informal Heading/Code Summary Coupling
 
-Informal block heading status uses the same statement-track completion policy via `ProvedStatus.anyBlocksStatementCompletion`.
+Informal block heading status now reports explicit axis semantics:
+
+- `Statement: completed|with sorries`
+- `Proof: completed|with sorries`
 
 Proof blocks now use an explicit `.proof` tag in `BlockData.kind` and carry no code metadata by type design, so Lean code summary parts are only produced for statement blocks.
 
-### 6.1 External heading parity policy
+### 6.1 External heading policy
 
-- External heading badges now follow the same statement-track rule as inline badges:
-  - warning only when external declarations block statement completion,
-  - theorem-like proof-only gaps are non-blocking for statement completion.
+- External and inline heading badges now share the same axis model:
+  - warning when either statement-side or proof-side sorries are present,
+  - title text reports statement/proof completion independently.
 - Missing external declarations remain a hard warning state.
-- Non-blocking external incompleteness is surfaced in tooltip/title text without downgrading
-  statement completion status.
+- Missing external declarations set completion to unknown in title text.
 
 ## 7. Validation and Test Coverage
 

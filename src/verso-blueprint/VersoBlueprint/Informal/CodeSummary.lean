@@ -98,9 +98,7 @@ private def userOkSummaryTooltip : Output.Html :=
 /--
 Aggregate counts used to compute the external-heading status mark and tooltip text.
 
-The counters intentionally distinguish statement-blocking incompleteness from
-non-blocking incompleteness, so theorem-like proof-only gaps can remain
-visible without downgrading statement completion.
+The counters track statement-side and proof-side incompleteness independently.
 -/
 private structure ExternalHeadingAggregate where
   /-- Total number of external declaration references attached to the block. -/
@@ -109,35 +107,33 @@ private structure ExternalHeadingAggregate where
   found : Nat
   /-- Number of references missing from the snapshot/environment. -/
   missing : Nat
-  /-- Present declarations that block statement completion for the block kind. -/
-  statementBlocking : Nat
-  /-- Present declarations with incompleteness on non-blocking axes. -/
-  nonBlockingIncompleteness : Nat
-  /-- Present declarations with any incompleteness, regardless of blocking. -/
-  withGaps : Nat
+  /-- Present declarations with statement-side (`type`) sorries. -/
+  withStatementSorries : Nat
+  /-- Present declarations with proof/body-side sorries. -/
+  withProofSorries : Nat
+  /-- Present declarations with any sorry-side incompleteness. -/
+  withSorries : Nat
 
-private def externalHeadingAggregate (statementKind : Data.NodeKind)
-    (decls : Array Data.ExternalRef) : ExternalHeadingAggregate :=
+private def externalHeadingAggregate (decls : Array Data.ExternalRef) : ExternalHeadingAggregate :=
   decls.foldl
       (init := {
         total := decls.size
         found := 0
         missing := 0
-        statementBlocking := 0
-        nonBlockingIncompleteness := 0
-        withGaps := 0
+        withStatementSorries := 0
+        withProofSorries := 0
+        withSorries := 0
       })
       fun acc decl =>
     let (found, missing) :=
       if decl.present then (acc.found + 1, acc.missing) else (acc.found, acc.missing + 1)
-    let hasGap := externalDeclHasGap decl
-    let blocksStatement :=
-      decl.present && decl.provedStatus.blocksStatementCompletion statementKind
-    let statementBlocking := acc.statementBlocking + (if blocksStatement then 1 else 0)
-    let nonBlockingIncompleteness :=
-      acc.nonBlockingIncompleteness + (if hasGap && !blocksStatement then 1 else 0)
-    let withGaps := acc.withGaps + (if hasGap then 1 else 0)
-    { acc with found, missing, statementBlocking, nonBlockingIncompleteness, withGaps }
+    let hasTypeGap := decl.present && decl.provedStatus.hasTypeGap
+    let hasProofGap := decl.present && decl.provedStatus.hasProofGap
+    let hasGap := hasTypeGap || hasProofGap
+    let withStatementSorries := acc.withStatementSorries + (if hasTypeGap then 1 else 0)
+    let withProofSorries := acc.withProofSorries + (if hasProofGap then 1 else 0)
+    let withSorries := acc.withSorries + (if hasGap then 1 else 0)
+    { acc with found, missing, withStatementSorries, withProofSorries, withSorries }
 
 private def externalDeclStatusText (decl : Data.ExternalRef) : String :=
   if !decl.present then
@@ -176,63 +172,55 @@ private def renderExternalSummaryTooltip (decls : Array Data.ExternalRef)
     </div>
   }}
 
+private def completionAxisText (hasStatementSorries hasProofSorries : Bool) : String :=
+  let statementTxt := if hasStatementSorries then "with sorries" else "completed"
+  let proofTxt := if hasProofSorries then "with sorries" else "completed"
+  s!"Statement: {statementTxt}; Proof: {proofTxt}"
+
+private def completionStatusMark (hasStatementSorries hasProofSorries : Bool) : BlockStatusMark :=
+  if hasStatementSorries || hasProofSorries then
+    {
+      status := .containsSorry #[]
+      title := completionAxisText hasStatementSorries hasProofSorries
+      symbolOverride? := some "⚠"
+    }
+  else
+    {
+      status := .proved
+      title := completionAxisText false false
+    }
+
 private def externalStatusMark (agg : ExternalHeadingAggregate) : BlockStatusMark :=
   if agg.missing > 0 then
     {
       status := .missing
-      title := s!"External Lean names: {agg.found} present, {agg.missing} missing"
-    }
-  else if agg.statementBlocking > 0 then
-    {
-      status := .containsSorry #[]
-      title := s!"External Lean names ({agg.total}) include {agg.statementBlocking} declarations that block statement completion"
-      symbolOverride? := some "⚠"
-    }
-  else if agg.nonBlockingIncompleteness > 0 then
-    {
-      status := .proved
-      title := s!"No statement blockers in external Lean names ({agg.total}); {agg.nonBlockingIncompleteness} declarations are incomplete on non-blocking axes"
+      title := s!"External Lean names: {agg.found} present, {agg.missing} missing (statement/proof completion unknown)"
     }
   else
-    {
-      status := .proved
-      title := s!"External Lean names ({agg.total}) are present"
-    }
+    completionStatusMark (agg.withStatementSorries > 0) (agg.withProofSorries > 0)
 
-private def noBlockingStatusMark : BlockStatusMark :=
-  {
-    status := .proved
-    title := "No sorries that block completion"
-  }
-
-private def inlineStatusMark (statementKind : Data.NodeKind) (codeData : InlineCodeData) : BlockStatusMark :=
-  let hasBlockingSorries :=
-    Data.ProvedStatus.anyBlocksStatementCompletion statementKind
-      (codeData.definedDefs ++ codeData.definedTheorems) (·.provedStatus)
-  if hasBlockingSorries then
-    {
-      status := .containsSorry #[]
-      title := "Contains sorries that block completion"
-    }
-  else
-    noBlockingStatusMark
+private def inlineStatusMark (codeData : InlineCodeData) : BlockStatusMark :=
+  let decls := codeData.definedDefs ++ codeData.definedTheorems
+  let hasStatementSorries := decls.any fun decl => decl.provedStatus.hasTypeGap
+  let hasProofSorries := decls.any fun decl => decl.provedStatus.hasProofGap
+  completionStatusMark hasStatementSorries hasProofSorries
 
 /--
-Compute heading status semantics from canonical block code source.
+Compute heading status semantics from canonical block code source using explicit
+statement/proof axis wording.
 
 Case semantics:
 - `.userOk`: always returns a proved mark with explicit manual override text.
-- `.inline`: evaluates statement-blocking incompleteness against `statementKind`
-  using `ProvedStatus.anyBlocksStatementCompletion`.
+- `.inline`: evaluates statement (`type`) and proof (`body`) sorries independently.
 - `.external`: uses `externalHeadingAggregate` + `externalStatusMark`
-  (missing references dominate; non-blocking incompleteness stays informational).
-- `none`: defaults to the non-blocking proved mark.
+  (missing references dominate).
+- `none`: defaults to a completed statement/proof mark.
 
 This function computes mark semantics only. Visibility gating
 (for example requiring a `codeHref` in some inline/no-hint paths) is handled by
 `renderParts`.
 -/
-private def statusMarkFromCodeSource (statementKind : Data.NodeKind)
+private def statusMarkFromCodeSource
     (source? : Option BlockCodeData) : BlockStatusMark :=
   match source? with
   | some .userOk =>
@@ -243,13 +231,13 @@ private def statusMarkFromCodeSource (statementKind : Data.NodeKind)
     }
   | some (.external decls) =>
     if decls.isEmpty then
-      noBlockingStatusMark
+      completionStatusMark false false
     else
-      externalStatusMark (externalHeadingAggregate statementKind decls)
+      externalStatusMark (externalHeadingAggregate decls)
   | some (.inline codeData) =>
-    inlineStatusMark statementKind codeData
+    inlineStatusMark codeData
   | none =>
-    noBlockingStatusMark
+    completionStatusMark false false
 
 /--
 Render Lean summary UI for an informal block heading.
@@ -262,11 +250,11 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
   open Verso.Output.Html in
   match data.kind with
   | .proof => {}
-  | .statement statementKind =>
+  | .statement _statementKind =>
     let externalDecls := cdata.source.map BlockCodeData.externalDecls |>.getD #[]
     if !externalDecls.isEmpty then
-      let agg := externalHeadingAggregate statementKind externalDecls
-      let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withGaps
+      let agg := externalHeadingAggregate externalDecls
+      let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withSorries
       let codeEntryTooltip := renderExternalSummaryTooltip externalDecls hrefOf
       let linkNode : Output.Html :=
         if let some href := cdata.codeHref then
@@ -274,7 +262,7 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
         else
           {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
       {
-        statusMark := some (statusMarkFromCodeSource statementKind cdata.source)
+        statusMark := some (statusMarkFromCodeSource cdata.source)
         codeEntry := {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
       }
     else
@@ -307,7 +295,7 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
             else
               {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
           {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
-      let statusMarkCandidate := statusMarkFromCodeSource statementKind cdata.source
+      let statusMarkCandidate := statusMarkFromCodeSource cdata.source
       let statusMark : Option BlockStatusMark :=
         if userOk then
           some statusMarkCandidate
