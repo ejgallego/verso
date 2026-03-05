@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/tex-macro-import-20260305` merged into `bp` after validation and cleanup)
+Last updated: 2026-03-05 (`feat/external-code-renderer-switch-20260305` created for simple external-code shell + renderer toggle)
 
 ## Active Worktrees
 
@@ -45,6 +45,25 @@ Last updated: 2026-03-05 (`feat/tex-macro-import-20260305` merged into `bp` afte
   - `git log --oneline --decorate -3`
   - `lake exe noperthedron`
   - server session: `68315`
+
+### `feat/external-code-renderer-switch-20260305`
+
+- Status: `active` (owner action: review simplified external-code shell and renderer toggle)
+- Summary: follow-up worktree based on the external-code refresh branch, focused on reducing visual layering and shipping both external renderers behind a dropdown switch.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-renderer-switch-20260305`
+- Branch: `feat/external-code-renderer-switch-20260305`
+- Base commit/branch:
+  - branched from `feat/external-code-visual-refresh-20260305` at `3bb49a05`
+- Key commit:
+  - none yet
+- Validation status:
+  - worktree created; validation pending
+- Preview link:
+  - pending
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-renderer-switch-20260305`
+  - `git status --short`
+  - `lake exe noperthedron`
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
