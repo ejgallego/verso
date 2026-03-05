@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-04 (`feat/previewrender-direct-poc-20260304` cleaned up without merge per request)
+Last updated: 2026-03-05 (`feat/hover-links-biblio-20260305` created for hover expansion)
 
 ## Active Worktrees
 
@@ -21,6 +21,26 @@ Last updated: 2026-03-04 (`feat/previewrender-direct-poc-20260304` cleaned up wi
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/hover-links-biblio-20260305`
+
+- Status: `active` (owner action: implement hover for theorem/lemma links and bibliography links; audit extra hover candidates)
+- Summary: fresh feature worktree to extend the existing hover preview infra from summary/graph nodes to more inline link targets.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/hover-links-biblio-20260305`
+- Branch: `feat/hover-links-biblio-20260305`
+- Base commit/branch:
+  - branched from `bp` at `087f026d` (2026-03-05)
+- Key commit:
+  - `087f026d` fix(html): move script raw handling to blueprint use sites
+- Validation status:
+  - `lake exe cache get`
+  - `lake exe noperthedron`
+  - preview server running: `http://127.0.0.1:8125/` (process `http-serv` pid `631386`)
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/hover-links-biblio-20260305`
+  - `git status --short`
+  - `lake exe noperthedron`
+  - `curl -I http://127.0.0.1:8125/`
 
 ### `feat/lsp-folding-chain`
 
