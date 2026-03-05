@@ -305,7 +305,7 @@ def mkGraphVariants (graphData : GraphBlockData) (resolveHref : Name → Option 
         selectOnNode := #[]
         hoverOnNode := #[]
       }
-    #[groupVariant, fullVariant] ++ parentVariants
+    #[fullVariant, groupVariant] ++ parentVariants
 
 def loadD3Dot :=
   r##"(function () {
@@ -359,13 +359,13 @@ def loadD3Dot :=
       });
     }
 
-    function collectPreviewTemplates() {
+    function collectPreviewTemplates(rootNode) {
       const utils = window.bpPreviewUtils;
       if (!utils || typeof utils.collectPreviewTemplates !== "function") {
         return new Map();
       }
       return utils.collectPreviewTemplates(
-        document,
+        rootNode || document,
         "template.bp_graph_preview_tpl[data-bp-preview-label]"
       );
     }
@@ -385,8 +385,7 @@ def loadD3Dot :=
       return [{ key: "full", label: "Full Graph", dot: dotTxt, selectOnNode: [], hoverOnNode: [] }];
     }
 
-    function hidePreviewPanel() {
-      const panel = document.getElementById("bp-graph-preview");
+    function hidePreviewPanel(panel) {
       if (!panel) return;
       const title = panel.querySelector(".bp_graph_preview_title");
       const body = panel.querySelector(".bp_graph_preview_body");
@@ -430,18 +429,17 @@ def loadD3Dot :=
       utils.renderMath(root, texPrelude);
     }
 
-    function attachPreviewHandlers(graphContainer, previewMap) {
-      const panel = document.getElementById("bp-graph-preview");
+    function attachPreviewHandlers(graphContainer, panel, previewMap) {
       if (!panel) return;
       const title = panel.querySelector(".bp_graph_preview_title");
       const body = panel.querySelector(".bp_graph_preview_body");
       if (!title || !body || previewMap.size === 0) {
-        hidePreviewPanel();
+        hidePreviewPanel(panel);
         return;
       }
       const svg = graphContainer.select("svg").node();
       if (!svg) {
-        hidePreviewPanel();
+        hidePreviewPanel(panel);
         return;
       }
       const show = function (label) {
@@ -632,184 +630,206 @@ def loadD3Dot :=
       .then(() => load("https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"))
       .then(() => load("https://cdn.jsdelivr.net/npm/d3-graphviz@5.6.0/build/d3-graphviz.min.js"))
       .then(() => {
-  const graphBlock = document.querySelector(".bp_graph_fullwidth");
-  layoutGraphBlock(graphBlock);
+  const graphBlocks = Array.from(document.querySelectorAll(".bp_graph_fullwidth"));
+  if (graphBlocks.length === 0) return;
 
-  const graphContainer = d3.select("#graph");
-  if (graphContainer.empty()) return;
-  const selector = document.getElementById("bp-graph-view-select");
-  const previewMap = collectPreviewTemplates();
-  const previewPanelNode = document.getElementById("bp-graph-preview");
-  const previewClose = previewPanelNode
-    ? previewPanelNode.querySelector(".bp_graph_preview_close")
-    : null;
-  const previewUtils = window.bpPreviewUtils;
-  if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
-    previewUtils.bindCloseOnce(previewClose, hidePreviewPanel);
-  } else if (previewClose && previewClose.getAttribute("data-bp-bound") !== "1") {
-    previewClose.setAttribute("data-bp-bound", "1");
-    previewClose.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      hidePreviewPanel();
-    });
-  }
-  const rawVariants = collectGraphVariants(graphContainer);
-  if (!Array.isArray(rawVariants) || rawVariants.length === 0) return;
-  const variantsByKey = new Map();
-  rawVariants.forEach(function (variant) {
-    if (!variant || typeof variant !== "object") return;
-    const key = String(variant.key || "").trim();
-    const label = String(variant.label || key).trim();
-    const dot = String(variant.dot || "").trim();
-    const selectOnNode = Array.isArray(variant.selectOnNode) ? variant.selectOnNode : [];
-    const hoverOnNode = Array.isArray(variant.hoverOnNode) ? variant.hoverOnNode : [];
-    if (!key || !dot) return;
-    variantsByKey.set(key, {
-      key: key,
-      label: label || key,
-      dot: dot,
-      selectOnNode: selectOnNode,
-      hoverOnNode: hoverOnNode
-    });
-  });
-  const variants = Array.from(variantsByKey.values());
-  if (variants.length === 0) return;
-
-  if (selector && selector.options.length === 0) {
-    variants.forEach(function (variant) {
-      const option = document.createElement("option");
-      option.value = variant.key;
-      option.textContent = variant.label;
-      selector.appendChild(option);
-    });
-  }
-
-  let activeKey = variants[0].key;
-  if (selector && variantsByKey.has(selector.value)) {
-    activeKey = selector.value;
-  }
-  if (selector) selector.value = activeKey;
-
-  const getActiveVariant = function () {
-    const fallback = variants[0];
-    return variantsByKey.get(activeKey) || fallback;
-  };
-
-  const groupHoverPanel = document.getElementById("bp-group-hover-preview");
-  const groupHoverTitle = groupHoverPanel
-    ? groupHoverPanel.querySelector(".bp_group_hover_preview_title")
-    : null;
-  const groupHoverClose = groupHoverPanel
-    ? groupHoverPanel.querySelector(".bp_group_hover_preview_close")
-    : null;
-  const groupHoverGraph = groupHoverPanel
-    ? groupHoverPanel.querySelector(".bp_group_hover_preview_graph")
-    : null;
-  let groupHoverGraphviz = null;
-  let groupHoverShownKey = "";
-  let groupHoverShownLabel = "";
-
-  const hideGroupHoverPreview = function () {
-    if (!groupHoverPanel) return;
-    groupHoverPanel.hidden = true;
-    if (groupHoverTitle) groupHoverTitle.textContent = "";
-    groupHoverShownKey = "";
-    groupHoverShownLabel = "";
-  };
-  if (groupHoverClose) {
-    groupHoverClose.addEventListener("click", function (ev) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      hideGroupHoverPreview();
-    });
-  }
-  document.addEventListener("keydown", function (ev) {
-    if (ev.key === "Escape") {
-      hideGroupHoverPreview();
-      hidePreviewPanel();
-    }
-  });
-
-  const positionGroupHoverPreview = function (anchorNode) {
-    if (!groupHoverPanel || !graphBlock || !(anchorNode instanceof Element)) return;
-    const blockRect = graphBlock.getBoundingClientRect();
-    const nodeRect = anchorNode.getBoundingClientRect();
-    const panelRect = groupHoverPanel.getBoundingClientRect();
-    const gap = 10;
-
-    let left = nodeRect.right - blockRect.left + gap;
-    if (left + panelRect.width > blockRect.width - gap) {
-      left = nodeRect.left - blockRect.left - panelRect.width - gap;
-    }
-    let top = nodeRect.top - blockRect.top + (nodeRect.height - panelRect.height) / 2;
-
-    left = Math.max(gap, Math.min(left, blockRect.width - panelRect.width - gap));
-    top = Math.max(gap, Math.min(top, blockRect.height - panelRect.height - gap));
-    groupHoverPanel.style.left = left + "px";
-    groupHoverPanel.style.top = top + "px";
-  };
-
-  const showGroupHoverPreview = function (nodeLabel, nextKey, anchorNode) {
-    if (!groupHoverPanel || !groupHoverTitle || !groupHoverGraph) return;
-    if (activeKey !== "group") {
-      hideGroupHoverPreview();
-      return;
-    }
-    const variant = variantsByKey.get(nextKey);
-    if (!variant || !variant.dot) {
-      hideGroupHoverPreview();
-      return;
-    }
-    if (!nodeLabel) {
-      hideGroupHoverPreview();
-      return;
-    }
-    if (!groupHoverPanel.hidden && groupHoverShownKey === nextKey && groupHoverShownLabel === nodeLabel) {
-      positionGroupHoverPreview(anchorNode);
-      return;
-    }
-    groupHoverShownKey = nextKey;
-    groupHoverShownLabel = nodeLabel;
-    groupHoverPanel.hidden = false;
-    groupHoverTitle.textContent = "Preview: " + (variant.label || nodeLabel);
-    positionGroupHoverPreview(anchorNode);
-    const width = Math.max(320, groupHoverGraph.clientWidth || 0);
-    const height = Math.max(220, groupHoverGraph.clientHeight || 0);
-    const container = d3.select(groupHoverGraph);
-    if (!groupHoverGraphviz) {
-      groupHoverGraphviz = container.graphviz().fit(true);
-    }
-    groupHoverGraphviz
-      .width(width)
-      .height(height)
-      .renderDot(variant.dot);
-  };
-
-  const switchVariant = function (nextKey) {
-    if (!variantsByKey.has(nextKey) || nextKey === activeKey) return;
-    activeKey = nextKey;
-    if (selector) selector.value = nextKey;
-    renderGraph();
-  };
-
-  function renderGraph() {
-    const activeVariant = getActiveVariant();
-    if (!activeVariant || !activeVariant.dot) return;
-    hidePreviewPanel();
-    hideGroupHoverPreview();
+  function initGraphBlock(graphBlock) {
+    if (!(graphBlock instanceof Element)) return;
     layoutGraphBlock(graphBlock);
-    const width = graphContainer.node().clientWidth;
-    const height = graphContainer.node().clientHeight;
+    const graphRoot = graphBlock.querySelector(".bp_graph_canvas");
+    if (!graphRoot) return;
+    const graphContainer = d3.select(graphRoot);
+    if (graphContainer.empty()) return;
+    const selector = graphBlock.querySelector(".bp_graph_view_select");
+    const previewMap = collectPreviewTemplates(graphBlock);
+    const previewPanelNode = graphBlock.querySelector(".bp_graph_preview");
+    const previewClose = previewPanelNode
+      ? previewPanelNode.querySelector(".bp_graph_preview_close")
+      : null;
+    const previewUtils = window.bpPreviewUtils;
+    if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
+      previewUtils.bindCloseOnce(previewClose, function () {
+        hidePreviewPanel(previewPanelNode);
+      });
+    } else if (previewClose && previewClose.getAttribute("data-bp-bound") !== "1") {
+      previewClose.setAttribute("data-bp-bound", "1");
+      previewClose.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        hidePreviewPanel(previewPanelNode);
+      });
+    }
 
-    // graphContainer.graphviz({useWorker: true})
-    const gv = graphContainer.graphviz()
-      .width(width)
-      .height(height)
-      .fit(false)
-      .on("end", function () {
+    const rawVariants = collectGraphVariants(graphContainer);
+    if (!Array.isArray(rawVariants) || rawVariants.length === 0) return;
+    const variantsByKey = new Map();
+    rawVariants.forEach(function (variant) {
+      if (!variant || typeof variant !== "object") return;
+      const key = String(variant.key || "").trim();
+      const label = String(variant.label || key).trim();
+      const dot = String(variant.dot || "").trim();
+      const selectOnNode = Array.isArray(variant.selectOnNode) ? variant.selectOnNode : [];
+      const hoverOnNode = Array.isArray(variant.hoverOnNode) ? variant.hoverOnNode : [];
+      if (!key || !dot) return;
+      variantsByKey.set(key, {
+        key: key,
+        label: label || key,
+        dot: dot,
+        selectOnNode: selectOnNode,
+        hoverOnNode: hoverOnNode
+      });
+    });
+    const variants = Array.from(variantsByKey.values());
+    if (variants.length === 0) return;
+
+    if (selector && selector.options.length === 0) {
+      variants.forEach(function (variant) {
+        const option = document.createElement("option");
+        option.value = variant.key;
+        option.textContent = variant.label;
+        selector.appendChild(option);
+      });
+    }
+
+    let activeKey = variantsByKey.has("full") ? "full" : variants[0].key;
+    if (selector && variantsByKey.has(selector.value)) {
+      activeKey = selector.value;
+    }
+    if (selector) selector.value = activeKey;
+
+    const getActiveVariant = function () {
+      const fallback = variantsByKey.get("full") || variants[0];
+      return variantsByKey.get(activeKey) || fallback;
+    };
+
+    const groupHoverPanel = graphBlock.querySelector(".bp_group_hover_preview");
+    const groupHoverTitle = groupHoverPanel
+      ? groupHoverPanel.querySelector(".bp_group_hover_preview_title")
+      : null;
+    const groupHoverClose = groupHoverPanel
+      ? groupHoverPanel.querySelector(".bp_group_hover_preview_close")
+      : null;
+    const groupHoverGraph = groupHoverPanel
+      ? groupHoverPanel.querySelector(".bp_group_hover_preview_graph")
+      : null;
+    let groupHoverGraphviz = null;
+    let groupHoverShownKey = "";
+    let groupHoverShownLabel = "";
+
+    const hideGroupHoverPreview = function () {
+      if (!groupHoverPanel) return;
+      groupHoverPanel.hidden = true;
+      if (groupHoverTitle) groupHoverTitle.textContent = "";
+      groupHoverShownKey = "";
+      groupHoverShownLabel = "";
+    };
+    if (groupHoverClose) {
+      groupHoverClose.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        hideGroupHoverPreview();
+      });
+    }
+    window.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        hideGroupHoverPreview();
+        hidePreviewPanel(previewPanelNode);
+      }
+    });
+
+    const positionGroupHoverPreview = function (anchorNode) {
+      if (!groupHoverPanel || !(anchorNode instanceof Element)) return;
+      const blockRect = graphBlock.getBoundingClientRect();
+      const nodeRect = anchorNode.getBoundingClientRect();
+      const panelRect = groupHoverPanel.getBoundingClientRect();
+      const gap = 10;
+
+      let left = nodeRect.right - blockRect.left + gap;
+      if (left + panelRect.width > blockRect.width - gap) {
+        left = nodeRect.left - blockRect.left - panelRect.width - gap;
+      }
+      let top = nodeRect.top - blockRect.top + (nodeRect.height - panelRect.height) / 2;
+
+      left = Math.max(gap, Math.min(left, blockRect.width - panelRect.width - gap));
+      top = Math.max(gap, Math.min(top, blockRect.height - panelRect.height - gap));
+      groupHoverPanel.style.left = left + "px";
+      groupHoverPanel.style.top = top + "px";
+    };
+
+    const showGroupHoverPreview = function (nodeLabel, nextKey, anchorNode) {
+      if (!groupHoverPanel || !groupHoverTitle || !groupHoverGraph) return;
+      if (activeKey !== "group") {
+        hideGroupHoverPreview();
+        return;
+      }
+      const variant = variantsByKey.get(nextKey);
+      if (!variant || !variant.dot) {
+        hideGroupHoverPreview();
+        return;
+      }
+      if (!nodeLabel) {
+        hideGroupHoverPreview();
+        return;
+      }
+      if (!groupHoverPanel.hidden && groupHoverShownKey === nextKey && groupHoverShownLabel === nodeLabel) {
+        positionGroupHoverPreview(anchorNode);
+        return;
+      }
+      groupHoverShownKey = nextKey;
+      groupHoverShownLabel = nodeLabel;
+      groupHoverPanel.hidden = false;
+      groupHoverTitle.textContent = "Preview: " + (variant.label || nodeLabel);
+      positionGroupHoverPreview(anchorNode);
+      const width = Math.max(320, groupHoverGraph.clientWidth || 0);
+      const height = Math.max(220, groupHoverGraph.clientHeight || 0);
+      const container = d3.select(groupHoverGraph);
+      if (!groupHoverGraphviz) {
+        groupHoverGraphviz = container.graphviz().fit(true);
+      }
+      groupHoverGraphviz
+        .width(width)
+        .height(height)
+        .renderDot(variant.dot);
+    };
+
+    const switchVariant = function (nextKey) {
+      if (!variantsByKey.has(nextKey) || nextKey === activeKey) return;
+      activeKey = nextKey;
+      if (selector) selector.value = nextKey;
+      renderGraph();
+    };
+
+    function renderGraph() {
+      const activeVariant = getActiveVariant();
+      if (!activeVariant || !activeVariant.dot) return;
+      hidePreviewPanel(previewPanelNode);
+      hideGroupHoverPreview();
+      layoutGraphBlock(graphBlock);
+      const width = graphRoot.clientWidth;
+      const height = graphRoot.clientHeight;
+
+      const gv = graphContainer.graphviz()
+        .width(width)
+        .height(height)
+        .fit(false)
+        .on("end", function () {
+          applyGraphZoomHeuristic(graphContainer, width, height, activeVariant.key);
+          attachPreviewHandlers(graphContainer, previewPanelNode, previewMap);
+          attachVariantSelectors(
+            graphContainer,
+            variantsByKey,
+            activeVariant,
+            switchVariant,
+            showGroupHoverPreview
+          );
+        });
+      gv.renderDot(activeVariant.dot);
+      // TODO: remove fallback once graphviz `end` is confirmed stable on our
+      // supported browser/runtime matrix.
+      // Fallback for runtimes where the graphviz `end` event is unreliable.
+      setTimeout(function () {
         applyGraphZoomHeuristic(graphContainer, width, height, activeVariant.key);
-        attachPreviewHandlers(graphContainer, previewMap);
+        attachPreviewHandlers(graphContainer, previewPanelNode, previewMap);
         attachVariantSelectors(
           graphContainer,
           variantsByKey,
@@ -817,32 +837,20 @@ def loadD3Dot :=
           switchVariant,
           showGroupHoverPreview
         );
+      }, 120);
+    }
+
+    if (selector) {
+      selector.addEventListener("change", function () {
+        switchVariant(selector.value);
       });
-    gv.renderDot(activeVariant.dot);
-    // TODO: remove fallback once graphviz `end` is confirmed stable on our
-    // supported browser/runtime matrix.
-    // Fallback for runtimes where the graphviz `end` event is unreliable.
-    setTimeout(function () {
-      applyGraphZoomHeuristic(graphContainer, width, height, activeVariant.key);
-      attachPreviewHandlers(graphContainer, previewMap);
-      attachVariantSelectors(
-        graphContainer,
-        variantsByKey,
-        activeVariant,
-        switchVariant,
-        showGroupHoverPreview
-      );
-    }, 120);
+    }
+
+    renderGraph();
+    window.addEventListener("resize", debounce(renderGraph, 180));
   }
 
-  if (selector) {
-    selector.addEventListener("change", function () {
-      switchVariant(selector.value);
-    });
-  }
-
-  renderGraph();
-  window.addEventListener("resize", debounce(renderGraph, 180));
+  graphBlocks.forEach(initGraphBlock);
   });
   })();
   "##
@@ -930,11 +938,45 @@ block_extension Block.graph (graphData : GraphBlockData) where
       let resolveGroupTitle : Name → Option String := fun group =>
         groupTitles.get? group
       let graphVariants := mkGraphVariants graphData resolveHref groupTitles
+      let hasGroupVariant := graphVariants.any (fun variant => variant.key == groupVariantKey)
       let graphVariantJson : String := Lean.Json.compress (toJson graphVariants)
       let graphVariantOptions : Array Output.Html :=
         graphVariants.map fun variant => {{
           <option value={{variant.key}}>{{variant.label}}</option>
         }}
+      let includeMathlibLegend := graphData.graph.any (fun node => node.color == Informal.Graph.statementBorderMathlibColor)
+      let legendGroups := Informal.Graph.graphLegendGroups includeMathlibLegend
+      let legendGroupHtml : Array Output.Html :=
+        legendGroups.map fun group =>
+          let itemHtml : Array Output.Html :=
+            group.items.map fun item =>
+              match item.swatch? with
+              | some swatch => {{
+                  <span class="bp_graph_legend_item">
+                    <span class="bp_graph_legend_swatch" "style"={{swatch.inlineStyle}}></span>
+                    {{.text false item.label}}
+                  </span>
+                }}
+              | Option.none => {{
+                  <span class="bp_graph_legend_item">
+                    {{.text false item.label}}
+                  </span>
+                }}
+          {{
+            <div class="bp_graph_legend_group">
+              <span class="bp_graph_legend_group_title">{{.text false group.title}}</span>
+              {{itemHtml}}
+            </div>
+          }}
+      let legendNoteHtml : Output.Html :=
+        if hasGroupVariant then
+          {{
+            <p class="bp_graph_legend_note">
+              {{.text false Informal.Graph.graphLegendGroupViewNote}}
+            </p>
+          }}
+        else
+          .empty
       let fallbackDot : String :=
         match graphVariants[0]? with
         | some variant => variant.dot
@@ -957,7 +999,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
         pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks texPrelude)
       let previewUi := Informal.HoverRender.graphPreviewUi previewTemplates
       let groupHoverPanel : Output.Html := {{
-        <aside id="bp-group-hover-preview" class="bp_group_hover_preview" hidden>
+        <aside class="bp_group_hover_preview" hidden>
           <div class="bp_group_hover_preview_header">
             <div class="bp_group_hover_preview_title"></div>
             <button type="button" class="bp_group_hover_preview_close" aria-label="Close group preview">"Close"</button>
@@ -968,47 +1010,16 @@ block_extension Block.graph (graphData : GraphBlockData) where
       return {{
         <div class="bp_graph_fullwidth">
           <div class="bp_graph_legend">
-            <div class="bp_graph_legend_group">
-              <span class="bp_graph_legend_group_title">"Shapes"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_shape_box"></span>"Definition"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_shape_ellipse"></span>"Theorem / lemma / corollary"</span>
-            </div>
-            <div class="bp_graph_legend_group">
-              <span class="bp_graph_legend_group_title">"Statement Border"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_stmt_blocked"></span>"Blocked"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_stmt_ready"></span>"Ready to formalize"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_stmt_formalized"></span>"Formalized"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_stmt_mathlib"></span>"In Mathlib"</span>
-            </div>
-            <div class="bp_graph_legend_group">
-              <span class="bp_graph_legend_group_title">"Background Status"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_proof_none"></span>"Not ready"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_proof_ready"></span>"Ready to formalize"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_proof_formalized"></span>"Formalized"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_proof_anc"></span>"Formalized + ancestors"</span>
-            </div>
-            <div class="bp_graph_legend_group">
-              <span class="bp_graph_legend_group_title">"Warning Overlays"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_unknown"></span>"Unknown reference"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_lean_only"></span>"Lean code, informal statement missing"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_missing_external"></span>"External Lean declaration missing"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_local_sorries"></span>"Local sorries"</span>
-              <span class="bp_graph_legend_item"><span class="bp_graph_legend_swatch bp_graph_legend_warn_deps"></span>"Formalized node with incomplete ancestors"</span>
-            </div>
-            <div class="bp_graph_legend_group">
-              <span class="bp_graph_legend_group_title">"Edges"</span>
-              <span class="bp_graph_legend_item">"Solid: theorem/lemma deps"</span>
-              <span class="bp_graph_legend_item">"Dashed: definition-source deps"</span>
-              <span class="bp_graph_legend_item">"Dotted: proof-only deps"</span>
-            </div>
+            {{legendNoteHtml}}
+            {{legendGroupHtml}}
           </div>
           <div class="bp_graph_controls">
-            <label class="bp_graph_controls_label" for="bp-graph-view-select">"View"</label>
-            <select id="bp-graph-view-select" class="bp_graph_controls_select">
+            <label class="bp_graph_controls_label">"View"</label>
+            <select class="bp_graph_controls_select bp_graph_view_select">
               {{graphVariantOptions}}
             </select>
           </div>
-          <div id="graph">
+          <div class="bp_graph_canvas">
             <script type="application/json" class="bp-graph-variants">
               {{.text false s!"{graphVariantJson}"}}
             </script>

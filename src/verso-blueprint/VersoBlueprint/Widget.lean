@@ -28,6 +28,8 @@ structure GraphParams where
   dot : String
   /-- TeX macro prelude shared with KaTeX rendering. -/
   texPrelude : String := ""
+  /-- Shared graph legend payload from `VersoBlueprint.Graph`. -/
+  legend : Json := Json.arr #[]
   deriving Server.RpcEncodable
 
 @[widget_module]
@@ -38,7 +40,7 @@ def blueprintWidget : Component GraphParams where
     import katex from 'https://cdn.jsdelivr.net/npm/katex@0.16.28/+esm'
     import * as React from 'react';
 
-    export default function ({ title, label, statementHtml, dot, texPrelude }) {
+    export default function ({ title, label, statementHtml, dot, texPrelude, legend }) {
         const graphRef = React.useRef(null);
 
         function loadStyle(url) {
@@ -106,20 +108,57 @@ def blueprintWidget : Component GraphParams where
           alignItems: 'center',
           gap: '0.35rem'
         };
-        const swatch = ({ fill, border = '#6b7280', radius = '0.12rem', width = '0.72rem', height = '0.72rem', double = false }) => React.createElement('span', {
-          style: {
-            width,
-            height,
-            border: `${double ? 3 : 1}px solid ${border}`,
-            borderRadius: radius,
-            background: fill
+        const swatch = (swatchSpec, key) => {
+          if (!swatchSpec || typeof swatchSpec !== 'object') return null;
+          const background =
+            typeof swatchSpec.background === 'string' ? swatchSpec.background : '#ffffff';
+          const borderColor =
+            typeof swatchSpec.borderColor === 'string' ? swatchSpec.borderColor : '#6b7280';
+          const borderStyle =
+            typeof swatchSpec.borderStyle === 'string' ? swatchSpec.borderStyle : 'solid';
+          const borderRadius =
+            typeof swatchSpec.borderRadius === 'string' ? swatchSpec.borderRadius : '0.2rem';
+          const borderWidthRaw = Number(swatchSpec.borderWidth);
+          const borderWidth = Number.isFinite(borderWidthRaw) && borderWidthRaw > 0 ? borderWidthRaw : 1;
+          return React.createElement('span', {
+            key,
+            style: {
+              width: '0.72rem',
+              height: '0.72rem',
+              borderWidth: `${borderWidth}px`,
+              borderStyle,
+              borderColor,
+              borderRadius,
+              background
+            }
+          });
+        };
+        const legendItem = (groupKey, item, itemIndex) => {
+          if (!item || typeof item !== 'object') return null;
+          const labelText = typeof item.label === 'string' ? item.label : '';
+          const key = `${groupKey}-item-${itemIndex}`;
+          const itemChildren = [];
+          if (item.swatch && typeof item.swatch === 'object') {
+            itemChildren.push(swatch(item.swatch, `${key}-swatch`));
           }
-        });
-        const gradient = (top, bottom) => `linear-gradient(180deg, ${top}, ${bottom})`;
-        const legendGroup = (key, title, items) => React.createElement('div', { key, style: legendGroupStyle }, [
-          React.createElement('div', { key: `${key}-title`, style: legendGroupTitleStyle }, title),
-          ...items
-        ]);
+          itemChildren.push(labelText);
+          return React.createElement('span', { key, style: itemStyle }, itemChildren);
+        };
+        const legendGroup = (group, groupIndex) => {
+          if (!group || typeof group !== 'object') return null;
+          const key =
+            typeof group.key === 'string' && group.key.length > 0
+              ? group.key
+              : `group-${groupIndex}`;
+          const titleText = typeof group.title === 'string' ? group.title : key;
+          const items = Array.isArray(group.items)
+            ? group.items.map((item, itemIndex) => legendItem(key, item, itemIndex)).filter(Boolean)
+            : [];
+          return React.createElement('div', { key, style: legendGroupStyle }, [
+            React.createElement('div', { key: `${key}-title`, style: legendGroupTitleStyle }, titleText),
+            ...items
+          ]);
+        };
         const extractText = node => {
           if (typeof node === 'string') return node;
           if (Array.isArray(node)) return node.map(extractText).join('');
@@ -181,6 +220,8 @@ def blueprintWidget : Component GraphParams where
           }
           return React.createElement('code', { key }, JSON.stringify(node));
         };
+        const legendData = Array.isArray(legend) ? legend : [];
+        const legendNodes = legendData.map(legendGroup).filter(Boolean);
 
         return React.createElement('div', { style: rootStyle }, [
           React.createElement('div', {
@@ -202,36 +243,7 @@ def blueprintWidget : Component GraphParams where
               style: { cursor: 'pointer', fontWeight: 600 }
             }, title || 'Blueprint graph'),
             React.createElement('div', { key: 'body', style: { marginTop: '0.35rem', display: 'grid', gap: '0.5rem' } }, [
-              React.createElement('div', { key: 'legend', style: legendStyle }, [
-                legendGroup('shape', 'Shapes', [
-                  React.createElement('span', { key: 'shape-def', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#64748b' }), 'Definition (box)']),
-                  React.createElement('span', { key: 'shape-thm', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#64748b', radius: '999px' }), 'Theorem/lemma/corollary (ellipse)'])
-                ]),
-                legendGroup('statement', 'Statement border', [
-                  React.createElement('span', { key: 'st-blocked', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#f59e0b' }), 'Blocked']),
-                  React.createElement('span', { key: 'st-ready', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#2563eb' }), 'Ready to formalize']),
-                  React.createElement('span', { key: 'st-formalized', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#16a34a' }), 'Formalized']),
-                  React.createElement('span', { key: 'st-mathlib', style: itemStyle }, [swatch({ fill: '#ffffff', border: '#14532d' }), 'In Mathlib'])
-                ]),
-                legendGroup('proof', 'Background status', [
-                  React.createElement('span', { key: 'pf-none', style: itemStyle }, [swatch({ fill: '#f8fafc', border: '#64748b' }), 'Not ready']),
-                  React.createElement('span', { key: 'pf-ready', style: itemStyle }, [swatch({ fill: '#dbeafe', border: '#64748b' }), 'Ready to formalize']),
-                  React.createElement('span', { key: 'pf-formalized', style: itemStyle }, [swatch({ fill: '#dcfce7', border: '#64748b' }), 'Formalized']),
-                  React.createElement('span', { key: 'pf-anc', style: itemStyle }, [swatch({ fill: '#166534', border: '#14532d' }), 'Formalized + ancestors'])
-                ]),
-                legendGroup('warning', 'Warning overlays', [
-                  React.createElement('span', { key: 'warn-unknown', style: itemStyle }, [swatch({ fill: '#fee2e2', border: '#b91c1c' }), 'Unknown reference']),
-                  React.createElement('span', { key: 'warn-lean-only', style: itemStyle }, [swatch({ fill: gradient('#ffffff', '#ede9fe'), border: '#16a34a' }), 'Lean code, informal statement missing']),
-                  React.createElement('span', { key: 'warn-missing-ext', style: itemStyle }, [swatch({ fill: gradient('#dbeafe', '#fee2e2'), border: '#2563eb' }), 'External Lean declaration missing']),
-                  React.createElement('span', { key: 'warn-local-sorry', style: itemStyle }, [swatch({ fill: gradient('#dbeafe', '#fef3c7'), border: '#2563eb' }), 'Local sorries']),
-                  React.createElement('span', { key: 'warn-deps', style: itemStyle }, [swatch({ fill: '#dcfce7', border: '#16a34a', double: true }), 'Formalized node with incomplete ancestors'])
-                ]),
-                legendGroup('edges', 'Edges', [
-                  React.createElement('span', { key: 'edges-stmt', style: itemStyle }, 'Solid: theorem/lemma deps'),
-                  React.createElement('span', { key: 'edges-def', style: itemStyle }, 'Dashed: definition-source deps'),
-                  React.createElement('span', { key: 'edges-proof', style: itemStyle }, 'Dotted: proof-only deps')
-                ])
-              ]),
+              React.createElement('div', { key: 'legend', style: legendStyle }, legendNodes),
               React.createElement('div', {
                 key: 'graph',
                 ref: graphRef,
@@ -271,6 +283,7 @@ structure BuildResult where
   dot : String
   statementPreview? : Option (Array Lean.Syntax) := none
   texPrelude : String
+  legend : Json
 
 def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResult := do
   let env ← getEnv
@@ -286,13 +299,15 @@ def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResul
   let dot := graph.toDot (fun group => state.groups.get? group)
   let texPrelude ← Environment.getTexPrelude
   let statementPreview? := Informal.PreviewSource.fromEnvironment? env label
-  pure { dot, statementPreview?, texPrelude }
+  let includeMathlibLegend := graph.any (fun node => node.color == Informal.Graph.statementBorderMathlibColor)
+  let legend := toJson (Informal.Graph.graphLegendGroups includeMathlibLegend)
+  pure { dot, statementPreview?, texPrelude, legend }
 
 open Server in
-def updatePanel (title label : String) (statementHtml : Json) (dot texPrelude : String) stx :=
+def updatePanel (title label : String) (statementHtml legend : Json) (dot texPrelude : String) stx :=
   Widget.savePanelWidgetInfo
     (blueprintWidget.javascriptHash)
-    (rpcEncode ({ title, label, statementHtml, dot, texPrelude } : GraphParams )) stx
+    (rpcEncode ({ title, label, statementHtml, dot, texPrelude, legend } : GraphParams )) stx
 
 private def renderStatementPreviewJson (statementPreview? : Option (Array Lean.Syntax)) :
     Lean.Elab.Term.TermElabM Json := do
@@ -303,7 +318,7 @@ def activateForLabelDoc (label : Name) (stx : Syntax) : Verso.Doc.Elab.DocElabM 
     return ()
   let out ← buildFor label
   let statementHtml ← renderStatementPreviewJson out.statementPreview?
-  (monadLift (updatePanel s!"BluePrint widget: {label}" label.toString statementHtml out.dot out.texPrelude stx) : Verso.Doc.Elab.DocElabM Unit)
+  (monadLift (updatePanel s!"BluePrint widget: {label}" label.toString statementHtml out.legend out.dot out.texPrelude stx) : Verso.Doc.Elab.DocElabM Unit)
 
 show_panel_widgets [local blueprintWidget]
 
@@ -316,7 +331,7 @@ unsafe def elabGraph : CommandElab := fun
     let target := Name.mkSimple label.getString
     let out ← liftCoreM <| buildFor target
     let statementHtml ← Lean.Elab.Command.liftTermElabM <| renderStatementPreviewJson out.statementPreview?
-    liftCoreM <| updatePanel s!"BluePrint widget: {target}" label.getString statementHtml out.dot out.texPrelude stx
+    liftCoreM <| updatePanel s!"BluePrint widget: {target}" label.getString statementHtml out.legend out.dot out.texPrelude stx
   | _ => throwUnsupportedSyntax
 
 -- #show_graph exampleGraph
