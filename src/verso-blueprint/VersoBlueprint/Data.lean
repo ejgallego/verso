@@ -472,6 +472,10 @@ inductive CodeRef where
   2. A regular Lean declaration tagged with `@[blueprint "..."]` (`.external`, origin `.blueprintAttr`).
   3. A `(lean := "...")` directive reference to Lean code we do not directly control (`.external`, origin `.directiveLean`).
 
+  Name ownership model:
+  - informal object labels are blueprint-owned metadata;
+  - `(lean := "...")` declaration names are Lean-owned and must not be rewritten by blueprint label policies.
+
   TODO (external-definitions task): complete and encode the intended behavior from
   the "We'd like to:" portion of the design spec.
   -/

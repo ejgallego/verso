@@ -99,8 +99,11 @@ Simple body.
 
 set_option verso.blueprint.trimTeXLabelPrefix true
 
+/--
+warning: Label «trim.external.name»: ignoring malformed names in '(lean := ...)' (thm:Nat.add (invalid Lean name 'thm:Nat.add'))
+-/
 #guard_msgs in
-#docs (Manual) trimTexStyleExternalName "Trim TeX-style External Name" :=
+#docs (Manual) keepLeanExternalName "Keep Lean External Name" :=
 :::::::
 :::theorem "trim.external.name" (lean := "thm:Nat.add")
 Simple body.
@@ -114,13 +117,7 @@ Simple body.
     let state := Informal.Environment.informalExt.getState (← getEnv)
     let some node := state.data.get? (Name.mkSimple "trim.external.name")
       | pure false
-    let some code := node.code
-      | pure false
-    match code with
-    | .external decls =>
-      pure <| decls.any (fun decl => decl.written == ``Nat.add && decl.canonical == ``Nat.add)
-    | _ =>
-      pure false
+    pure node.code.isNone
 
 set_option verso.blueprint.trimTeXLabelPrefix false
 

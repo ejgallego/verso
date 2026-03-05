@@ -12,7 +12,7 @@ open Lean
 
 register_option verso.blueprint.trimTeXLabelPrefix : Bool := {
   defValue := false
-  descr := "Trim TeX-style label prefixes for Lean-facing names (`thm:foo` -> `foo`)"
+  descr := "Trim TeX-style prefixes for informal-label-derived Lean names (`thm:foo` -> `foo`)"
 }
 
 /-- Trim leading/trailing ASCII whitespace from a user-provided name fragment. -/
@@ -57,15 +57,9 @@ def parseName? (s : String) : Option Name :=
     let n := s.toName
     if n.isAnonymous then none else some n
 
-/--
-Parse a Lean-facing name from user input while applying the TeX-prefix trimming policy.
--/
-def parseLeanName? (opts : Lean.Options) (s : String) : Option Name :=
-  parseName? <| maybeTrimTeXStylePrefix opts (normalize s)
-
-/-- Like `parseLeanName?`, but returns an error string preserving prior caller behavior. -/
-def parseLeanNameE (opts : Lean.Options) (s : String) : Except String Name :=
-  let normalized := maybeTrimTeXStylePrefix opts (normalize s)
+/-- Like `parseName?`, but returns an error string preserving prior caller behavior. -/
+def parseNameE (s : String) : Except String Name :=
+  let normalized := normalize s
   if normalized.isEmpty then
     .error "empty name"
   else
@@ -73,9 +67,23 @@ def parseLeanNameE (opts : Lean.Options) (s : String) : Except String Name :=
     | some n => .ok n
     | none => .error s!"invalid Lean name '{normalized}'"
 
-/-- Apply TeX-prefix trimming policy to a label/name that is already a Lean `Name`. -/
+/--
+Parse a user-provided Lean declaration name without blueprint-specific rewrites.
+-/
+def parseLeanName? (s : String) : Option Name :=
+  parseName? s
+
+/-- Like `parseLeanName?`, but returns an error string preserving prior caller behavior. -/
+def parseLeanNameE (s : String) : Except String Name :=
+  parseNameE s
+
+/-- Parse an informal label-derived Lean name while applying the TeX-prefix trimming policy. -/
+def parseLabelName? (opts : Lean.Options) (s : String) : Option Name :=
+  parseName? <| maybeTrimTeXStylePrefix opts (normalize s)
+
+/-- Apply TeX-prefix trimming policy to a label-derived Lean `Name`. -/
 def maybeTrimTeXStyleName (opts : Lean.Options) (name : Name) : Name :=
-  match parseLeanName? opts name.toString with
+  match parseLabelName? opts name.toString with
   | some parsed => parsed
   | none => name
 

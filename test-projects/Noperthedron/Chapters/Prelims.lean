@@ -76,7 +76,7 @@ Radius characterization and preservation tools.
 
 # Rupert Sets
 
-:::theorem "thm:rupert_iff_rupert_set" (lean := "thm:rupert_iff_rupert_set") (parent := "prelims_rupert_equiv")
+:::theorem "thm:rupert_iff_rupert_set" (lean := "rupert_iff_rupert_set") (parent := "prelims_rupert_equiv")
 The following are equivalent:
 - The convex polyhedron with vertex set $`v` is Rupert.
 - The convex closure of $`v` is a Rupert set.

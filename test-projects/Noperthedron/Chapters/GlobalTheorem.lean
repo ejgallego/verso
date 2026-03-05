@@ -134,7 +134,7 @@ $`g(\theta,\phi) =  \langle M(\theta,\phi) P / \|P\|, w\rangle`.
 By basic properties of derivatives.
 :::
 
-:::theorem "thm:global" (lean := "thm:GlobalTheorem.global_theorem") (parent := "global_main")
+:::theorem "thm:global" (lean := "GlobalTheorem.global_theorem") (parent := "global_main")
 Let $`\mathbf{P}` be a pointsymmetric convex polyhedron with radius $`\rho = 1`,
 let $`S \in \mathbf{P}`, and let
 $`\bar\theta_1,\bar\phi_1,\bar\theta_2,\bar\phi_2,\bar\alpha \in \mathbb{R}`.

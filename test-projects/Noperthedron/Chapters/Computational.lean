@@ -62,7 +62,7 @@ Construction of the certified interval solution table.
 Soundness of table rows and propagated non-Rupert certificates.
 :::
 
-:::theorem "thm:exists_solution_table" (lean := "thm:exists_solution_table") (parent := "computational_table_construction")
+:::theorem "thm:exists_solution_table" (lean := "exists_solution_table") (parent := "computational_table_construction")
 There exists a valid solution table whose zeroth row covers
 
 $$`
