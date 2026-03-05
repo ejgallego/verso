@@ -44,7 +44,7 @@ def parseExternalCodeList (lean : Option String) :
   | none => (#[], #[])
   | some s =>
     (splitExternalCodeRefs s).foldl (init := (#[], #[])) fun (acc, invalid) ref =>
-      match NameParsing.parseLeanNameE ref with
+      match NameParsing.parseLeanDeclNameE ref with
       | .ok name =>
         let extRef := Data.ExternalRef.ofName name .directiveLean
         (acc.push extRef, invalid)
