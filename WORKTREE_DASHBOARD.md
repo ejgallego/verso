@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/preview-modes-placement-20260305` merged into `bp` and cleaned up)
+Last updated: 2026-03-05 (`feat/external-code-rendering-review-20260305` created for external-code visual review)
 
 ## Active Worktrees
 
@@ -21,6 +21,26 @@ Last updated: 2026-03-05 (`feat/preview-modes-placement-20260305` merged into `b
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/external-code-rendering-review-20260305`
+
+- Status: `active` (owner action: review external-code visual analysis)
+- Summary: visual audit worktree focused on the expanded external Lean declaration panels and their fit within blueprint statement chrome.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-rendering-review-20260305`
+- Branch: `feat/external-code-rendering-review-20260305`
+- Base commit/branch:
+  - merge-base with `bp`: `f9424d17` (`0` behind / `0` ahead)
+- Key commit:
+  - none yet (analysis-only worktree)
+- Validation status:
+  - `lake exe cache get`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Preview link:
+  - `http://127.0.0.1:8145`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-rendering-review-20260305`
+  - `lake exe noperthedron`
+  - review screenshots under `tmp/visual-review/`
 
 ### `feat/lsp-folding-chain`
 
