@@ -751,13 +751,9 @@ block_extension Block.informal (data : BlockData) where
       pure none
     | .ok blockData =>
       let label := blockData.label
-      let isProof :=
-        match blockData.kind with
-        | .proof => true
-        | .statement _ => false
-      let previewFacet := if isProof then PreviewCache.Facet.proof else PreviewCache.Facet.statement
+      let previewFacet := PreviewCache.Facet.ofInProgressKind blockData.kind
       let previewKey := PreviewCache.key label previewFacet
-      let previewData := toJson (PreviewCache.Entry.ofBlocks label isProof _contents blockData.texPrelude)
+      let previewData := toJson (PreviewCache.Entry.ofBlocks label previewFacet _contents blockData.texPrelude)
       let existingPreview? := (← get).getDomainObject? informalPreviewDomain previewKey
       if shouldWritePreviewData existingPreview? id then
         modify λ s => s.saveDomainObjectData informalPreviewDomain previewKey previewData

@@ -102,11 +102,96 @@ def previewHoverUtilsJs : String := r##"(function () {
     });
   }
 
+  function positionAnchoredPanel(panel, anchor, margin, offset) {
+    if (!(panel instanceof Element) || !(anchor instanceof Element)) return;
+    const safeMargin = Number.isFinite(margin) ? margin : 12;
+    const safeOffset = Number.isFinite(offset) ? offset : 10;
+    const rect = anchor.getBoundingClientRect();
+    const panelRect = panel.getBoundingClientRect();
+    const panelWidth = panelRect.width || Math.min(520, window.innerWidth - safeMargin * 2);
+    const panelHeight = panelRect.height || Math.min(420, window.innerHeight - safeMargin * 2);
+    let left = rect.left;
+    if (left + panelWidth > window.innerWidth - safeMargin) {
+      left = window.innerWidth - panelWidth - safeMargin;
+    }
+    left = Math.max(safeMargin, left);
+    let top = rect.bottom + safeOffset;
+    if (top + panelHeight > window.innerHeight - safeMargin) {
+      top = rect.top - panelHeight - safeOffset;
+    }
+    top = Math.max(safeMargin, top);
+    panel.style.left = left + "px";
+    panel.style.top = top + "px";
+  }
+
+  function shouldKeepOpen(nextTarget, trigger, panel) {
+    if (!(nextTarget instanceof Element)) return false;
+    if (trigger instanceof Element && trigger.contains(nextTarget)) return true;
+    if (panel instanceof Element && panel.contains(nextTarget)) return true;
+    return false;
+  }
+
+  function readPanelBehavior(panel, defaults) {
+    const defaultMode =
+      defaults && (defaults.mode === "hover" || defaults.mode === "pinned")
+        ? defaults.mode
+        : "hover";
+    const defaultPlacement =
+      defaults && (defaults.placement === "anchored" || defaults.placement === "docked")
+        ? defaults.placement
+        : "anchored";
+    if (!(panel instanceof Element)) {
+      return {
+        mode: defaultMode,
+        placement: defaultPlacement,
+        isPinned: defaultMode === "pinned",
+        isHover: defaultMode === "hover",
+        isAnchored: defaultPlacement === "anchored",
+        isDocked: defaultPlacement === "docked"
+      };
+    }
+    const rawMode = (panel.getAttribute("data-bp-preview-mode") || "").trim();
+    const rawPlacement = (panel.getAttribute("data-bp-preview-placement") || "").trim();
+    const mode = rawMode === "hover" || rawMode === "pinned" ? rawMode : defaultMode;
+    const placement =
+      rawPlacement === "anchored" || rawPlacement === "docked" ? rawPlacement : defaultPlacement;
+    return {
+      mode: mode,
+      placement: placement,
+      isPinned: mode === "pinned",
+      isHover: mode === "hover",
+      isAnchored: placement === "anchored",
+      isDocked: placement === "docked"
+    };
+  }
+
+  function resetPanelPosition(panel) {
+    if (!(panel instanceof Element)) return;
+    panel.style.left = "";
+    panel.style.top = "";
+  }
+
+  function configureCloseButton(closeButton, onClose, behavior) {
+    if (!(closeButton instanceof Element)) return;
+    const pinned = !!(behavior && behavior.isPinned);
+    closeButton.hidden = !pinned;
+    closeButton.style.display = pinned ? "" : "none";
+    closeButton.setAttribute("aria-hidden", pinned ? "false" : "true");
+    closeButton.tabIndex = pinned ? 0 : -1;
+    if (!pinned) return;
+    bindCloseOnce(closeButton, onClose);
+  }
+
   window.bpPreviewUtils = {
     collectPreviewTemplates: collectPreviewTemplates,
     readPreviewTemplate: readPreviewTemplate,
     renderMath: renderMath,
-    bindCloseOnce: bindCloseOnce
+    bindCloseOnce: bindCloseOnce,
+    positionAnchoredPanel: positionAnchoredPanel,
+    shouldKeepOpen: shouldKeepOpen,
+    readPanelBehavior: readPanelBehavior,
+    resetPanelPosition: resetPanelPosition,
+    configureCloseButton: configureCloseButton
   };
 })();"##
 
@@ -126,6 +211,12 @@ def inlinePreviewCss : String := r##"
   border-radius: 0.45rem;
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2);
+}
+
+.bp_inline_preview_panel[data-bp-preview-placement="docked"] {
+  top: 0.9rem;
+  right: 0.9rem;
+  left: auto;
 }
 
 .bp_inline_preview_panel_header {
@@ -218,6 +309,10 @@ def inlinePreviewCss : String := r##"
   color: #64748b;
   font-style: italic;
 }
+
+.bp_inline_preview_panel[data-bp-preview-mode="hover"] .bp_inline_preview_panel_close {
+  display: none;
+}
 "##
 
 def openTargetDetailsJs : String := r##"(function () {
@@ -276,6 +371,8 @@ def inlineLinkPreviewJs : String := r##"(function () {
     const panel = document.createElement("aside");
     panel.id = "bp-inline-preview-panel";
     panel.className = "bp_inline_preview_panel";
+    panel.setAttribute("data-bp-preview-mode", "hover");
+    panel.setAttribute("data-bp-preview-placement", "anchored");
     panel.hidden = true;
     panel.innerHTML =
       '<div class="bp_inline_preview_panel_header">' +
@@ -299,7 +396,19 @@ def inlineLinkPreviewJs : String := r##"(function () {
     document.body.setAttribute("data-bp-inline-preview-bound", "1");
 
     const previewUtils = window.bpPreviewUtils;
-    if (!previewUtils || typeof previewUtils.collectPreviewTemplates !== "function") return;
+    if (
+      !previewUtils ||
+      typeof previewUtils.collectPreviewTemplates !== "function" ||
+      typeof previewUtils.readPreviewTemplate !== "function" ||
+      typeof previewUtils.renderMath !== "function" ||
+      typeof previewUtils.positionAnchoredPanel !== "function" ||
+      typeof previewUtils.shouldKeepOpen !== "function" ||
+      typeof previewUtils.readPanelBehavior !== "function" ||
+      typeof previewUtils.resetPanelPosition !== "function" ||
+      typeof previewUtils.configureCloseButton !== "function"
+    ) {
+      return;
+    }
     const store = buildInlinePreviewStore();
     const previewMap = previewUtils.collectPreviewTemplates(
       store,
@@ -313,15 +422,9 @@ def inlineLinkPreviewJs : String := r##"(function () {
     const body = panel.querySelector(".bp_inline_preview_panel_body");
     const close = panel.querySelector(".bp_inline_preview_panel_close");
     if (!(title instanceof Element) || !(body instanceof Element) || !(close instanceof Element)) return;
+    const behavior = previewUtils.readPanelBehavior(panel, { mode: "hover", placement: "anchored" });
 
     let activeTrigger = null;
-
-    function parsePreviewEntry(entry) {
-      if (previewUtils && typeof previewUtils.readPreviewTemplate === "function") {
-        return previewUtils.readPreviewTemplate(entry);
-      }
-      return { html: "", texPrelude: "" };
-    }
 
     function hidePanel() {
       panel.hidden = true;
@@ -331,24 +434,11 @@ def inlineLinkPreviewJs : String := r##"(function () {
     }
 
     function positionPanel(anchor) {
-      if (!(anchor instanceof Element)) return;
-      const rect = anchor.getBoundingClientRect();
-      const margin = 12;
-      const panelRect = panel.getBoundingClientRect();
-      const panelWidth = panelRect.width || Math.min(520, window.innerWidth - margin * 2);
-      const panelHeight = panelRect.height || Math.min(420, window.innerHeight - margin * 2);
-      let left = rect.left;
-      if (left + panelWidth > window.innerWidth - margin) {
-        left = window.innerWidth - panelWidth - margin;
+      if (!behavior.isAnchored) {
+        previewUtils.resetPanelPosition(panel);
+        return;
       }
-      left = Math.max(margin, left);
-      let top = rect.bottom + 10;
-      if (top + panelHeight > window.innerHeight - margin) {
-        top = rect.top - panelHeight - 10;
-      }
-      top = Math.max(margin, top);
-      panel.style.left = left + "px";
-      panel.style.top = top + "px";
+      previewUtils.positionAnchoredPanel(panel, anchor, 12, 10);
     }
 
     function showFromTrigger(trigger) {
@@ -358,7 +448,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
         hidePanel();
         return;
       }
-      const entry = parsePreviewEntry(previewMap.get(key));
+      const entry = previewUtils.readPreviewTemplate(previewMap.get(key));
       const html = entry.html;
       const texPrelude = entry.texPrelude;
       if (!html) {
@@ -369,23 +459,12 @@ def inlineLinkPreviewJs : String := r##"(function () {
       const heading = trigger.getAttribute("data-bp-preview-title") || key;
       title.textContent = heading;
       body.innerHTML = html;
-      if (previewUtils && typeof previewUtils.renderMath === "function") {
-        previewUtils.renderMath(body, texPrelude);
-      }
+      previewUtils.renderMath(body, texPrelude);
       panel.hidden = false;
       positionPanel(trigger);
     }
 
-    if (typeof previewUtils.bindCloseOnce === "function") {
-      previewUtils.bindCloseOnce(close, hidePanel);
-    } else if (close.getAttribute("data-bp-bound") !== "1") {
-      close.setAttribute("data-bp-bound", "1");
-      close.addEventListener("click", function (ev) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        hidePanel();
-      });
-    }
+    previewUtils.configureCloseButton(close, hidePanel, behavior);
 
     const triggers = document.querySelectorAll(".bp_inline_preview_ref[data-bp-preview-id]");
     triggers.forEach(function (trigger) {
@@ -399,27 +478,25 @@ def inlineLinkPreviewJs : String := r##"(function () {
         showFromTrigger(trigger);
       });
       trigger.addEventListener("mouseleave", function (ev) {
-        const next = ev.relatedTarget;
-        if (next instanceof Element && (trigger.contains(next) || panel.contains(next))) return;
+        if (!behavior.isHover) return;
+        if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
         hidePanel();
       });
       trigger.addEventListener("focusout", function (ev) {
-        const next = ev.relatedTarget;
-        if (next instanceof Element && (trigger.contains(next) || panel.contains(next))) return;
+        if (!behavior.isHover) return;
+        if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
         hidePanel();
       });
     });
 
     panel.addEventListener("mouseleave", function (ev) {
-      const next = ev.relatedTarget;
-      if (next instanceof Element && activeTrigger && activeTrigger.contains(next)) return;
-      if (next instanceof Element && panel.contains(next)) return;
+      if (!behavior.isHover) return;
+      if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeTrigger, panel)) return;
       hidePanel();
     });
     panel.addEventListener("focusout", function (ev) {
-      const next = ev.relatedTarget;
-      if (next instanceof Element && activeTrigger && activeTrigger.contains(next)) return;
-      if (next instanceof Element && panel.contains(next)) return;
+      if (!behavior.isHover) return;
+      if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeTrigger, panel)) return;
       hidePanel();
     });
 
@@ -429,12 +506,12 @@ def inlineLinkPreviewJs : String := r##"(function () {
       }
     });
     window.addEventListener("resize", function () {
-      if (activeTrigger && !panel.hidden) positionPanel(activeTrigger);
+      if (behavior.isAnchored && activeTrigger && !panel.hidden) positionPanel(activeTrigger);
     });
     window.addEventListener(
       "scroll",
       function () {
-        if (activeTrigger && !panel.hidden) positionPanel(activeTrigger);
+        if (behavior.isAnchored && activeTrigger && !panel.hidden) positionPanel(activeTrigger);
       },
       true
     );

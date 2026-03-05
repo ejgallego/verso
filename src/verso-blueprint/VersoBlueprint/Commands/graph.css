@@ -49,6 +49,18 @@ html.bp-graph-toc-hidden .with-toc > main {
   overflow: auto;
 }
 
+.bp_graph_preview[data-bp-preview-placement="anchored"] {
+  position: fixed;
+  right: auto;
+}
+
+.bp_graph_preview[data-bp-preview-placement="docked"] {
+  position: absolute;
+  top: 0.9rem;
+  right: 0.9rem;
+  left: auto;
+}
+
 .bp_graph_preview_header {
   display: flex;
   align-items: center;
@@ -79,6 +91,10 @@ html.bp-graph-toc-hidden .with-toc > main {
   cursor: pointer;
 }
 
+.bp_graph_preview[data-bp-preview-mode="hover"] .bp_graph_preview_close {
+  display: none;
+}
+
 .bp_graph_preview_body {
   border-left: 2px solid #e5e7eb;
   padding-left: 0.55rem;
@@ -100,6 +116,11 @@ html.bp-graph-toc-hidden .with-toc > main {
   padding: 0.55rem 0.65rem;
   pointer-events: auto;
   backdrop-filter: blur(1px);
+}
+
+.bp_group_hover_preview[data-bp-preview-placement="docked"] {
+  left: 0.9rem;
+  top: 0.9rem;
 }
 
 .bp_group_hover_preview_header {
@@ -130,6 +151,10 @@ html.bp-graph-toc-hidden .with-toc > main {
   line-height: 1;
   padding: 0.25rem 0.45rem;
   cursor: pointer;
+}
+
+.bp_group_hover_preview[data-bp-preview-mode="hover"] .bp_group_hover_preview_close {
+  display: none;
 }
 
 .bp_group_hover_preview_graph {
