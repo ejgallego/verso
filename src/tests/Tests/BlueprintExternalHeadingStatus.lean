@@ -37,8 +37,9 @@ private def proofGapExternalRef (name : Lean.Name) : Data.ExternalRef :=
   }
   match (CodeSummary.renderParts data cdata (fun _ => none)).statusMark with
   | some mark =>
-    mark.status == Data.ProvedStatus.proved &&
-    hasSubstr mark.title "No statement blockers in external Lean names"
+    mark.status.containsExplicitSorry &&
+    hasSubstr mark.title "Statement: completed" &&
+    hasSubstr mark.title "Proof: with sorries"
   | none => false
 
 /-- info: true -/
@@ -60,7 +61,8 @@ private def proofGapExternalRef (name : Lean.Name) : Data.ExternalRef :=
   match (CodeSummary.renderParts data cdata (fun _ => none)).statusMark with
   | some mark =>
     mark.status.containsExplicitSorry &&
-    hasSubstr mark.title "block statement completion"
+    hasSubstr mark.title "Statement: completed" &&
+    hasSubstr mark.title "Proof: with sorries"
   | none => false
 
 end Verso.Tests.BlueprintExternalHeadingStatus
