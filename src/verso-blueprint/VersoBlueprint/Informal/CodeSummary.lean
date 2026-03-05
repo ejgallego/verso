@@ -95,12 +95,25 @@ private def userOkSummaryTooltip : Output.Html :=
     </div>
   }}
 
+/--
+Aggregate counts used to compute the external-heading status mark and tooltip text.
+
+The counters intentionally distinguish statement-blocking incompleteness from
+non-blocking incompleteness, so theorem-like proof-only gaps can remain
+visible without downgrading statement completion.
+-/
 private structure ExternalHeadingAggregate where
+  /-- Total number of external declaration references attached to the block. -/
   total : Nat
+  /-- Number of references resolved/present in the snapshot. -/
   found : Nat
+  /-- Number of references missing from the snapshot/environment. -/
   missing : Nat
+  /-- Present declarations that block statement completion for the block kind. -/
   statementBlocking : Nat
+  /-- Present declarations with incompleteness on non-blocking axes. -/
   nonBlockingIncompleteness : Nat
+  /-- Present declarations with any incompleteness, regardless of blocking. -/
   withGaps : Nat
 
 private def externalHeadingAggregate (statementKind : Data.NodeKind)
