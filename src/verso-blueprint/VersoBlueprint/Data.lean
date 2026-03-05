@@ -155,10 +155,6 @@ This is conservative: any statement/type or proof/body gap blocks proof completi
 def ProvedStatus.blocksProofCompletion (status : ProvedStatus) : Bool :=
   status.hasTypeGap || status.hasProofGap
 
-/-- Compatibility helper for definition-only callers. -/
-def ProvedStatus.blocksDefinitionCompletion (status : ProvedStatus) : Bool :=
-  status.blocksStatementCompletion .definition
-
 def ProvedStatus.containsExplicitSorry : ProvedStatus → Bool
   | .containsSorry _ => true
   | _ => false
@@ -196,22 +192,12 @@ def ProvedStatus.sorryRefCounts : ProvedStatus → Nat × Nat
 def ProvedStatus.anyIncomplete (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
   decls.any fun decl => (statusOf decl).isIncomplete
 
-def ProvedStatus.anyTypeGap (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
-  decls.any fun decl => (statusOf decl).hasTypeGap
-
-def ProvedStatus.anyProofGap (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
-  decls.any fun decl => (statusOf decl).hasProofGap
-
 def ProvedStatus.anyBlocksStatementCompletion (kind : NodeKind) (decls : Array α)
     (statusOf : α → ProvedStatus) : Bool :=
   decls.any fun decl => (statusOf decl).blocksStatementCompletion kind
 
 def ProvedStatus.anyBlocksProofCompletion (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
   decls.any fun decl => (statusOf decl).blocksProofCompletion
-
-/-- Compatibility helper for definition-only callers. -/
-def ProvedStatus.anyBlocksDefinitionCompletion (decls : Array α) (statusOf : α → ProvedStatus) : Bool :=
-  ProvedStatus.anyBlocksStatementCompletion .definition decls statusOf
 
 def ProvedStatus.ofSorryFlags (hasType hasProof : Bool)
     (typeRefs? : Option Nat := none) (proofRefs? : Option Nat := none) : ProvedStatus :=

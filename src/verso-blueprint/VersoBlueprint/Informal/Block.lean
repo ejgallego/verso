@@ -868,7 +868,8 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
   | cfg, contents => do
     let blockRef ← getRef
     let label := cfg.label
-    let kind? := if isProof then none else some kind
+    let envKind : Environment.InProgressKind :=
+      if isProof then .proof else .statement kind
     let resolvedExternalCode ← ExternalCode.resolveExternalCodeList label cfg.labelSyntax cfg.externalCode
     let hasExternalRaw := !resolvedExternalCode.isEmpty
     let hasLeanok := cfg.leanok.getD false
@@ -888,7 +889,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         some .userOk
       else
         none
-    Environment.push label kind? isProof codeHint cfg.parent
+    Environment.push label envKind codeHint cfg.parent
     let contents ← contents.mapM elabBlock
     if !isProof then
       -- TODO: consolidate this widget-oriented elaboration cache with the traversal preview cache
