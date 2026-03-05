@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (`feat/external-code-polish-20260306` created for follow-up UI polish)
+Last updated: 2026-03-06 (`feat/external-code-polish-20260306` validated; previous renderer-switch worktree marked superseded)
 
 ## Active Worktrees
 
@@ -48,8 +48,8 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` created for follo
 
 ### `feat/external-code-renderer-switch-20260305`
 
-- Status: `ready-for-review` (owner action: review the simplified shell and renderer switch commits)
-- Summary: follow-up worktree based on the external-code refresh branch, focused on reducing visual layering and shipping both external renderers behind a dropdown switch.
+- Status: `superseded` (owner action: keep as comparison baseline during polish review, then clean up)
+- Summary: intermediate follow-up worktree that reduced visual layering and added the renderer switch; now superseded by the polish pass but kept temporarily for side-by-side review.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-renderer-switch-20260305`
 - Branch: `feat/external-code-renderer-switch-20260305`
 - Base commit/branch:
@@ -68,25 +68,29 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` created for follo
   - `git log --oneline --decorate -2`
   - `lake exe noperthedron`
   - server session: `95651`
+  - safe cleanup target once `feat/external-code-polish-20260306` is accepted
 
 ### `feat/external-code-polish-20260306`
 
-- Status: `active` (owner action: implement requested naming and layout tweaks on top of the renderer switch branch)
+- Status: `ready-for-review` (owner action: review naming/layout polish and compare against the superseded renderer-switch pass if needed)
 - Summary: polish pass for external code panels, focused on summary wording, panel captions, metadata placement, and signature printing.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
 - Branch: `feat/external-code-polish-20260306`
 - Base commit/branch:
   - branched from `feat/external-code-renderer-switch-20260305` at `bb04f3d3`
 - Key commit:
-  - none yet
+  - `93b79fb5` refactor(external-code): simplify copy and rendered metadata
 - Validation status:
   - `lake exe cache get`
+  - `lake exe noperthedron` (warnings only; no errors)
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
 - Preview link:
-  - pending
+  - `http://127.0.0.1:8149`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
-  - `git status --short`
+  - `git show --stat --oneline -1`
   - `lake exe noperthedron`
+  - server session: `1316`
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
