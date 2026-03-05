@@ -49,7 +49,7 @@ Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` crea
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`
 - Branch: `feat/verso-block-incremental-snapshots-20260305`
 - Base commit/branch:
-  - merge-base with `bp`: `8fbcdc5e` (`0` behind / `0` ahead)
+  - merge-base with `bp`: `af911f1e` (`0` behind / `0` ahead)
 - Key commit:
   - none yet
 - Validation status:
@@ -61,6 +61,7 @@ Last updated: 2026-03-05 (`feat/verso-block-incremental-snapshots-20260305` crea
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`
   - `lake exe noperthedron`
   - server session: `52605`
+  - rebased on latest `bp` after dashboard registration
 
 ### `feat/lsp-folding-chain`
 
