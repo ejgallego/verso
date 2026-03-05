@@ -29,7 +29,7 @@ Last updated: 2026-03-05 (`feat/tex-label-trim-20260305` rebased on `bp` and rea
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/tex-label-trim-20260305`
 - Branch: `feat/tex-label-trim-20260305`
 - Base commit/branch:
-  - rebased on `bp` at `07861069` (`0` behind / `11` ahead)
+  - rebased on `bp` at `07861069`
 - Key commits:
   - `5e5a5c0b` feat(blueprint): trim TeX-style label prefixes for Lean-facing names
   - `579f1c5a` fix(names): keep lean external refs untouched
