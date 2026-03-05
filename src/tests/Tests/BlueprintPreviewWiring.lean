@@ -121,20 +121,22 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
     let blocks := collectBlocks previewWiringDoc.toPart
     let (html, st) ← renderManualBlocksHtmlAndState blocks
     let out := html.asString
-    let graphJs? := findExtraJs st "function attachPreviewHandlers(graphContainer, previewMap, panelBehavior)"
+    let graphJs? := findExtraJs st "function attachPreviewHandlers(graphContainer, panel, previewMap, panelBehavior)"
     pure (
-      hasSubstr out "id=\"bp-graph-preview\"" &&
+      hasSubstr out "class=\"bp_graph_preview\"" &&
       hasSubstr out "data-bp-preview-mode=\"pinned\"" &&
       hasSubstr out "data-bp-preview-placement=\"docked\"" &&
       hasSubstr out "class=\"bp_graph_preview_tpl\"" &&
-      hasSubstr out "id=\"bp-group-hover-preview\"" &&
+      hasSubstr out "class=\"bp_group_hover_preview\"" &&
       hasSubstr out "data-bp-preview-placement=\"anchored\"" &&
       hasSubstr out "class=\"bp-graph-variants\"" &&
       match graphJs? with
       | some graphJs =>
         hasSubstr graphJs "return utils.readPreviewTemplate(entry);" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(previewPanelNode, { mode: \"pinned\", placement: \"docked\" })" &&
-        hasSubstr graphJs "previewUtils.configureCloseButton(previewClose, hidePreviewPanel, previewPanelBehavior)" &&
+        hasSubstr graphJs "previewUtils.configureCloseButton(" &&
+        hasSubstr graphJs "previewPanelBehavior" &&
+        hasSubstr graphJs "attachPreviewHandlers(graphContainer, previewPanelNode, previewMap, previewPanelBehavior)" &&
         hasSubstr graphJs "previewUtils.configureCloseButton(groupHoverClose, hideGroupHoverPreview, groupHoverBehavior)"
       | none => false
     )
