@@ -10,6 +10,7 @@ import VersoBlueprint.Informal.Block
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Informal.CodeSummary
 import VersoBlueprint.Lean
+import VersoBlueprint.NameParsing
 import VersoBlueprint.Profiling
 import VersoBlueprint.Resolve
 import VersoBlueprint.Widget
@@ -125,17 +126,21 @@ block_extension Block.informalCode (data : InlineCodeData) where
 
 structure CodeConfig where
   label : Data.Label
+  leanLabel : Name
   labelSyntax : Syntax := Syntax.missing
 
 section
-variable [Monad m] [MonadError m]
+variable [Monad m] [MonadError m] [MonadOptions m]
 
 def CodeConfig.parse : ArgParse m CodeConfig :=
-  (fun (labelArg : Verso.ArgParse.WithSyntax String) =>
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) opts =>
+    let label := Name.mkSimple labelArg.val
     {
-      label := Name.mkSimple labelArg.val
+      label
+      leanLabel := NameParsing.maybeTrimTeXStyleName opts label
       labelSyntax := labelArg.syntax
     }) <$> .positional `label (.withSyntax .string)
+      <*> .lift "current elaboration options" getOptions
 
 instance : FromArgs CodeConfig m where
   fromArgs := CodeConfig.parse
@@ -145,9 +150,7 @@ end
 /-- Interpreting Embedded Lean Code blocks -/
 private def leanImpl : CodeBlockExpanderOf CodeConfig
   | cfg, contents => do
-    let opts ← getOptions
-    let leanLabel := maybeTrimTeXStyleLabelName opts cfg.label
-    let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some leanLabel }
+    let leanCfg : Lean.LeanBlockConfig := { Lean.defaultConfig with name := some cfg.leanLabel }
     let res ← Lean.elabCommands leanCfg contents
     let codeBlock := res.block
     let definedDefs := res.definedDefs.map CodeDeclData.ofLiterateDef

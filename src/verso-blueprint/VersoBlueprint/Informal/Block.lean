@@ -75,9 +75,8 @@ variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadErr
   [MonadOptions m]
 
 def Config.parse  : ArgParse m Config :=
-  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent trimTeXLabelPrefix =>
-    let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList lean
-      (trimTeXLabelPrefix := trimTeXLabelPrefix)
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent opts =>
+    let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList opts lean
     {
       label := Name.mkSimple labelArg.val
       labelSyntax := labelArg.syntax
@@ -88,11 +87,7 @@ def Config.parse  : ArgParse m Config :=
       invalidExternalCode := invalidExternalCode
     }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true
         <*> .named `leanok .bool true <*> .named `parent .string true
-        <*> .lift "value of option `verso.blueprint.trimTeXLabelPrefix`" (do
-          let opts ← getOptions
-          pure <| opts.get
-            verso.blueprint.trimTeXLabelPrefix.name
-            verso.blueprint.trimTeXLabelPrefix.defValue)
+        <*> .lift "current elaboration options" getOptions
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
