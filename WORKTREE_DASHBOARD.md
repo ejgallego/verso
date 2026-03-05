@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/biblio-hover-preview` validated and ready for review)
+Last updated: 2026-03-05 (`feat/biblio-hover-preview` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -21,29 +21,6 @@ Last updated: 2026-03-05 (`feat/biblio-hover-preview` validated and ready for re
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/biblio-hover-preview`
-
-- Status: `ready-for-review` (owner action: review and merge into `bp`)
-- Summary: focused fix branch for bibliography link hover rendering quality in blueprint output.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/biblio-hover-preview`
-- Branch: `feat/biblio-hover-preview`
-- Base commit/branch:
-  - `bp` at branch-point commit `5cbe8477`
-- Key commit:
-  - `3b89d113` feat(cite): render richer bibliography hover previews
-- Validation status:
-  - validation passed:
-  - `lake build VersoBlueprint.Cite VersoBlueprint.Commands.Common`
-  - `lake exe noperthedron`
-  - warnings only from existing `Noperthedron` `sorry`/lint noise; no new errors
-  - bootstrap setup:
-  - `lake exe cache get`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/biblio-hover-preview`
-  - preview: `http://127.0.0.1:8136/`
-  - server session: `63588` (`npx http-server -p 8136 _out/html-multi`)
-  - `git status --short`
 
 ### `feat/lsp-folding-chain`
 
@@ -81,6 +58,16 @@ Last updated: 2026-03-05 (`feat/biblio-hover-preview` validated and ready for re
 
 ## Recently Completed
 
+- Merged `feat/biblio-hover-preview` into `bp` (`5cbe8477 -> 1aae8d88`, fast-forward).
+- Feature branch key commits:
+  - `3b89d113` feat(cite): render richer bibliography hover previews
+  - `1aae8d88` fix(cite): drop redundant bibliography hover action
+- Rebased feature branch on latest `bp` before merge (already up to date).
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Stopped preview server session `63588` (`http://127.0.0.1:8136/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/biblio-hover-preview`.
+- Deleted branch: `feat/biblio-hover-preview`.
 - Merged `feat/hover-links-biblio-20260305` into `bp` (`8bb0335b -> 9a17b334`, fast-forward).
 - Feature branch key commits:
   - `1300da42` feat(hover): unify inline preview data for uses and citations
