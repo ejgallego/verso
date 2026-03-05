@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean
 import VersoBlueprint.Data
+import VersoBlueprint.ProvedStatus
 import VersoBlueprint.DocGenNameRender
 
 namespace Informal

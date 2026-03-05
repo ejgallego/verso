@@ -14,6 +14,7 @@ import Lean.Elab.InfoTree.Types
 import VersoManual
 
 import VersoBlueprint.Data
+import VersoBlueprint.ProvedStatus
 import VersoBlueprint.ExternalRefSnapshot
 import VersoBlueprint.Environment
 import VersoBlueprint.Attribute

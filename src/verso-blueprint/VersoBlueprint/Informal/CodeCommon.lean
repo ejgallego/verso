@@ -8,6 +8,7 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Data
+import VersoBlueprint.ProvedStatus
 
 namespace Informal
 
