@@ -35,20 +35,31 @@ private def texStyleSuffix? (s : String) : Option String :=
       some suffix
 
 /-- Trim TeX-style `prefix:suffix` labels to `suffix`; non-matching inputs are unchanged. -/
-def trimTeXStylePrefix (s : String) : String :=
+private def trimTeXStylePrefix (s : String) : String :=
   (texStyleSuffix? s).getD s
 
 /-- Whether TeX-style label trimming is enabled in the provided option set. -/
-def trimTeXStylePrefixEnabled (opts : Lean.Options) : Bool :=
+private def trimTeXStylePrefixEnabled (opts : Lean.Options) : Bool :=
   opts.get
     verso.blueprint.trimTeXLabelPrefix.name
     verso.blueprint.trimTeXLabelPrefix.defValue
 
 /-- Conditionally trim TeX-style prefixes according to `verso.blueprint.trimTeXLabelPrefix`. -/
-def maybeTrimTeXStylePrefix (opts : Lean.Options) (s : String) : String :=
+private def maybeTrimTeXStylePrefix (opts : Lean.Options) (s : String) : String :=
   if trimTeXStylePrefixEnabled opts then
     trimTeXStylePrefix s
   else
     s
+
+namespace ForLeanCode
+
+/--
+Parse an informal label for Lean code-block registration.
+This applies the label-prefix policy internally, opaque to callers.
+-/
+def parse (opts : Lean.Options) (s : String) : Name :=
+  LabelNameParsing.parse <| maybeTrimTeXStylePrefix opts s
+
+end ForLeanCode
 
 end Informal.LabelNameParsing
