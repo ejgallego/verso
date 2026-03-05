@@ -346,11 +346,6 @@ public partial def asString (html : Html) (indent : Nat := 0) (breakLines := tru
   match html with
   | .text true str => str.replace "<" "&lt;" |>.replace ">" "&gt;"
   | .text false str => str
-  | .tag "script" attrs body =>
-    let body := match body with | .text _ str => .text false str | _ => body
-    "<script" ++ attrsAsString attrs ++ ">" ++
-    Html.asString (indent := 0) (breakLines := false) body  ++
-    "</script>"
   | .tag "pre" attrs body =>
     "<pre" ++ attrsAsString attrs ++ ">" ++
     Html.asString (indent := 0) (breakLines := false) body ++
