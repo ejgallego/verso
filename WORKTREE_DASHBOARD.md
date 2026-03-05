@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/external-code-rendering-review-20260305` closed after external-code visual review)
+Last updated: 2026-03-05 (`feat/inline-command-codeblock-first-try` checkpointed after nested snapshot prototype validation)
 
 ## Active Worktrees
 
@@ -42,6 +42,28 @@ Last updated: 2026-03-05 (`feat/external-code-rendering-review-20260305` closed 
   - `lake exe noperthedron`
   - server session: `52605`
   - rebased on latest `bp` after dashboard registration
+
+### `feat/inline-command-codeblock-first-try`
+
+- Status: `active` (owner action: review validated prototype and decide whether to harden or replace it)
+- Summary: streamed nested-snapshot prototype now hooks a real child `snap?` into fenced Lean blocks and replaces the prior ad hoc prefix cache in `VersoBlueprint.Lean`.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/inline-command-codeblock-first-try`
+- Branch: `feat/inline-command-codeblock-first-try`
+- Base commit/branch:
+  - merge-base with `bp`: `054b0c02` (`3` behind / `4` ahead, including dashboard-only checkpoint)
+- Key commit:
+  - `ce6ae3a9` docs(dashboard): record nested snapshot prototype validation
+- Validation status:
+  - `lake exe cache get`
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron` (warnings only; no errors)
+  - note: prototype code changes are still uncommitted in the worktree for review
+- Preview link:
+  - `http://127.0.0.1:8141`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/inline-command-codeblock-first-try`
+  - `git status --short`
+  - inspect `src/verso/Verso/Doc/Elab/Incremental.lean`, `src/verso/Verso/Doc/Concrete.lean`, and `src/verso-blueprint/VersoBlueprint/Lean.lean`
 
 ### `feat/lsp-folding-chain`
 
