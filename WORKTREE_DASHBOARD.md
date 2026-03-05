@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-05 (`feat/tex-label-trim-20260305` merged into `bp` and cleaned up)
+Last updated: 2026-03-05 (`feat/hover-links-biblio-20260305` merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -21,34 +21,6 @@ Last updated: 2026-03-05 (`feat/tex-label-trim-20260305` merged into `bp` and cl
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/hover-links-biblio-20260305`
-
-- Status: `validated` (owner action: review hover behavior in preview and decide whether to extend to additional link families)
-- Summary: inline hover support added for `{uses ...}` theorem/lemma/definition links and `{citet/citep/citehere ...}` bibliography links via shared tooltip wrappers.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/hover-links-biblio-20260305`
-- Branch: `feat/hover-links-biblio-20260305`
-- Base commit/branch:
-  - branched from `bp` at `087f026d` (2026-03-05)
-- Key commit:
-  - `087f026d` fix(html): move script raw handling to blueprint use sites
-  - worktree currently has uncommitted changes in:
-    - `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
-    - `src/verso-blueprint/VersoBlueprint/Cite.lean`
-    - `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
-    - `src/tests/Tests/BlueprintLinkHover.lean`
-    - `src/tests/Tests.lean`
-- Validation status:
-  - `lake exe cache get`
-  - `lake build Tests`
-  - `lake exe noperthedron`
-  - `rg -n "bp_inline_hover_wrap|Bibliography:|Blueprint label" _out/html-multi/The-Global-Theorem/index.html`
-  - preview server running: `http://127.0.0.1:8125/` (process `http-serv` pid `631386`)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/hover-links-biblio-20260305`
-  - `git status --short`
-  - `lake exe noperthedron`
-  - `curl -I http://127.0.0.1:8125/`
 
 ### `feat/lsp-folding-chain`
 
@@ -86,6 +58,17 @@ Last updated: 2026-03-05 (`feat/tex-label-trim-20260305` merged into `bp` and cl
 
 ## Recently Completed
 
+- Merged `feat/hover-links-biblio-20260305` into `bp` (`8bb0335b -> 9a17b334`, fast-forward).
+- Feature branch key commits:
+  - `1300da42` feat(hover): unify inline preview data for uses and citations
+  - `9a17b334` fix(uses): adapt hover labels to InProgressKind
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Stopped preview server process `665655` (`http://127.0.0.1:8126/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/hover-links-biblio-20260305`.
+- Deleted branch: `feat/hover-links-biblio-20260305`.
 - Merged `feat/tex-label-trim-20260305` into `bp` (`07861069 -> e6ce7c47`, fast-forward).
 - Feature branch key commits:
   - `5e5a5c0b` feat(blueprint): trim TeX-style label prefixes for Lean-facing names
