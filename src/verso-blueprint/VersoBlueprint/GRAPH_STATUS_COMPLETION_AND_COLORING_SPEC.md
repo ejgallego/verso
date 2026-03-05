@@ -36,6 +36,22 @@ Completion blocking policy is centralized in `Informal.Data.ProvedStatus`:
 
 This policy applies uniformly to both local literate declarations and external declaration snapshots (after conservative merge with environment state).
 
+### 2.3 Source precision contract (`.literate` vs `.external`)
+
+- Inline/literate code (`.literate`) has higher precision:
+  - declaration-level `ProvedStatus`,
+  - optional statement/proof-side location split,
+  - optional `refs` counts for discovered `sorry` occurrences.
+- External declaration snapshots (`.external`) are intentionally coarser:
+  - primary signal is declaration completeness (`proved` vs incomplete/missing),
+  - statement/proof-side classification may be available,
+  - exact inline command references are generally unavailable, and `refs` counts are usually unknown.
+
+Design guidance:
+
+- Completion decisions must be driven by `blocksStatementCompletion` / `blocksProofCompletion`, not raw "is incomplete" checks.
+- UI copy should avoid implying inline-level precision for external references.
+
 ## 3. Graph-Level Predicates
 
 `Graph.lean` derives:
@@ -96,6 +112,16 @@ Single overlay precedence (top to bottom):
 Informal block heading status uses the same statement-track completion policy via `ProvedStatus.anyBlocksStatementCompletion`.
 
 Proof blocks now use an explicit `.proof` tag in `BlockData.kind` and carry no code metadata by type design, so Lean code summary parts are only produced for statement blocks.
+
+### 6.1 Known mismatch (current behavior)
+
+- Inline heading badges use statement-track blocking policy (`anyBlocksStatementCompletion`).
+- External heading badges currently use aggregate "any incomplete external declaration" logic.
+- Consequence: theorem-like nodes with proof-only gaps can show:
+  - inline path: "no sorries that block completion" (statement-complete),
+  - external path: warning/incomplete badge.
+
+This is tracked as status-semantics debt and should be unified behind one shared status API.
 
 ## 7. Validation and Test Coverage
 
