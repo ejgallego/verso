@@ -1366,17 +1366,19 @@ window.onload = () => {
             }
         });
     }
-    /* Render docstrings */
-    if ('undefined' !== typeof marked) {
-        for (const d of document.querySelectorAll(\"code.docstring, pre.docstring\")) {
-            const str = d.innerText;
-            const html = marked.parse(str);
-            const rendered = document.createElement(\"div\");
-            rendered.classList.add(\"docstring\");
-            rendered.innerHTML = html;
-            d.parentNode.replaceChild(rendered, d);
+    function renderDocstrings(root) {
+        if ('undefined' !== typeof marked) {
+            for (const d of root.querySelectorAll(\"code.docstring, pre.docstring\")) {
+                const str = d.innerText;
+                const html = marked.parse(str);
+                const rendered = document.createElement(\"div\");
+                rendered.classList.add(\"docstring\");
+                rendered.innerHTML = html;
+                d.parentNode.replaceChild(rendered, d);
+            }
         }
     }
+    renderDocstrings(document);
     // Add hovers
     let docsJson = \"-verso-docs.json\";
     fetch(docsJson).then((resp) => resp.json()).then((versoDocData) => {
@@ -1458,23 +1460,13 @@ window.onload = () => {
                 info.style.display = \"block\";
                 info.innerHTML = data;
                 content.appendChild(info);
-                /* Render docstrings - TODO server-side */
-                if ('undefined' !== typeof marked) {
-                    for (const d of content.querySelectorAll(\"code.docstring, pre.docstring\")) {
-                        const str = d.innerText;
-                        const html = marked.parse(str);
-                        const rendered = document.createElement(\"div\");
-                        rendered.classList.add(\"docstring\");
-                        rendered.innerHTML = html;
-                        d.parentNode.replaceChild(rendered, d);
-                    }
-                }
               } else {
                 content.innerHTML = \"Failed to load doc ID: \" + hoverId;
               }
             } else if (hoverInfo) { // The inline info, still used for compiler messages
               content.appendChild(hoverInfo.cloneNode(true));
             }
+            renderDocstrings(content);
             const parent = tgt.parentElement;
             const extraLinks = parent ? parent.dataset['versoLinks'] : null;
             if (extraLinks) {

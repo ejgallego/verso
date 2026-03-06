@@ -19,6 +19,12 @@ namespace Verso.Tests.DocGenNameRender
       match natAdd? with
       | some html => html.asString.length > 0
       | none => false
-    pure (natAddHasPayload && prod?.isSome && missing?.isNone)
+    let natAddHasLocalHover :=
+      match natAdd? with
+      | some html =>
+        let out := html.asString
+        out.contains "class=\"hover-info\"" && !out.contains "data-verso-hover="
+      | none => false
+    pure (natAddHasPayload && natAddHasLocalHover && prod?.isSome && missing?.isNone)
 
 end Verso.Tests.DocGenNameRender

@@ -1,6 +1,6 @@
 # Preview Hover Design Notes
 
-Last updated: 2026-03-05 (`feat/preview-modes-placement-20260305`)
+Last updated: 2026-03-06 (`feat/external-code-hover-locality-20260306`)
 
 ## Scope
 
@@ -83,3 +83,23 @@ Behavior intentionally preserved:
 - Non-pinned close controls are hidden by contract in both JS and CSS.
 
 Rationale: this keeps one code path for future configurability and avoids per-command behavior drift.
+
+### 6. Hover metadata has two storage paths with different ownership boundaries
+
+- Editor/LSP hovers use `Verso.Hover.addCustomHover` in `src/verso/Verso/Hover.lean`.
+- That API stores `CustomHover` values in Lean's info tree via `Info.ofCustomInfo`.
+- `src/verso/Verso/Doc/Lsp.lean` resolves those nodes at request time for `textDocument/hover`.
+- Rendered HTML code hovers use `Verso.Code.HighlightHtmlM` in `src/verso/Verso/Code/Highlighted.lean`.
+- HTML hover payloads are stored in `Verso.Code.Hover.Dedup Html`, referenced from token DOM by `data-verso-hover="<id>"`, and emitted page-wide to `-verso-docs.json`.
+- The client hover JS fetches that JSON table and resolves ids to popup HTML on demand.
+
+Rationale: editor hovers are syntax/info-tree scoped, while rendered-page hovers are document-output scoped and optimized for HTML size by deduplicating repeated payloads.
+
+### 7. Isolated HTML renderers must not emit raw `data-verso-hover` ids without a merge step
+
+- A raw `data-verso-hover="<id>"` token is only valid relative to the page-level `Hover.State Html` that produced the corresponding `-verso-docs.json`.
+- Direct or nested renderers that run `HighlightHtmlM` in isolation have their own local hover table, so their ids are not meaningful unless those tables are merged into the surrounding page-level state.
+- `VersoBlueprint.DocGenNameRender` now handles this by rewriting local hover ids into inline `.hover-info` payloads before returning external declaration HTML.
+- Shared hover JS now treats inline `.hover-info` payloads and fetched docs-json payloads uniformly, including docstring markdown rendering.
+
+Rationale: the real design boundary is not "hover vs non-hover", but "shared page-local hover table" vs "self-contained snippet". Upstream, this should likely become an explicit helper or rendering mode rather than a blueprint-local rewrite.

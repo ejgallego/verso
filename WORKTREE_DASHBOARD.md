@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (merged and cleaned up `feat/external-code-polish-20260306`)
+Last updated: 2026-03-06 (ready for review: `feat/external-code-hover-locality-20260306`)
 
 ## Active Worktrees
 
@@ -21,6 +21,31 @@ Last updated: 2026-03-06 (merged and cleaned up `feat/external-code-polish-20260
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/external-code-hover-locality-20260306`
+
+- Status: `ready-for-review` (owner action: review the squashed local-hover prototype and decide whether to upstream the locality helper)
+- Summary: direct external declaration rendering now rewrites Verso hover ids into inline `.hover-info` payloads, shared hover JS renders docstring markdown for inline hover content too, and the current hover metadata model is documented in `doc/PreviewHoverDesignNotes.md`.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-hover-locality-20260306`
+- Branch: `feat/external-code-hover-locality-20260306`
+- Base commit/branch:
+  - merge-base with `bp`: `afce9b2e` (`0` behind / `1` ahead after squash)
+- Key commit:
+  - squashed review commit for external hover locality prototype
+- Validation status:
+  - `lake exe cache get`
+  - `lake build Verso.Code.Highlighted VersoBlueprint.DocGenNameRender Tests.DocGenNameRender`
+  - `lake env lean src/tests/Tests/DocGenNameRender.lean`
+  - `lake build Tests`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/external-code-hover-locality-20260306`
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
+- Preview link:
+  - `http://127.0.0.1:8151/external-code-hover-locality-20260306/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-hover-locality-20260306`
+  - `git show --stat --oneline -1`
+  - inspect `src/verso-blueprint/VersoBlueprint/DocGenNameRender.lean`, `src/verso/Verso/Code/Highlighted.lean`, and `doc/PreviewHoverDesignNotes.md`
+  - shared preview server session: `92321`
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
