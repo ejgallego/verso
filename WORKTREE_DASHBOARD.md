@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (`feat/external-code-polish-20260306` rebased on `bp` and revalidated)
+Last updated: 2026-03-06 (`feat/external-code-polish-20260306` gained temporary native-renderer comparison commit)
 
 ## Active Worktrees
 
@@ -73,7 +73,7 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` rebased on `bp` a
 ### `feat/external-code-polish-20260306`
 
 - Status: `ready-for-review` (owner action: review naming/layout polish and compare against the superseded renderer-switch pass if needed)
-- Summary: rebased review branch carrying the full external-code refresh/render-switch/polish series, plus a small regression-harness fix for worktree-local output detection.
+- Summary: rebased review branch carrying the full external-code refresh/render-switch/polish series, plus a temporary native-renderer comparison commit and a small regression-harness fix for worktree-local output detection.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
 - Branch: `feat/external-code-polish-20260306`
 - Base commit/branch:
@@ -85,6 +85,7 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` rebased on `bp` a
   - `42fbe95e` style(external-code): simplify rendered wrapper surface
   - `30e1a245` feat(external-code): add verso and docgen renderer switch
   - `38dd055d` refactor(external-code): simplify copy and rendered metadata
+  - `3473388f` feat(external-code): expose native renderer shells for comparison
   - `2409ef6a` test(noperthedron): detect local worktree output path
 - Validation status:
   - `lake exe cache get`
