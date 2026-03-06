@@ -122,6 +122,32 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` gained temporary 
   - server session: `52605`
   - key files: `src/verso/Verso/Doc/Elab/Monad.lean`, `src/verso/Verso/Doc/Concrete.lean`, `src/verso-manual/VersoManual/InlineLean.lean`, `src/verso-blueprint/VersoBlueprint/Lean.lean`
 
+### `feat/math-term-linter-20260305`
+
+- Status: `ready-for-review` (owner action: review the squashed branch; merge decision still pending)
+- Summary: rebased and squashed review branch for default-on blueprint math linting with immediate KaTeX diagnostics, source-span anchoring, normalized failure typing, tightened warning text, and module-path-based script discovery that works both in the main tree and in `.lake/packages/...`.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/math-term-linter-20260305`
+- Branch: `feat/math-term-linter-20260305`
+- Base commit/branch:
+  - rebased on `bp` at `48ae71ea` (`0` behind / `2` ahead)
+- Key commit:
+  - `eeac70dc` feat(blueprint): add KaTeX math linting
+  - `3d6bd1ee` fix(blueprint): locate katex lint script via module path
+- Validation status:
+  - `lake exe cache get`
+  - `lake env lean src/tests/Tests/BlueprintMathLint.lean`
+  - `lake build VersoBlueprint.MathLint VersoBlueprint.Math`
+  - `lake build Tests`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/math-term-linter-20260305` (passed; warnings only)
+- Preview link:
+  - `http://127.0.0.1:8149/math-term-linter-20260305/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/math-term-linter-20260305`
+  - `git show --stat HEAD~1 HEAD`
+  - `set_option verso.blueprint.math.lint false` to disable the default-on linter in a document or test module
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/math-term-linter-20260305`
+  - server session: `53583`
+
 ### `feat/inline-command-codeblock-first-try`
 
 - Status: `active` (owner action: review validated prototype and decide whether to harden or replace it)
