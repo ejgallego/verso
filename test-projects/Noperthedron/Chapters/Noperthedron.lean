@@ -12,6 +12,7 @@ import VersoBlueprint.Commands.Graph
 import VersoBlueprint.Commands.Summary
 import VersoBlueprint.Commands.Bibliography
 import VersoBlueprint.Widget
+import VersoBlueprint.MathLint
 
 -- FIXME: This should happen in a special verso code block
 import Noperthedron.Basic
@@ -36,6 +37,7 @@ set_option maxHeartbeats 500000
 set_option pp.rawOnError true
 
 set_option verso.blueprint.foldProofs true
+set_option verso.blueprint.math.lint true
 
 -- set_option trace.Elab.info true
 
