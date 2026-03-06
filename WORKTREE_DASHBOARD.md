@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (removed obsolete external-code comparison worktrees)
+Last updated: 2026-03-06 (merged and cleaned up `feat/external-code-polish-20260306`)
 
 ## Active Worktrees
 
@@ -21,27 +21,6 @@ Last updated: 2026-03-06 (removed obsolete external-code comparison worktrees)
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/external-code-polish-20260306`
-
-- Status: `ready-for-review` (owner action: review the squashed canonical-verso external-code pass)
-- Summary: single-commit review branch that keeps the simplified external-code panel shell, removes the docgen selector/comparison path, and uses the Verso-based renderer as the only external renderer.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
-- Branch: `feat/external-code-polish-20260306`
-- Base commit/branch:
-  - rebased on latest `bp` after the KaTeX math-lint merge and dashboard follow-up commits
-- Key commit:
-  - current branch head: `refactor(external-code): simplify panels around canonical verso render`
-- Validation status:
-  - `lake exe noperthedron` (warnings only; no errors)
-  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
-- Preview link:
-  - `http://127.0.0.1:8149`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
-  - `git log --oneline bp..HEAD`
-  - `lake exe noperthedron`
-  - server session: `1316`
 
 ### `feat/verso-block-incremental-snapshots-20260305`
 
@@ -123,6 +102,19 @@ Last updated: 2026-03-06 (removed obsolete external-code comparison worktrees)
   - commit/stash local chapter changes before rebasing on `bp`
 
 ## Recently Completed
+
+- Merged `feat/external-code-polish-20260306` into `bp` (`da39f0ca -> cd21e2a8`, fast-forward).
+- Feature branch key commit:
+  - `cd21e2a8` refactor(external-code): simplify canonical external code panels
+- Validation on the squashed rebased feature branch:
+  - `lake exe noperthedron` (warnings only; no errors)
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron` (warnings only; no errors)
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
+- No preview listener remained on `http://127.0.0.1:8149/` at cleanup time.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`.
+- Deleted branch: `feat/external-code-polish-20260306`.
 
 - Removed obsolete external-code precursor worktrees after the canonical-verso review branch became the only relevant one.
 - No preview listeners were running on the old ports `8147` or `8148` at cleanup time.
