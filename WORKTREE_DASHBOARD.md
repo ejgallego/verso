@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (`feat/external-code-polish-20260306` gained temporary native-renderer comparison commit)
+Last updated: 2026-03-06 (`feat/external-code-polish-20260306` rebased as a single canonical-verso review commit)
 
 ## Active Worktrees
 
@@ -72,30 +72,22 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` gained temporary 
 
 ### `feat/external-code-polish-20260306`
 
-- Status: `ready-for-review` (owner action: review naming/layout polish and compare against the superseded renderer-switch pass if needed)
-- Summary: rebased review branch carrying the full external-code refresh/render-switch/polish series, plus a temporary native-renderer comparison commit and a small regression-harness fix for worktree-local output detection.
+- Status: `ready-for-review` (owner action: review the squashed canonical-verso external-code pass)
+- Summary: single-commit review branch that keeps the simplified external-code panel shell, removes the docgen selector/comparison path, and uses the Verso-based renderer as the only external renderer.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
 - Branch: `feat/external-code-polish-20260306`
 - Base commit/branch:
-  - rebased on `bp` at `2f898776`
+  - rebased on latest `bp` after the KaTeX math-lint merge and dashboard follow-up commits
 - Key commit:
-  - `a0cac361` style(external-code): improve panel readability and mobile spacing
-  - `73b60675` feat(external-code): add native headers and summary badges
-  - `673dab4c` refactor(external-code): flatten rendered declaration wrapper
-  - `42fbe95e` style(external-code): simplify rendered wrapper surface
-  - `30e1a245` feat(external-code): add verso and docgen renderer switch
-  - `38dd055d` refactor(external-code): simplify copy and rendered metadata
-  - `3473388f` feat(external-code): expose native renderer shells for comparison
-  - `2409ef6a` test(noperthedron): detect local worktree output path
+  - current branch head: `refactor(external-code): simplify panels around canonical verso render`
 - Validation status:
-  - `lake exe cache get`
   - `lake exe noperthedron` (warnings only; no errors)
   - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
 - Preview link:
   - `http://127.0.0.1:8149`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`
-  - `git log --oneline --reverse bp..HEAD`
+  - `git log --oneline bp..HEAD`
   - `lake exe noperthedron`
   - server session: `1316`
 
