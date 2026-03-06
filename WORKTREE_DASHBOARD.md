@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (merged and cleaned up `feat/external-code-hover-locality-20260306`)
+Last updated: 2026-03-06 (cleaned up `feat/verso-block-incremental-snapshots-20260305` without merge)
 
 ## Active Worktrees
 
@@ -41,29 +41,6 @@ Last updated: 2026-03-06 (merged and cleaned up `feat/external-code-hover-locali
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/graph.css`
-
-### `feat/verso-block-incremental-snapshots-20260305`
-
-- Status: `validated` (owner action: review the prototype and decide whether to add a direct incremental regression test before committing the feature branch)
-- Summary: prototype now threads block-local snapshot state through Verso block elaboration for embedded Lean code blocks in both manual and blueprint paths.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`
-- Branch: `feat/verso-block-incremental-snapshots-20260305`
-- Base commit/branch:
-  - merge-base with `bp`: `af911f1e` (`2` behind / `0` ahead)
-- Key commit:
-  - none yet (prototype changes currently uncommitted in the worktree)
-- Validation status:
-  - `lake exe cache get`
-  - `lake exe noperthedron` (passed; warnings only)
-  - `lake build` reaches the touched Verso/manual/blueprint targets; full build still hits an unrelated `clang` crash in `test-projects/website-literate`
-- Preview link:
-  - `http://127.0.0.1:8146`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`
-  - `lake build Verso.Doc.Concrete VersoManual.InlineLean VersoBlueprint.Lean`
-  - `lake exe noperthedron`
-  - server session: `52605`
-  - key files: `src/verso/Verso/Doc/Elab/Monad.lean`, `src/verso/Verso/Doc/Concrete.lean`, `src/verso-manual/VersoManual/InlineLean.lean`, `src/verso-blueprint/VersoBlueprint/Lean.lean`
 
 ### `feat/inline-command-codeblock-first-try`
 
@@ -123,6 +100,15 @@ Last updated: 2026-03-06 (merged and cleaned up `feat/external-code-hover-locali
 
 ## Recently Completed
 
+- Closed `feat/verso-block-incremental-snapshots-20260305` without merge (experiment discarded; uncommitted prototype changes were removed with the worktree).
+- Validation before discard:
+  - `lake exe cache get`
+  - `lake build Verso.Doc.Concrete VersoManual.InlineLean VersoBlueprint.Lean`
+  - `lake exe noperthedron` (passed; warnings only)
+  - note: full `lake build` in that worktree still hit the unrelated `test-projects/website-literate` clang crash
+- Confirmed preview server `http://127.0.0.1:8146/` was not running at cleanup time.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`.
+- Deleted branch: `feat/verso-block-incremental-snapshots-20260305`.
 - Merged `feat/external-code-hover-locality-20260306` into `bp` (`afce9b2e -> 8c2082f8`, fast-forward).
 - Feature branch key commit:
   - `8c2082f8` fix(external-code): restore local hover payloads
