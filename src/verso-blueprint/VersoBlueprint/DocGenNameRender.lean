@@ -47,12 +47,30 @@ private def runHighlightedHtml
     definitionIds := {}
     options := {}
   }
-  stripVersoHoverAttrs <| ((html.run ctx).run {}).1
+  let (html, hoverState) := ((html.run ctx).run {})
+  inlineVersoHoverAttrs html hoverState.dedup
 where
-  stripVersoHoverAttrs (html : DocGenHtml) : DocGenHtml :=
+  /-
+  Direct external declaration rendering is isolated from the page-level Verso hover table,
+  so deduplicated hover ids would otherwise point at unrelated page content. Inline the
+  resolved hover payloads locally to keep the rendered snippet self-contained.
+  -/
+  inlineVersoHoverAttrs
+      (html : DocGenHtml) (hoverDedup : Verso.Code.Hover.Dedup DocGenHtml) : DocGenHtml :=
     Id.run <|
-      html.visitM (tag := fun name attrs contents =>
-        pure <| some <| .tag name (attrs.filter fun (attr, _) => attr != "data-verso-hover") contents)
+      html.visitM (tag := fun name attrs contents => do
+        let mut inlineHover? : Option DocGenHtml := none
+        let mut attrs' : Array (String × String) := #[]
+        for (attr, value) in attrs do
+          if attr == "data-verso-hover" then
+            inlineHover? := value.toNat? >>= hoverDedup.get?
+          else
+            attrs' := attrs'.push (attr, value)
+        let contents :=
+          match inlineHover? with
+          | some hoverHtml => contents ++ .tag "span" #[("class", "hover-info")] hoverHtml
+          | none => contents
+        pure <| some <| .tag name attrs' contents)
 
 private def highlightedToHtml (h : SubVerso.Highlighting.Highlighted) : DocGenHtml :=
   runHighlightedHtml (h.toHtml (g := Verso.Genre.Manual))
