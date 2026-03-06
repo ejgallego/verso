@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (cleaned up `feat/inline-command-codeblock-first-try` without merge)
+Last updated: 2026-03-06 (closed `feat/preview-hover-review-20260305` as superseded and cleaned up)
 
 ## Active Worktrees
 
@@ -78,6 +78,21 @@ Last updated: 2026-03-06 (cleaned up `feat/inline-command-codeblock-first-try` w
 
 ## Recently Completed
 
+- Closed `feat/preview-hover-review-20260305` without direct merge; its functional work was superseded by the consolidated preview-hover merge into `bp`.
+- Superseding `bp` commits:
+  - `aefa9e30` refactor(preview-hover): dedupe shared preview helpers and facet API
+  - `f7b4e353` test(preview): align graph wiring assertions with block-scoped DOM
+- Original review worktree validation:
+  - `lake exe cache get`
+  - `lake build VersoBlueprint.PreviewCache VersoBlueprint.Lib.HoverRender VersoBlueprint.Commands.Common VersoBlueprint.Informal.Uses VersoBlueprint.Commands.Summary VersoBlueprint.Commands.Graph`
+  - `lake build Tests`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake exe noperthedron` (warnings only; no errors)
+- No active preview server remained for that worktree at cleanup time.
+- Removed stale server logs from `/home/egallego/lean/verso-blueprint/.worktrees/preview-hover-review-20260305`.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/preview-hover-review-20260305`.
+- Deleted branch: `feat/preview-hover-review-20260305`.
 - Closed `feat/inline-command-codeblock-first-try` without merge (experiment discarded at user request).
 - Validation before discard:
   - `lake exe cache get`
