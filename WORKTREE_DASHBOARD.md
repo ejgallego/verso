@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (`feat/external-code-polish-20260306` rebased as a single canonical-verso review commit)
+Last updated: 2026-03-06 (removed obsolete external-code comparison worktrees)
 
 ## Active Worktrees
 
@@ -21,54 +21,6 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` rebased as a sing
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/external-code-visual-refresh-20260305`
-
-- Status: `ready-for-review` (owner action: review each incremental external-code refresh commit)
-- Summary: implementation worktree for the external-code visual redesign, staged as three reviewable commits.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-visual-refresh-20260305`
-- Branch: `feat/external-code-visual-refresh-20260305`
-- Base commit/branch:
-  - merge-base with `bp`: `0c18436e` (`0` behind / `0` ahead)
-- Key commit:
-  - `9ef4a982` style(external-code): improve panel readability and mobile spacing
-  - `1d3f306d` feat(external-code): add native headers and summary badges
-  - `3bb49a05` refactor(external-code): flatten rendered declaration wrapper
-- Validation status:
-  - `lake exe cache get`
-  - `lake exe noperthedron` (warnings only; no errors)
-  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
-- Preview link:
-  - `http://127.0.0.1:8147`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-visual-refresh-20260305`
-  - `git log --oneline --decorate -3`
-  - `lake exe noperthedron`
-  - server session: `68315`
-
-### `feat/external-code-renderer-switch-20260305`
-
-- Status: `superseded` (owner action: keep as comparison baseline during polish review, then clean up)
-- Summary: intermediate follow-up worktree that reduced visual layering and added the renderer switch; now superseded by the polish pass but kept temporarily for side-by-side review.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-renderer-switch-20260305`
-- Branch: `feat/external-code-renderer-switch-20260305`
-- Base commit/branch:
-  - branched from `feat/external-code-visual-refresh-20260305` at `3bb49a05`
-- Key commit:
-  - `4e297b7e` style(external-code): simplify rendered wrapper surface
-  - `bb04f3d3` feat(external-code): add verso and docgen renderer switch
-- Validation status:
-  - `lake exe cache get`
-  - `lake exe noperthedron` (warnings only; no errors)
-  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
-- Preview link:
-  - `http://127.0.0.1:8148`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/external-code-renderer-switch-20260305`
-  - `git log --oneline --decorate -2`
-  - `lake exe noperthedron`
-  - server session: `95651`
-  - safe cleanup target once `feat/external-code-polish-20260306` is accepted
 
 ### `feat/external-code-polish-20260306`
 
@@ -171,6 +123,15 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` rebased as a sing
   - commit/stash local chapter changes before rebasing on `bp`
 
 ## Recently Completed
+
+- Removed obsolete external-code precursor worktrees after the canonical-verso review branch became the only relevant one.
+- No preview listeners were running on the old ports `8147` or `8148` at cleanup time.
+- Removed worktrees:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/external-code-visual-refresh-20260305`
+  - `/home/egallego/lean/verso-blueprint/.worktrees/external-code-renderer-switch-20260305`
+- Deleted branches:
+  - `feat/external-code-visual-refresh-20260305`
+  - `feat/external-code-renderer-switch-20260305`
 
 - Merged `feat/math-term-linter-20260305` into `bp` (`48ae71ea -> b8aeedbe`, fast-forward).
 - Feature branch key commit:
