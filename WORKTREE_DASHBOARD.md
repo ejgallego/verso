@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (closed `feat/preview-hover-review-20260305` as superseded and cleaned up)
+Last updated: 2026-03-06 (validated `feat/graph-review-20260306` after group-view semantics refactor)
 
 ## Active Worktrees
 
@@ -24,23 +24,25 @@ Last updated: 2026-03-06 (closed `feat/preview-hover-review-20260305` as superse
 
 ### `feat/graph-review-20260306`
 
-- Status: `active` (owner action: review graph implementation findings and decide which refactors to prioritize)
-- Summary: analysis-only review worktree for blueprint graph architecture, semantics, and group-view presentation.
+- Status: `validated` (owner action: review aggregate-node shape options before the next visual pass)
+- Summary: group-view refactor now separates stable node ids from display labels, preserves aggregate statement/proof semantics, and swaps in a dedicated group legend.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
 - Branch: `feat/graph-review-20260306`
 - Base commit/branch:
   - merge-base with `bp`: `ef43594e` (`0` behind / `0` ahead)
 - Key commit:
-  - none yet (analysis-only review branch)
+  - `29f7b3f0` refactor(graph): stabilize group view semantics
 - Validation status:
   - `lake exe cache get`
+  - `lake build VersoBlueprint.Commands.Graph Tests.BlueprintGraph`
+  - `lake build Tests`
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/graph-review-20260306` (passed; existing Noperthedron warnings only)
 - Preview link:
   - `http://127.0.0.1:8150/graph-review-20260306/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/graph.css`
+  - inspect `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/tests/Tests/BlueprintGraph.lean`
 
 ### `feat/lsp-folding-chain`
 
