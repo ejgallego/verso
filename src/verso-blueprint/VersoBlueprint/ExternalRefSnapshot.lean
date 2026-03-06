@@ -137,10 +137,12 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
     let provenance := mkProvenance workspaceRoot moduleName? sourcePath?
     let selectionRange? := ranges?.map (·.selectionRange)
     let sourceHref? := sourceLinkHref? opts workspaceRoot moduleName? sourcePath? selectionRange?
-    let render : DocGenRender ←
+    let render : Data.ExternalDeclRender ←
       match moduleName? with
-      | none => pure (.error (.moduleUnavailable canonical))
-      | some moduleName => (renderDeclHtmlDirectFromInfoE moduleName canonical cinfo).run'
+      | none =>
+        pure <| .error (.moduleUnavailable canonical)
+      | some moduleName =>
+        (renderDeclHtmlDirectFromInfoE moduleName canonical cinfo).run'
     pure {
       ref with
       provenance

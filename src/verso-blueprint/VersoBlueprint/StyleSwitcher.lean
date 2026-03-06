@@ -19,6 +19,10 @@ def css : String := r##"
   right: 1rem;
   bottom: 1rem;
   z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem 0.6rem;
+  flex-wrap: wrap;
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 0.45rem;
@@ -27,8 +31,13 @@ def css : String := r##"
   font-size: 0.82rem;
 }
 
+#bp-style-switcher .bp-style-switcher-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 #bp-style-switcher label {
-  margin-right: 0.35rem;
   font-weight: 600;
 }
 
@@ -155,7 +164,7 @@ html[data-bp-style="bold"] .bp_wrapper div.proof_content {
 "##
 
 private def jsTemplate : String := r##"(function () {
-  const storageKey = "verso-blueprint-style";
+  const styleStorageKey = "verso-blueprint-style";
   const switcherId = "bp-style-switcher";
   const root = document.documentElement;
   const targetClass = "bp_decl_target";
@@ -163,18 +172,18 @@ private def jsTemplate : String := r##"(function () {
   const enableProofHider = __BP_ENABLE_PROOF_HIDER__;
   const enableHashReveal = __BP_ENABLE_HASH_REVEAL__;
 
-  function normalize(style) {
+  function normalizeStyle(style) {
     if (style === "blueprint" || style === "modern" || style === "bold") return style;
     return "blueprint";
   }
 
   function applyStyle(style) {
-    root.setAttribute("data-bp-style", normalize(style));
+    root.setAttribute("data-bp-style", normalizeStyle(style));
   }
 
   function getSavedStyle() {
     try {
-      return normalize(localStorage.getItem(storageKey));
+      return normalizeStyle(localStorage.getItem(styleStorageKey));
     } catch (_err) {
       return "blueprint";
     }
@@ -182,7 +191,7 @@ private def jsTemplate : String := r##"(function () {
 
   function saveStyle(style) {
     try {
-      localStorage.setItem(storageKey, normalize(style));
+      localStorage.setItem(styleStorageKey, normalizeStyle(style));
     } catch (_err) {}
   }
 
@@ -193,30 +202,40 @@ private def jsTemplate : String := r##"(function () {
     const host = document.createElement("div");
     host.id = switcherId;
 
-    const label = document.createElement("label");
-    label.setAttribute("for", "bp-style-select");
-    label.textContent = "Style";
+    function appendControl(labelText, selectId, options) {
+      const control = document.createElement("div");
+      control.className = "bp-style-switcher-control";
 
-    const select = document.createElement("select");
-    select.id = "bp-style-select";
-    select.innerHTML = [
+      const label = document.createElement("label");
+      label.setAttribute("for", selectId);
+      label.textContent = labelText;
+
+      const select = document.createElement("select");
+      select.id = selectId;
+      select.innerHTML = options.join("");
+
+      control.appendChild(label);
+      control.appendChild(select);
+      host.appendChild(control);
+      return select;
+    }
+
+    const styleSelect = appendControl("Style", "bp-style-select", [
       '<option value="blueprint">blueprint</option>',
       '<option value="modern">modern</option>',
       '<option value="bold">bold</option>'
-    ].join("");
+    ]);
 
-    const current = getSavedStyle();
-    select.value = current;
-    applyStyle(current);
+    const currentStyle = getSavedStyle();
+    styleSelect.value = currentStyle;
+    applyStyle(currentStyle);
 
-    select.addEventListener("change", function () {
-      const value = normalize(select.value);
+    styleSelect.addEventListener("change", function () {
+      const value = normalizeStyle(styleSelect.value);
       applyStyle(value);
       saveStyle(value);
     });
 
-    host.appendChild(label);
-    host.appendChild(select);
     document.body.appendChild(host);
   }
 
@@ -418,6 +437,7 @@ private def jsTemplate : String := r##"(function () {
   }
 
   applyStyle(getSavedStyle());
+  applyRenderer(getSavedRenderer());
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {

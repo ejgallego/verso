@@ -164,11 +164,11 @@ def externalDeclHasGap (decl : Data.ExternalRef) : Bool :=
 
 def externalCodeEntryTitle (found total missing withGaps : Nat) : String :=
   if missing > 0 then
-    s!"External Lean references ({found}/{total} present)"
+    s!"Lean declarations ({found}/{total} present)"
   else if withGaps > 0 then
-    s!"External Lean references (all present: {found}/{total}; incomplete: {withGaps})"
+    s!"Lean declarations (all present: {found}/{total}; incomplete: {withGaps})"
   else
-    s!"External Lean references (all present: {found}/{total})"
+    s!"Lean declarations (all present: {found}/{total})"
 
 def mkCodePanel
     (header : CodePanelHeader) (summaryTitle : String)
@@ -185,7 +185,6 @@ def mkCodePanel
             else
               .empty}}
           {{progressBar}}
-          <span class="bp_code_expand_hint"></span>
         </summary>
         {{body}}
       </details>
