@@ -382,6 +382,20 @@ def freshTag [Monad m] [MonadStateOf TraverseState m] (hint : String) (id : Inte
 where
   tagStr (strPart : String) (numPart : Option Nat) := s!"{strPart}{numPart.map (s!"-{·}") |>.getD ""}"
 
+private def externalTagCounterState := `Verso.Genre.Manual.externalTagCounters
+
+@[grind =]
+private theorem externalTagCounterState.isPublic : NameMap.isPublic externalTagCounterState := by
+  grind [externalTagCounterState]
+
+private def externalTagCandidate (base : Slug) (n : Nat) : Slug :=
+  if n = 0 then
+    base
+  else if n = 1 then
+    (base.toString ++ "-next").sluggify
+  else
+    (base.toString ++ s!"-next-{n}").sluggify
+
 local instance [BEq α] [Hashable α] : BEq (HashSet α) where
   beq := private ptrEqThen fun xs ys => xs.size == ys.size && xs.all (ys.contains ·)
 
@@ -987,15 +1001,25 @@ def externalTag [Monad m] [MonadState TraverseState m] (id : InternalId) (path :
   if let some { htmlId := t, .. } := (← get).externalTags[id]? then
     return Tag.external t
   else
-    let mut attempt := name.sluggify
+    let base := name.sluggify
+    let counters : Json := (← get).get? externalTagCounterState |>.bind Except.toOption |>.getD (Json.mkObj [])
+    let mut nextIdx := counters.getObjValAs? Nat base.toString |>.toOption |>.getD 0
+    let mut attempt := externalTagCandidate base nextIdx
     repeat
-      if (← get).tags.contains (Tag.external attempt) then attempt := attempt.toString ++ "-next" |>.sluggify
+      if (← get).tags.contains (Tag.external attempt) then
+        nextIdx := nextIdx + 1
+        attempt := externalTagCandidate base nextIdx
       else break
     let t' := Tag.external attempt
-    modify fun st => {st with
-      tags := st.tags.insert t' id,
-      externalTags := st.externalTags.insert id { path, htmlId := attempt }
-    }
+    let counters := counters.setObjValAs! base.toString (nextIdx + 1)
+    modify fun st =>
+      let st := st.set externalTagCounterState counters (by
+        clear counters
+        grind)
+      {st with
+        tags := st.tags.insert t' id,
+        externalTags := st.externalTags.insert id { path, htmlId := attempt }
+      }
     pure t'
 
 def TraverseState.resolveId (st : TraverseState) (id : InternalId) : Option Link :=

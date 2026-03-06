@@ -97,8 +97,7 @@ instance : ToJson Index where
         ToJson.toJson see
       ]
 
-instance : FromJson Index where
-  fromJson?
+private def indexFromJson? : Lean.Json → Except String Index
     | .arr #[entries, see] => do
       let entries ← entries.getArr?
       let (entries : Array _) ← entries.mapM fun
@@ -107,12 +106,63 @@ instance : FromJson Index where
         | _ => throw "Expected two-element array as index entry"
       let (sees : Array _) ← FromJson.fromJson? see
       pure ⟨entries, sees⟩
+    | json@(.obj _) => do
+      let entriesJson := json.getObjValD "entries"
+      let seeJson := json.getObjValD "see"
+      let entries ← entriesJson.getArr?
+      let (entries : Array _) ← entries.mapM fun
+        | .arr #[e, i] => do
+          return (← FromJson.fromJson? e, ← FromJson.fromJson? i)
+        | _ => throw "Expected two-element array as index entry"
+      let (sees : Array _) ← FromJson.fromJson? seeJson
+      pure ⟨entries, sees⟩
     | _ => throw "Expected two-element array for Index"
+
+instance : FromJson Index where
+  fromJson? := indexFromJson?
 
 def Inline.index : Inline where
   name := `Verso.Genre.Manual.index
 
 def indexState := `Verso.Genre.Manual.index
+
+private def emptyIndexStateJson : Lean.Json :=
+  Lean.Json.mkObj [
+    ("entries", Lean.Json.arr #[]),
+    ("entryKeys", Lean.Json.mkObj []),
+    ("see", Lean.Json.arr #[]),
+    ("seeKeys", Lean.Json.mkObj [])
+  ]
+
+private def parseIndexStateJson (json : Lean.Json) : Except String (Array Lean.Json × Lean.Json × Array Lean.Json × Lean.Json) := do
+  match json with
+  | .arr #[entries, see] =>
+      let entries ← entries.getArr?
+      let see ← see.getArr?
+      let entryKeys := entries.foldl (init := (Lean.Json.mkObj [] : Lean.Json)) fun keys entry =>
+        Lean.Json.setObjVal! keys entry.compress .null
+      let seeKeys := see.foldl (init := (Lean.Json.mkObj [] : Lean.Json)) fun keys entry =>
+        Lean.Json.setObjVal! keys entry.compress .null
+      pure (entries, entryKeys, see, seeKeys)
+  | json@(.obj _) =>
+      let entriesJson := json.getObjValD "entries"
+      let seeJson := json.getObjValD "see"
+      let entries ← entriesJson.getArr?
+      let see ← seeJson.getArr?
+      let entryKeys := json.getObjValD "entryKeys"
+      let seeKeys := json.getObjValD "seeKeys"
+      discard <| entryKeys.getObj?
+      discard <| seeKeys.getObj?
+      pure (entries, entryKeys, see, seeKeys)
+  | _ => throw "Expected object or two-element array for index state"
+
+private def mkIndexStateJson (entries : Array Lean.Json) (entryKeys : Lean.Json) (see : Array Lean.Json) (seeKeys : Lean.Json) : Lean.Json :=
+  Lean.Json.mkObj [
+    ("entries", Lean.Json.arr entries),
+    ("entryKeys", entryKeys),
+    ("see", Lean.Json.arr see),
+    ("seeKeys", seeKeys)
+  ]
 
 @[grind =]
 theorem indexState.isPublic : NameMap.isPublic indexState := by
@@ -126,27 +176,30 @@ public def index (args : Array (Doc.Inline Manual)) (subterm : Option String := 
 public def Index.addEntry [Monad m] [MonadState TraverseState m] [MonadLiftT IO m] [MonadReaderOf TraverseContext m]
     (id : InternalId) (entry : Index.Entry) : m Unit := do
   let ist : Option (Except String Lean.Json) := (← get).get? indexState
-  -- This function works directly with the JSON serialization of the index. Otherwise, there's a
-  -- quadratic overhead from serialization/deserialization with each entry.
+  -- This function works directly with the JSON serialization of the index and keeps a small object
+  -- cache of seen entries so repeated traversal passes remain idempotent without sorted insertion.
   match ist with
   | some (.error err) => logError err
   | some (.ok v) =>
-    match v.getArr? with
+    match parseIndexStateJson v with
     | .error err => logError err
-    | .ok xs =>
-      let #[.arr entries, see] := xs
-        | logError "Expected two elements for index state with first being an array"
-      let entries' := entries.binInsert cmpEntry (.arr #[ToJson.toJson entry, ToJson.toJson id])
-      modify fun i =>
-        i.set indexState (Lean.Json.arr #[.arr entries', see]) (by clear entries'; grind)
-  | none => modify (·.set indexState {entries := #[(entry, id)] : Index} )
-where
-  cmpEntry
-    | .arr #[e1, id1], .arr #[e2, id2] =>
-      if let (.ok (id1 : InternalId), .ok (id2 : InternalId)) := (FromJson.fromJson? id1, FromJson.fromJson? id2) then
-        id1 < id2 || (id1 == id2 && toString e1 < toString e2)
-      else panic! "Malformed index entry JSON for ID"
-    | _, _ => panic! "Malformed index entry JSON"
+    | .ok (entries, entryKeys, see, seeKeys) =>
+      let entryJson := Lean.Json.arr #[ToJson.toJson entry, ToJson.toJson id]
+      match entryKeys.getObj? with
+      | .error err => logError err
+      | .ok keys =>
+        unless keys.contains entryJson.compress do
+          let entryKeys' := Lean.Json.setObjVal! entryKeys entryJson.compress .null
+          modify fun i =>
+            i.set indexState (mkIndexStateJson (entries.push entryJson) entryKeys' see seeKeys) (by
+              clear entries entryKeys see seeKeys entryKeys'
+              grind)
+  | none =>
+      let entryJson := Lean.Json.arr #[ToJson.toJson entry, ToJson.toJson id]
+      let stateJson := mkIndexStateJson #[entryJson] (Lean.Json.setObjVal! (Lean.Json.mkObj []) entryJson.compress .null) #[] (Lean.Json.mkObj [])
+      modify fun i => i.set indexState stateJson (by
+        clear entryJson stateJson
+        grind)
 
 public section
 @[inline_extension index]
@@ -192,11 +245,29 @@ def see.descr : InlineDescr where
       logError err
       return none
     | .ok (see : Index.See) =>
-      let ist : Option (Except String Index) := (← get).get? indexState
+      let ist : Option (Except String Lean.Json) := (← get).get? indexState
       match ist with
       | some (.error err) => logError err; return none
-      | some (.ok v) => modify (·.set indexState {v with see := v.see.binInsert (· < ·) see})
-      | none => modify (·.set indexState {entries := {}, see := #[see] : Index})
+      | some (.ok v) =>
+        match parseIndexStateJson v with
+        | .error err => logError err; return none
+        | .ok (entries, entryKeys, seeEntries, seeKeys) =>
+          let seeJson := ToJson.toJson see
+          match seeKeys.getObj? with
+          | .error err => logError err; return none
+          | .ok keys =>
+            unless keys.contains seeJson.compress do
+              let seeKeys' := Lean.Json.setObjVal! seeKeys seeJson.compress .null
+              modify fun st =>
+                st.set indexState (mkIndexStateJson entries entryKeys (seeEntries.push seeJson) seeKeys') (by
+                  clear entries entryKeys seeEntries seeKeys seeKeys'
+                  grind)
+      | none =>
+        let seeJson := ToJson.toJson see
+        let stateJson := mkIndexStateJson #[] (Lean.Json.mkObj []) #[seeJson] (Lean.Json.setObjVal! (Lean.Json.mkObj []) seeJson.compress .null)
+        modify fun st => st.set indexState stateJson (by
+          clear seeJson stateJson
+          grind)
       pure none
   toTeX :=
     some <| fun _ _ _ _ => do

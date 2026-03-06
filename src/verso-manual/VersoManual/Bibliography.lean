@@ -352,20 +352,27 @@ private partial def cmpCite : Json → Json → Ordering
 
 
 inline_extension Inline.cite (citations : List Citable) (style : Style := .parenthetical) where
-   -- The nested bit here _should_ be a no-op, but it's to avoid deserialization overhead during the traverse pass
+   -- Keep traversal idempotent across passes without maintaining a sorted array of citations.
   data := ToJson.toJson (ToJson.toJson citations, style)
   traverse _ data _ := do
     match FromJson.fromJson? data with
     | .error e => logError s!"Failed to deserialize citation: {e}"; return none
     | .ok (v : Json × Style) =>
-      let cited : Option (Except String (Array Json)) := (← get).get? `Manual.Bibliography
+      let cited : Option (Except String Json) := (← get).get? `Manual.Bibliography
       match cited with
       | .none =>
-        modify (·.set `Manual.Bibliography (Json.arr #[v.1]))
+        modify fun (st : TraverseState) => st.set `Manual.Bibliography (Lean.Json.setObjVal! (Lean.Json.mkObj []) v.1.compress v.1)
       | .some (.error e) => logError e
       | .some (.ok citedSet) =>
-        if citedSet.binSearchContains v.1 (cmpCite · · == .lt) then pure ()
-        else modify (·.set `Manual.Bibliography <| citedSet.binInsert (cmpCite · · == .lt) v.1)
+        let citedSet :=
+          match citedSet with
+          | .arr xs => xs.foldl (init := (Lean.Json.mkObj [] : Json)) fun acc (x : Json) => Lean.Json.setObjVal! acc x.compress x
+          | other => other
+        match citedSet.getObj? with
+        | .error e => logError e
+        | .ok citedObj =>
+          unless citedObj.contains v.1.compress do
+            modify fun (st : TraverseState) => st.set `Manual.Bibliography (Lean.Json.setObjVal! citedSet v.1.compress v.1)
       pure none -- TODO disambiguate years
   toTeX :=
     open Verso.Output.TeX in
