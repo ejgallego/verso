@@ -134,6 +134,12 @@ private def externalDeclRenderError? (decl : LinkedExternalDecl) : Option String
   else
     none
 
+private def externalDeclHasRenderError (decl : LinkedExternalDecl) : Bool :=
+  (externalDeclRenderError? decl).isSome
+
+private def externalDeclRenderErrorSummary? (decl : LinkedExternalDecl) : Option String :=
+  (externalDeclRenderError? decl).map fun err => s!"render failed: {err}"
+
 private def externalDeclLookupError? (decl : LinkedExternalDecl) : Option Data.ExternalDeclLookupError :=
   if decl.decl.present then none else some .notPresentAtRegistration
 
@@ -150,7 +156,7 @@ private def externalDeclAggregate (decls : Array LinkedExternalDecl) : ExternalD
       fun acc decl =>
         let (found, missing) :=
           if decl.decl.present then (acc.found + 1, acc.missing) else (acc.found, acc.missing + 1)
-        let renderErrors := acc.renderErrors + (if (externalDeclRenderError? decl).isSome then 1 else 0)
+        let renderErrors := acc.renderErrors + (if externalDeclHasRenderError decl then 1 else 0)
         let withGaps := acc.withGaps + (if externalDeclHasGap decl.decl then 1 else 0)
         { acc with found, missing, renderErrors, withGaps }
 
@@ -165,36 +171,34 @@ private def externalDeclGapStatusText? (item : LinkedExternalDecl) : Option Stri
 
 private def externalPanelStatus (agg : ExternalDeclAggregate) : String × String × String :=
   if agg.missing > 0 then
-    ("bp_external_status_missing", "●", s!"External Lean references: {agg.found}/{agg.total} present ({agg.missing} missing)")
+    ("bp_external_status_missing", "●", s!"Lean declarations: {agg.found}/{agg.total} present ({agg.missing} missing)")
   else if agg.withGaps > 0 then
-    ("bp_external_status_sorry", "●", s!"External Lean references: all present, {agg.withGaps} incomplete")
+    ("bp_external_status_sorry", "●", s!"Lean declarations: all present, {agg.withGaps} incomplete")
   else
-    ("bp_external_status_ok", "●", s!"External Lean references: all {agg.total} present")
+    ("bp_external_status_ok", "●", s!"Lean declarations: all {agg.total} present")
 
 private def externalDeclStatusClass (item : LinkedExternalDecl) : String :=
   if !item.decl.present then
     "bp_external_decl_missing"
-  else if (renderErrorMessage? item.decl.render).isSome then
-    "bp_external_decl_error"
   else if externalDeclHasGap item.decl then
     "bp_external_decl_sorry"
   else
     "bp_external_decl_ok"
 
 private def externalDeclSummaryStatusText (item : LinkedExternalDecl) : String :=
-  if let some err := externalDeclRenderError? item then
-    s!"(has Lean declaration; docgen render failed: {err})"
-  else if !item.decl.present then
+  if !item.decl.present then
     "(missing Lean declaration)"
   else
-    match externalDeclGapStatusText? item with
-    | some txt => s!"(has Lean declaration; {txt})"
-    | none => "(has Lean declaration)"
+    let parts :=
+      #[
+        some "has Lean declaration",
+        externalDeclGapStatusText? item,
+        externalDeclRenderErrorSummary? item
+      ].filterMap id
+    s!"({String.intercalate "; " parts.toList})"
 
 private def externalDeclPanelStatusText (item : LinkedExternalDecl) : String :=
-  if (externalDeclRenderError? item).isSome then
-    "docgen render failed"
-  else if !item.decl.present then
+  if !item.decl.present then
     "missing declaration"
   else
     (externalDeclGapStatusText? item).getD "complete"
@@ -274,6 +278,98 @@ private def kindTextForDecl? (decl : Data.ExternalRef) : Option String :=
     | .theorem => some "theorem"
     | .corollary => some "corollary"
 
+private def externalPanelHeader (data : BlockData) : CodePanelHeader :=
+  codePanelHeader data
+
+/--
+TODO(external-code): revisit footer/status semantics once we surface real
+out-of-workspace declarations and can distinguish "declaration complete" from
+"declaration plus dependencies complete". For now, keep the footer minimal and
+avoid repeating declaration kind/provenance that is either redundant or
+misleading in Noperthedron.
+-/
+private def externalDeclRenderedMetaText (_item : LinkedExternalDecl) (statusTxt : String) : String :=
+  let parts :=
+    #[
+      some statusTxt
+    ].filterMap id
+  String.intercalate " · " parts.toList
+
+private def externalDeclRenderedMeta
+    (item : LinkedExternalDecl) (statusTxt : String) : Output.Html :=
+  open Verso.Output.Html in
+  let metaText := externalDeclRenderedMetaText item statusTxt
+  let statusClass := externalDeclStatusClass item
+  {{
+    <div class="bp_external_decl_meta bp_external_decl_rendered_meta">
+      {{if !metaText.isEmpty then
+        {{<span class={{s!"bp_external_status_badge bp_external_decl_footer_status {statusClass}"}}>{{.text true metaText}}</span>}}
+       else .empty}}
+      {{if let some sourceRef := externalDeclSourceRef? item then
+        {{<span class="bp_external_decl_rendered_source">{{sourceRef}}</span>}}
+       else .empty}}
+    </div>
+  }}
+
+private def pluralizeKindText (kind : String) : String :=
+  match kind with
+  | "lemma" => "lemmas"
+  | "theorem" => "theorems"
+  | "definition" => "definitions"
+  | "corollary" => "corollaries"
+  | _ => kind ++ "s"
+
+private def externalPanelKindText?
+    (items : Array LinkedExternalDecl) (agg : ExternalDeclAggregate) : Option String :=
+  if agg.missing > 0 || items.isEmpty then
+    none
+  else
+    let kinds := items.filterMap (kindTextForDecl? ·.decl)
+    if kinds.size != items.size || kinds.isEmpty then
+      none
+    else
+      let first := kinds[0]!
+      if kinds.all (· == first) then
+        some first
+      else
+        none
+
+private def externalPanelSummaryText
+    (items : Array LinkedExternalDecl) (agg : ExternalDeclAggregate) : String :=
+  let declText :=
+    match externalPanelKindText? items agg with
+    | some kind =>
+      if agg.total == 1 then
+        s!"1 {kind}"
+      else
+        s!"{agg.total} {pluralizeKindText kind}"
+    | none =>
+      if agg.total == 1 then
+        "1 declaration"
+      else
+        s!"{agg.total} declarations"
+  if agg.missing > 0 then
+    s!"{declText}, {agg.missing} missing"
+  else if agg.withGaps > 0 then
+    if agg.total == 1 then
+      s!"{declText}, incomplete"
+    else
+      s!"{declText}, {agg.withGaps} incomplete"
+  else
+    declText
+
+private def externalDeclRendered (item : LinkedExternalDecl) : Output.Html :=
+  open Verso.Output.Html in
+  match item.decl.render with
+  | .ok renderedHtml =>
+    {{
+      <div class="bp_external_decl_rendered">{{renderedHtml}}</div>
+    }}
+  | .error err =>
+    {{
+      <pre class="bp_external_decl_stmt bp_external_decl_render_error">{{.text true s!"Render failed: {err.message}"}}</pre>
+    }}
+
 /--
 Rendered fragments produced by `ExternalCode.renderParts` for external panel content.
 -/
@@ -308,20 +404,10 @@ def renderParts (data : BlockData)
       else
         .seq <| items.map fun item =>
           let statusTxt := externalDeclSummaryStatusText item
-          let hasProvenanceDetails :=
-            if !item.decl.present then false else
-            match item.decl.provenance with
-            | .unknown => false
-            | _ => true
-          let headTail : Output.Html :=
-            if hasProvenanceDetails then
-              {{<span class="bp_external_badge">{{.text true (Data.ExternalDeclProvenance.label item.decl.provenance)}}</span>}}
-            else
-              .empty
           let sourcePath? := if item.decl.present then Data.ExternalDeclProvenance.sourcePath? item.decl.provenance else none
           let sourceInfo? := externalDeclSourceInfo? item
           let sorryInfo? := externalDeclSorryInfo? item
-          let renderError? := externalDeclRenderError? item
+          let renderErrorSummary? := externalDeclRenderErrorSummary? item
           let lookupError? := (externalDeclLookupError? item).map Data.ExternalDeclLookupError.message
           let body : Output.Html := {{
             {{if let some kind := kindTextForDecl? item.decl then {{<div class="bp_external_decl_meta">"kind: " <code>{{.text true kind}}</code></div>}} else .empty}}
@@ -329,48 +415,34 @@ def renderParts (data : BlockData)
             {{if let some sourcePath := sourcePath? then {{<div class="bp_external_decl_meta">"source path: " <code>{{.text true sourcePath}}</code></div>}} else .empty}}
             {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
             {{if let some sorryInfo := sorryInfo? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true sorryInfo}}</div>}} else .empty}}
-            {{if let some renderError := renderError? then {{<div class="bp_external_decl_meta bp_external_decl_error">{{.text true s!"DocGen render error: {renderError}"}}</div>}} else .empty}}
+            {{if let some renderErrorSummary := renderErrorSummary? then {{<div class="bp_external_decl_meta bp_external_decl_error">{{.text true renderErrorSummary}}</div>}} else .empty}}
             {{if let some lookupError := lookupError? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true s!"Lookup error: {lookupError}"}}</div>}} else .empty}}
           }}
-          externalDeclItem item statusTxt body headTail
+          externalDeclItem item statusTxt body
     let externalPanelListItems (items : Array LinkedExternalDecl) : Output.Html :=
       if items.isEmpty then
         {{<li class="bp_code_hover_none">"none"</li>}}
       else
         .seq <| items.map fun item =>
           let statusTxt := externalDeclPanelStatusText item
-          let statusClass := externalDeclStatusClass item
           if !item.decl.present then
             let body : Output.Html := {{
               <pre class="bp_external_decl_stmt bp_code_hover_none">{{.text true s!"declaration not found ({Data.ExternalDeclLookupError.message .notPresentAtRegistration})"}}</pre>
             }}
             externalDeclItem item statusTxt body
           else
-            match item.decl.render with
-            | .ok renderedHtml =>
-              let renderedAttrs :=
-                #[("class", "bp_external_decl_item bp_external_decl_item_rendered")] ++ item.anchorAttrs
-              {{
-                <li {{renderedAttrs}}>
-                  <div class="bp_external_decl_rendered">{{renderedHtml}}</div>
-                  <div class="bp_external_decl_rendered_meta">
-                    <span class={{statusClass}}>{{.text true statusTxt}}</span>
-                    {{if let some sourceRef := externalDeclSourceRef? item then
-                      {{<span class="bp_external_decl_rendered_source">{{sourceRef}}</span>}}
-                     else .empty}}
-                  </div>
-                </li>
-              }}
-            | .error err =>
-              let body : Output.Html := {{
-                {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
-                <pre class="bp_external_decl_stmt bp_external_decl_render_error">{{.text true s!"DocGen render failed: {err.message}"}}</pre>
-              }}
-              externalDeclItem item statusTxt body
+            let renderedAttrs :=
+              #[("class", "bp_external_decl_item bp_external_decl_item_rendered")] ++ item.anchorAttrs
+            {{
+              <li {{renderedAttrs}}>
+                {{externalDeclRendered item}}
+                {{externalDeclRenderedMeta item statusTxt}}
+              </li>
+            }}
     let externalSummaryTooltip : Output.Html :=
       {{
         <div class="bp_code_hover" role="tooltip">
-          <div class="bp_code_hover_title">"External Lean references"</div>
+          <div class="bp_code_hover_title">"Lean declarations"</div>
           <div class="bp_code_hover_section">
             <ul class="bp_code_hover_list">
               {{externalSummaryListItems linkedDecls}}
@@ -382,15 +454,20 @@ def renderParts (data : BlockData)
       externalCodeEntryTitle externalAgg.found externalAgg.total externalAgg.missing externalAgg.withGaps
     let externalStatusIndicator : Output.Html :=
       let (iconClass, iconText, iconTitle) := externalPanelStatus externalAgg
-      let icon :=
-        {{<span class={{s!"bp_external_status_icon {iconClass}"}} title={{iconTitle}}>{{.text true iconText}}</span>}}
-      {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{icon}}{{externalSummaryTooltip}}</span>}}
+      let badgeText := externalPanelSummaryText linkedDecls externalAgg
+      let badge := {{
+        <span class={{s!"bp_external_status_badge bp_external_status_badge_summary {iconClass}"}} title={{iconTitle}}>
+          <span class={{s!"bp_external_status_icon {iconClass}"}}>{{.text true iconText}}</span>
+          <span class="bp_external_status_badge_text">{{.text true badgeText}}</span>
+        </span>
+      }}
+      {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{badge}}{{externalSummaryTooltip}}</span>}}
     let externalCodePanel : Output.Html :=
       match data.kind with
       | .proof => .empty
       | .statement _ =>
-        mkCodePanel (codePanelHeader data) codeEntryTitle externalStatusIndicator
-          {{<ul class="bp_code_hover_list">{{externalPanelListItems linkedDecls}}</ul>}}
+        mkCodePanel (externalPanelHeader data) codeEntryTitle externalStatusIndicator
+          {{<ul class="bp_code_hover_list bp_external_decl_list">{{externalPanelListItems linkedDecls}}</ul>}}
     { externalCodePanel }
 
 end ExternalCode

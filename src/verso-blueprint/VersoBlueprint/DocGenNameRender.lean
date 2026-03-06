@@ -7,24 +7,12 @@ Author: Emilio J. Gallego Arias
 import Lean
 import Verso
 import VersoManual
-import VersoBlueprint.DocGenSingleDeclCompat
-import VersoBlueprint.Vendor.DocGen4.ToHtmlFormat
 
 open Lean Meta
 
 namespace Informal
 
 abbrev DocGenHtml := Verso.Output.Html
-
-/--
-Rendering backend for external declaration HTML snapshots.
-- `docstring` uses VersoManual docstring metadata + highlighting and is the richer/default path.
-- `docgen` keeps the lightweight doc-gen compatibility renderer.
--/
-register_option verso.blueprint.externalCode.renderMode : String := {
-  defValue := "docstring"
-  descr := "External declaration render mode (`docstring` or `docgen`)"
-}
 
 inductive DocGenRenderError where
   | moduleUnavailable (decl : Name)
@@ -47,70 +35,9 @@ def DocGenRenderError.message : DocGenRenderError → String
   | .moduleUnavailable decl => s!"module unavailable for {decl}"
   | .exception decl message => s!"{decl}: {message}"
 
-private inductive ExternalRenderMode where
-  | docstring
-  | docgen
-
-private def externalRenderMode (opts : Options) : ExternalRenderMode :=
-  let raw :=
-    opts.get
-      verso.blueprint.externalCode.renderMode.name
-      verso.blueprint.externalCode.renderMode.defValue
-  match raw.trimAscii.toString.toLower with
-  | "docgen" => .docgen
-  | _ => .docstring
-
-private partial def docgenHtmlToOutputHtml : DocGen4.Html → DocGenHtml
-  | .element tag _inline attrs children =>
-      .tag tag attrs (.seq (children.map docgenHtmlToOutputHtml))
-  | .text s => .text true s
-  | .raw s => .text false s
-
 private def moduleNameForDecl? (env : Environment) (decl : Name) : Option Name := do
   let moduleIdx ← env.getModuleIdxFor? decl
   env.header.moduleNames[moduleIdx.toNat]?
-
-private def kindDescription (env : Environment) (decl : Name) (cinfo : ConstantInfo) : String :=
-  match cinfo with
-  | .axiomInfo _ => "axiom"
-  | .thmInfo _ => "theorem"
-  | .opaqueInfo _ => "opaque"
-  | .defnInfo info =>
-      if info.hints.isAbbrev then "abbrev" else "def"
-  | .inductInfo _ =>
-      if isClass env decl then "class"
-      else if isStructure env decl then "structure"
-      else "inductive"
-  | .ctorInfo _ => "constructor"
-  | .quotInfo _ => "quot"
-  | .recInfo _ => "recursor"
-
-private def ppExprString (expr : Expr) : MetaM String := do
-  return toString (← ppExpr expr)
-
-private def fieldNames (env : Environment) (decl : Name) : Array String :=
-  match getStructureInfo? env decl with
-  | some info => info.fieldNames.map Name.toString
-  | none => #[]
-
-private def ctorNames (cinfo : ConstantInfo) : Array String :=
-  match cinfo with
-  | .inductInfo info => info.ctors.toArray.map Name.toString
-  | _ => #[]
-
-private def mkDeclHtmlInput
-    (env : Environment) (moduleName : Name) (decl : Name) (cinfo : ConstantInfo) : MetaM DeclHtmlInput := do
-  let typeText ← ppExprString cinfo.type
-  let docString? ← liftM <| findDocString? env decl
-  pure {
-    moduleName := moduleName
-    declName := decl
-    kindDescription := kindDescription env decl cinfo
-    typeText := typeText
-    docString? := docString?
-    fields := fieldNames env decl
-    constructors := ctorNames cinfo
-  }
 
 private def runHighlightedHtml
     (html : Verso.Code.HighlightHtmlM Verso.Genre.Manual DocGenHtml) : DocGenHtml :=
@@ -120,7 +47,12 @@ private def runHighlightedHtml
     definitionIds := {}
     options := {}
   }
-  ((html.run ctx).run {}).1
+  stripVersoHoverAttrs <| ((html.run ctx).run {}).1
+where
+  stripVersoHoverAttrs (html : DocGenHtml) : DocGenHtml :=
+    Id.run <|
+      html.visitM (tag := fun name attrs contents =>
+        pure <| some <| .tag name (attrs.filter fun (attr, _) => attr != "data-verso-hover") contents)
 
 private def highlightedToHtml (h : SubVerso.Highlighting.Highlighted) : DocGenHtml :=
   runHighlightedHtml (h.toHtml (g := Verso.Genre.Manual))
@@ -148,27 +80,16 @@ private def kindClassOfDeclType : Verso.Genre.Manual.Block.Docstring.DeclType �
   | .quotPrim _ => "primitive"
   | .other => "def"
 
-private def kindClassOfKindDescription (kind : String) : String :=
-  match kind with
-  | "def" | "abbrev" => "def"
-  | "theorem" => "theorem"
-  | "axiom" => "axiom"
-  | "opaque" => "opaque"
-  | "class" => "class"
-  | "structure" => "structure"
-  | "inductive" | "constructor" | "recursor" => "inductive"
-  | _ => "def"
-
-private def renderNamedocsWrapper
-    (decl : Name) (kindClass : String) (label : String) (signature : DocGenHtml) (body : DocGenHtml) : DocGenHtml :=
+private def renderExternalDeclWrapper
+    (decl : Name) (kindClass : String) (keywordText : String)
+    (signature : DocGenHtml) (body : DocGenHtml) : DocGenHtml :=
   open Verso.Output.Html in
   {{
-    <div class={{s!"declaration decl {kindClass}"}} data-decl={{decl.toString}}>
-      <div class="namedocs">
-        <span class="label">{{.text true label}}</span>
-        <pre class="signature hl lean block">{{signature}}</pre>
-        <div class="text">{{body}}</div>
-      </div>
+    <div class={{s!"declaration decl {kindClass}"}} data-decl={{decl.toString}} data-kind={{keywordText}}>
+      <pre class="bp_external_decl_signature signature hl lean block">
+        <span class="keyword token">{{.text true keywordText}}</span> " " {{signature}}
+      </pre>
+      <div class="bp_external_decl_body">{{body}}</div>
     </div>
   }}
 
@@ -226,20 +147,6 @@ private def renderParentsSection
       <h1>"Extends"</h1>
       <ul class="extends">{{rows}}</ul>
     }}
-
-private def hasClassAttr (attrs : Array (String × String)) (cls : String) : Bool :=
-  attrs.any fun (k, v) => k == "class" && v == cls
-
-private def hasClassWord (attrs : Array (String × String)) (word : String) : Bool :=
-  attrs.any fun (k, v) =>
-    k == "class" && (v.splitOn " ").any (· == word)
-
-private def dropDocgenHeader
-    (children : Array DocGen4.Html) : Array DocGen4.Html :=
-  children.filter fun child =>
-    match child with
-    | .element "div" _ attrs _ => !(hasClassAttr attrs "decl_header")
-    | _ => true
 
 private def renderDeclHtmlDocstringFromInfoE
     (_moduleName : Name) (decl : Name) (_cinfo : ConstantInfo) : MetaM DocGenRender :=
@@ -304,9 +211,8 @@ private def renderDeclHtmlDocstringFromInfoE
   if let some s := inductiveCtorsSection? then
     sections := sections.push s
 
-  let label := declType.label
-  let label := if label.isEmpty then "declaration" else label
   let kindClass := kindClassOfDeclType declType
+  let keywordText := kindClassOfDeclType declType
   let signatureHtml := signatureToHtml signature
 
   let body : DocGenHtml :=
@@ -314,27 +220,7 @@ private def renderDeclHtmlDocstringFromInfoE
       plainDocstringHtml docs?
     else
       {{ {{plainDocstringHtml docs?}} {{sections}} }}
-  pure <| .ok <| renderNamedocsWrapper decl kindClass label signatureHtml body
-
-private def renderDeclHtmlDocgenFromInfoE
-    (moduleName : Name) (decl : Name) (cinfo : ConstantInfo) : MetaM DocGenRender := do
-  let env ← getEnv
-  let input ← mkDeclHtmlInput env moduleName decl cinfo
-  let kindClass := kindClassOfKindDescription input.kindDescription
-  let label := if input.kindDescription.isEmpty then "declaration" else input.kindDescription
-  let signature ← Verso.Genre.Manual.Signature.forName decl
-  let raw := docInfoToHtml input
-  let body : DocGenHtml :=
-    match raw with
-    | .element "div" _ attrs children =>
-      if hasClassWord attrs "declaration" then
-        let children := dropDocgenHeader children
-        .seq (children.map docgenHtmlToOutputHtml)
-      else
-        docgenHtmlToOutputHtml raw
-    | _ =>
-      docgenHtmlToOutputHtml raw
-  pure <| .ok <| renderNamedocsWrapper decl kindClass label (signatureToHtml signature) body
+  pure <| .ok <| renderExternalDeclWrapper decl kindClass keywordText signatureHtml body
 
 /--
 Render one declaration directly from known declaration facts.
@@ -343,9 +229,7 @@ Errors represent rendering failures only; declaration lookup is handled by calle
 def renderDeclHtmlDirectFromInfoE
     (moduleName : Name) (decl : Name) (cinfo : ConstantInfo) : MetaM DocGenRender := do
   try
-    match externalRenderMode (← getOptions) with
-    | .docstring => renderDeclHtmlDocstringFromInfoE moduleName decl cinfo
-    | .docgen => renderDeclHtmlDocgenFromInfoE moduleName decl cinfo
+    renderDeclHtmlDocstringFromInfoE moduleName decl cinfo
   catch ex =>
     return .error (.exception decl (← ex.toMessageData.toString))
 
@@ -369,10 +253,10 @@ def renderDeclHtmlNodeDirect? (decl : Name) : MetaM (Option DocGenHtml) := do
     match ← renderDeclHtmlDirectFromInfoE moduleName decl cinfo with
     | .ok html => return some html
     | .error err =>
-      logError m!"DocGen direct rendering failed for {decl}: {err.message}"
+      logError m!"External declaration rendering failed for {decl}: {err.message}"
       return none
   catch ex =>
-    logError m!"DocGen direct rendering failed for {decl}: {← ex.toMessageData.toString}"
+    logError m!"External declaration rendering failed for {decl}: {← ex.toMessageData.toString}"
     return none
 
 /-- String wrapper over `renderDeclHtmlNodeDirect?`. -/
@@ -383,10 +267,10 @@ def renderDeclHtmlStringDirect? (decl : Name) : MetaM (Option String) := do
 
 /--
 Optional fallback path for non-`MetaM` contexts.
-With the dependency removed, this currently returns `none`.
+Database fallback is currently unavailable, so this returns `none`.
 -/
 def renderDeclHtmlNodeFromDb? (_dbPath : System.FilePath) (_decl : Name) : IO (Option DocGenHtml) := do
-  IO.eprintln "[doc-gen db] fallback unavailable: doc-gen4 dependency removed"
+  IO.eprintln "[external render db] fallback unavailable"
   return none
 
 /-- Smoke demo targets: theorem/def (`Nat.add`), structure (`Prod`), and a missing name. -/

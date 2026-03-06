@@ -273,7 +273,7 @@ structure ExternalRef where
   kind : NodeKind := .definition
   sourceHref? : Option String := none
   /--
-  Snapshot of direct DocGen rendering outcome.
+  Snapshot of the direct external rendering outcome.
   -/
   render : ExternalDeclRender := .error (.moduleUnavailable canonical)
 deriving Repr, Inhabited, ToJson, FromJson

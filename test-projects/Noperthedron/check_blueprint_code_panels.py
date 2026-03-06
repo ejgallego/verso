@@ -19,34 +19,57 @@ def load(path: Path) -> str:
 
 def default_site_root() -> Path:
     repo_root = Path(__file__).resolve().parents[2]
+    candidates = [repo_root / "_out" / "html-multi"]
     if repo_root.parent.name == ".worktrees":
-        return repo_root.parents[1] / "_out" / repo_root.name / "html-multi"
-    return repo_root / "_out" / "html-multi"
+        candidates.append(repo_root.parents[1] / "_out" / repo_root.name / "html-multi")
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0]
 
 
 def main() -> int:
     out_root = default_site_root()
     local_theorem = load(out_root / "The-Local-Theorem" / "index.html")
+    global_theorem = load(out_root / "The-Global-Theorem" / "index.html")
     bounding = load(out_root / "Bounding-Rotations" / "index.html")
 
-    for cls in (
-        "bp_external_status_icon bp_external_status_ok",
-        "bp_external_status_icon bp_external_status_sorry",
-        "bp_external_status_icon bp_external_status_missing",
-    ):
-        if cls not in local_theorem:
-            fail(f"missing external status class in The-Local-Theorem: {cls}")
+    if "bp_external_status_badge_summary bp_external_status_ok" not in local_theorem:
+        fail("missing external summary badge in The-Local-Theorem")
+    if "bp_external_status_badge_summary bp_external_status_sorry" not in global_theorem:
+        fail("missing external warning summary badge in The-Global-Theorem")
+    if "External Lean for Lemma" in local_theorem:
+        fail("stale external panel caption still present in The-Local-Theorem")
+    if "Code for Lemma" not in local_theorem:
+        fail("external panel caption not updated in The-Local-Theorem")
+    if 'bp_external_status_badge_text">1 theorem<' not in local_theorem:
+        fail("missing theorem-specific external summary text in The-Local-Theorem")
+    if 'bp_external_status_badge_text">1 definition<' not in local_theorem:
+        fail("missing definition-specific external summary text in The-Local-Theorem")
+    if "bp-renderer-select" in local_theorem:
+        fail("stale external renderer switcher still present in The-Local-Theorem")
+    if "bp_code_expand_hint" in local_theorem:
+        fail("stale expand hint markup still present in The-Local-Theorem")
 
     panel_re = re.compile(r'<details class="bp_code_block bp_code_panel"[^>]*>.*?</details>', re.S)
-    external_panels = [p for p in panel_re.findall(local_theorem) if "bp_external_status_icon" in p]
+    external_panels = [p for p in panel_re.findall(local_theorem) if "bp_external_status_badge_summary" in p]
+    external_panels += [p for p in panel_re.findall(global_theorem) if "bp_external_status_badge_summary" in p]
     if not external_panels:
-        fail("no external code panels found in The-Local-Theorem")
+        fail("no external code panels found in theorem pages")
 
     for i, panel in enumerate(external_panels, start=1):
         if "bp_code_progress" in panel:
             fail(f"external panel #{i} still renders a progress bar")
-        if "bp_external_decl_stmt" not in panel:
-            fail(f"external panel #{i} has no rendered Lean statement block")
+        if 'class="namedocs"' in panel:
+            fail(f"external panel #{i} still includes nested namedocs wrapper")
+        if "bp_external_decl_renderer_variant" in panel:
+            fail(f"external panel #{i} still includes renderer variants")
+        if "data-bp-external-renderer" in panel:
+            fail(f"external panel #{i} still includes renderer mode attributes")
+        if "bp_external_decl_signature" not in panel:
+            fail(f"external panel #{i} missing external signature block")
+        if '<span class="keyword token">theorem</span>' not in panel and '<span class="keyword token">def</span>' not in panel:
+            fail(f"external panel #{i} missing declaration keyword prefix")
 
     literate_panels = [p for p in panel_re.findall(bounding) if "data-bp-proof-fold=" in p]
     if not literate_panels:

@@ -29,7 +29,6 @@ open Informal
 
 -- EJGA: Seems like a good idea for hybrid setups
 set_option doc.verso true
-set_option verso.blueprint.externalCode.renderMode "docgen"
 set_option verso.blueprint.trimTeXLabelPrefix true
 
 set_option maxHeartbeats 500000
