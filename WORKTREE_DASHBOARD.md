@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (cleaned up `feat/verso-block-incremental-snapshots-20260305` without merge)
+Last updated: 2026-03-06 (cleaned up `feat/inline-prefix-incrementality` without merge)
 
 ## Active Worktrees
 
@@ -100,6 +100,12 @@ Last updated: 2026-03-06 (cleaned up `feat/verso-block-incremental-snapshots-202
 
 ## Recently Completed
 
+- Closed `feat/inline-prefix-incrementality` without merge (unused experiment removed during cleanup).
+- Validation before discard:
+  - none recorded in the dashboard for that worktree
+- No active preview listener tied to that worktree was detected at cleanup time.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/inline-prefix-incrementality`.
+- Deleted branch: `feat/inline-prefix-incrementality`.
 - Closed `feat/verso-block-incremental-snapshots-20260305` without merge (experiment discarded; uncommitted prototype changes were removed with the worktree).
 - Validation before discard:
   - `lake exe cache get`
