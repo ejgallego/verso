@@ -124,15 +124,14 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` gained temporary 
 
 ### `feat/math-term-linter-20260305`
 
-- Status: `ready-for-review` (owner action: review the squashed branch; merge decision still pending)
-- Summary: rebased and squashed review branch for default-on blueprint math linting with immediate KaTeX diagnostics, source-span anchoring, normalized failure typing, tightened warning text, and module-path-based script discovery that works both in the main tree and in `.lake/packages/...`.
+- Status: `ready-for-review` (owner action: review the single squashed feature commit; merge decision still pending)
+- Summary: rebased and squashed review branch for default-on blueprint math linting with immediate KaTeX diagnostics, source-span anchoring, normalized failure typing, tightened warning text, centralized span remapping, and module-path-based script discovery that works both in the main tree and in `.lake/packages/...`.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/math-term-linter-20260305`
 - Branch: `feat/math-term-linter-20260305`
 - Base commit/branch:
-  - rebased on `bp` at `48ae71ea` (`0` behind / `2` ahead)
+  - rebased on `bp` at `48ae71ea` (`0` behind / `1` ahead)
 - Key commit:
-  - `eeac70dc` feat(blueprint): add KaTeX math linting
-  - `3d6bd1ee` fix(blueprint): locate katex lint script via module path
+  - single squashed feature commit on this branch (inspect with `git show --stat HEAD`)
 - Validation status:
   - `lake exe cache get`
   - `lake env lean src/tests/Tests/BlueprintMathLint.lean`
@@ -143,7 +142,7 @@ Last updated: 2026-03-06 (`feat/external-code-polish-20260306` gained temporary 
   - `http://127.0.0.1:8149/math-term-linter-20260305/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/math-term-linter-20260305`
-  - `git show --stat HEAD~1 HEAD`
+  - `git show --stat HEAD`
   - `set_option verso.blueprint.math.lint false` to disable the default-on linter in a document or test module
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/math-term-linter-20260305`
   - server session: `53583`
