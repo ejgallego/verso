@@ -1299,6 +1299,30 @@ def tryElabBlockCode (_info? _lang? : Option String) (str : String) : DocElabM T
         logWarning m!"Internal exception uncaught: {e.toMessageData}"
         ``(Verso.Doc.Block.code $(quote str))
 
+private partial def textHasInlineCode : MD4Lean.Text → Bool
+  | .code _ => true
+  | .del txt | .em txt | .strong txt | .u txt => txt.any textHasInlineCode
+  | .a _ _ _ txt => txt.any textHasInlineCode
+  | .normal .. | .br .. | .softbr .. | .nullchar | .latexMath .. | .latexMathDisplay ..
+  | .entity .. | .img .. | .wikiLink .. => false
+
+private partial def blockHasInlineCode : MD4Lean.Block → Bool
+  | .p txt | .header _ txt => txt.any textHasInlineCode
+  | .blockquote bs => bs.any blockHasInlineCode
+  | .code .. => false
+  | .ul _ _ items | .ol _ _ _ items => items.any fun item => item.contents.any blockHasInlineCode
+  | .html .. | .hr | .table .. => false
+
+private partial def blockHasBlockCode : MD4Lean.Block → Bool
+  | .p .. | .header .. => false
+  | .blockquote bs => bs.any blockHasBlockCode
+  | .code .. => true
+  | .ul _ _ items | .ol _ _ _ items => items.any fun item => item.contents.any blockHasBlockCode
+  | .html .. | .hr | .table .. => false
+
+private def blockNeedsHeuristicElab (b : MD4Lean.Block) : Bool :=
+  blockHasInlineCode b || blockHasBlockCode b
+
 open Lean Elab Term in
 /--
 Heuristically elaborate Lean fragments in Markdown code. The provided names are used as signatures,
@@ -1306,8 +1330,9 @@ from left to right, with the names bound by the signature being available in the
 which the Lean fragments are elaborated.
 -/
 def blockFromMarkdownWithLean (names : List Name) (b : MD4Lean.Block) : DocElabM Term := do
+  let plainMarkdown := Markdown.blockFromMarkdown b (handleHeaders := Markdown.strongEmphHeaders)
   unless (← Docstring.getElabMarkdown) do
-    return (← Markdown.blockFromMarkdown b (handleHeaders := Markdown.strongEmphHeaders))
+    return (← plainMarkdown)
   let tactics ← Elab.Tactic.Doc.allTacticDocs
   let keywords := tactics.map (·.userName)
   try
@@ -1317,6 +1342,12 @@ def blockFromMarkdownWithLean (names : List Name) (b : MD4Lean.Block) : DocElabM
       Meta.forallTelescopeReducing (← getConstInfo decl).type fun _ _ =>
         blockFromMarkdownWithLean decls b
     | [] =>
+      unless blockNeedsHeuristicElab b do
+        return (← plainMarkdown)
+      let inlineCode? :=
+        if blockHasInlineCode b then some (tryElabInlineCode tactics keywords) else none
+      let blockCode? :=
+        if blockHasBlockCode b then some tryElabBlockCode else none
       -- It'd be silly for some weird edge case to block on this feature...
       let rec loop (max : Nat) (s : SavedState) : DocElabM Term := do
         match max with
@@ -1325,8 +1356,8 @@ def blockFromMarkdownWithLean (names : List Name) (b : MD4Lean.Block) : DocElabM
             let res ←
               Markdown.blockFromMarkdown b
                 (handleHeaders := Markdown.strongEmphHeaders)
-                (elabInlineCode := tryElabInlineCode tactics keywords)
-                (elabBlockCode := tryElabBlockCode)
+                (elabInlineCode := inlineCode?)
+                (elabBlockCode := blockCode?)
             synthesizeSyntheticMVarsUsingDefault
 
             discard <| addAutoBoundImplicits #[] (inlayHintPos? := none)
@@ -1346,8 +1377,7 @@ def blockFromMarkdownWithLean (names : List Name) (b : MD4Lean.Block) : DocElabM
       finally
         (s.restore : TermElabM _)
   catch _ =>
-    Markdown.blockFromMarkdown b
-      (handleHeaders := Markdown.strongEmphHeaders)
+    plainMarkdown
 
 structure DocstringConfig where
   name : Ident × Name
