@@ -14,13 +14,13 @@ different background load, wrapper cache state, and OS cache warmth.
   - hidden Lean highlighting fast path
   - sparse opt-in profiler and manual-page wrapper scripts
 
-### `0abaecd7` `perf: skip hidden inline Lean info-tree generation`
+### `efc3ae65` `perf: skip hidden inline Lean info-tree generation`
 
 - `Terms.lean` with profiling: `19.45s -> 18.47s` (`-5.0%`)
 - Main change:
   - stop generating/pushing inline-Lean info trees for hidden unnamed setup blocks
 
-### `3ff97965` `perf: skip hidden inline Lean stream capture`
+### `e79f0b58` `perf: skip hidden inline Lean stream capture`
 
 - `Terms.lean` with profiling:
   - patched average `27.14s`
@@ -30,7 +30,7 @@ different background load, wrapper cache state, and OS cache warmth.
 - Main change:
   - skip per-command isolated stdout/stderr capture for hidden unnamed non-error inline Lean commands unless they contain `#eval`/`#eval!`
 
-### `17f5fc6a` `perf: cache docstring markdown tactic heuristics`
+### `422b5243` `perf: cache docstring markdown tactic heuristics`
 
 - `Tactics/Reference.lean` with profiling:
   - `30.36s -> 15.19s` (`-49.9%`)
@@ -45,7 +45,7 @@ different background load, wrapper cache state, and OS cache warmth.
   - replace repeated tactic-name linear scans with hashed lookup
   - reject non-keyword inline code before rebuilding keyword parser state
 
-### `8a77e2cf` `perf: add inline Lean command-kind profiling`
+### `394e8231` `perf: add inline Lean command-kind profiling`
 
 - No runtime claim; profiling-only change when `-Dverso.elab.profile=true`
 - Main findings:
@@ -55,12 +55,12 @@ different background load, wrapper cache state, and OS cache warmth.
 
 ## Current Total
 
-- Full copied manual, no profiling, `82c57c81 -> 8a77e2cf`: `3:35.08 -> 3:22.40` (`-5.9%`)
+- Full copied manual, no profiling, `82c57c81 -> 394e8231`: `3:35.08 -> 3:22.40` (`-5.9%`)
 - Sequential checkpoint series: [FULL_MANUAL_SERIES.md](/home/egallego/lean/verso/.worktrees/manual-genre-scaling/Benchmark/FULL_MANUAL_SERIES.md)
 
 ## Reviewer Notes
 
-- The strongest remaining named hotspot on tactic-heavy chapters was the docstring Markdown heuristic path, and `17f5fc6a` addresses that directly.
+- The strongest remaining named hotspot on tactic-heavy chapters was the docstring Markdown heuristic path, and `422b5243` addresses that directly.
 - The command-kind profiling suggests the next inline-Lean win is not another hidden-setup cut: the remaining cost is mostly visible `#eval` work.
 - `saveRefsInEnv` stayed negligible after the earlier work; it is no longer a priority target.
 

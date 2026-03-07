@@ -10,11 +10,11 @@ default_refs=(
   "82c57c81"
   "01a3e168"
   "004792a2"
-  "0de5f7fa"
-  "0abaecd7"
-  "3ff97965"
-  "17f5fc6a"
-  "8a77e2cf"
+  "965f654a"
+  "efc3ae65"
+  "e79f0b58"
+  "422b5243"
+  "394e8231"
 )
 
 if [[ ! -d "$manual_source" ]]; then
@@ -217,8 +217,8 @@ lines.append("")
 lines.append("## Notes")
 lines.append("")
 lines.append("- All runs use the copied-manual wrapper with the same compatibility patching as the other benchmark helpers.")
-lines.append("- `0de5f7fa` and `8a77e2cf` are primarily profiling changes; any runtime change there should be treated as noise unless it repeats.")
-lines.append("- `7b726e94`, `ffd3ceef`, and `33a3064d` are doc-only commits and are intentionally excluded from this runtime series.")
+lines.append("- `965f654a` and `394e8231` are primarily profiling changes; any runtime change there should be treated as noise unless it repeats.")
+lines.append("- `36a05a85`, `7180fc4b`, `d8f4852c`, and `b3dc9798` are doc-only commits and are intentionally excluded from this runtime series.")
 
 results_file.write_text("\n".join(lines) + "\n")
 print(results_file)
