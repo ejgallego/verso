@@ -136,6 +136,11 @@ where
     | .original .. => true
     | _ => false
 
+private def commandNeedsCapturedStreams (stx : Syntax) : Bool :=
+  (stx.find? fun s =>
+    let k := s.getKind
+    k == `Lean.Parser.Command.eval || k == `Lean.Parser.Command.evalBang).isSome
+
 /--
 Report messages that result from elaboration of inline Lean.
 
@@ -255,13 +260,16 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       pstate := ps'
       cmdState := { cmdState with messages := messages }
 
+      let captureStreams :=
+        config.show || config.name.isSome || config.error || commandNeedsCapturedStreams cmd
+
       cmdState ←
         if needInfoTrees then
           withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
-            runCommand (Command.elabCommand cmd) cmd cctx cmdState
+            runCommand (Command.elabCommand cmd) cmd cctx cmdState (captureStreams := captureStreams)
         else
           withEnableInfoTree false <|
-            runCommand (Command.elabCommand cmd) cmd cctx cmdState
+            runCommand (Command.elabCommand cmd) cmd cctx cmdState (captureStreams := captureStreams)
 
       if Parser.isTerminalCommand cmd then break
 
@@ -313,12 +321,17 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
         warnLongLines col? str
 where
   runCommand (act : Command.CommandElabM Unit) (stx : Syntax)
-      (cctx : Command.Context) (cmdState : Command.State) :
+      (cctx : Command.Context) (cmdState : Command.State) (captureStreams : Bool := true) :
       DocElabM Command.State := do
     let (output, cmdState) ←
-      match (← liftM <| IO.FS.withIsolatedStreams <| EIO.toIO' <| (act.run cctx).run cmdState) with
-      | (output, .error e) => Lean.logError e.toMessageData; pure (output, cmdState)
-      | (output, .ok ((), cmdState)) => pure (output, cmdState)
+      if captureStreams then
+        match (← liftM <| IO.FS.withIsolatedStreams <| EIO.toIO' <| (act.run cctx).run cmdState) with
+        | (output, .error e) => Lean.logError e.toMessageData; pure (output, cmdState)
+        | (output, .ok ((), cmdState)) => pure (output, cmdState)
+      else
+        match (← liftM <| EIO.toIO' <| (act.run cctx).run cmdState) with
+        | .error e => Lean.logError e.toMessageData; pure ("", cmdState)
+        | .ok ((), cmdState) => pure ("", cmdState)
 
     if output.trimAscii.isEmpty then return cmdState
 
