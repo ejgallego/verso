@@ -118,6 +118,21 @@ private def abbrevFirstLine (width : Nat) (str : String) : String :=
   let short := str.take width |>.replace "\n" "⏎"
   if short.toSlice == str then short else short ++ "…"
 
+private def commandKindProfileLabel (cmd : Syntax) : Name :=
+  Name.mkStr `Verso.Manual.InlineLean.elabCommandKind cmd.getKind.toString
+
+private def commandRoleProfileLabel (config : LeanBlockConfig) (cmd : Syntax) : Name :=
+  let role :=
+    if config.show then
+      "show"
+    else if config.name.isSome then
+      "named"
+    else if config.error then
+      "error"
+    else
+      "hidden"
+  Name.mkStr (Name.mkStr `Verso.Manual.InlineLean.elabCommandRole role) cmd.getKind.toString
+
 def LeanBlockConfig.outlineMeta : LeanBlockConfig → String
   | {«show», error, ..} =>
     match «show», error with
@@ -272,12 +287,14 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
           config.show || config.name.isSome || config.error || commandNeedsCapturedStreams cmd
 
         cmdState ← profileM `Verso.Manual.InlineLean.elabCommand do
-          if needInfoTrees then
-            withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
-              runCommand (Command.elabCommand cmd) cmd cctx cmdState (captureStreams := captureStreams)
-          else
-            withEnableInfoTree false <|
-              runCommand (Command.elabCommand cmd) cmd cctx cmdState (captureStreams := captureStreams)
+          profileM (commandKindProfileLabel cmd) <|
+            profileM (commandRoleProfileLabel config cmd) <|
+              if needInfoTrees then
+                withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
+                  runCommand (Command.elabCommand cmd) cmd cctx cmdState (captureStreams := captureStreams)
+              else
+                withEnableInfoTree false <|
+                  runCommand (Command.elabCommand cmd) cmd cctx cmdState (captureStreams := captureStreams)
 
         if Parser.isTerminalCommand cmd then break
       pure (cmdState, pstate, cmds)
