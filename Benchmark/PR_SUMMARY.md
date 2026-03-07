@@ -56,6 +56,7 @@ different background load, wrapper cache state, and OS cache warmth.
 ## Current Total
 
 - Full copied manual, no profiling, `82c57c81 -> 73849ddc`: `3:35.08 -> 3:22.40` (`-5.9%`)
+- Sequential checkpoint series: [FULL_MANUAL_SERIES.md](/home/egallego/lean/verso/.worktrees/manual-genre-scaling/Benchmark/FULL_MANUAL_SERIES.md)
 
 ## Reviewer Notes
 
