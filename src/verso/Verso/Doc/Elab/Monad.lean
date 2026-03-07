@@ -13,6 +13,7 @@ import Lean.DocString.Syntax
 import Lean.DocString
 
 import SubVerso.Highlighting
+public import Verso.Doc.Elab.Profile
 import Verso.Doc
 public import Verso.Doc.ArgParse
 public import Verso.Doc.Elab.InlineString
@@ -142,12 +143,22 @@ public structure DocElabContext where
   {lit}`` `(fun $docReconstructionPlaceholder => $termContainingFreeVariable) ``.
   -/
   docReconstructionPlaceholder : Option Ident
+  elabProfile? : Option Verso.Doc.Elab.Profile.Ref := none
 deriving Inhabited
 
 
-public def DocElabContext.fromGenreTerm (genreSyntax : Term) : TermElabM DocElabContext := do
+public def DocElabContext.fromGenreTerm
+    (genreSyntax : Term)
+    (elabProfile? : Option Verso.Doc.Elab.Profile.Ref := none) :
+    TermElabM DocElabContext := do
   let genre ← Term.elabTerm genreSyntax (some (.const ``Doc.Genre []))
-  return DocElabContext.mk genreSyntax genre .always (.some <| mkIdent (← mkFreshUserName `docReconst))
+  return {
+    genreSyntax,
+    genre,
+    refsAllowed := .always,
+    docReconstructionPlaceholder := .some <| mkIdent (← mkFreshUserName `docReconst),
+    elabProfile?
+  }
 
 public structure DocElabM.State where
   linkRefs : HashMap String DocUses := {}
@@ -218,6 +229,9 @@ public def PartElabM.withFileMap (fileMap : FileMap) (act : PartElabM α) : Part
 
 public def withRefsAllowed [MonadWithReaderOf DocElabContext m] [Monad m] (b : RefsAllowed) : m a → m a :=
   withTheReader DocElabContext ({ · with refsAllowed := b})
+
+public def profileM [Monad m] [MonadLiftT BaseIO m] [MonadReaderOf DocElabContext m] (label : Name) (act : m α) : m α := do
+  Verso.Doc.Elab.Profile.profileRefM (ref? := (← readThe DocElabContext).elabProfile?) label act
 
 /--
 Text elaboration monad.

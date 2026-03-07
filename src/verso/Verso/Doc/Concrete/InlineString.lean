@@ -32,7 +32,12 @@ elab_rules : term <= ty
     let gTerm ← `(term|_%$tk)
     let g ← Meta.mkFreshExprMVar (some (.const ``Verso.Doc.Genre []))
     let (tms, _) ← DocElabM.run
-      ⟨gTerm, g, .onlyIfDefined, .none⟩
+      {
+        genreSyntax := gTerm,
+        genre := g,
+        refsAllowed := .onlyIfDefined,
+        docReconstructionPlaceholder := .none
+      }
       { highlightDeduplicationTable := .none }
       (.init (← `(foo))) <| inls.mapM (elabInline ⟨·⟩)
     elabTerm (← ``(Inline.concat #[ $[$tms],* ] )) ty
@@ -43,7 +48,12 @@ elab_rules : term <= ty
     let g ← Meta.mkFreshExprMVar (some (.const ``Verso.Doc.Genre []))
     let gTerm ← `(term|_%$tk)
     let (tms, _) ← DocElabM.run
-      ⟨gTerm, g, .onlyIfDefined, .none⟩
+      {
+        genreSyntax := gTerm,
+        genre := g,
+        refsAllowed := .onlyIfDefined,
+        docReconstructionPlaceholder := .none
+      }
       { highlightDeduplicationTable := .none }
       (.init (← `(foo))) <| inls.mapM (elabBlock ⟨·⟩)
     elabTerm (← ``(Block.concat #[ $[$tms],* ] )) ty

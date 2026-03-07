@@ -83,7 +83,13 @@ private meta def elabDoc (genre: Term) (title: StrLit) (topLevelBlocks : Array S
   let env ← getEnv
   let titleParts ← stringToInlines title
   let titleString := inlinesToString env titleParts
-  let ctx ← DocElabContext.fromGenreTerm genre
+  let profileRef? ←
+    if (← Verso.Doc.Elab.Profile.getEnabled) then
+      some <$> Verso.Doc.Elab.Profile.mkRef
+    else
+      pure none
+  let startMs? ← profileRef?.mapM fun _ => IO.monoMsNow
+  let ctx ← DocElabContext.fromGenreTerm genre profileRef?
   let initDocState : DocElabM.State := { highlightDeduplicationTable := .some {} }
   let initPartState : PartElabM.State := .init (.node .none nullKind titleParts)
 
@@ -107,7 +113,11 @@ private meta def elabDoc (genre: Term) (title: StrLit) (topLevelBlocks : Array S
   let finished := partElabState.partContext.toPartFrame.close endPos
 
   pushInfoLeaf <| .ofCustomInfo {stx := (← getRef) , value := Dynamic.mk finished.toTOC}
-  finished.toVersoDoc genre ctx docElabState partElabState
+  let out ← finished.toVersoDoc genre ctx docElabState partElabState
+  if let some profileRef := profileRef? then
+    let endMs ← IO.monoMsNow
+    Verso.Doc.Elab.Profile.emitSummary titleString (endMs - startMs?.getD endMs) profileRef
+  pure out
 
 elab "#docs" "(" genre:term ")" n:ident title:str ":=" ":::::::" text:document ":::::::" : command => do
   findGenreCmd genre
@@ -280,9 +290,16 @@ the state that needs to exist across top-level-block parsing events.
 -/
 public meta structure DocElabEnvironment where
   genreSyntax : Term := ⟨.missing⟩
-  ctx : DocElabContext := ⟨.missing, mkConst ``Unit, .always, .none⟩
+  ctx : DocElabContext := {
+    genreSyntax := .missing,
+    genre := mkConst ``Unit,
+    refsAllowed := .always,
+    docReconstructionPlaceholder := .none
+  }
   docState : DocElabM.State := { highlightDeduplicationTable := some {} }
   partState : PartElabM.State := .init (.node .none nullKind #[])
+  docTitle : String := ""
+  profileStartMs? : Option Nat := none
 deriving Inhabited
 
 meta initialize docEnvironmentExt : EnvExtension DocElabEnvironment ← registerEnvExtension (pure {})
@@ -314,7 +331,8 @@ private meta def runPartElabInEnv (act : PartElabM a) : Command.CommandElabM a :
 
 private meta def saveRefsInEnv : Command.CommandElabM Unit := do
   let versoEnv := docEnvironmentExt.getState (← getEnv)
-  saveRefs versoEnv.docState versoEnv.partState
+  Verso.Doc.Elab.Profile.profileRefM versoEnv.ctx.elabProfile? `Verso.Doc.saveRefsInEnv do
+    saveRefs versoEnv.docState versoEnv.partState
 
 /-!
 When we do incremental parsing of `#doc` commands, we split the behaviors that are done all at once
@@ -326,16 +344,31 @@ private meta def startDoc (genreSyntax : Term) (title: StrLit) : Command.Command
   let env ← getEnv
   let titleParts ← stringToInlines title
   let titleString := inlinesToString env titleParts
-  let ctx ← Command.runTermElabM fun _ => DocElabContext.fromGenreTerm genreSyntax
+  let profileRef? ←
+    if (← Verso.Doc.Elab.Profile.getEnabled) then
+      some <$> Verso.Doc.Elab.Profile.mkRef
+    else
+      pure none
+  let profileStartMs? ← profileRef?.mapM fun _ => IO.monoMsNow
+  let ctx ← Command.runTermElabM fun _ => DocElabContext.fromGenreTerm genreSyntax profileRef?
   let initDocState : DocElabM.State := { highlightDeduplicationTable := .some {} }
   let initPartState : PartElabM.State := .init (.node .none nullKind titleParts)
 
-  modifyEnv (docEnvironmentExt.setState · ⟨genreSyntax, ctx, initDocState, initPartState⟩)
+  modifyEnv (docEnvironmentExt.setState · {
+    genreSyntax,
+    ctx,
+    docState := initDocState,
+    partState := initPartState,
+    docTitle := titleString,
+    profileStartMs?
+  })
   runPartElabInEnv <| do
     PartElabM.setTitle titleString (← titleParts.mapM (elabInline ⟨·⟩))
 
 private meta def runVersoBlock (block : TSyntax `block) : Command.CommandElabM Unit := do
-  runPartElabInEnv <| partCommand block
+  let versoEnv := docEnvironmentExt.getState (← getEnv)
+  Verso.Doc.Elab.Profile.profileRefM versoEnv.ctx.elabProfile? `Verso.Doc.runVersoBlock do
+    runPartElabInEnv <| partCommand block
   -- This calls pushInfoLeaf a quadratic number of times for a for a linear number of top-level
   -- verso blocks, which should be harmless but may be inefficient. It may be desirable to tag
   -- info leaves that have already been pushed to avoid pushing them again.
@@ -355,6 +388,9 @@ private meta def finishDoc : Command.CommandElabM Unit:= do
 
   let ty ← ``(VersoDoc $versoEnv.genreSyntax)
   Command.elabCommand (← `(def $n : $ty := $doc))
+  if let some profileRef := versoEnv.ctx.elabProfile? then
+    let endMs ← IO.monoMsNow
+    Verso.Doc.Elab.Profile.emitSummary versoEnv.docTitle (endMs - versoEnv.profileStartMs?.getD endMs) profileRef
 
 syntax (name := replaceDoc) "#doc " "(" term ") " str " =>" : command
 elab_rules : command

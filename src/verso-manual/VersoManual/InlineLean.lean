@@ -224,7 +224,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
     (minCommands : Option Nat := none)
     (maxCommands : Option Nat := none) :
     DocElabM Term :=
-  withoutAsync <| do
+  profileM `Verso.Manual.InlineLean.elabCommands <| withoutAsync <| do
     PointOfInterest.save (← getRef) ((config.name.map (·.toString)).getD (abbrevFirstLine 20 str.getString))
       (kind := Lsp.SymbolKind.file)
       (detail? := some ("Lean code" ++ config.outlineMeta))
@@ -242,23 +242,30 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
     let ictx := Parser.mkInputContext altStr (← getFileName)
     let cctx : Command.Context := { fileName := ← getFileName, fileMap := FileMap.ofString altStr, snap? := none, cancelTk? := none}
 
-    let mut cmdState : Command.State := {env := ← getEnv, maxRecDepth := ← MonadRecDepth.getMaxRecDepth, scopes := origScopes}
-    let mut pstate := {pos := 0, recovering := false}
-    let mut cmds := #[]
+    let initCmdState : Command.State := {env := ← getEnv, maxRecDepth := ← MonadRecDepth.getMaxRecDepth, scopes := origScopes}
+    let initPState : Parser.ModuleParserState := {pos := 0, recovering := false}
+    let (cmdState, _pstate, cmds) ← profileM `Verso.Manual.InlineLean.commandLoop do
+      let mut cmdState := initCmdState
+      let mut pstate := initPState
+      let mut cmds := #[]
+      repeat
+        let scope := cmdState.scopes.head!
+        let pmctx : Parser.ParserModuleContext := {
+          env := cmdState.env,
+          options := scope.opts,
+          currNamespace := scope.currNamespace,
+          openDecls := scope.openDecls
+        }
+        let (cmd, ps', messages) := Parser.parseCommand ictx pmctx pstate cmdState.messages
+        cmds := cmds.push cmd
+        pstate := ps'
+        cmdState := { cmdState with messages := messages }
 
-    repeat
-      let scope := cmdState.scopes.head!
-      let pmctx := { env := cmdState.env, options := scope.opts, currNamespace := scope.currNamespace, openDecls := scope.openDecls }
-      let (cmd, ps', messages) := Parser.parseCommand ictx pmctx pstate cmdState.messages
-      cmds := cmds.push cmd
-      pstate := ps'
-      cmdState := { cmdState with messages := messages }
+        cmdState ← withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
+          runCommand (Command.elabCommand cmd) cmd cctx cmdState
 
-
-      cmdState ← withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
-        runCommand (Command.elabCommand cmd) cmd cctx cmdState
-
-      if Parser.isTerminalCommand cmd then break
+        if Parser.isTerminalCommand cmd then break
+      pure (cmdState, pstate, cmds)
 
     let nonTerm := cmds.filter (! Parser.isTerminalCommand ·)
     if let some maxCmds := maxCommands then
@@ -275,16 +282,21 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       setEnv cmdState.env
       setScopes cmdState.scopes
 
-      for t in cmdState.infoState.trees do
-        pushInfoTree t
+      profileM `Verso.Manual.InlineLean.pushInfoTrees do
+        for t in cmdState.infoState.trees do
+          pushInfoTree t
 
+      if !config.show then
+        return (← toHighlightedLeanContent false Highlighted.empty str)
 
-      let mut hls := Highlighted.empty
-      let nonSilentMsgs := cmdState.messages.toArray.filter (!·.isSilent)
-      let mut lastPos : String.Pos.Raw := cmds[0]? >>= (·.getRange?.map (·.start)) |>.getD 0
-      for cmd in cmds do
-        hls := hls ++ (← highlightIncludingUnparsed cmd nonSilentMsgs cmdState.infoState.trees (startPos? := lastPos))
-        lastPos := (cmd.getTrailingTailPos?).getD lastPos
+      let hls ← profileM `Verso.Manual.InlineLean.highlight do
+        let mut hls := Highlighted.empty
+        let nonSilentMsgs := cmdState.messages.toArray.filter (!·.isSilent)
+        let mut lastPos : String.Pos.Raw := cmds[0]? >>= (·.getRange?.map (·.start)) |>.getD 0
+        for cmd in cmds do
+          hls := hls ++ (← highlightIncludingUnparsed cmd nonSilentMsgs cmdState.infoState.trees (startPos? := lastPos))
+          lastPos := (cmd.getTrailingTailPos?).getD lastPos
+        pure hls
 
       toHighlightedLeanContent config.show hls str
     finally
@@ -292,13 +304,14 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
         setEnv origEnv
 
       if let some name := config.name then
-        let nonSilentMsgs := cmdState.messages.toList.filter (!·.isSilent)
-        let msgs ← nonSilentMsgs.mapM fun (msg : Message) => do
-          let head := if msg.caption != "" then msg.caption ++ ":\n" else ""
-          let msg ← highlightMessage msg
-          pure { msg with contents := .append #[.text head, msg.contents] }
+        profileM `Verso.Manual.InlineLean.saveOutputs do
+          let nonSilentMsgs := cmdState.messages.toList.filter (!·.isSilent)
+          let msgs ← nonSilentMsgs.mapM fun (msg : Message) => do
+            let head := if msg.caption != "" then msg.caption ++ ":\n" else ""
+            let msg ← highlightMessage msg
+            pure { msg with contents := .append #[.text head, msg.contents] }
 
-        saveOutputs name msgs
+          saveOutputs name msgs
 
       reportMessages config.error str cmdState.messages
 
