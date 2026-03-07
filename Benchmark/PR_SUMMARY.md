@@ -62,3 +62,9 @@ different background load, wrapper cache state, and OS cache warmth.
 - The strongest remaining named hotspot on tactic-heavy chapters was the docstring Markdown heuristic path, and `09e7db4d` addresses that directly.
 - The command-kind profiling suggests the next inline-Lean win is not another hidden-setup cut: the remaining cost is mostly visible `#eval` work.
 - `saveRefsInEnv` stayed negligible after the earlier work; it is no longer a priority target.
+
+## Validation
+
+- `lake build VersoManual` passes on the branch.
+- `lake build` does not currently complete in this environment because `clang` crashes while compiling `VersoBlog.Generate.c.o`.
+- `lake test` reaches the final native link step and then fails with an undefined `initialize_verso_VersoBlog_LiterateModuleDocs` symbol in `verso-tests`.
