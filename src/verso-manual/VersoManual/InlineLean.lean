@@ -256,13 +256,15 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
           currNamespace := scope.currNamespace,
           openDecls := scope.openDecls
         }
-        let (cmd, ps', messages) := Parser.parseCommand ictx pmctx pstate cmdState.messages
+        let (cmd, ps', messages) ← profileM `Verso.Manual.InlineLean.parseCommand do
+          pure <| Parser.parseCommand ictx pmctx pstate cmdState.messages
         cmds := cmds.push cmd
         pstate := ps'
         cmdState := { cmdState with messages := messages }
 
-        cmdState ← withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
-          runCommand (Command.elabCommand cmd) cmd cctx cmdState
+        cmdState ← profileM `Verso.Manual.InlineLean.elabCommand do
+          withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
+            runCommand (Command.elabCommand cmd) cmd cctx cmdState
 
         if Parser.isTerminalCommand cmd then break
       pure (cmdState, pstate, cmds)
