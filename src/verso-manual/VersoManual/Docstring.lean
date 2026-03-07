@@ -1019,19 +1019,21 @@ where
     .token ⟨.option name declName descr, name.toString⟩
 
 open Lean Elab in
-def tryTacticName (tactics : Array Tactic.Doc.TacticDoc) (str : String) : DocElabM Term := do
-  for t in tactics do
-    if t.userName == str then
-      let hl : Highlighted := tacToken t
-      return ← ``(Verso.Doc.Inline.other (Inline.leanFromMarkdown $(quote hl)) #[Verso.Doc.Inline.code $(quote str)])
-  throwError "Not a tactic name: {str}"
+def tryTacticName (tactics : Std.HashMap String Tactic.Doc.TacticDoc) (str : String) : DocElabM Term := do
+  let some t := tactics[str]?
+    | throwError "Not a tactic name: {str}"
+  let hl : Highlighted := tacToken t
+  return ← ``(Verso.Doc.Inline.other (Inline.leanFromMarkdown $(quote hl)) #[Verso.Doc.Inline.code $(quote str)])
 where
   tacToken (t : Lean.Elab.Tactic.Doc.TacticDoc) : Highlighted :=
     .token ⟨.keyword t.internalName none t.docString, str⟩
 
 open Lean Elab Term in
 open Lean.Parser in
-def tryHighlightKeywords (extraKeywords : Array String) (str : String) : DocElabM Term := do
+def tryHighlightKeywords (extraKeywords : Array String) (keywordSet : HashSet String) (str : String) : DocElabM Term := do
+  let trimmed := str.trimAscii.toString
+  if !trimmed.any Char.isWhitespace && !keywordSet.contains trimmed then
+    throwError "Not keyword-highlightable"
   let loc := (← getRef).getPos?.map (← getFileMap).utf8PosToLspPos
   let src :=
     if let some ⟨line, col⟩ := loc then s!"<docstring at {← getFileName}:{line}:{col}>"
@@ -1240,7 +1242,8 @@ where
     | _ => []
 
 open Elab in
-def tryElabInlineCode (allTactics : Array Tactic.Doc.TacticDoc) (extraKeywords : Array String)
+def tryElabInlineCode (tacticLookup : Std.HashMap String Tactic.Doc.TacticDoc)
+    (extraKeywords : Array String) (keywordSet : HashSet String)
     (priorWord : Option String) (str : String) : DocElabM Term :=
   tryElabInlineCodeUsing [
     tryElabInlineCodeName,
@@ -1251,10 +1254,10 @@ def tryElabInlineCode (allTactics : Array Tactic.Doc.TacticDoc) (extraKeywords :
     tryInlineOption,
     tryElabInlineCodeTerm,
     tryElabInlineCodeMetavarTerm,
-    tryTacticName allTactics,
+    tryTacticName tacticLookup,
     withTheReader Term.Context (fun ctx => {ctx with autoBoundImplicitContext := some ⟨true, {}⟩}) ∘ tryElabInlineCodeTerm,
     tryElabInlineCodeTerm (ignoreElabErrors := true),
-    tryHighlightKeywords extraKeywords
+    tryHighlightKeywords extraKeywords keywordSet
   ] priorWord str
 
 open Elab in
@@ -1263,7 +1266,8 @@ Like `tryElabInlineCode`, but prefers producing un-highlighted code blocks to
 displaying metavariable-typed terms (e.g., through auto-bound implicits or
 elaboration failures).
 -/
-def tryElabInlineCodeStrict (allTactics : Array Tactic.Doc.TacticDoc) (extraKeywords : Array String)
+def tryElabInlineCodeStrict (tacticLookup : Std.HashMap String Tactic.Doc.TacticDoc)
+    (extraKeywords : Array String) (keywordSet : HashSet String)
     (priorWord : Option String) (str : String) : DocElabM Term :=
   tryElabInlineCodeUsing [
     tryElabInlineCodeName,
@@ -1274,8 +1278,8 @@ def tryElabInlineCodeStrict (allTactics : Array Tactic.Doc.TacticDoc) (extraKeyw
     tryInlineOption,
     tryElabInlineCodeTerm,
     tryElabInlineCodeMetavarTerm,
-    tryTacticName allTactics,
-    tryHighlightKeywords extraKeywords
+    tryTacticName tacticLookup,
+    tryHighlightKeywords extraKeywords keywordSet
   ] priorWord str
 
 open Lean Elab Term in
@@ -1299,6 +1303,12 @@ def tryElabBlockCode (_info? _lang? : Option String) (str : String) : DocElabM T
         logWarning m!"Internal exception uncaught: {e.toMessageData}"
         ``(Verso.Doc.Block.code $(quote str))
 
+open Lean Elab Term
+/--
+Heuristically elaborate Lean fragments in Markdown code. The provided names are used as signatures,
+from left to right, with the names bound by the signature being available in the local scope in
+which the Lean fragments are elaborated.
+-/
 private partial def textHasInlineCode : MD4Lean.Text → Bool
   | .code _ => true
   | .del txt | .em txt | .strong txt | .u txt => txt.any textHasInlineCode
@@ -1323,61 +1333,169 @@ private partial def blockHasBlockCode : MD4Lean.Block → Bool
 private def blockNeedsHeuristicElab (b : MD4Lean.Block) : Bool :=
   blockHasInlineCode b || blockHasBlockCode b
 
-open Lean Elab Term in
-/--
-Heuristically elaborate Lean fragments in Markdown code. The provided names are used as signatures,
-from left to right, with the names bound by the signature being available in the local scope in
-which the Lean fragments are elaborated.
--/
-def blockFromMarkdownWithLean (names : List Name) (b : MD4Lean.Block) : DocElabM Term := do
+private structure MarkdownLeanHeuristics where
+  tactics : Array Tactic.Doc.TacticDoc
+  tacticLookup : Std.HashMap String Tactic.Doc.TacticDoc
+  keywords : Array String
+  keywordSet : HashSet String
+
+private structure MarkdownLeanInlineDataKey where
+  tacticKindCount : Nat
+  tacticAlternativeCount : Nat
+  tacticTagCount : Nat
+  tacticNameCount : Nat
+  tacticExtensionCount : Nat
+deriving BEq
+
+private structure MarkdownLeanInlineDataCache where
+  key : MarkdownLeanInlineDataKey
+  heuristics : MarkdownLeanHeuristics
+
+initialize markdownLeanInlineDataExt : EnvExtension (Option MarkdownLeanInlineDataCache) ←
+  Lean.registerEnvExtension (pure none)
+
+private def importedEntryCount (entries : Array (Array α)) : Nat :=
+  entries.foldl (init := 0) fun n arr => n + arr.size
+
+private def nameMapCount (m : Lean.NameMap α) : Nat :=
+  m.foldl (init := 0) fun n _ _ => n + 1
+
+private def nameMapNameSetCount (m : Lean.NameMap NameSet) : Nat :=
+  m.foldl (init := 0) fun n _ xs => n + xs.foldl (init := 0) (fun m _ => m + 1)
+
+private def nameMapStringArrayCount (m : Lean.NameMap (Array String)) : Nat :=
+  m.foldl (init := 0) fun n _ xs => n + xs.size
+
+private def markdownLeanInlineDataKey (env : Environment) : MarkdownLeanInlineDataKey :=
+  let tacticKindCount :=
+    match (Lean.Parser.parserExtension.getState env).categories.find? `tactic with
+    | some tactics => tactics.kinds.foldl (init := 0) fun n _ _ => n + 1
+    | none => 0
+  let tacticAlternativeCount :=
+    nameMapCount (Lean.Parser.Tactic.Doc.tacticAlternativeExt.getState env) +
+      importedEntryCount (Lean.Parser.Tactic.Doc.tacticAlternativeExt.toEnvExtension.getState env).importedEntries
+  let tacticTagCount :=
+    nameMapNameSetCount (Lean.Parser.Tactic.Doc.tacticTagExt.getState env) +
+      importedEntryCount (Lean.Parser.Tactic.Doc.tacticTagExt.toEnvExtension.getState env).importedEntries
+  let tacticNameCount :=
+    nameMapCount (Lean.Parser.Tactic.Doc.tacticNameExt.getState env) +
+      importedEntryCount (Lean.Parser.Tactic.Doc.tacticNameExt.toEnvExtension.getState env).importedEntries
+  let tacticExtensionCount :=
+    nameMapStringArrayCount (Lean.Parser.Tactic.Doc.tacticDocExtExt.getState env) +
+      importedEntryCount (Lean.Parser.Tactic.Doc.tacticDocExtExt.toEnvExtension.getState env).importedEntries
+  {
+    tacticKindCount
+    tacticAlternativeCount
+    tacticTagCount
+    tacticNameCount
+    tacticExtensionCount
+  }
+
+private def getMarkdownLeanInlineHeuristics : DocElabM MarkdownLeanHeuristics := do
+  let env ← getEnv
+  let key := markdownLeanInlineDataKey env
+  match markdownLeanInlineDataExt.getState env with
+  | some cache =>
+    if cache.key == key then
+      pure cache.heuristics
+    else
+      build key
+  | none => build key
+where
+  build (key : MarkdownLeanInlineDataKey) : DocElabM MarkdownLeanHeuristics := do
+    let tactics ← Elab.Tactic.Doc.allTacticDocs
+    let keywords : Array String := tactics.map (fun t => t.userName)
+    let tacticLookup : Std.HashMap String Tactic.Doc.TacticDoc :=
+      tactics.foldl (init := {}) fun m t =>
+        if m.contains t.userName then m else m.insert t.userName t
+    let keywordSet : HashSet String := keywords.foldl (init := {}) fun s kw => s.insert kw
+    let heuristics := { tactics, tacticLookup, keywords, keywordSet }
+    modifyEnv (markdownLeanInlineDataExt.setState · (some { key, heuristics }))
+    pure heuristics
+
+private def mkMarkdownLeanHeuristics (needInlineData : Bool) : DocElabM (Option MarkdownLeanHeuristics) := do
+  if !(← Docstring.getElabMarkdown) then
+    pure none
+  else if needInlineData then
+    pure <| some (← getMarkdownLeanInlineHeuristics)
+  else
+    pure <| some { tactics := #[], tacticLookup := {}, keywords := #[], keywordSet := {} }
+
+private def blockFromMarkdownWithLeanCore
+    (heuristics? : Option MarkdownLeanHeuristics)
+    (names : List Name)
+    (b : MD4Lean.Block) : DocElabM Term := do
   let plainMarkdown := Markdown.blockFromMarkdown b (handleHeaders := Markdown.strongEmphHeaders)
-  unless (← Docstring.getElabMarkdown) do
-    return (← plainMarkdown)
-  let tactics ← Elab.Tactic.Doc.allTacticDocs
-  let keywords := tactics.map (·.userName)
-  try
-    match names with
-    | decl :: decls =>
-      -- This brings the parameters into scope, so the term elaboration version catches them!
-      Meta.forallTelescopeReducing (← getConstInfo decl).type fun _ _ =>
-        blockFromMarkdownWithLean decls b
-    | [] =>
-      unless blockNeedsHeuristicElab b do
-        return (← plainMarkdown)
-      let inlineCode? :=
-        if blockHasInlineCode b then some (tryElabInlineCode tactics keywords) else none
-      let blockCode? :=
-        if blockHasBlockCode b then some tryElabBlockCode else none
-      -- It'd be silly for some weird edge case to block on this feature...
-      let rec loop (max : Nat) (s : SavedState) : DocElabM Term := do
-        match max with
-        | k + 1 =>
-          try
-            let res ←
-              Markdown.blockFromMarkdown b
-                (handleHeaders := Markdown.strongEmphHeaders)
-                (elabInlineCode := inlineCode?)
-                (elabBlockCode := blockCode?)
-            synthesizeSyntheticMVarsUsingDefault
+  let rec go (names : List Name) : DocElabM Term := do
+    let some heuristics := heuristics?
+      | return (← plainMarkdown)
+    unless blockNeedsHeuristicElab b do
+      return (← plainMarkdown)
+    let inlineCode? : Option (Option String → String → DocElabM Term) :=
+      if blockHasInlineCode b then
+        some (tryElabInlineCode heuristics.tacticLookup heuristics.keywords heuristics.keywordSet)
+      else
+        none
+    let blockCode? : Option (Option String → Option String → String → DocElabM Term) :=
+      if blockHasBlockCode b then some tryElabBlockCode else none
+    try
+      match names with
+      | decl :: decls =>
+        -- This brings the parameters into scope, so the term elaboration version catches them!
+        Meta.forallTelescopeReducing (← getConstInfo decl).type fun _ _ =>
+          go decls
+      | [] =>
+        -- It'd be silly for some weird edge case to block on this feature...
+        let rec loop (max : Nat) (s : SavedState) : DocElabM Term := do
+          match max with
+          | k + 1 =>
+            try
+              let res ←
+                Markdown.blockFromMarkdown b
+                  (handleHeaders := Markdown.strongEmphHeaders)
+                  (elabInlineCode := inlineCode?)
+                  (elabBlockCode := blockCode?)
+              synthesizeSyntheticMVarsUsingDefault
 
-            discard <| addAutoBoundImplicits #[] (inlayHintPos? := none)
+              discard <| addAutoBoundImplicits #[] (inlayHintPos? := none)
 
-            return res
-          catch e =>
-            if let some n := isAutoBoundImplicitLocalException? e then
-              s.restore (restoreInfo := true)
-              Meta.withLocalDecl n .implicit (← Meta.mkFreshTypeMVar) fun x =>
-                withTheReader Term.Context (fun ctx => { ctx with autoBoundImplicitContext := ctx.autoBoundImplicitContext.map (fun c => {c with boundVariables := c.boundVariables.push x }) }) do
-                  loop k (← (saveState : TermElabM _))
-            else throw e
-        | 0 => throwError "Ran out of local name attempts"
-      let s ← (saveState : TermElabM _)
-      try
-        loop 40 s
-      finally
-        (s.restore : TermElabM _)
-  catch _ =>
-    plainMarkdown
+              return res
+            catch e =>
+              if let some n := isAutoBoundImplicitLocalException? e then
+                s.restore (restoreInfo := true)
+                Meta.withLocalDecl n .implicit (← Meta.mkFreshTypeMVar) fun x =>
+                  withTheReader Term.Context (fun ctx => { ctx with autoBoundImplicitContext := ctx.autoBoundImplicitContext.map (fun c => {c with boundVariables := c.boundVariables.push x }) }) do
+                    loop k (← (saveState : TermElabM _))
+              else throw e
+          | 0 => throwError "Ran out of local name attempts"
+        let s ← (saveState : TermElabM _)
+        try
+          loop 40 s
+        finally
+          (s.restore : TermElabM _)
+    catch _ =>
+      plainMarkdown
+  go names
+
+def blockFromMarkdownWithLean
+    (names : List Name)
+    (b : MD4Lean.Block)
+    (heuristics? : Option MarkdownLeanHeuristics := none) : DocElabM Term := do
+  let heuristics? ←
+    match heuristics? with
+    | some h => pure (some h)
+    | none => mkMarkdownLeanHeuristics (needInlineData := blockHasInlineCode b)
+  blockFromMarkdownWithLeanCore heuristics? names b
+
+private def blocksFromMarkdownWithLean
+    (names : List Name)
+    (blocks : Array MD4Lean.Block)
+    (heuristics? : Option MarkdownLeanHeuristics := none) : DocElabM (Array Term) := do
+  let heuristics? ←
+    match heuristics? with
+    | some h => pure (some h)
+    | none => mkMarkdownLeanHeuristics (needInlineData := blocks.any blockHasInlineCode)
+  blocks.mapM fun b => blockFromMarkdownWithLean names b heuristics?
 
 structure DocstringConfig where
   name : Ident × Name
@@ -1412,33 +1530,35 @@ end
 @[block_command]
 def docstring : BlockCommandOf DocstringConfig
   | ⟨(x, name), allowMissing, hideFields, hideCtor, customLabel⟩ => do
-    let opts : Options → Options := (verso.docstring.allowMissing.set · allowMissing)
+      let opts : Options → Options := (verso.docstring.allowMissing.set · allowMissing)
 
-    withOptions opts do
-      Doc.PointOfInterest.save (← getRef) name.toString (detail? := some "Documentation")
-      let blockStx ←
-        match ← getDocString? (← getEnv) name with
-        | none => pure #[]
-        | some docs =>
-          let some ast := MD4Lean.parse docs
-            | throwErrorAt x "Failed to parse docstring as Markdown"
+      withOptions opts do
+        Doc.PointOfInterest.save (← getRef) name.toString (detail? := some "Documentation")
+        let (blockStx, heuristics?) ←
+          match ← getDocString? (← getEnv) name with
+          | none => pure (#[], none)
+          | some docs =>
+            let some ast := MD4Lean.parse docs
+              | throwErrorAt x "Failed to parse docstring as Markdown"
+            let needInlineData := ast.blocks.any blockHasInlineCode
+            let heuristics? ← mkMarkdownLeanHeuristics (needInlineData := needInlineData)
+            let blockStx ← blocksFromMarkdownWithLean [name] ast.blocks heuristics?
+            pure (blockStx, heuristics?)
 
-          ast.blocks.mapM (blockFromMarkdownWithLean [name])
+        if !(← Docstring.getAllowDeprecated) && Lean.Linter.isDeprecated (← getEnv) name then
+          Lean.logError m!"'{name}' is deprecated.\n\nSet option 'verso.docstring.allowDeprecated' to 'true' to allow documentation for deprecated names."
 
-      if !(← Docstring.getAllowDeprecated) && Lean.Linter.isDeprecated (← getEnv) name then
-        Lean.logError m!"'{name}' is deprecated.\n\nSet option 'verso.docstring.allowDeprecated' to 'true' to allow documentation for deprecated names."
+        let declType ← Block.Docstring.DeclType.ofName name (hideFields := hideFields) (hideStructureConstructor := hideCtor)
 
-      let declType ← Block.Docstring.DeclType.ofName name (hideFields := hideFields) (hideStructureConstructor := hideCtor)
+        let signature ← Signature.forName name
 
-      let signature ← Signature.forName name
+        let extras ← getExtras heuristics? name declType
 
-      let extras ← getExtras name declType
+        let altNames ← getStoredSuggestions name
 
-      let altNames ← getStoredSuggestions name
-
-      ``(Verso.Doc.Block.other (Verso.Genre.Manual.Block.docstring $(quote name) $(quote declType) $(quote signature) $(quote customLabel) $(quote altNames.toArray)) #[$(blockStx ++ extras),*])
+        ``(Verso.Doc.Block.other (Verso.Genre.Manual.Block.docstring $(quote name) $(quote declType) $(quote signature) $(quote customLabel) $(quote altNames.toArray)) #[$(blockStx ++ extras),*])
 where
-  getExtras (name : Name) (declType : Block.Docstring.DeclType) : DocElabM (Array Term) :=
+  getExtras (heuristics? : Option MarkdownLeanHeuristics) (name : Name) (declType : Block.Docstring.DeclType) : DocElabM (Array Term) :=
     match declType with
     | .structure isClass constructor? _ fieldInfo parents _ => do
       let ctorRow : Option Term ← constructor?.mapM fun constructor => do
@@ -1447,7 +1567,7 @@ where
           if let some docs := constructor.docstring? then
             let some mdAst := MD4Lean.parse docs
               | throwError "Failed to parse docstring as Markdown"
-            mdAst.blocks.mapM (blockFromMarkdownWithLean [name, constructor.name])
+            blocksFromMarkdownWithLean [name, constructor.name] mdAst.blocks heuristics?
           else pure (#[] : Array Term)
         let sig ← `(Verso.Doc.Block.other (Verso.Genre.Manual.Block.internalSignature $(quote constructor.hlName) none) #[$sigDesc,*])
         ``(Verso.Doc.Block.other (Verso.Genre.Manual.Block.docstringSection $(quote header)) #[$sig])
@@ -1469,7 +1589,7 @@ where
             if let some docs := i.docString? then
               let some mdAst := MD4Lean.parse docs
                 | throwError "Failed to parse docstring as Markdown"
-              mdAst.blocks.mapM (blockFromMarkdownWithLean <| name :: (constructor?.map ([·.name])).getD [])
+              blocksFromMarkdownWithLean (name :: (constructor?.map ([·.name])).getD []) mdAst.blocks heuristics?
             else
               pure (#[] : Array Term)
           ``(Verso.Doc.Block.other (Verso.Genre.Manual.Block.fieldSignature $(quote i.visibility) $(quote i.fieldName) $(quote i.type) $(quote inheritedFrom) $(quote <| parents.map (·.parent))) #[$sigDesc,*])
@@ -1485,7 +1605,7 @@ where
             if let some docs := c.docstring? then
               let some mdAst := MD4Lean.parse docs
                 | throwError "Failed to parse docstring as Markdown"
-              mdAst.blocks.mapM (blockFromMarkdownWithLean [name, c.name])
+              blocksFromMarkdownWithLean [name, c.name] mdAst.blocks heuristics?
             else pure (#[] : Array Term)
           ``(Verso.Doc.Block.other (Verso.Genre.Manual.Block.constructorSignature $(quote c.signature)) #[$sigDesc,*])
       pure #[← ``(Verso.Doc.Block.other (Verso.Genre.Manual.Block.docstringSection "Constructors") #[$ctorSigs,*])]
@@ -1512,19 +1632,17 @@ end
 @[block_command]
 def includeDocstring : BlockCommandOf IncludeDocstringOpts
   | {name, elaborate} => do
-    let fromMd :=
-      if elaborate then
-        blockFromMarkdownWithLean [name]
-      else
-        Markdown.blockFromMarkdown (handleHeaders := Markdown.strongEmphHeaders)
-
     let blockStx ←
       match ← getDocString? (← getEnv) name with
       | none => pure #[]
       | some docs =>
         let some ast := MD4Lean.parse docs
           | throwError "Failed to parse docstring as Markdown"
-        ast.blocks.mapM fromMd
+        if elaborate then
+          let heuristics? ← mkMarkdownLeanHeuristics (needInlineData := ast.blocks.any blockHasInlineCode)
+          blocksFromMarkdownWithLean [name] ast.blocks heuristics?
+        else
+          ast.blocks.mapM <| Markdown.blockFromMarkdown (handleHeaders := Markdown.strongEmphHeaders)
 
     ``(Doc.Block.concat #[$blockStx,*])
 
@@ -1573,7 +1691,9 @@ def optionDocs : BlockCommandOf optionDocs.Args
     Doc.PointOfInterest.save x.raw optDecl.declName.toString
     let some mdAst := MD4Lean.parse optDecl.descr
       | throwErrorAt x.raw "Failed to parse docstring as Markdown"
-    let contents ← mdAst.blocks.mapM (blockFromMarkdownWithLean [])
+    let needInlineData := mdAst.blocks.any blockHasInlineCode
+    let heuristics? ← mkMarkdownLeanHeuristics (needInlineData := needInlineData)
+    let contents ← blocksFromMarkdownWithLean [] mdAst.blocks heuristics?
     ``(Verso.Doc.Block.other (Verso.Genre.Manual.Block.optionDocs $(quote x.getId) $(quote <| highlightDataValue optDecl.defValue)) #[$contents,*])
 
 open Verso.Search in
@@ -1727,7 +1847,9 @@ def tactic : DirectiveExpanderOf TacticDocsOptions
           | throwError "Tactic {tactic.userName} ({tactic.internalName}) has no docstring"
         let some mdAst := MD4Lean.parse str
           | throwError m!"Failed to parse docstring as Markdown. Docstring contents:\n{repr str}"
-        mdAst.blocks.mapM (blockFromMarkdownWithLean [])
+        let needInlineData := mdAst.blocks.any blockHasInlineCode
+        let heuristics? ← mkMarkdownLeanHeuristics (needInlineData := needInlineData)
+        blocksFromMarkdownWithLean [] mdAst.blocks heuristics?
     let userContents ← more.mapM elabBlock
     ``(Verso.Doc.Block.other (Block.tactic $(quote tactic) $(quote opts.show)) #[$(contents ++ userContents),*])
 
@@ -1882,7 +2004,9 @@ def conv : DirectiveExpanderOf TacticDocsOptions
     let contents ← if let some d := tactic.docs? then
         let some mdAst := MD4Lean.parse d
           | throwError "Failed to parse docstring as Markdown"
-        mdAst.blocks.mapM (blockFromMarkdownWithLean [])
+        let needInlineData := mdAst.blocks.any blockHasInlineCode
+        let heuristics? ← mkMarkdownLeanHeuristics (needInlineData := needInlineData)
+        blocksFromMarkdownWithLean [] mdAst.blocks heuristics?
       else pure #[]
     let userContents ← more.mapM elabBlock
     let some toShow := opts.show
