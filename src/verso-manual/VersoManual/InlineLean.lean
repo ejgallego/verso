@@ -278,6 +278,8 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       for t in cmdState.infoState.trees do
         pushInfoTree t
 
+      if !config.show then
+        return (← toHighlightedLeanContent false Highlighted.empty str)
 
       let mut hls := Highlighted.empty
       let nonSilentMsgs := cmdState.messages.toArray.filter (!·.isSilent)
