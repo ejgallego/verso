@@ -229,6 +229,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       (kind := Lsp.SymbolKind.file)
       (detail? := some ("Lean code" ++ config.outlineMeta))
 
+    let needInfoTrees := config.show || config.name.isSome
     let col? := (← getRef).getPos? |>.map (← getFileMap).utf8PosToLspPos |>.map (·.character)
 
     let origScopes ← if config.fresh then pure [{header := ""}] else getScopes
@@ -254,9 +255,13 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       pstate := ps'
       cmdState := { cmdState with messages := messages }
 
-
-      cmdState ← withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
-        runCommand (Command.elabCommand cmd) cmd cctx cmdState
+      cmdState ←
+        if needInfoTrees then
+          withInfoTreeContext (mkInfoTree := pure ∘ InfoTree.node (.ofCommandInfo {elaborator := `Manual.Meta.lean, stx := cmd})) <|
+            runCommand (Command.elabCommand cmd) cmd cctx cmdState
+        else
+          withEnableInfoTree false <|
+            runCommand (Command.elabCommand cmd) cmd cctx cmdState
 
       if Parser.isTerminalCommand cmd then break
 
