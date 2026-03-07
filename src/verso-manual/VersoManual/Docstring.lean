@@ -1019,19 +1019,21 @@ where
     .token ⟨.option name declName descr, name.toString⟩
 
 open Lean Elab in
-def tryTacticName (tactics : Array Tactic.Doc.TacticDoc) (str : String) : DocElabM Term := do
-  for t in tactics do
-    if t.userName == str then
-      let hl : Highlighted := tacToken t
-      return ← ``(Verso.Doc.Inline.other (Inline.leanFromMarkdown $(quote hl)) #[Verso.Doc.Inline.code $(quote str)])
-  throwError "Not a tactic name: {str}"
+def tryTacticName (tactics : Std.HashMap String Tactic.Doc.TacticDoc) (str : String) : DocElabM Term := do
+  let some t := tactics[str]?
+    | throwError "Not a tactic name: {str}"
+  let hl : Highlighted := tacToken t
+  return ← ``(Verso.Doc.Inline.other (Inline.leanFromMarkdown $(quote hl)) #[Verso.Doc.Inline.code $(quote str)])
 where
   tacToken (t : Lean.Elab.Tactic.Doc.TacticDoc) : Highlighted :=
     .token ⟨.keyword t.internalName none t.docString, str⟩
 
 open Lean Elab Term in
 open Lean.Parser in
-def tryHighlightKeywords (extraKeywords : Array String) (str : String) : DocElabM Term := do
+def tryHighlightKeywords (extraKeywords : Array String) (keywordSet : HashSet String) (str : String) : DocElabM Term := do
+  let trimmed := str.trimAscii.toString
+  if !trimmed.any Char.isWhitespace && !keywordSet.contains trimmed then
+    throwError "Not keyword-highlightable"
   let loc := (← getRef).getPos?.map (← getFileMap).utf8PosToLspPos
   let src :=
     if let some ⟨line, col⟩ := loc then s!"<docstring at {← getFileName}:{line}:{col}>"
@@ -1240,7 +1242,8 @@ where
     | _ => []
 
 open Elab in
-def tryElabInlineCode (allTactics : Array Tactic.Doc.TacticDoc) (extraKeywords : Array String)
+def tryElabInlineCode (tacticLookup : Std.HashMap String Tactic.Doc.TacticDoc)
+    (extraKeywords : Array String) (keywordSet : HashSet String)
     (priorWord : Option String) (str : String) : DocElabM Term :=
   tryElabInlineCodeUsing [
     tryElabInlineCodeName,
@@ -1251,10 +1254,10 @@ def tryElabInlineCode (allTactics : Array Tactic.Doc.TacticDoc) (extraKeywords :
     tryInlineOption,
     tryElabInlineCodeTerm,
     tryElabInlineCodeMetavarTerm,
-    tryTacticName allTactics,
+    tryTacticName tacticLookup,
     withTheReader Term.Context (fun ctx => {ctx with autoBoundImplicitContext := some ⟨true, {}⟩}) ∘ tryElabInlineCodeTerm,
     tryElabInlineCodeTerm (ignoreElabErrors := true),
-    tryHighlightKeywords extraKeywords
+    tryHighlightKeywords extraKeywords keywordSet
   ] priorWord str
 
 open Elab in
@@ -1263,7 +1266,8 @@ Like `tryElabInlineCode`, but prefers producing un-highlighted code blocks to
 displaying metavariable-typed terms (e.g., through auto-bound implicits or
 elaboration failures).
 -/
-def tryElabInlineCodeStrict (allTactics : Array Tactic.Doc.TacticDoc) (extraKeywords : Array String)
+def tryElabInlineCodeStrict (tacticLookup : Std.HashMap String Tactic.Doc.TacticDoc)
+    (extraKeywords : Array String) (keywordSet : HashSet String)
     (priorWord : Option String) (str : String) : DocElabM Term :=
   tryElabInlineCodeUsing [
     tryElabInlineCodeName,
@@ -1274,8 +1278,8 @@ def tryElabInlineCodeStrict (allTactics : Array Tactic.Doc.TacticDoc) (extraKeyw
     tryInlineOption,
     tryElabInlineCodeTerm,
     tryElabInlineCodeMetavarTerm,
-    tryTacticName allTactics,
-    tryHighlightKeywords extraKeywords
+    tryTacticName tacticLookup,
+    tryHighlightKeywords extraKeywords keywordSet
   ] priorWord str
 
 open Lean Elab Term in
@@ -1331,17 +1335,91 @@ private def blockNeedsHeuristicElab (b : MD4Lean.Block) : Bool :=
 
 private structure MarkdownLeanHeuristics where
   tactics : Array Tactic.Doc.TacticDoc
+  tacticLookup : Std.HashMap String Tactic.Doc.TacticDoc
   keywords : Array String
+  keywordSet : HashSet String
+
+private structure MarkdownLeanInlineDataKey where
+  tacticKindCount : Nat
+  tacticAlternativeCount : Nat
+  tacticTagCount : Nat
+  tacticNameCount : Nat
+  tacticExtensionCount : Nat
+deriving BEq
+
+private structure MarkdownLeanInlineDataCache where
+  key : MarkdownLeanInlineDataKey
+  heuristics : MarkdownLeanHeuristics
+
+initialize markdownLeanInlineDataExt : EnvExtension (Option MarkdownLeanInlineDataCache) ←
+  Lean.registerEnvExtension (pure none)
+
+private def importedEntryCount (entries : Array (Array α)) : Nat :=
+  entries.foldl (init := 0) fun n arr => n + arr.size
+
+private def nameMapCount (m : Lean.NameMap α) : Nat :=
+  m.foldl (init := 0) fun n _ _ => n + 1
+
+private def nameMapNameSetCount (m : Lean.NameMap NameSet) : Nat :=
+  m.foldl (init := 0) fun n _ xs => n + xs.foldl (init := 0) (fun m _ => m + 1)
+
+private def nameMapStringArrayCount (m : Lean.NameMap (Array String)) : Nat :=
+  m.foldl (init := 0) fun n _ xs => n + xs.size
+
+private def markdownLeanInlineDataKey (env : Environment) : MarkdownLeanInlineDataKey :=
+  let tacticKindCount :=
+    match (Lean.Parser.parserExtension.getState env).categories.find? `tactic with
+    | some tactics => tactics.kinds.foldl (init := 0) fun n _ _ => n + 1
+    | none => 0
+  let tacticAlternativeCount :=
+    nameMapCount (Lean.Parser.Tactic.Doc.tacticAlternativeExt.getState env) +
+      importedEntryCount (Lean.Parser.Tactic.Doc.tacticAlternativeExt.toEnvExtension.getState env).importedEntries
+  let tacticTagCount :=
+    nameMapNameSetCount (Lean.Parser.Tactic.Doc.tacticTagExt.getState env) +
+      importedEntryCount (Lean.Parser.Tactic.Doc.tacticTagExt.toEnvExtension.getState env).importedEntries
+  let tacticNameCount :=
+    nameMapCount (Lean.Parser.Tactic.Doc.tacticNameExt.getState env) +
+      importedEntryCount (Lean.Parser.Tactic.Doc.tacticNameExt.toEnvExtension.getState env).importedEntries
+  let tacticExtensionCount :=
+    nameMapStringArrayCount (Lean.Parser.Tactic.Doc.tacticDocExtExt.getState env) +
+      importedEntryCount (Lean.Parser.Tactic.Doc.tacticDocExtExt.toEnvExtension.getState env).importedEntries
+  {
+    tacticKindCount
+    tacticAlternativeCount
+    tacticTagCount
+    tacticNameCount
+    tacticExtensionCount
+  }
+
+private def getMarkdownLeanInlineHeuristics : DocElabM MarkdownLeanHeuristics := do
+  let env ← getEnv
+  let key := markdownLeanInlineDataKey env
+  match markdownLeanInlineDataExt.getState env with
+  | some cache =>
+    if cache.key == key then
+      pure cache.heuristics
+    else
+      build key
+  | none => build key
+where
+  build (key : MarkdownLeanInlineDataKey) : DocElabM MarkdownLeanHeuristics := do
+    let tactics ← Elab.Tactic.Doc.allTacticDocs
+    let keywords : Array String := tactics.map (fun t => t.userName)
+    let tacticLookup : Std.HashMap String Tactic.Doc.TacticDoc :=
+      tactics.foldl (init := {}) fun m t =>
+        if m.contains t.userName then m else m.insert t.userName t
+    let keywordSet : HashSet String := keywords.foldl (init := {}) fun s kw => s.insert kw
+    let heuristics := { tactics, tacticLookup, keywords, keywordSet }
+    modifyEnv (markdownLeanInlineDataExt.setState · (some { key, heuristics }))
+    pure heuristics
 
 private def mkMarkdownLeanHeuristics (needInlineData : Bool) : DocElabM (Option MarkdownLeanHeuristics) := do
   if !(← Docstring.getElabMarkdown) then
     pure none
   else if needInlineData then
-    let tactics ← Elab.Tactic.Doc.allTacticDocs
-    let keywords : Array String := tactics.map (fun t => t.userName)
-    pure <| some { tactics, keywords }
+    pure <| some (← getMarkdownLeanInlineHeuristics)
   else
-    pure <| some { tactics := #[], keywords := #[] }
+    pure <| some { tactics := #[], tacticLookup := {}, keywords := #[], keywordSet := {} }
 
 private def blockFromMarkdownWithLeanCore
     (heuristics? : Option MarkdownLeanHeuristics)
@@ -1354,7 +1432,10 @@ private def blockFromMarkdownWithLeanCore
     unless blockNeedsHeuristicElab b do
       return (← plainMarkdown)
     let inlineCode? : Option (Option String → String → DocElabM Term) :=
-      if blockHasInlineCode b then some (tryElabInlineCode heuristics.tactics heuristics.keywords) else none
+      if blockHasInlineCode b then
+        some (tryElabInlineCode heuristics.tacticLookup heuristics.keywords heuristics.keywordSet)
+      else
+        none
     let blockCode? : Option (Option String → Option String → String → DocElabM Term) :=
       if blockHasBlockCode b then some tryElabBlockCode else none
     try
