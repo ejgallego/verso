@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-08 (recorded active `feat/lean-commandm-incremental-20260306` checkpoint on shared dashboard)
+Last updated: 2026-03-08 (validated `feat/graph-review-20260306` after runtime cleanup and tab-shaped group-node pass)
 
 ## Active Worktrees
 
@@ -25,13 +25,13 @@ Last updated: 2026-03-08 (recorded active `feat/lean-commandm-incremental-202603
 ### `feat/graph-review-20260306`
 
 - Status: `validated` (owner action: review aggregate-node shape options before the next visual pass)
-- Summary: group-view refactor now separates stable node ids from display labels, preserves aggregate statement/proof semantics, and swaps in a dedicated group legend.
+- Summary: graph view now has block-scoped runtime state, less conservative zoom for sparse layouts, and tab-shaped aggregate group nodes on top of the earlier stable-id and group-legend refactor.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
 - Branch: `feat/graph-review-20260306`
 - Base commit/branch:
   - merge-base with `bp`: `ef43594e` (`0` behind / `0` ahead)
 - Key commit:
-  - `29f7b3f0` refactor(graph): stabilize group view semantics
+  - `b327fad1` refactor(graph): harden runtime and group nodes
 - Validation status:
   - `lake exe cache get`
   - `lake build VersoBlueprint.Commands.Graph Tests.BlueprintGraph`
@@ -43,6 +43,7 @@ Last updated: 2026-03-08 (recorded active `feat/lean-commandm-incremental-202603
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/tests/Tests/BlueprintGraph.lean`
+  - shared preview server running in session `87423`
 
 ### `feat/lean-commandm-incremental-20260306`
 
