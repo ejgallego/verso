@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-08 (validated `feat/graph-review-20260306` after extracting graph runtime assets)
+Last updated: 2026-03-09 (merged and cleaned up `feat/informal-used-by-20260306`)
 
 ## Active Worktrees
 
@@ -89,6 +89,23 @@ Last updated: 2026-03-08 (validated `feat/graph-review-20260306` after extractin
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/informal-used-by-20260306` into `bp` (`62265b80 -> 9b6a9094`, fast-forward).
+- Feature branch key commit:
+  - `9b6a9094` feat(informal): add used-by header metadata
+- Validation on rebased squashed feature branch:
+  - `lake build Tests.BlueprintPreviewWiring`
+  - `lake build Tests`
+  - `lake env lean src/tests/Tests.lean`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/informal-used-by-20260306` (warnings only; no errors)
+- Validation on `bp` after merge:
+  - reused the rebuilt `/home/egallego/lean/verso-blueprint/_out/informal-used-by-20260306` artifact from the merged feature head
+- Removed preview output directory:
+  - `/home/egallego/lean/verso-blueprint/_out/informal-used-by-20260306`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/informal-used-by-20260306`
+- Deleted branch:
+  - `feat/informal-used-by-20260306`
 
 - Merged `feat/sphere-packing-blueprint` into `bp` (`c4fa5afa -> c055c4c0`, fast-forward).
 - Feature branch key commits:
