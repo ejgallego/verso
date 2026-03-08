@@ -24,14 +24,14 @@ Last updated: 2026-03-09 (merged and cleaned up `feat/informal-used-by-20260306`
 
 ### `feat/graph-review-20260306`
 
-- Status: `validated` (owner action: review aggregate-node shape options before the next visual pass)
-- Summary: graph view now ships its runtime from standalone JS assets, uses a shared panel controller to reduce hover-panel duplication, and keeps the earlier stable-id, tab-node, and group-legend refactors.
+- Status: `validated` (owner action: review the refreshed preview and decide whether the graph branch is ready for rebase/merge prep)
+- Summary: graph view now ships its runtime from standalone JS assets, docks group previews like regular previews, and frames the full graph from actual graph bounds so it starts in view.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
 - Branch: `feat/graph-review-20260306`
 - Base commit/branch:
-  - merge-base with `bp`: `ef43594e` (`14` behind / `3` ahead)
+  - merge-base with `bp`: `ef43594e` (`18` behind / `4` ahead)
 - Key commit:
-  - `6a026900` refactor(graph): extract runtime assets
+  - `b866dc86` fix(graph): dock group previews and frame full view
 - Validation status:
   - `lake exe cache get`
   - `lake build VersoBlueprint.Commands.Graph Tests.BlueprintGraph`
