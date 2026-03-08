@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-08 (validated `feat/graph-review-20260306` after runtime cleanup and tab-shaped group-node pass)
+Last updated: 2026-03-08 (sphere-packing rebased on latest `bp`; dual-artifact validation passed from synced root cache)
 
 ## Active Worktrees
 
@@ -17,7 +17,7 @@ Last updated: 2026-03-08 (validated `feat/graph-review-20260306` after runtime c
 - Validation status:
   - commands-path validation passed before merge:
   - `lake build VersoBlueprint.Commands.Common VersoBlueprint.Commands.Graph VersoBlueprint.Commands.Summary VersoBlueprint.Commands.Bibliography VersoBlueprint`
-  - `lake exe noperthedron`
+  - `./generate-example-blueprints.sh`
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
@@ -89,20 +89,23 @@ Last updated: 2026-03-08 (validated `feat/graph-review-20260306` after runtime c
 
 ### `feat/sphere-packing-blueprint`
 
-- Status: `blocked` (owner action: checkpoint dirty edits, then rebase)
-- Summary: sphere-packing blueprint branch is blocked by uncheckpointed local edits and temporary compatibility workarounds.
+- Status: `active` (owner action: continue port and rerun artifact validation when ready)
+- Summary: sphere-packing blueprint branch carries temporary compatibility workarounds while porting progresses.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
 - Branch: `feat/sphere-packing-blueprint`
 - Base commit/branch:
-  - merge-base with `bp`: `887d3300` (`19` behind / `2` ahead)
+  - merge-base with `bp`: `c4fa5afa` (`0` behind / `2` ahead)
 - Key commit:
-  - `8120a6e5` sphere-packing: add temporary external-name workarounds
+  - `dd28fa2b` sphere-packing: add temporary external-name workarounds
 - Validation status:
-  - not rerun in this update
+  - `lake build spherepackingblueprint` (pass)
+  - shared `.lake` cache resynced from root `bp`
+  - `./generate-example-blueprints.sh` (pass)
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
   - `git status --short`
-  - commit/stash local chapter changes before rebasing on `bp`
+  - `./generate-example-blueprints.sh`
+  - preview: `http://127.0.0.1:8081`
 
 ## Recently Completed
 

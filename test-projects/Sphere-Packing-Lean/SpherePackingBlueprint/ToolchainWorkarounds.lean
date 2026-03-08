@@ -1,3 +1,5 @@
+import SpherePackingBlueprint.Macros
+
 set_option autoImplicit false
 
 /--
@@ -299,4 +301,3 @@ axiom Θ₄ : Prop
 
 -- XXX Blueprint toolchain workaround
 axiom η : Prop
-

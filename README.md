@@ -104,6 +104,11 @@ try to make the system more extensible.
 To generate the Verso documentation for Verso itself, run
 `generate.sh`.
 
+To validate the blueprint example projects, run
+`./generate-example-blueprints.sh`. This builds `noperthedron` and
+`spherepackingblueprint` in parallel under
+`_out/example-blueprints/`.
+
 ### Customization of Manual Genre HTML
 
 The title of the book being written in the manual genre can be

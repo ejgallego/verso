@@ -117,10 +117,13 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
     }
   | some cinfo =>
     let nodeKind ←
-      match Informal.Data.ConstantInfo.blueprintNodeKind? cinfo with
-      | some kind => pure kind
-      | none =>
-        throwError m!"Unsupported external Lean reference '{ref.written}' (canonical '{canonical}') with kind '{Informal.Data.ConstantInfo.blueprintKindText cinfo}'. Only definitions and theorems are currently supported."
+      match cinfo with
+      | .defnInfo _ => pure Data.NodeKind.definition
+      | .thmInfo _ => pure Data.NodeKind.theorem
+      | .axiomInfo _ | .opaqueInfo _ =>
+        pure ref.kind
+      | _ =>
+        throwError m!"Unsupported external Lean reference '{ref.written}' (canonical '{canonical}') with kind '{Informal.Data.ConstantInfo.blueprintKindText cinfo}'. Only definitions, theorems, and axiom-like placeholders are currently supported."
     let ref : Data.ExternalRef := {
       ref with
       canonical

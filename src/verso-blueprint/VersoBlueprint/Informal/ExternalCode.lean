@@ -87,12 +87,14 @@ When strict mode is disabled, unresolved/ambiguous names are kept as parsed and 
 -/
 def resolveExternalCodeList [MonadResolveName m] [MonadOptions m] [MonadLiftT CoreM m] [MonadEnv m]
     [MonadLog m] [AddMessageContext m] [MonadError m]
-    (label : Name) (labelSyntax : Syntax) (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
+    (label : Name) (labelSyntax : Syntax) (expectedKind : Data.NodeKind)
+    (refs : Array Data.ExternalRef) : m (Array Data.ExternalRef) := do
   let strictResolve :=
     (← getOptions).get
       verso.blueprint.externalCode.strictResolve.name
       verso.blueprint.externalCode.strictResolve.defValue
   refs.foldlM (init := #[]) fun acc ref => do
+    let ref := { ref with kind := expectedKind }
     let candidates ← resolveExternalNameCandidates ref.written
     match candidates.toList with
     | [] =>

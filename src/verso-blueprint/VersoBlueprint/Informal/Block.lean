@@ -899,7 +899,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let label := cfg.label
     let envKind : Data.InProgressKind :=
       if isProof then .proof else .statement kind
-    let resolvedExternalCode ← ExternalCode.resolveExternalCodeList label cfg.labelSyntax cfg.externalCode
+    let resolvedExternalCode ← ExternalCode.resolveExternalCodeList label cfg.labelSyntax kind cfg.externalCode
     let hasExternalRaw := !resolvedExternalCode.isEmpty
     let hasLeanok := cfg.leanok.getD false
     if !cfg.invalidExternalCode.isEmpty then
