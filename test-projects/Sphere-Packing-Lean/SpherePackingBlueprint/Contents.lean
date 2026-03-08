@@ -1,7 +1,6 @@
 import Verso
 import VersoManual
 import VersoBlueprint
-import VersoBlueprint.Commands
 
 import SpherePackingBlueprint.Bibliography
 import SpherePackingBlueprint.Chapters.SpherePackings
@@ -50,4 +49,3 @@ The Cohn-Elkies linear programming strategy follows {citet ElkiesCohn}[].
 {bp_summary}
 
 {bp_bibliography}
-

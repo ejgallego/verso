@@ -19,7 +19,7 @@ Completed in this worktree:
 Validation snapshot:
 
 1. `lake build VersoBlueprint` passes.
-2. `lake exe noperthedron` passes (warnings only).
+2. `./generate-example-blueprints.sh` passes (warnings only).
 3. `python3 test-projects/Noperthedron/check_blueprint_code_panels.py` still has known baseline failure:
    - missing `bp_external_status_sorry` in `The-Local-Theorem`.
 
@@ -50,7 +50,7 @@ Validation snapshot:
    - summary hover previews
    - bibliography citations/backrefs
    - widget statement preview rendering
-2. Run `lake exe noperthedron` after each boundary change.
+2. Run `./generate-example-blueprints.sh` after each boundary change.
 3. Keep changes behavior-preserving until tests are green.
 
 ## Known Risks

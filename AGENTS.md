@@ -5,9 +5,9 @@
   - `test-projects/Noperthedron` (core example project)
 - Primary work branch, at root `bp`
 - Main validation command:
-  - `lake exe noperthedron`
+  - `./generate-example-blueprints.sh`
 - Validation output:
-  - Default output is written to `_out/`
+  - Default example-blueprint output is written to `_out/example-blueprints/{noperthedron,spherepackingblueprint}/`
   - Worktree previews should be written to the shared root `_out/<worktree>/`
 - Very important, check section "Starting a new task and Worktree Layout"
 - NEVER start a task WITHOUT creating a new worktree. DO NOT USE IDE CONTEXT TO GUESS WORKTREE.
@@ -22,12 +22,15 @@
     - `/home/egallego/lean/verso/.worktrees/<feature>`
     This keeps all worktrees under the same writable root, so Codex sub-agents can edit without sandbox path issues.
   + Copy the root `.lake` directory to `/home/egallego/lean/verso/.worktrees/<feature>` , so we don't rebuild mathlib
-  + Build the preview artifact into the shared root output tree with `lake exe noperthedron --output <repo-root>/_out/<feature>`
+  + Validate the example blueprints with `./generate-example-blueprints.sh <repo-root>/_out/<feature>/example-blueprints`
+  + Build the artifact you want to preview into the shared root output tree, for example:
+    - `lake exe noperthedron --output <repo-root>/_out/<feature>/noperthedron`
+    - `lake exe spherepackingblueprint --output <repo-root>/_out/<feature>/spherepackingblueprint`
   + Keep a single shared webserver serving the root `_out` directory
   + use always `npx http-server -p $port _out` as command to start the shared webserver
   + run the webserver with the right permissions as to avoid weird stuff
   + run the shared webserver in the background, for obvious reasons
-  + Generate a link I can click to see the artifact, using `http://127.0.0.1:$port/<feature>/html-multi/`, and add an entry to the shared root `WORKTREE_DASHBOARD.md` with the link
+  + Generate a link I can click to see the artifact, using `http://127.0.0.1:$port/<feature>/<artifact>/html-multi/`, and add an entry to the shared root `WORKTREE_DASHBOARD.md` with the link
     Never create a separate `WORKTREE_DASHBOARD.md` inside a feature worktree; the root dashboard is the only dashboard file.
   + If you detect a mathlib rebuild, see the section "Important Information about Mathlib project"
 - While working on the worktree, ensure that all the links are properly scoped to the worktree.
