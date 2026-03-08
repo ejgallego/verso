@@ -139,8 +139,10 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
     let html ← renderManualBlocksHtml blocks
     let out := html.asString
     pure (
-      countSubstr out "class=\"bp_inline_preview_ref\"" == 2 &&
-      countSubstr out "class=\"bp_inline_preview_tpl\"" == 1
+      countSubstr out
+          "class=\"bp_inline_preview_ref\" data-bp-preview-id=\"bp-uses--00ABlem-003Ahover-002Ebase-00BB-statement\"" == 2 &&
+      countSubstr out
+          "class=\"bp_inline_preview_tpl\" data-bp-preview-id=\"bp-uses--00ABlem-003Ahover-002Ebase-00BB-statement\"" == 1
     )
 
 /-- info: true -/
