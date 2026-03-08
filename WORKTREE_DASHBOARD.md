@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-09 (merged and cleaned up `feat/informal-used-by-20260306`)
+Last updated: 2026-03-09 (validated `feat/graph-review-20260306` after responsive layout and docked group-preview polish)
 
 ## Active Worktrees
 
@@ -25,13 +25,13 @@ Last updated: 2026-03-09 (merged and cleaned up `feat/informal-used-by-20260306`
 ### `feat/graph-review-20260306`
 
 - Status: `validated` (owner action: review the refreshed preview and decide whether the graph branch is ready for rebase/merge prep)
-- Summary: graph view now ships its runtime from standalone JS assets, docks group previews like regular previews, and frames the full graph from actual graph bounds so it starts in view.
+- Summary: graph view now uses docked group previews to match regular previews, sizes the canvas from the viewport instead of a fixed `90vh`, and clears stale SVG state before rerendering variants.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
 - Branch: `feat/graph-review-20260306`
 - Base commit/branch:
-  - merge-base with `bp`: `ef43594e` (`18` behind / `4` ahead)
+  - merge-base with `bp`: `ef43594e` (`20` behind / `5` ahead)
 - Key commit:
-  - `b866dc86` fix(graph): dock group previews and frame full view
+  - `1280c761` fix(graph): stabilize layout and dock group preview
 - Validation status:
   - `lake exe cache get`
   - `lake build VersoBlueprint.Commands.Graph Tests.BlueprintGraph`
