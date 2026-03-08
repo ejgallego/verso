@@ -94,6 +94,7 @@ When we create a worktree, it is possible that `lake` makes a choice to setup th
   - `WORKTREE_DASHBOARD.md`
 - This root-level file is the single shared dashboard for all worktrees.
 - Do not create per-worktree copies of `WORKTREE_DASHBOARD.md`; always update the shared root file instead.
+- Never edit the worktree checkout copy of `WORKTREE_DASHBOARD.md`; always edit `/home/egallego/lean/verso-blueprint/WORKTREE_DASHBOARD.md` in the root `bp` checkout so every worktree stays aligned to the same dashboard state.
 - Purpose:
   - Track per-worktree status and handoff notes for quick resume.
 - Update this file whenever a worktree changes phase:
