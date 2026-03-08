@@ -44,6 +44,7 @@ Last updated: 2026-03-08 (validated `feat/graph-review-20260306` after extractin
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/graph.js`, `src/verso-blueprint/VersoBlueprint/Commands/graph-toc-toggle.js`, `src/tests/Tests/BlueprintPreviewWiring.lean`
   - shared preview server running in session `87423`
+  - roadmap: add a browser-level regression for graph variant switching plus node/group hover previews; deferred for now because current cycles are focused elsewhere
 
 ### `feat/lean-commandm-incremental-20260306`
 
