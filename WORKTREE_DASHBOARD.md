@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-08 (sphere-packing blueprint merged into `bp` and cleaned up)
+Last updated: 2026-03-08 (validated `feat/graph-review-20260306` after extracting graph runtime assets)
 
 ## Active Worktrees
 
@@ -25,13 +25,13 @@ Last updated: 2026-03-08 (sphere-packing blueprint merged into `bp` and cleaned 
 ### `feat/graph-review-20260306`
 
 - Status: `validated` (owner action: review aggregate-node shape options before the next visual pass)
-- Summary: graph view now has block-scoped runtime state, less conservative zoom for sparse layouts, and tab-shaped aggregate group nodes on top of the earlier stable-id and group-legend refactor.
+- Summary: graph view now ships its runtime from standalone JS assets, uses a shared panel controller to reduce hover-panel duplication, and keeps the earlier stable-id, tab-node, and group-legend refactors.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
 - Branch: `feat/graph-review-20260306`
 - Base commit/branch:
-  - merge-base with `bp`: `ef43594e` (`0` behind / `0` ahead)
+  - merge-base with `bp`: `ef43594e` (`14` behind / `3` ahead)
 - Key commit:
-  - `b327fad1` refactor(graph): harden runtime and group nodes
+  - `6a026900` refactor(graph): extract runtime assets
 - Validation status:
   - `lake exe cache get`
   - `lake build VersoBlueprint.Commands.Graph Tests.BlueprintGraph`
@@ -42,7 +42,7 @@ Last updated: 2026-03-08 (sphere-packing blueprint merged into `bp` and cleaned 
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/tests/Tests/BlueprintGraph.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/graph.js`, `src/verso-blueprint/VersoBlueprint/Commands/graph-toc-toggle.js`, `src/tests/Tests/BlueprintPreviewWiring.lean`
   - shared preview server running in session `87423`
 
 ### `feat/lean-commandm-incremental-20260306`
