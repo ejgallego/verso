@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-08 (sphere-packing rebased on latest `bp`; dual-artifact validation passed from synced root cache)
+Last updated: 2026-03-08 (sphere-packing blueprint merged into `bp` and cleaned up)
 
 ## Active Worktrees
 
@@ -87,27 +87,19 @@ Last updated: 2026-03-08 (sphere-packing rebased on latest `bp`; dual-artifact v
   - `git status --short`
   - `git rebase bp`
 
-### `feat/sphere-packing-blueprint`
-
-- Status: `active` (owner action: continue port and rerun artifact validation when ready)
-- Summary: sphere-packing blueprint branch carries temporary compatibility workarounds while porting progresses.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
-- Branch: `feat/sphere-packing-blueprint`
-- Base commit/branch:
-  - merge-base with `bp`: `c4fa5afa` (`0` behind / `2` ahead)
-- Key commit:
-  - `dd28fa2b` sphere-packing: add temporary external-name workarounds
-- Validation status:
-  - `lake build spherepackingblueprint` (pass)
-  - shared `.lake` cache resynced from root `bp`
-  - `./generate-example-blueprints.sh` (pass)
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`
-  - `git status --short`
-  - `./generate-example-blueprints.sh`
-  - preview: `http://127.0.0.1:8081`
-
 ## Recently Completed
+
+- Merged `feat/sphere-packing-blueprint` into `bp` (`c4fa5afa -> c055c4c0`, fast-forward).
+- Feature branch key commits:
+  - `5531c5ef` sphere-packing: add Verso blueprint port scaffold
+  - `dd28fa2b` sphere-packing: add temporary external-name workarounds
+  - `c055c4c0` sphere-packing: validate both example blueprints
+- Validation on rebased feature branch:
+  - root `.lake` cache resynced into the worktree from `bp`
+  - `lake build spherepackingblueprint`
+  - `./generate-example-blueprints.sh`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`.
+- Deleted branch: `feat/sphere-packing-blueprint`.
 
 - Closed `feat/preview-hover-review-20260305` without direct merge; its functional work was superseded by the consolidated preview-hover merge into `bp`.
 - Superseding `bp` commits:
