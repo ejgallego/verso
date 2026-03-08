@@ -34,6 +34,72 @@ Depends on {uses "def:preview.base"}[].
 {bp_summary}
 :::::::
 
+#docs (Genre.Manual) usedByPreviewDoc "Blueprint Used-By Preview Wiring" :=
+:::::::
+:::definition "def:used.target"
+Target statement with associated Lean code.
+:::
+
+```lean "def:used.target"
+def usedByPreviewTarget : Nat := 0
+```
+
+:::lemma_ "lem:used.statement"
+Statement depends on {uses "def:used.target"}[].
+:::
+
+:::theorem "thm:used.proof"
+Separate theorem with a proof-only dependency.
+:::
+
+:::proof "thm:used.proof"
+Proof depends on {uses "def:used.target"}[].
+:::
+:::::::
+
+#docs (Genre.Manual) usedBySinglePreviewDoc "Blueprint Used-By Single Preview Wiring" :=
+:::::::
+:::definition "def:used.single"
+Target statement with exactly one reverse dependency.
+:::
+
+:::lemma_ "lem:used.single.next"
+Statement depends on {uses "def:used.single"}[].
+:::
+:::::::
+
+#docs (Genre.Manual) leanStatusChipDoc "Blueprint Lean Status Chip Wiring" :=
+:::::::
+:::definition "def:status.proved"
+Statement with proved Lean code.
+:::
+
+```lean "def:status.proved"
+def previewStatusProved : Nat := 0
+```
+
+:::definition "def:status.sorry"
+Statement with Lean code containing sorry.
+:::
+
+```lean "def:status.sorry"
+theorem previewStatusSorry : True := by
+  sorry
+```
+
+:::definition "def:status.axiom"
+Statement with axiom-like Lean code.
+:::
+
+```lean "def:status.axiom"
+axiom previewStatusAxiom : True
+```
+
+:::definition "def:status.none"
+Statement without Lean code.
+:::
+:::::::
+
 private partial def collectBlocks (part : Doc.Part Genre.Manual) : Array (Doc.Block Genre.Manual) :=
   let childBlocks := part.subParts.foldl (init := #[]) fun acc child =>
     acc ++ collectBlocks child
@@ -85,6 +151,11 @@ private def renderManualBlocksHtmlAndState
 
 private def hasSubstr (s needle : String) : Bool :=
   (s.splitOn needle).length > 1
+
+private def appearsBefore (s lhs rhs : String) : Bool :=
+  match s.splitOn lhs with
+  | _ :: tail => hasSubstr (String.intercalate lhs tail) rhs
+  | [] => false
 
 private def findExtraJs (st : TraverseState) (needle : String) : Option String :=
   st.toHtmlAssets.extraJs.toArray.findSome? fun js =>
@@ -149,6 +220,72 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr graphJs "attachPreviewHandlers(graphContainer, previewPanelNode, previewMap, previewPanelBehavior)" &&
         hasSubstr graphJs "previewUtils.configureCloseButton(groupHoverClose, hideGroupHoverPreview, groupHoverBehavior)"
       | none => false
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
+    let blocks := collectBlocks usedByPreviewDoc.toPart
+    let (html, st) ← renderManualBlocksHtmlAndState blocks
+    let out := html.asString
+    let usedByJs? := findExtraJs st "function bindUsedByPanel(panel)"
+    pure (
+      hasSubstr out "used by 2" &&
+      hasSubstr out "class=\"bp_extra_slot bp_extra_slot_used_by\"" &&
+      hasSubstr out "class=\"bp_used_by_wrap\"" &&
+      hasSubstr out "class=\"bp_used_by_panel\"" &&
+      hasSubstr out "class=\"bp_used_by_preview_tpl\"" &&
+      hasSubstr out "data-bp-used-preview-id" &&
+      hasSubstr out ">statement</span>" &&
+      hasSubstr out ">proof</span>" &&
+      appearsBefore out "class=\"bp_code_link_wrap\"" "class=\"bp_used_by_wrap\"" &&
+      match usedByJs? with
+      | some usedByJs =>
+        hasSubstr usedByJs "function bindUsedByPanel(panel)" &&
+        hasSubstr usedByJs "item.addEventListener(\"mouseenter\"" &&
+        hasSubstr usedByJs "item.addEventListener(\"focusin\"" &&
+        hasSubstr usedByJs "activate(items[0])"
+      | none => false
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
+    let blocks := collectBlocks usedBySinglePreviewDoc.toPart
+    let (html, _st) ← renderManualBlocksHtmlAndState blocks
+    let out := html.asString
+    pure (
+      hasSubstr out "used by 1" &&
+      hasSubstr out "used by 0" &&
+      hasSubstr out "bp_code_link_status_absent" &&
+      hasSubstr out "bp_code_link_empty" &&
+      hasSubstr out "No associated Lean declarations" &&
+      hasSubstr out ">X</span>" &&
+      hasSubstr out ">L∃∀N</span>" &&
+      hasSubstr out "class=\"bp_used_by_chip bp_used_by_chip_empty\"" &&
+      hasSubstr out "class=\"bp_inline_preview_ref\"" &&
+      hasSubstr out "class=\"bp_inline_preview_tpl\"" &&
+      hasSubstr out "data-bp-preview-id=\"bp-used-by-"
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
+    let blocks := collectBlocks leanStatusChipDoc.toPart
+    let (html, _st) ← renderManualBlocksHtmlAndState blocks
+    let out := html.asString
+    pure (
+      hasSubstr out "bp_code_link_status_proved" &&
+      hasSubstr out "bp_code_link_status_warning" &&
+      hasSubstr out "bp_code_link_status_axiom" &&
+      hasSubstr out "bp_code_link_status_absent" &&
+      hasSubstr out ">✓</span>" &&
+      hasSubstr out ">⚠</span>" &&
+      hasSubstr out ">A</span>" &&
+      hasSubstr out ">X</span>"
     )
 
 end Verso.Tests.BlueprintPreviewWiring

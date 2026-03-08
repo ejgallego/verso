@@ -118,6 +118,10 @@ structure BlockData where
   codeData : Option BlockCodeData := none
   label : Data.Label
   count : Nat
+  /-- Statement-side `{uses ...}` dependencies declared for this labeled block. -/
+  statementDeps : Array Data.Label := #[]
+  /-- Proof-side `{uses ...}` dependencies declared for this labeled block. -/
+  proofDeps : Array Data.Label := #[]
 deriving FromJson, ToJson, Quote
 
 structure CodePanelHeader where

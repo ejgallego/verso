@@ -20,6 +20,8 @@ import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Informal.CodeSummary
 import VersoBlueprint.Informal.ExternalCode
 import VersoBlueprint.LabelNameParsing
+import VersoBlueprint.Lib.HoverRender
+import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
@@ -31,6 +33,7 @@ set_option doc.verso true
 open Verso Doc Elab
 open Verso.Genre Manual
 open Verso.ArgParse
+open Verso.Output.Html
 open Lean.Doc.Syntax
 open Lean Elab
 
@@ -103,9 +106,23 @@ def blueprintCss : String := r##"
 .bp_heading {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.55rem;
+  flex-wrap: wrap;
   font-style: normal;
   font-weight: bold;
+}
+
+.bp_heading_title_row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bp_heading_title_row_statement {
+  display: inline-grid;
+  grid-template-columns: 11ch 3ch;
+  align-items: baseline;
+  column-gap: 0.45rem;
 }
 
 .bp_caption {
@@ -116,22 +133,83 @@ def blueprintCss : String := r##"
   margin-left: 0.5rem;
 }
 
+.bp_heading_title_row_statement .bp_label {
+  margin-left: 0;
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 span[class$="_thmlabel"]::after {
   content: ".";
 }
 
 .bp_extras {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+  display: inline-grid;
+  align-items: baseline;
+  justify-content: end;
+  column-gap: 0.55rem;
+  grid-template-columns: minmax(7.2rem, max-content) max-content;
+  grid-template-areas: "used code";
   margin-left: auto;
 }
 
+.bp_extra_slot {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.1rem;
+  min-width: 0;
+}
+
+.bp_extra_slot_code {
+  grid-area: code;
+  justify-content: flex-end;
+}
+
+.bp_extra_slot_used_by {
+  grid-area: used;
+  justify-content: flex-start;
+}
+
 .bp_code_link {
-  display: inline;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
   font-size: 0.8rem;
   color: inherit;
   text-decoration: none;
+}
+
+.bp_code_link_label {
+  display: inline-flex;
+  align-items: center;
+}
+
+.bp_code_status_symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.bp_code_link_status_proved .bp_code_status_symbol {
+  color: inherit;
+}
+
+.bp_code_link_status_warning .bp_code_status_symbol {
+  color: #ca8a04;
+}
+
+.bp_code_link_status_missing .bp_code_status_symbol,
+.bp_code_link_status_axiom .bp_code_status_symbol {
+  color: #dc2626;
+}
+
+.bp_code_link_status_absent .bp_code_status_symbol {
+  color: inherit;
 }
 
 .bp_code_hover_wrap,
@@ -311,6 +389,230 @@ span[class$="_thmlabel"]::after {
 
 .bp_code_link:hover {
   text-decoration: underline;
+}
+
+.bp_code_link_empty:hover {
+  text-decoration: none;
+}
+
+.bp_used_by_wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding-bottom: 0.45rem;
+  margin-bottom: -0.45rem;
+}
+
+.bp_used_by_wrap::after {
+  content: "";
+  position: absolute;
+  left: -0.25rem;
+  right: -0.25rem;
+  top: 100%;
+  height: 0.45rem;
+}
+
+.bp_used_by_chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.bp_used_by_chip_empty {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.bp_used_by_panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 26rem;
+  width: min(50rem, 92vw);
+  z-index: 26;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.55rem;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  display: none;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.bp_used_by_wrap:is(:hover, :focus-within) > .bp_used_by_panel {
+  display: block;
+}
+
+.bp_used_by_wrap.bp_used_by_wrap_open > .bp_used_by_panel {
+  display: block;
+}
+
+.bp_used_by_panel_header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem 0.45rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+}
+
+.bp_used_by_panel_title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.bp_used_by_panel_meta {
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.bp_used_by_panel_body {
+  display: grid;
+  grid-template-columns: minmax(14rem, 18rem) minmax(18rem, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.7rem;
+}
+
+.bp_used_by_list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: min(20rem, 62vh);
+  overflow: auto;
+}
+
+.bp_used_by_item {
+  border: 1px solid #dbe4ee;
+  border-radius: 0.45rem;
+  background: #f8fafc;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.bp_used_by_item:hover,
+.bp_used_by_item:focus-within,
+.bp_used_by_item.bp_used_by_item_active {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+}
+
+.bp_used_by_target {
+  display: block;
+  padding: 0.5rem 0.58rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.bp_used_by_target:hover {
+  text-decoration: none;
+}
+
+.bp_used_by_target_title {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.bp_used_by_target_meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-top: 0.26rem;
+  color: #475569;
+  font-size: 0.72rem;
+}
+
+.bp_used_by_target_meta code {
+  font-size: 0.72rem;
+}
+
+.bp_used_by_axis_badge {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.08rem 0.34rem;
+}
+
+.bp_used_by_preview_surface {
+  min-height: 14rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  overflow: hidden;
+}
+
+.bp_used_by_preview_header {
+  padding: 0.5rem 0.62rem 0.44rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+}
+
+.bp_used_by_preview_label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.bp_used_by_preview_title {
+  margin-top: 0.16rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.bp_used_by_preview_body {
+  max-height: min(20rem, 62vh);
+  overflow: auto;
+  padding: 0.62rem 0.68rem 0.72rem;
+  background: #ffffff;
+}
+
+.bp_used_by_preview_empty {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-style: italic;
+}
+
+.bp_used_by_preview_store {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .bp_used_by_panel {
+    right: auto;
+    left: 0;
+    width: min(34rem, calc(100vw - 1.4rem));
+  }
+
+  .bp_used_by_panel_body {
+    grid-template-columns: 1fr;
+  }
+
+  .bp_used_by_list,
+  .bp_used_by_preview_body {
+    max-height: min(12rem, 36vh);
+  }
 }
 
 .bp_status_mark {
@@ -732,8 +1034,209 @@ def shouldWritePreviewDataByIds [BEq α] (existingIds : Array α) (currentId : �
 private def shouldWritePreviewData (existing? : Option Verso.Multi.Object) (id : Verso.Multi.InternalId) : Bool :=
   shouldWritePreviewDataByIds ((existing?.map (·.ids.toArray)).getD #[]) id
 
+private def mergeLabelArrays (xs ys : Array Data.Label) : Array Data.Label :=
+  ys.foldl (init := xs) fun acc label =>
+    if acc.contains label then acc else acc.push label
+
+private def mergeStoredBlockData (existing incoming : BlockData) : BlockData :=
+  let kind :=
+    match existing.kind, incoming.kind with
+    | .statement _, _ => existing.kind
+    | .proof, .statement _ => incoming.kind
+    | .proof, .proof => existing.kind
+  let codeData :=
+    match existing.codeData, incoming.codeData with
+    | some existingData, _ => some existingData
+    | none, some incomingData => some incomingData
+    | none, none => none
+  { existing with
+      kind
+      codeData
+      statementDeps := mergeLabelArrays existing.statementDeps incoming.statementDeps
+      proofDeps := mergeLabelArrays existing.proofDeps incoming.proofDeps
+  }
+
+private def blockSummaryTitle (data : BlockData) : String :=
+  match data.kind with
+  | .proof => s!"Proof {data.count}"
+  | .statement kind => s!"{kind} {data.count}"
+
+private structure UsedByEntry where
+  source : BlockData
+  inStatement : Bool := false
+  inProof : Bool := false
+
+private def sortUsedByEntries (entries : Array UsedByEntry) : Array UsedByEntry :=
+  entries.qsort fun a b =>
+    a.source.count < b.source.count ||
+      (a.source.count == b.source.count && a.source.label.toString < b.source.label.toString)
+
+private def collectUsedByEntries
+    (state : Verso.Genre.Manual.TraverseState) (target : Data.Label) : Array UsedByEntry :=
+  match state.domains.get? informalDomain with
+  | none => #[]
+  | some domain =>
+    sortUsedByEntries <| domain.objects.foldl (init := #[]) fun acc _canonical obj =>
+      match fromJson? (α := BlockData) obj.data with
+      | .error _ => acc
+      | .ok source =>
+        if source.label == target then
+          acc
+        else
+          let inStatement := source.statementDeps.contains target
+          let inProof := source.proofDeps.contains target
+          if !inStatement && !inProof then
+            acc
+          else
+            acc.push { source, inStatement, inProof }
+
+private def usedByPreviewId (targetLabel sourceLabel : Data.Label) : String :=
+  s!"bp-used-by-{Informal.HoverRender.previewKey (toString targetLabel)}-{Informal.HoverRender.previewKey (toString sourceLabel)}"
+
+private def usedByChipText (count : Nat) : String :=
+  s!"used by {count}"
+
+private def renderUsedByAxisBadges (entry : UsedByEntry) : Output.Html :=
+  open Verso.Output.Html in
+  let statementBadge : Array Output.Html :=
+    if entry.inStatement then
+      #[{{<span class="bp_used_by_axis_badge">"statement"</span>}}]
+    else
+      #[]
+  let proofBadge : Array Output.Html :=
+    if entry.inProof then
+      #[{{<span class="bp_used_by_axis_badge">"proof"</span>}}]
+    else
+      #[]
+  .seq (statementBadge ++ proofBadge)
+
+private def usedByPreviewFallbackBody (entry : UsedByEntry) : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <div class="bp_code_hover_section">
+      <span class="bp_code_hover_label">"Blueprint label"</span>
+      <ul class="bp_code_hover_list">
+        <li><code>s!"{entry.source.label}"</code></li>
+      </ul>
+    </div>
+    <div class="bp_code_hover_section">
+      <span class="bp_code_hover_label">"Uses target in"</span>
+      <ul class="bp_code_hover_list">
+        {{if entry.inStatement then {{<li>"statement"</li>}} else .empty}}
+        {{if entry.inProof then {{<li>"proof"</li>}} else .empty}}
+      </ul>
+    </div>
+  }}
+
+private def renderUsedByEntry {m}
+    [Monad m]
+    (state : Verso.Genre.Manual.TraverseState)
+    (renderBlock :
+      Verso.Doc.Block Verso.Genre.Manual →
+        Verso.Doc.Html.HtmlT Verso.Genre.Manual m Output.Html)
+    (data : BlockData) :
+    Verso.Doc.Html.HtmlT Verso.Genre.Manual m Output.Html := do
+  match data.kind with
+  | .proof => pure .empty
+  | .statement _ =>
+    let entries := collectUsedByEntries state data.label
+    if entries.isEmpty then
+      pure {{
+        <span class="bp_used_by_chip bp_used_by_chip_empty" title="No reverse dependencies">
+          {{.text true (usedByChipText 0)}}
+        </span>
+      }}
+    else if h : entries.size = 1 then
+      let entry := entries[0]'(by simp [h])
+      let previewId := usedByPreviewId data.label entry.source.label
+      let previewTitle := blockSummaryTitle entry.source
+      let href := Resolve.resolveDomainHref? state Resolve.informalDomainName entry.source.label.toString
+      let preview? ←
+        Informal.PreviewSource.renderTraversalPreview? state
+          (fun block =>
+            Informal.HoverRender.withInlinePreviewRenderContext (renderBlock block))
+          entry.source.label
+      let previewBody :=
+        match preview? with
+        | some rendered => .seq rendered
+        | none => usedByPreviewFallbackBody entry
+      let chipNode : Output.Html :=
+        if let some href := href then
+          {{<a class="bp_used_by_chip bp_code_link" href={{href}} title={{s!"Reverse dependency: {previewTitle}"}}>
+              {{.text true (usedByChipText 1)}}
+            </a>}}
+        else
+          {{<span class="bp_used_by_chip" title={{s!"Reverse dependency: {previewTitle}"}}>
+              {{.text true (usedByChipText 1)}}
+            </span>}}
+      pure <| Informal.HoverRender.inlinePreviewNode true chipNode previewBody previewId previewTitle
+    else
+      let rows ← entries.mapM fun entry => do
+        let previewId := usedByPreviewId data.label entry.source.label
+        let previewTitle := blockSummaryTitle entry.source
+        let href := Resolve.resolveDomainHref? state Resolve.informalDomainName entry.source.label.toString
+        let preview? ←
+          Informal.PreviewSource.renderTraversalPreview? state
+            (fun block =>
+              Informal.HoverRender.withInlinePreviewRenderContext (renderBlock block))
+            entry.source.label
+        let previewBody :=
+          match preview? with
+          | some rendered => .seq rendered
+          | none => usedByPreviewFallbackBody entry
+        let rowNode : Output.Html :=
+          let titleNode := {{<span class="bp_used_by_target_title">{{.text true previewTitle}}</span>}}
+          let metaNode := {{
+            <span class="bp_used_by_target_meta">
+              <code>s!"{entry.source.label}"</code>
+              {{renderUsedByAxisBadges entry}}
+            </span>
+          }}
+          if let some href := href then
+            {{<a class="bp_used_by_target" href={{href}}>{{titleNode}}{{metaNode}}</a>}}
+          else
+            {{<span class="bp_used_by_target">{{titleNode}}{{metaNode}}</span>}}
+        pure {{
+          <li class="bp_used_by_item"
+              "data-bp-used-preview-id"={{previewId}}
+              "data-bp-used-preview-title"={{previewTitle}}>
+            {{rowNode}}
+            <template class="bp_used_by_preview_tpl" "data-bp-used-preview-id"={{previewId}}>
+              {{previewBody}}
+            </template>
+          </li>
+        }}
+      pure {{
+        <div class="bp_used_by_wrap">
+          <span class="bp_used_by_chip" tabindex="0" title={{s!"Reverse dependencies for {data.label}"}}>
+            {{.text true (usedByChipText entries.size)}}
+          </span>
+          <div class="bp_used_by_panel">
+            <div class="bp_used_by_panel_header">
+              <div class="bp_used_by_panel_title">{{.text true s!"Used by {entries.size}"}}</div>
+              <div class="bp_used_by_panel_meta">"Hover a use site to preview it."</div>
+            </div>
+            <div class="bp_used_by_panel_body">
+              <ul class="bp_used_by_list">
+                {{rows}}
+              </ul>
+              <div class="bp_used_by_preview_surface">
+                <div class="bp_used_by_preview_header">
+                  <div class="bp_used_by_preview_label">"Preview"</div>
+                  <div class="bp_used_by_preview_title">"Hover a use site"</div>
+                </div>
+                <div class="bp_used_by_preview_body">
+                  <div class="bp_used_by_preview_empty">"Hover a use site to preview it."</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }}
+
 private def renderInformalBlock (data : BlockData) (attrs : Array (String × String))
-    (statusMark : Option BlockStatusMark) (codeEntry : Output.Html) (content : Array Output.Html) : Output.Html :=
+    (_statusMark : Option BlockStatusMark) (codeEntry usedByEntry : Output.Html)
+    (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
   let labelTextNum := s!"{data.count}"
   let labelText := s!"{data.label}"
@@ -765,15 +1268,36 @@ private def renderInformalBlock (data : BlockData) (attrs : Array (String × Str
   let captionClass := s!"bp_caption {captionCss}"
   let labelClass := s!"bp_label {labelCss}"
   let contentClass := s!"bp_content {contentCss}"
+  let titleRowClass :=
+    if showLabel then
+      "bp_heading_title_row bp_heading_title_row_statement"
+    else
+      "bp_heading_title_row"
+  let titleRow : Output.Html := {{
+    <div class={{titleRowClass}}>
+      <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
+      {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
+    </div>
+  }}
+  let extras : Output.Html :=
+    match data.kind with
+    | .proof => .empty
+    | .statement _ =>
+      {{
+        <div class="bp_extras thm_header_extras">
+          <span class="bp_extra_slot bp_extra_slot_code">
+            {{codeEntry}}
+          </span>
+          <span class="bp_extra_slot bp_extra_slot_used_by">
+            {{usedByEntry}}
+          </span>
+        </div>
+      }}
   {{
     <div class={{wrapperClass}} title={{labelText}} {{attrs}}>
       <div class={{headingClass}}>
-        <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
-        {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
-        <div class="bp_extras thm_header_extras">
-          {{match statusMark with | some mark => mark.toHtml | none => .empty}}
-          {{codeEntry}}
-        </div>
+        {{titleRow}}
+        {{extras}}
         <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
       </div>
       <div class={{contentClass}}> {{ content }} </div>
@@ -815,9 +1339,15 @@ block_extension Block.informal (data : BlockData) where
           let _ ← Verso.Genre.Manual.externalTag declId path
             s!"--informal-external-decl-{label}-{decl.canonical}"
           modify λ s => s.saveDomainObject informalExternalDeclDomain key declId
-      if let .some _d := (← get).getDomainObject? informalDomain label.toString then
+      match (← get).getDomainObject? informalDomain label.toString with
+      | some obj =>
+        let mergedData :=
+          match fromJson? (α := BlockData) obj.data with
+          | .ok existing => mergeStoredBlockData existing blockData
+          | .error _ => blockData
+        modify λ s => s.saveDomainObjectData informalDomain label.toString (toJson mergedData)
         return none
-      else
+      | none =>
         let path ← (·.path) <$> read
         let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-{label}"
         modify λ s => s.saveDomainObject informalDomain label.toString id
@@ -825,7 +1355,7 @@ block_extension Block.informal (data : BlockData) where
         return none
   toTeX := none
   extraCss := ([blueprintCss, Informal.Commands.inlinePreviewCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
-  extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs, blueprintStyleSwitcherJs] : List String)
+  extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs, Informal.Commands.usedByPanelJs, blueprintStyleSwitcherJs] : List String)
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
@@ -890,7 +1420,8 @@ block_extension Block.informal (data : BlockData) where
         let content := (← blocks.mapM goB)
         let statusMark := headingParts?.bind (·.statusMark)
         let codeEntry := (headingParts?.map (·.codeEntry)).getD .empty
-        let informalBlock := renderInformalBlock data attrs statusMark codeEntry content
+        let usedByEntry ← renderUsedByEntry s goB data
+        let informalBlock := renderInformalBlock data attrs statusMark codeEntry usedByEntry content
         return .seq #[informalBlock, externalPanel]
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
@@ -942,9 +1473,11 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       match blockKind with
       | .proof => none
       | .statement _ => BlockCodeData.ofCodeRefHint nodeCodeRef?
+    let statementDeps := node?.bind (·.statement.map (·.deps)) |>.getD #[]
+    let proofDeps := node?.bind (·.proof.map (·.deps)) |>.getD #[]
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := { kind := blockKind, codeData, label, count }
+    let data : BlockData := { kind := blockKind, codeData, label, count, statementDeps, proofDeps }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
 private def directiveName (kind : Data.NodeKind) (isProof : Bool): String :=

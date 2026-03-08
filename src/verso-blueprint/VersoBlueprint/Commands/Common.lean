@@ -502,4 +502,108 @@ def inlineLinkPreviewJs : String := r##"(function () {
   }
 })();"##
 
+def usedByPanelJs : String := r##"(function () {
+  function collectPanelTemplates(panel) {
+    const map = new Map();
+    if (!(panel instanceof Element)) return map;
+    panel.querySelectorAll("template.bp_used_by_preview_tpl[data-bp-used-preview-id]").forEach(function (tpl) {
+      if (!(tpl instanceof HTMLTemplateElement)) return;
+      const key = (tpl.getAttribute("data-bp-used-preview-id") || "").trim();
+      if (!key) return;
+      const wrapper = document.createElement("div");
+      wrapper.appendChild(tpl.content.cloneNode(true));
+      const html = (wrapper.innerHTML || "").trim();
+      if (html) map.set(key, html);
+    });
+    return map;
+  }
+
+  function bindUsedByPanel(panel) {
+    if (!(panel instanceof Element)) return;
+    if (panel.getAttribute("data-bp-bound") === "1") return;
+    panel.setAttribute("data-bp-bound", "1");
+
+    const previewUtils = window.bpPreviewUtils;
+    const wrap = panel.closest(".bp_used_by_wrap");
+    const chip = wrap instanceof Element ? wrap.querySelector(".bp_used_by_chip") : null;
+    const title = panel.querySelector(".bp_used_by_preview_title");
+    const body = panel.querySelector(".bp_used_by_preview_body");
+    if (!(title instanceof Element) || !(body instanceof Element)) return;
+
+    const defaultTitle = (title.textContent || "").trim() || "Hover a use site";
+    const defaultBody = body.innerHTML;
+    const templates = collectPanelTemplates(panel);
+    const items = Array.from(panel.querySelectorAll(".bp_used_by_item[data-bp-used-preview-id]"));
+
+    function activate(item) {
+      if (!(item instanceof Element)) return;
+      const key = (item.getAttribute("data-bp-used-preview-id") || "").trim();
+      const itemTitle = (item.getAttribute("data-bp-used-preview-title") || "").trim() || defaultTitle;
+      const html = key ? (templates.get(key) || "") : "";
+      items.forEach(function (other) {
+        if (other instanceof Element) {
+          other.classList.toggle("bp_used_by_item_active", other === item);
+        }
+      });
+      title.textContent = itemTitle;
+      body.innerHTML = html || defaultBody;
+      if (previewUtils && typeof previewUtils.renderMath === "function") {
+        previewUtils.renderMath(body);
+      }
+    }
+
+    items.forEach(function (item) {
+      if (!(item instanceof Element)) return;
+      item.addEventListener("mouseenter", function () {
+        activate(item);
+      });
+      item.addEventListener("focusin", function () {
+        activate(item);
+      });
+    });
+
+    if (items.length > 0) {
+      activate(items[0]);
+    }
+
+    if (wrap instanceof Element && chip instanceof Element) {
+      chip.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        wrap.classList.toggle("bp_used_by_wrap_open");
+      });
+      panel.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+      });
+      document.addEventListener("click", function (ev) {
+        if (!(ev.target instanceof Element)) {
+          wrap.classList.remove("bp_used_by_wrap_open");
+          return;
+        }
+        if (!wrap.contains(ev.target)) {
+          wrap.classList.remove("bp_used_by_wrap_open");
+        }
+      });
+      document.addEventListener("keydown", function (ev) {
+        if (ev.key === "Escape") {
+          wrap.classList.remove("bp_used_by_wrap_open");
+        }
+      });
+    }
+  }
+
+  function bindAllUsedByPanels(root) {
+    if (!(root instanceof Element || root instanceof Document)) return;
+    root.querySelectorAll(".bp_used_by_panel").forEach(bindUsedByPanel);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function () {
+      bindAllUsedByPanels(document);
+    });
+  } else {
+    bindAllUsedByPanels(document);
+  }
+})();"##
+
 end Informal.Commands

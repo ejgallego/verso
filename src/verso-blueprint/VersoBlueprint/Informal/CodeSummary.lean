@@ -114,6 +114,73 @@ private def userOkSummaryTooltip : Output.Html :=
     </div>
   }}
 
+private def noLeanSummaryTooltip : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <div class="bp_code_hover" role="tooltip">
+      <div class="bp_code_hover_title">"Lean status"</div>
+      <div class="bp_code_hover_section">
+        <span class="bp_code_hover_none">"No associated Lean code or declarations."</span>
+      </div>
+    </div>
+  }}
+
+private inductive CodeEntryVisual where
+  | absent
+  | proved
+  | warning
+  | missing
+  | axiom
+deriving BEq
+
+private def CodeEntryVisual.symbol : CodeEntryVisual → String
+  | .absent => "X"
+  | .proved => "✓"
+  | .warning => "⚠"
+  | .missing => "!"
+  | .axiom => "A"
+
+private def CodeEntryVisual.classSuffix : CodeEntryVisual → String
+  | .absent => "absent"
+  | .proved => "proved"
+  | .warning => "warning"
+  | .missing => "missing"
+  | .axiom => "axiom"
+
+private def codeEntryVisual (hasSource : Bool) (statusMark : BlockStatusMark) : CodeEntryVisual :=
+  if !hasSource then
+    .absent
+  else
+    match statusMark.status with
+    | .proved => .proved
+    | .containsSorry _ => .warning
+    | .missing => .missing
+    | .axiomLike => .axiom
+
+private def renderCodeEntryNode (href : Option String) (title : String) (visual : CodeEntryVisual) : Output.Html :=
+  open Verso.Output.Html in
+  let linkClass := s!"bp_code_link bp_code_link_status bp_code_link_status_{visual.classSuffix}" ++
+    (if visual == .absent then " bp_code_link_empty" else "")
+  let body : Output.Html := {{
+    <span class="bp_code_status_symbol">{{.text true visual.symbol}}</span>
+    <span class="bp_code_link_label">"L∃∀N"</span>
+  }}
+  match href with
+  | some href =>
+      {{<a class={{linkClass}} href={{href}} title={{title}}>{{body}}</a>}}
+  | none =>
+      {{<span class={{linkClass}} title={{title}}>{{body}}</span>}}
+
+private def renderCodeEntryWrap (href : Option String) (title : String)
+    (tooltip : Output.Html) (visual : CodeEntryVisual) : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <span class="bp_code_link_wrap">
+      {{renderCodeEntryNode href title visual}}
+      {{tooltip}}
+    </span>
+  }}
+
 /--
 Aggregate counts used to compute the external-heading status mark and tooltip text.
 
@@ -248,9 +315,19 @@ private def inlineCompletionCounts (codeData : InlineCodeData) : Nat × Nat :=
     let (statementInc, proofInc, _) := statusGapIncrements decl.provedStatus
     (statementSorryCount + statementInc, proofSorryCount + proofInc)
 
+private def inlineHasAxiomLike (codeData : InlineCodeData) : Bool :=
+  let decls := codeData.definedDefs ++ codeData.definedTheorems
+  decls.any (fun decl => decl.provedStatus.isAxiomLike)
+
 private def inlineStatusMark (codeData : InlineCodeData) : BlockStatusMark :=
-  let (statementSorryCount, proofSorryCount) := inlineCompletionCounts codeData
-  completionStatusMark statementSorryCount proofSorryCount
+  if inlineHasAxiomLike codeData then
+    {
+      status := .axiomLike
+      title := "Lean declarations include at least one axiom-like constant (no body)"
+    }
+  else
+    let (statementSorryCount, proofSorryCount) := inlineCompletionCounts codeData
+    completionStatusMark statementSorryCount proofSorryCount
 
 /--
 Compute heading status semantics from canonical block code source using explicit
@@ -306,20 +383,17 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
       let agg := externalHeadingAggregate externalDecls
       let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withSorries
       let codeEntryTooltip := renderExternalSummaryTooltip externalDecls hrefOf
-      let linkNode : Output.Html :=
-        if let some href := cdata.codeHref then
-          {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
-        else
-          {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
+      let statusMark := statusMarkFromCodeSource cdata.source
       {
-        statusMark := some (statusMarkFromCodeSource cdata.source)
-        codeEntry := {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
+        statusMark := some statusMark
+        codeEntry := renderCodeEntryWrap cdata.codeHref codeEntryTitle codeEntryTooltip
+          (codeEntryVisual true statusMark)
       }
     else
       let inlineData? := cdata.source.bind BlockCodeData.inlineData?
       let userOk := cdata.source.map BlockCodeData.isUserOk |>.getD false
       let hasInline := cdata.codeHref.isSome || inlineData?.isSome
-      let hasCodeEntry := hasInline || userOk
+      let hasSource := hasInline || userOk
       let codeEntryTooltip : Output.Html :=
         match inlineData? with
         | some codeData => renderCodeSummaryTooltip data.label codeData.definedDefs codeData.definedTheorems hrefOf
@@ -327,25 +401,18 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
           if userOk then
             userOkSummaryTooltip
           else
-            .empty
+            noLeanSummaryTooltip
       let codeEntryTitle : String :=
         if hasInline then
           "Lean declarations"
         else if userOk then
           "Marked complete via (leanok := true)"
         else
-          "Lean declarations"
-      let codeEntry : Output.Html :=
-        if !hasCodeEntry then
-          .empty
-        else
-          let linkNode : Output.Html :=
-            if let some href := cdata.codeHref then
-              {{<a class="bp_code_link" href={{href}} title={{codeEntryTitle}}>"L∃∀N"</a>}}
-            else
-              {{<span class="bp_code_link" title={{codeEntryTitle}}>"L∃∀N"</span>}}
-          {{<span class="bp_code_link_wrap">{{linkNode}}{{codeEntryTooltip}}</span>}}
+          "No associated Lean declarations"
       let statusMarkCandidate := statusMarkFromCodeSource cdata.source
+      let codeEntry : Output.Html :=
+        renderCodeEntryWrap cdata.codeHref codeEntryTitle codeEntryTooltip
+          (codeEntryVisual hasSource statusMarkCandidate)
       let statusMark : Option BlockStatusMark :=
         if userOk then
           some statusMarkCandidate
