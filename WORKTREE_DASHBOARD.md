@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-06 (validated `feat/graph-review-20260306` after group-view semantics refactor)
+Last updated: 2026-03-08 (recorded active `feat/lean-commandm-incremental-20260306` checkpoint on shared dashboard)
 
 ## Active Worktrees
 
@@ -43,6 +43,31 @@ Last updated: 2026-03-06 (validated `feat/graph-review-20260306` after group-vie
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/tests/Tests/BlueprintGraph.lean`
+
+### `feat/lean-commandm-incremental-20260306`
+
+- Status: `active` (owner action: retest editor UX from the reverted “best current” checkpoint and decide whether a true incremental elaborator is still needed)
+- Summary: blueprint Lean fences currently keep doc-side prefix reuse plus outer incremental Verso block commands, while declaration analysis/highlighting/output capture remain disabled for latency. The later full reuse-history fence tree was reverted after regressing UX.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/lean-commandm-incremental-20260306`
+- Branch: `feat/lean-commandm-incremental-20260306`
+- Base commit/branch:
+  - merge-base with `bp`: `ec3cf1ec` (`1` behind / `17` ahead)
+- Key commits:
+  - `d94efa46` Revert "feat(blueprint): preserve reuse history in fence snapshot tree"
+  - `a430f8e0` feat(verso): mark incremental doc blocks as reusable
+  - `7719853e` feat(blueprint): add inner fence command snapshots
+  - `07d3c604` perf(blueprint): trim fence latency further
+- Validation status:
+  - `lake build VersoBlueprint.Lean VersoBlueprint.Informal.Code`
+  - `lake build Verso.Doc.Concrete VersoManual.Literate VersoBlueprint.Lean VersoBlueprint.Informal.Code`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/lean-commandm-incremental-20260306` (passed; existing Noperthedron warnings only)
+  - note: `lake build Tests` still fails at `Tests.BlueprintInlinePrecision` because blueprint code-block analysis is intentionally disabled in this experiment
+- Preview link:
+  - `http://127.0.0.1:8152/lean-commandm-incremental-20260306/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/lean-commandm-incremental-20260306`
+  - `git log --oneline --decorate -6`
+  - inspect `src/verso/Verso/Doc/Concrete.lean`, `src/verso/Verso/Doc/Elab/Monad.lean`, `src/verso-blueprint/VersoBlueprint/Lean.lean`
 
 ### `feat/lsp-folding-chain`
 
