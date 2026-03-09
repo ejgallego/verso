@@ -18,3 +18,9 @@ Each timed run uses a fresh wrapper package while reusing a prebuilt Verso snaps
 
 - Any non-`Manual.*` built targets in the last column indicate the dependency prebuild was incomplete and the timing is not a pure manual-elaboration run.
 - This benchmark intentionally excludes rebuilding the Verso dependency snapshot itself.
+
+## Interpretation
+
+- This is the best current measurement of manual elaboration alone.
+- The branch head improves this benchmark by about `21%`.
+- `01a3e168` contributes only about `1.4%` here, so it should not be described as the main manual-elaboration win.

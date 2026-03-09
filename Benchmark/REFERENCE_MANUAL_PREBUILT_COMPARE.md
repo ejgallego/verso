@@ -31,3 +31,9 @@
 - Branch artifact root: `/tmp/reference-manual-prebuilt.20260309T102318Z.RWslTv/site-perf-branch/reference`
 - Raw baseline log: `/tmp/reference-manual-prebuilt.20260309T102318Z.RWslTv/baseline.log`
 - Raw branch log: `/tmp/reference-manual-prebuilt.20260309T102318Z.RWslTv/perf-branch.log`
+
+## Interpretation
+
+- This benchmark excludes dependency compilation during the timed run.
+- Under that setup, the branch is slower end-to-end on the real downstream `reference-manual` build.
+- So the current branch cannot claim a downstream performance win, even though isolated manual elaboration improves.

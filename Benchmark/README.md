@@ -5,6 +5,8 @@ This branch contains benchmark infrastructure and benchmark notes only.
 It is intentionally separate from the perf-change branches so review of code changes is not mixed
 with profiling hooks or benchmark harness evolution.
 
+Start with [CURRENT_STATUS.md](/home/egallego/lean/verso/.worktrees/manual-bench-infra/Benchmark/CURRENT_STATUS.md).
+
 ## Branch Roles
 
 - `perf/manual-bench-infra`
@@ -28,6 +30,13 @@ with profiling hooks or benchmark harness evolution.
   - downstream `reference-manual` benchmark
   - dependency packages are prebuilt before timing
   - timed runs should not rebuild `Verso*` / `MultiVerso*` / `VersoWeb*`
+
+## Current Reading
+
+- isolated manual elaboration improves on the perf stack
+- the prebuilt downstream `reference-manual` build regresses
+- therefore the branch is not yet ready to claim an end-to-end speedup
+- the next investigation target is the downstream regression, not more benchmark cleanup
 
 ## Important Caveat
 
