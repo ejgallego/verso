@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-09 (validated `feat/graph-review-20260306` after fixing console-breaking inline scripts)
+Last updated: 2026-03-09 (merged `feat/graph-review-20260306` into `bp`)
 
 ## Active Worktrees
 
@@ -21,30 +21,6 @@ Last updated: 2026-03-09 (validated `feat/graph-review-20260306` after fixing co
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/graph-review-20260306`
-
-- Status: `validated` (owner action: review the refreshed preview and decide whether the graph branch is ready for rebase/merge prep)
-- Summary: graph view now uses docked group previews, sizes the canvas from the viewport instead of a fixed `90vh`, guards variant rerenders with a render token, and no longer ships the broken inline scripts that were poisoning the page runtime.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
-- Branch: `feat/graph-review-20260306`
-- Base commit/branch:
-  - merge-base with `bp`: `ef43594e` (`22` behind / `7` ahead)
-- Key commit:
-  - `15b7dd72` fix(web): remove broken inline blueprint scripts
-- Validation status:
-  - `lake exe cache get`
-  - `lake build VersoBlueprint.Commands.Graph Tests.BlueprintGraph`
-  - `lake build Tests`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/graph-review-20260306` (passed; existing Noperthedron warnings only)
-- Preview link:
-  - `http://127.0.0.1:8150/graph-review-20260306/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
-  - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/graph.js`, `src/verso-blueprint/VersoBlueprint/Commands/graph-toc-toggle.js`, `src/tests/Tests/BlueprintPreviewWiring.lean`
-  - shared preview server running in session `87423`
-  - roadmap: add a browser-level regression for graph variant switching plus node/group hover previews; deferred for now because current cycles are focused elsewhere
 
 ### `feat/lean-commandm-incremental-20260306`
 
@@ -89,6 +65,20 @@ Last updated: 2026-03-09 (validated `feat/graph-review-20260306` after fixing co
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/graph-review-20260306` into `bp` (`f7defba0 -> be85a0cc`, fast-forward).
+- Feature branch key commit:
+  - `be85a0cc` refactor(graph): stabilize interactive graph views
+- Validation on rebased squashed feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/graph-review-20260306`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Shared preview server kept running in session `87423`; merged artifact remains available at:
+  - `http://127.0.0.1:8150/graph-review-20260306/html-multi/`
+- Follow-up roadmap note:
+  - add a browser-level regression for graph variant switching plus node/group hover previews when cycles allow
 
 - Merged `feat/informal-used-by-20260306` into `bp` (`62265b80 -> 9b6a9094`, fast-forward).
 - Feature branch key commit:
