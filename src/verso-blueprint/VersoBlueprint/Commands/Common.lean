@@ -302,16 +302,16 @@ def openTargetDetailsJs : String := r##"(function () {
     if (!id) return;
     const target = document.getElementById(id);
     if (!target) return;
-    const details = target.matches(\"details\") ? target : target.closest(\"details\");
+    const details = target.matches("details") ? target : target.closest("details");
     if (details) details.open = true;
   }
 
-  if (document.readyState === \"loading\") {
-    document.addEventListener(\"DOMContentLoaded\", openFromHash);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", openFromHash);
   } else {
     openFromHash();
   }
-  window.addEventListener(\"hashchange\", openFromHash);
+  window.addEventListener("hashchange", openFromHash);
 })();"##
 
 def inlineLinkPreviewJs : String := r##"(function () {

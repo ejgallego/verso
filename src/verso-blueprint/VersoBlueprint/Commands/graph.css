@@ -29,8 +29,8 @@ html.bp-graph-toc-hidden .with-toc > main {
 
 .bp_graph_canvas {
   width: 100%;
-  height: 90vh;
-  resize: both;
+  min-height: 24rem;
+  resize: vertical;
   overflow: hidden;
 }
 
@@ -119,7 +119,8 @@ html.bp-graph-toc-hidden .with-toc > main {
 }
 
 .bp_group_hover_preview[data-bp-preview-placement="docked"] {
-  left: 0.9rem;
+  right: 0.9rem;
+  left: auto;
   top: 0.9rem;
 }
 

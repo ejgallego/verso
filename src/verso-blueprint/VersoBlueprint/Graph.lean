@@ -43,6 +43,7 @@ deriving Inhabited, Repr, ToJson, FromJson
 
 structure GraphNode (Ref : Type) where
   label : Name
+  displayLabel? : Option String := none
   deps : Array Name
   proofDeps : Array Name := #[]
   parent? : Option Name := none
@@ -61,12 +62,15 @@ deriving Inhabited, Repr, ToJson, FromJson
 instance [Quote Ref] : Quote (GraphNode Ref) where
   quote n := Syntax.mkCApp ``GraphNode.mk
     #[
-      quote n.label, quote n.deps, quote n.proofDeps, quote n.parent?, quote n.shape, quote n.style, quote n.fillcolor,
-      quote n.color, quote n.penwidth, quote n.fontcolor, quote n.peripheries, quote n.gradientangle?,
-      quote n.tooltip?, quote n.ref?
+      quote n.label, quote n.displayLabel?, quote n.deps, quote n.proofDeps, quote n.parent?, quote n.shape,
+      quote n.style, quote n.fillcolor, quote n.color, quote n.penwidth, quote n.fontcolor, quote n.peripheries,
+      quote n.gradientangle?, quote n.tooltip?, quote n.ref?
     ]
 
 abbrev Graph (Ref : Type) := Array (GraphNode Ref)
+
+def GraphNode.displayLabel (node : GraphNode Ref) : String :=
+  node.displayLabel?.getD (toString node.label)
 
 structure LegendSwatch where
   background : String := "#ffffff"
@@ -116,6 +120,9 @@ def warningLeanOnlyText : String := "Lean code present but informal statement is
 def warningMissingExternalText : String := "Associated Lean declaration is missing from the current environment"
 def warningCodeIncompleteText : String := "Associated Lean code is incomplete"
 def warningDepsText : String := "Dependencies are not fully formalized"
+def warningHiddenInGroupViewText : String := "Warning markers are not shown individually in Group View"
+def edgeMixedText : String := "Thicker solid/dashed: statement + proof deps"
+def groupEdgeMixedText : String := "Thicker solid: statement + proof deps"
 
 private def legendItem (label : String) (swatch? : Option LegendSwatch := none) : LegendItem :=
   { label, swatch? }
@@ -192,13 +199,36 @@ def graphLegendGroups (includeMathlib : Bool := false) : Array LegendGroup :=
       items := #[
         legendItem "Solid: statement deps from theorem-like sources",
         legendItem "Dashed: statement deps from box-shaped sources",
-        legendItem "Dotted: proof-only deps"
+        legendItem "Dotted: proof-only deps",
+        legendItem edgeMixedText
       ]
     }
   ]
 
 def graphLegendGroupViewNote : String :=
-  "Group View uses aggregate diamond nodes; colors are averaged over child nodes."
+  "Group View uses tab-shaped aggregate group nodes; labels use group titles, colors are averaged over child nodes, and individual warning markers are hidden."
+
+def groupGraphLegendGroups : Array LegendGroup :=
+  #[
+    {
+      key := "group-view"
+      title := "Group View"
+      items := #[
+        legendItem "Tab nodes summarize grouped children",
+        legendItem "Border/fill colors average child node status colors",
+        legendItem warningHiddenInGroupViewText
+      ]
+    },
+    {
+      key := "group-edge"
+      title := "Edges"
+      items := #[
+        legendItem "Solid: at least one statement dep",
+        legendItem "Dotted: proof-only deps",
+        legendItem groupEdgeMixedText
+      ]
+    }
+  ]
 
 def statementDeps (node : Data.Node) : Array Name :=
   ((node.statement.map (·.deps)).getD #[]).map (fun d => (d : Name))
@@ -495,6 +525,18 @@ def escapeDotString (s : String) : String :=
 
 def dotIndent (n : Nat) : String := String.ofList (List.replicate n ' ')
 
+private def graphSvgIdPiece (c : Char) : String :=
+  if c.isAlphanum || c == '-' || c == '_' then
+    String.singleton c
+  else
+    s!"x{c.toNat}x"
+
+def graphNodeSvgId (label : Name) : String :=
+  let escaped :=
+    (toString label).toList.foldl (init := "") fun acc c =>
+      acc ++ graphSvgIdPiece c
+  s!"bp-node-{escaped}"
+
 partial def emitGroupClusterLines (nodeDefs : NameMap String) (groupMembers : NameMap (Array Name))
     (groupChildren : NameMap (Array Name)) (groupIds : NameMap Nat)
     (groupLabel? : Name → Option String) (group : Name) (level fuel : Nat)
@@ -544,7 +586,8 @@ def Graph.toDot (g : Graph Ref) (header : String)
       fun (nodeDefs, groupMembers, edges) node =>
         let attrs :=
           let base : Array String := #[
-            s!"label=\"{escapeDotString (toString node.label)}\"",
+            s!"id=\"{escapeDotString (graphNodeSvgId node.label)}\"",
+            s!"label=\"{escapeDotString node.displayLabel}\"",
             s!"shape=\"{escapeDotString node.shape}\"",
             s!"style=\"{escapeDotString node.style}\"",
             s!"fillcolor=\"{escapeDotString node.fillcolor}\"",
@@ -574,28 +617,28 @@ def Graph.toDot (g : Graph Ref) (header : String)
           | some parent =>
             let members := groupMembers.getD parent #[]
             groupMembers.insert parent (members.push node.label)
-        let (stmtDeps, seenDeps) :=
-          node.deps.foldl (init := ((#[] : Array Name), ({} : NameSet))) fun (deps, seen) dep =>
-            if seen.contains dep then
-              (deps, seen)
-            else
-              (deps.push dep, seen.insert dep)
-        let (proofDeps, _seenAllDeps) :=
-          node.proofDeps.foldl (init := ((#[] : Array Name), seenDeps)) fun (deps, seen) dep =>
-            if seen.contains dep then
-              (deps, seen)
-            else
-              (deps.push dep, seen.insert dep)
+        let stmtDeps := eraseDups node.deps
+        let proofDeps := eraseDups node.proofDeps
+        let stmtDepSet : NameSet :=
+          stmtDeps.foldl (init := ({} : NameSet)) fun acc dep => acc.insert dep
+        let proofDepSet : NameSet :=
+          proofDeps.foldl (init := ({} : NameSet)) fun acc dep => acc.insert dep
         let edges := stmtDeps.foldl (init := edges) fun edges dep =>
           if known.contains dep then
+            let mixed := proofDepSet.contains dep
             if defLike.contains dep then
-              edges.push s!"  \"{dep}\" -> \"{node.label}\" [style=dashed, penwidth=1.2];"
+              if mixed then
+                edges.push s!"  \"{dep}\" -> \"{node.label}\" [style=dashed, penwidth=1.7];"
+              else
+                edges.push s!"  \"{dep}\" -> \"{node.label}\" [style=dashed, penwidth=1.2];"
+            else if mixed then
+              edges.push s!"  \"{dep}\" -> \"{node.label}\" [penwidth=1.7];"
             else
               edges.push s!"  \"{dep}\" -> \"{node.label}\";"
           else
             edges
         let edges := proofDeps.foldl (init := edges) fun edges dep =>
-          if known.contains dep then
+          if known.contains dep && !stmtDepSet.contains dep then
             edges.push s!"  \"{dep}\" -> \"{node.label}\" [style=dotted, penwidth=1.2];"
           else
             edges
