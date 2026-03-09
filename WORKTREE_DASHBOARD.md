@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-09 (validated `feat/global-numbering-20260309` preview artifacts on shared port `8153`)
+Last updated: 2026-03-09 (documented `feat/global-numbering-20260309` citation summary payloads after validation)
 
 ## Active Worktrees
 
@@ -30,7 +30,8 @@ Last updated: 2026-03-09 (validated `feat/global-numbering-20260309` preview art
 - Branch: `feat/global-numbering-20260309`
 - Base commit/branch:
   - branched from `bp` at `d317a6a6`
-- Key commit:
+- Key commits:
+  - `269c040a` docs(cite): document citation summary payloads
   - `cc810a05` feat(blueprint): add configurable informal numbering
 - Validation status:
   - setup complete: worktree created and `lake exe cache get` run
