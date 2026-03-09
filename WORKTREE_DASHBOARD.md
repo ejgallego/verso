@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-09 (merged `feat/graph-review-20260306` into `bp`)
+Last updated: 2026-03-09 (created `feat/global-numbering-20260309` for blueprint numbering modes)
 
 ## Active Worktrees
 
@@ -21,6 +21,28 @@ Last updated: 2026-03-09 (merged `feat/graph-review-20260306` into `bp`)
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/global-numbering-20260309`
+
+- Status: `active` (owner action: implement configurable global/sub-numbering for informal blocks, then validate and publish preview artifacts)
+- Summary: new worktree for fixing chapter-local blueprint theorem/definition numbering by introducing configurable document-order global numbering and LaTeX-style prefixed sub-numbering.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
+- Branch: `feat/global-numbering-20260309`
+- Base commit/branch:
+  - branched from `bp` at `d317a6a6`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created and `lake exe cache get` run
+  - pending: focused tests
+  - pending: `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/example-blueprints`
+  - pending: `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/noperthedron`
+- Preview link:
+  - pending shared `_out` server restart and artifact generation
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
+  - `git status --short`
+  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Informal/CodeCommon.lean`, `src/verso-blueprint/VersoBlueprint/Cite.lean`
 
 ### `feat/lean-commandm-incremental-20260306`
 
