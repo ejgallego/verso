@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-09 (created `feat/global-numbering-20260309` for blueprint numbering modes)
+Last updated: 2026-03-09 (created `feat/summary-command-brainstorm-20260309` for blueprint summary review and metrics brainstorming)
 
 ## Active Worktrees
 
@@ -43,6 +43,27 @@ Last updated: 2026-03-09 (created `feat/global-numbering-20260309` for blueprint
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Informal/CodeCommon.lean`, `src/verso-blueprint/VersoBlueprint/Cite.lean`
+
+### `feat/summary-command-brainstorm-20260309`
+
+- Status: `active` (owner action: review the summary-metrics brainstorm and decide which sections to implement)
+- Summary: isolated worktree for analyzing `bp_summary`, validating the example blueprints, and grounding possible new summary sections in the current graph/summary payloads.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-brainstorm-20260309`
+- Branch: `feat/summary-command-brainstorm-20260309`
+- Base commit/branch:
+  - branched from `bp` at `87916a5d`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-brainstorm-20260309/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-brainstorm-20260309/noperthedron`
+- Preview link:
+  - `http://127.0.0.1:8152/summary-command-brainstorm-20260309/noperthedron/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-brainstorm-20260309`
+  - `git status --short`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
 
 ### `feat/lean-commandm-incremental-20260306`
 
