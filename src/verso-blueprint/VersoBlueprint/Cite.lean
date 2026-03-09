@@ -205,6 +205,12 @@ structure CiteItem where
   citation : Citable
 deriving FromJson, ToJson
 
+/--
+Serialized payload for one bibliography citation inline.
+
+This keeps the citation targets plus any locator information (`kind` / `index`)
+so traversal can later register reverse-usage metadata for the bibliography panel.
+-/
 structure CiteInlineData where
   citations : List CiteItem := []
   style : CitationStyle := .parenthetical
@@ -212,17 +218,37 @@ structure CiteInlineData where
   index : Option String := none
 deriving Inhabited, FromJson, ToJson
 
+/--
+One numbered document location extracted from the current part-header stack.
+
+`number` is already normalized to display text because the underlying Manual
+numbering can be numeric or alphabetic (for example appendices).
+-/
 structure HeaderLocation where
   title : String
   number : Option String := none
 deriving Inhabited, FromJson, ToJson
 
+/--
+Reference to the informal block surrounding a bibliography citation use site.
+
+We store the labeled block identity plus its local counter so later HTML rendering
+can re-resolve the final displayed theorem/definition/proof number using the
+current numbering policy and the traversal state's per-label metadata.
+-/
 structure TheoremContext where
   label : Informal.Data.Label
   kind : Informal.Data.InProgressKind
   localCount : Nat
 deriving Inhabited, FromJson, ToJson
 
+/--
+Structured location summary for a bibliography citation use.
+
+This is intentionally stored as data rather than preformatted text so the final
+"Cited from" panel can render numbering using the same block-numbering policy as
+the main blueprint HTML.
+-/
 structure CitationSummary where
   chapter : Option HeaderLocation := none
   sectionLoc : Option HeaderLocation := none
@@ -230,6 +256,12 @@ structure CitationSummary where
   documentName : Option String := none
 deriving Inhabited, FromJson, ToJson
 
+/--
+One backlink from a bibliography entry to a concrete citation use site in the document.
+
+`summary` captures the location context, while `kind` / `index` preserve any explicit
+locator that the citation inline itself requested.
+-/
 structure CitationUse where
   href : String
   summary : CitationSummary := {}
@@ -237,6 +269,12 @@ structure CitationUse where
   index : Option String := none
 deriving Inhabited, FromJson, ToJson
 
+/--
+Accumulated citation-use backlinks for one bibliography label.
+
+The bibliography block reads this payload to populate the per-entry "Cited from"
+list and deduplicates entries with `insertUnique`.
+-/
 structure CitationUsageData where
   uses : List CitationUse := []
 deriving Inhabited, FromJson, ToJson
@@ -299,6 +337,7 @@ private def theoremContext? (ctxt : TraverseContext) : Option TheoremContext :=
     | _ :: rest => go rest
   go ctxt.blockContext.toList.reverse
 
+/-- Render a stored citation-summary payload using the current traversal state. -/
 def CitationSummary.text (summary : CitationSummary) (state : TraverseState) : String := Id.run do
   let mut parts : Array String := #[]
   if let some chapter := summary.chapter then
