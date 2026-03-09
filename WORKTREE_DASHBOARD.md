@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-09 (created `feat/summary-command-brainstorm-20260309` for blueprint summary review and metrics brainstorming)
+Last updated: 2026-03-09 (validated `feat/global-numbering-20260309` preview artifacts on shared port `8153`)
 
 ## Active Worktrees
 
@@ -24,24 +24,28 @@ Last updated: 2026-03-09 (created `feat/summary-command-brainstorm-20260309` for
 
 ### `feat/global-numbering-20260309`
 
-- Status: `active` (owner action: implement configurable global/sub-numbering for informal blocks, then validate and publish preview artifacts)
-- Summary: new worktree for fixing chapter-local blueprint theorem/definition numbering by introducing configurable document-order global numbering and LaTeX-style prefixed sub-numbering.
+- Status: `ready-for-review` (owner action: inspect the preview artifact, then rebase on `bp` before integration)
+- Summary: configurable numbering landed for informal blueprint statements/proofs; default rendering now uses chapter-prefixed sub-numbering, while `(set_option verso.blueprint.numbering global)` enables document-order numbering.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
 - Branch: `feat/global-numbering-20260309`
 - Base commit/branch:
   - branched from `bp` at `d317a6a6`
-- Key commits:
-  - none yet
+- Key commit:
+  - `cc810a05` feat(blueprint): add configurable informal numbering
 - Validation status:
   - setup complete: worktree created and `lake exe cache get` run
-  - pending: focused tests
-  - pending: `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/example-blueprints`
-  - pending: `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/noperthedron`
+  - passed: `lake build Tests.BlueprintNumbering Tests VersoBlueprint`
+  - passed: `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/example-blueprints`
+  - passed: `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/noperthedron`
+  - spot-checked generated HTML:
+  - `Theorem 4.1`, `Theorem 4.2`, `Theorem 4.3`, `Theorem 5.5`, `Definition 6.7`, `Definition 7.10`
 - Preview link:
-  - pending shared `_out` server restart and artifact generation
+  - `http://127.0.0.1:8153/global-numbering-20260309/noperthedron/html-multi/`
+  - example-blueprints root: `http://127.0.0.1:8153/global-numbering-20260309/example-blueprints/noperthedron/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
   - `git status --short`
+  - shared preview server started in session `68635` with `npx http-server -p 8153 _out`
   - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Informal/CodeCommon.lean`, `src/verso-blueprint/VersoBlueprint/Cite.lean`
 
 ### `feat/summary-command-brainstorm-20260309`
