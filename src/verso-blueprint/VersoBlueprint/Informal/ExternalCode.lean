@@ -280,9 +280,6 @@ private def kindTextForDecl? (decl : Data.ExternalRef) : Option String :=
     | .theorem => some "theorem"
     | .corollary => some "corollary"
 
-private def externalPanelHeader (data : BlockData) : CodePanelHeader :=
-  codePanelHeader data
-
 /--
 TODO(external-code): revisit footer/status semantics once we surface real
 out-of-workspace declarations and can distinguish "declaration complete" from
@@ -383,7 +380,7 @@ Render external-code UI fragments for an informal block.
 
 This function only renders optional external code panel body for `(lean := ...)` references.
 -/
-def renderParts (data : BlockData)
+def renderParts (panelHeader : CodePanelHeader)
     (externalDecls : Array Data.ExternalRef) (getDeclHref : Name → Option String)
     (getDeclAnchorAttrs : Data.ExternalRef → Array (String × String) := fun _ => #[]) : RenderParts :=
   open Verso.Output.Html in
@@ -465,11 +462,8 @@ def renderParts (data : BlockData)
       }}
       {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{badge}}{{externalSummaryTooltip}}</span>}}
     let externalCodePanel : Output.Html :=
-      match data.kind with
-      | .proof => .empty
-      | .statement _ =>
-        mkCodePanel (externalPanelHeader data) codeEntryTitle externalStatusIndicator
-          {{<ul class="bp_code_hover_list bp_external_decl_list">{{externalPanelListItems linkedDecls}}</ul>}}
+      mkCodePanel panelHeader codeEntryTitle externalStatusIndicator
+        {{<ul class="bp_code_hover_list bp_external_decl_list">{{externalPanelListItems linkedDecls}}</ul>}}
     { externalCodePanel }
 
 end ExternalCode

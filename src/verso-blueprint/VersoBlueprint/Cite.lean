@@ -212,9 +212,27 @@ structure CiteInlineData where
   index : Option String := none
 deriving Inhabited, FromJson, ToJson
 
+structure HeaderLocation where
+  title : String
+  number : Option String := none
+deriving Inhabited, FromJson, ToJson
+
+structure TheoremContext where
+  label : Informal.Data.Label
+  kind : Informal.Data.InProgressKind
+  localCount : Nat
+deriving Inhabited, FromJson, ToJson
+
+structure CitationSummary where
+  chapter : Option HeaderLocation := none
+  sectionLoc : Option HeaderLocation := none
+  theoremCtx : Option TheoremContext := none
+  documentName : Option String := none
+deriving Inhabited, FromJson, ToJson
+
 structure CitationUse where
   href : String
-  summary : String
+  summary : CitationSummary := {}
   kind : Option CitePartKind := none
   index : Option String := none
 deriving Inhabited, FromJson, ToJson
@@ -226,7 +244,7 @@ deriving Inhabited, FromJson, ToJson
 private def CitationUsageData.insertUnique (d : CitationUsageData) (u : CitationUse) : CitationUsageData :=
   if d.uses.any (fun e =>
       e.href == u.href
-      && e.summary == u.summary
+      && ToJson.toJson e.summary == ToJson.toJson u.summary
       && e.kind == u.kind
       && e.index == u.index) then
     d
@@ -239,10 +257,6 @@ private def updateCitationUsageData (u : CitationUse) (j : Json) : Json :=
     | .ok data => data
     | .error _ => {}
   toJson (d.insertUnique u)
-
-private structure HeaderLocation where
-  title : String
-  number : Option String := none
 
 private def headerTitle (h : PartHeader) : String :=
   (h.metadata.bind (·.shortContextTitle) <|> h.metadata.bind (·.shortTitle)).getD h.titleString
@@ -271,39 +285,46 @@ private def sectionText (h : HeaderLocation) : String :=
   | some n => s!"Section {n}: {h.title}"
   | none => s!"Section: {h.title}"
 
-private def theoremContext? (ctxt : TraverseContext) : Option String :=
-  let rec go (ctx : List BlockContext) : Option String :=
+private def theoremContext? (ctxt : TraverseContext) : Option TheoremContext :=
+  let rec go (ctx : List BlockContext) : Option TheoremContext :=
     match ctx with
     | [] => none
     | .other b :: rest =>
       if b.name.toString == "Informal.Block.informal" then
         match fromJson? (α := Informal.BlockData) b.data with
-        | .ok d =>
-          match d.kind with
-          | .statement kind => some s!"{kind} {d.count}"
-          | .proof => some s!"Proof {d.count}"
+        | .ok d => some { label := d.label, kind := d.kind, localCount := d.count }
         | .error _ => go rest
       else
         go rest
     | _ :: rest => go rest
   go ctxt.blockContext.toList.reverse
 
-private def usageSummary (ctxt : TraverseContext) : String := Id.run do
-  let hs := headerLocations ctxt.headers
+def CitationSummary.text (summary : CitationSummary) (state : TraverseState) : String := Id.run do
   let mut parts : Array String := #[]
-  if let some chapter := hs[0]? then
+  if let some chapter := summary.chapter then
     parts := parts.push (chapterText chapter)
-  if hs.size > 1 then
-    if let some sec := hs.back? then
-      parts := parts.push (sectionText sec)
-  if let some thm := theoremContext? ctxt then
-    parts := parts.push s!"{thm}"
+  if let some sectionLoc := summary.sectionLoc then
+    parts := parts.push (sectionText sectionLoc)
+  if let some theoremCtx := summary.theoremCtx then
+    let block : Informal.BlockData := {
+      label := theoremCtx.label
+      kind := theoremCtx.kind
+      count := theoremCtx.localCount
+    }
+    parts := parts.push (block.displayTitle state)
   if parts.isEmpty then
-    match ctxt.path.back? with
-    | some file => s!"Document: {file}"
-    | Option.none => "Document root"
+    summary.documentName.getD "Document root"
   else
     String.intercalate ", " parts.toList
+
+private def usageSummary (ctxt : TraverseContext) : CitationSummary := Id.run do
+  let hs := headerLocations ctxt.headers
+  {
+    chapter := hs[0]?
+    sectionLoc := if hs.size > 1 then hs.back? else none
+    theoremCtx := theoremContext? ctxt
+    documentName := ctxt.path.back?
+  }
 
 private partial def inlineToPlain : Doc.Inline Manual → String
   | .text s | .code s | .math _ s => s

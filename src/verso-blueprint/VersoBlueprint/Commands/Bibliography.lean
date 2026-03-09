@@ -68,6 +68,7 @@ block_extension Block.bibliography (biblio : BibliographyData) where
               out.push {{<li><a href={{href}}>s!"Citation use {out.size + 1}"</a></li>}}
           else
             usageDetails.map fun use =>
+              let summaryText := use.summary.text st
               let inlineMeta : Output.Html :=
                 let index? :=
                   match use.index.map (·.trimAscii.toString) with
@@ -90,7 +91,7 @@ block_extension Block.bibliography (biblio : BibliographyData) where
                 | Option.none => .empty
               {{<li class="bp_bibliography_use_item">
                 <a href={{use.href}} class="bp_bibliography_use_line">
-                  {{.text true use.summary}}
+                  {{.text true summaryText}}
                   {{inlineMeta}}
                 </a>
               </li>}}

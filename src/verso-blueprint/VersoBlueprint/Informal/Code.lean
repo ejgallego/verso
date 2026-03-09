@@ -87,12 +87,15 @@ block_extension Block.informalCode (data : InlineCodeData) where
         | HtmlT.logError s!"Malformed data: {data}"
           pure .empty
       let s ← HtmlT.state
+      let ctxt ← HtmlT.context
       let attrs := s.htmlId id
       let panelHeader :=
         match s.getDomainObject? informalDomain label.toString with
         | some obj =>
           match fromJson? (α := BlockData) obj.data with
-          | .ok b => codePanelHeader b
+          | .ok b =>
+            let b := b.withResolvedNumbering s (numberedPartPrefix? ctxt)
+            codePanelHeader b (b.displayNumber s)
           | .error _ => fallbackCodePanelHeader
         | none => fallbackCodePanelHeader
       let orderedDecls := sortDeclsByCommand (definedDefs ++ definedTheorems)

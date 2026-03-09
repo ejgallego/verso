@@ -9,11 +9,36 @@ import Verso
 import VersoManual
 import VersoBlueprint.Data
 import VersoBlueprint.ProvedStatus
+import VersoBlueprint.Resolve
 
 namespace Informal
 
 open Verso Doc Elab
+open Verso.Genre Manual
 open Lean Elab
+
+inductive NumberingMode where
+  | sub
+  | global
+  | local
+deriving Repr, Inhabited, BEq, FromJson, ToJson, Quote
+
+def NumberingMode.parse? (raw : String) : Option NumberingMode :=
+  match raw.trimAscii.toString.toLower with
+  | "sub" | "chapter" | "section" | "subnumber" | "sub-number" => some .sub
+  | "global" => some .global
+  | "local" => some .local
+  | _ => none
+
+register_option verso.blueprint.numbering : String := {
+  defValue := "sub"
+  descr := "Numbering mode for blueprint informal blocks: `sub` (default; prefix with numbered part path), `global`, or `local`"
+}
+
+def numberingMode (opts : Lean.Options) : NumberingMode :=
+  match NumberingMode.parse? (verso.blueprint.numbering.get opts) with
+  | some mode => mode
+  | none => .sub
 
 def renderErrorMessage? : Data.ExternalDeclRender → Option String
   | .ok _ => none
@@ -118,24 +143,86 @@ structure BlockData where
   codeData : Option BlockCodeData := none
   label : Data.Label
   count : Nat
+  numberingMode : NumberingMode := .sub
+  /-- Numbered-part prefix assigned during traversal (for example `3` or `4.2`). -/
+  partPrefix : Option String := none
+  /-- Document-order global index assigned during traversal. -/
+  globalCount : Option Nat := none
   /-- Statement-side `{uses ...}` dependencies declared for this labeled block. -/
   statementDeps : Array Data.Label := #[]
   /-- Proof-side `{uses ...}` dependencies declared for this labeled block. -/
   proofDeps : Array Data.Label := #[]
 deriving FromJson, ToJson, Quote
 
+def numberedPartPrefix? (ctxt : TraverseContext) : Option String := Id.run do
+  for header in ctxt.headers[1:] do
+    if let some n := header.metadata.bind (·.assignedNumber) then
+      return some (toString n)
+  none
+
+def numberingCounterState : Name := Name.mkSimple "Informal.Block.numberingCounter"
+
+def nextGlobalBlockNumber (st : TraverseState) : Nat :=
+  match st.get? numberingCounterState with
+  | some (.ok (n : Nat)) => n
+  | _ => 1
+
+def reserveGlobalBlockNumber (st : TraverseState) : Nat × TraverseState :=
+  let next := nextGlobalBlockNumber st
+  (next, st.set numberingCounterState (next + 1))
+
+def resolveStoredBlockData? (st : TraverseState) (label : Data.Label) : Option BlockData :=
+  match st.getDomainObject? Resolve.informalDomainName label.toString with
+  | some obj =>
+    match fromJson? (α := BlockData) obj.data with
+    | .ok data => some data
+    | .error _ => none
+  | none => none
+
+def BlockData.withResolvedNumbering
+    (data : BlockData) (st : TraverseState) (fallbackPrefix? : Option String := none) : BlockData :=
+  match resolveStoredBlockData? st data.label with
+  | some stored =>
+    { data with
+        numberingMode := stored.numberingMode
+        partPrefix := data.partPrefix <|> stored.partPrefix <|> fallbackPrefix?
+        globalCount := data.globalCount <|> stored.globalCount
+    }
+  | none =>
+    { data with partPrefix := data.partPrefix <|> fallbackPrefix? }
+
+def BlockData.displayNumber (data : BlockData)
+    (st : TraverseState) (fallbackPrefix? : Option String := none) : String :=
+  let data := data.withResolvedNumbering st fallbackPrefix?
+  match data.numberingMode with
+  | .local => s!"{data.count}"
+  | .global => s!"{data.globalCount.getD data.count}"
+  | .sub =>
+      match data.partPrefix with
+      | some numPrefix => s!"{numPrefix}.{data.count}"
+      | none => s!"{data.count}"
+
+def blockDisplayTitle (data : BlockData) (numberText : String) : String :=
+  match data.kind with
+  | .proof => s!"Proof {numberText}"
+  | .statement kind => s!"{kind} {numberText}"
+
+def BlockData.displayTitle (data : BlockData)
+    (st : TraverseState) (fallbackPrefix? : Option String := none) : String :=
+  blockDisplayTitle data (data.displayNumber st fallbackPrefix?)
+
 structure CodePanelHeader where
   caption : String
   number? : Option String := none
 deriving Repr, Inhabited
 
-def codePanelHeader (data : BlockData) : CodePanelHeader :=
+def codePanelHeader (data : BlockData) (numberText : String) : CodePanelHeader :=
   match data.kind with
   | .proof => { caption := "Code for proof" }
   | .statement nodeKind =>
     {
       caption := s!"Code for {nodeKind}"
-      number? := some s!"{data.count}"
+      number? := some numberText
     }
 
 def fallbackCodePanelHeader : CodePanelHeader := {

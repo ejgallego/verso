@@ -1052,14 +1052,14 @@ private def mergeStoredBlockData (existing incoming : BlockData) : BlockData :=
   { existing with
       kind
       codeData
+      partPrefix := existing.partPrefix <|> incoming.partPrefix
+      globalCount := existing.globalCount <|> incoming.globalCount
       statementDeps := mergeLabelArrays existing.statementDeps incoming.statementDeps
       proofDeps := mergeLabelArrays existing.proofDeps incoming.proofDeps
   }
 
-private def blockSummaryTitle (data : BlockData) : String :=
-  match data.kind with
-  | .proof => s!"Proof {data.count}"
-  | .statement kind => s!"{kind} {data.count}"
+private def blockSummaryTitle (state : Verso.Genre.Manual.TraverseState) (data : BlockData) : String :=
+  data.displayTitle state
 
 private structure UsedByEntry where
   source : BlockData
@@ -1068,8 +1068,10 @@ private structure UsedByEntry where
 
 private def sortUsedByEntries (entries : Array UsedByEntry) : Array UsedByEntry :=
   entries.qsort fun a b =>
-    a.source.count < b.source.count ||
-      (a.source.count == b.source.count && a.source.label.toString < b.source.label.toString)
+    let aNum := a.source.globalCount.getD a.source.count
+    let bNum := b.source.globalCount.getD b.source.count
+    aNum < bNum ||
+      (aNum == bNum && a.source.label.toString < b.source.label.toString)
 
 private def collectUsedByEntries
     (state : Verso.Genre.Manual.TraverseState) (target : Data.Label) : Array UsedByEntry :=
@@ -1149,7 +1151,7 @@ private def renderUsedByEntry {m}
     else if h : entries.size = 1 then
       let entry := entries[0]'(by simp [h])
       let previewId := usedByPreviewId data.label entry.source.label
-      let previewTitle := blockSummaryTitle entry.source
+      let previewTitle := blockSummaryTitle state entry.source
       let href := Resolve.resolveDomainHref? state Resolve.informalDomainName entry.source.label.toString
       let preview? ←
         Informal.PreviewSource.renderTraversalPreview? state
@@ -1173,7 +1175,7 @@ private def renderUsedByEntry {m}
     else
       let rows ← entries.mapM fun entry => do
         let previewId := usedByPreviewId data.label entry.source.label
-        let previewTitle := blockSummaryTitle entry.source
+        let previewTitle := blockSummaryTitle state entry.source
         let href := Resolve.resolveDomainHref? state Resolve.informalDomainName entry.source.label.toString
         let preview? ←
           Informal.PreviewSource.renderTraversalPreview? state
@@ -1234,11 +1236,10 @@ private def renderUsedByEntry {m}
         </div>
       }}
 
-private def renderInformalBlock (data : BlockData) (attrs : Array (String × String))
+private def renderInformalBlock (data : BlockData) (numberText : String) (attrs : Array (String × String))
     (_statusMark : Option BlockStatusMark) (codeEntry usedByEntry : Output.Html)
     (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
-  let labelTextNum := s!"{data.count}"
   let labelText := s!"{data.label}"
   let (kindText, showLabel, kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
     match data.kind with
@@ -1276,7 +1277,7 @@ private def renderInformalBlock (data : BlockData) (attrs : Array (String × Str
   let titleRow : Output.Html := {{
     <div class={{titleRowClass}}>
       <span class={{captionClass}} title={{labelText}}> {{.text true kindText}} </span>
-      {{ if showLabel then {{<span class={{labelClass}}> {{.text true labelTextNum}} </span>}} else .empty }}
+      {{ if showLabel then {{<span class={{labelClass}}> {{.text true numberText}} </span>}} else .empty }}
     </div>
   }}
   let extras : Output.Html :=
@@ -1316,6 +1317,8 @@ block_extension Block.informal (data : BlockData) where
       logError s!"Malformed data ({err}): {data}"
       pure none
     | .ok blockData =>
+      let partPrefix := numberedPartPrefix? (← read)
+      let blockData := { blockData with partPrefix := blockData.partPrefix <|> partPrefix }
       let label := blockData.label
       let previewFacet := PreviewCache.Facet.ofInProgressKind blockData.kind
       let previewKey := PreviewCache.key label previewFacet
@@ -1350,8 +1353,12 @@ block_extension Block.informal (data : BlockData) where
       | none =>
         let path ← (·.path) <$> read
         let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-{label}"
-        modify λ s => s.saveDomainObject informalDomain label.toString id
-        modify λ s => s.saveDomainObjectData informalDomain label.toString (toJson blockData)
+        modify fun s =>
+          let (globalCount, s) := reserveGlobalBlockNumber s
+          let blockData := { blockData with globalCount := blockData.globalCount <|> some globalCount }
+          s
+            |> (·.saveDomainObject informalDomain label.toString id)
+            |> (·.saveDomainObjectData informalDomain label.toString (toJson blockData))
         return none
   toTeX := none
   extraCss := ([blueprintCss, Informal.Commands.inlinePreviewCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
@@ -1366,6 +1373,8 @@ block_extension Block.informal (data : BlockData) where
         pure .empty
       | .ok data =>
         let s ← HtmlT.state
+        let ctxt ← HtmlT.context
+        let data := data.withResolvedNumbering s (numberedPartPrefix? ctxt)
         let attrs := s.htmlId id
         let codeHref : Option String :=
           match s.resolveDomainObject informalCodeDomain data.label.toString with
@@ -1414,14 +1423,16 @@ block_extension Block.informal (data : BlockData) where
             if decls.isEmpty then
               none
             else
-              some <| ExternalCode.renderParts data decls getDeclHref getDeclAnchorAttrs
+              let panelHeader := codePanelHeader data (data.displayNumber s)
+              some <| ExternalCode.renderParts panelHeader decls getDeclHref getDeclAnchorAttrs
           | _, _ => none
         let externalPanel := (externalParts?.map (·.externalCodePanel)).getD .empty
         let content := (← blocks.mapM goB)
         let statusMark := headingParts?.bind (·.statusMark)
         let codeEntry := (headingParts?.map (·.codeEntry)).getD .empty
         let usedByEntry ← renderUsedByEntry s goB data
-        let informalBlock := renderInformalBlock data attrs statusMark codeEntry usedByEntry content
+        let informalBlock :=
+          renderInformalBlock data (data.displayNumber s) attrs statusMark codeEntry usedByEntry content
         return .seq #[informalBlock, externalPanel]
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
@@ -1477,7 +1488,15 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let proofDeps := node?.bind (·.proof.map (·.deps)) |>.getD #[]
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
-    let data : BlockData := { kind := blockKind, codeData, label, count, statementDeps, proofDeps }
+    let data : BlockData := {
+      kind := blockKind
+      codeData
+      label
+      count
+      numberingMode := numberingMode (← getOptions)
+      statementDeps
+      proofDeps
+    }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 
 private def directiveName (kind : Data.NodeKind) (isProof : Bool): String :=

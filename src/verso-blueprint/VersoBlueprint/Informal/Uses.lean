@@ -26,10 +26,9 @@ structure InlineData where
   block : Option BlockData
 deriving FromJson, ToJson, Quote
 
-private def blockHoverTitle (block : BlockData) : String :=
-  match block.kind with
-  | .proof => s!"Proof {block.count}"
-  | .statement kind => s!"{kind} {block.count}"
+private def blockHoverTitle
+    (state : Verso.Genre.Manual.TraverseState) (block : BlockData) : String :=
+  block.displayTitle state
 
 private def usePreviewId (label : Data.Label) (block : BlockData) : String :=
   let facet := PreviewCache.Facet.ofInProgressKind block.kind
@@ -47,10 +46,11 @@ private def useLinkPreviewFallbackBody (label : Data.Label) : Verso.Output.Html 
   }}
 
 private def wrapUseLinkPreview (node previewBody : Verso.Output.Html)
+    (state : Verso.Genre.Manual.TraverseState)
     (label : Data.Label) (block : BlockData) (emitTemplate : Bool) :
     Verso.Output.Html :=
   let pid := usePreviewId label block
-  let ptitle := blockHoverTitle block
+  let ptitle := blockHoverTitle state block
   Informal.HoverRender.inlinePreviewNode emitTemplate node previewBody pid ptitle
 
 inline_extension Inline.informal (data : InlineData) where
@@ -85,16 +85,18 @@ inline_extension Inline.informal (data : InlineData) where
       let st ← HtmlT.state
       let ctxt ← HtmlT.context
       let inPreviewRender ← Informal.HoverRender.inInlinePreviewRender
+      let storedBlock? := resolveStoredBlockData? st label
       let resolvedBlock : Option BlockData :=
-        match block with
-        | some b => some b
-        | none =>
-          match st.getDomainObject? informalDomain label.toString with
-          | none => none
-          | some obj =>
-            match fromJson? (α := BlockData) obj.data with
-            | .ok b => some b
-            | .error _ => none
+        match block, storedBlock? with
+        | some b, some stored =>
+          some {
+            b with
+            partPrefix := b.partPrefix <|> stored.partPrefix
+            globalCount := b.globalCount <|> stored.globalCount
+          }
+        | none, some stored => some stored
+        | some b, none => some b
+        | none, none => none
       let href : Option String :=
         match st.resolveDomainObject informalDomain label.toString with
         | .ok dest => some dest.relativeLink
@@ -116,10 +118,11 @@ inline_extension Inline.informal (data : InlineData) where
         else
           return {{ <span> {{renderedInlines}} </span> }}
       | some block =>
+        let block := block.withResolvedNumbering st
         let labelText := s!"{label}"
         let plainContent : Verso.Output.Html :=
           if inlines.isEmpty then
-            let titleText := blockHoverTitle block
+            let titleText := blockHoverTitle st block
             if let some href := href then
               {{<a href={{href}} title={{labelText}}>{{titleText}}</a>}}
             else
@@ -136,7 +139,7 @@ inline_extension Inline.informal (data : InlineData) where
           match preview? with
           | some rendered => Verso.Output.Html.seq rendered
           | Option.none => useLinkPreviewFallbackBody label
-        let hovered := wrapUseLinkPreview plainContent previewBody label block emitTemplate
+        let hovered := wrapUseLinkPreview plainContent previewBody st label block emitTemplate
         return {{<span>{{hovered}}</span>}}
   toTeX := none
 

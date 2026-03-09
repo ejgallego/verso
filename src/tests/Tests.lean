@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 import Tests.Basic
 import Tests.BlueprintInformal
+import Tests.BlueprintNumbering
 import Tests.BlueprintExternalHeadingStatus
 import Tests.BlueprintGraph
 import Tests.BlueprintInlinePrecision
