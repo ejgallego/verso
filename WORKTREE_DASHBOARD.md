@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-09 (validated `feat/graph-review-20260306` after render-token guard for variant switches)
+Last updated: 2026-03-09 (validated `feat/graph-review-20260306` after fixing console-breaking inline scripts)
 
 ## Active Worktrees
 
@@ -25,13 +25,13 @@ Last updated: 2026-03-09 (validated `feat/graph-review-20260306` after render-to
 ### `feat/graph-review-20260306`
 
 - Status: `validated` (owner action: review the refreshed preview and decide whether the graph branch is ready for rebase/merge prep)
-- Summary: graph view now uses docked group previews, sizes the canvas from the viewport instead of a fixed `90vh`, and guards variant rerenders so stale async callbacks cannot reframe the active graph.
+- Summary: graph view now uses docked group previews, sizes the canvas from the viewport instead of a fixed `90vh`, guards variant rerenders with a render token, and no longer ships the broken inline scripts that were poisoning the page runtime.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/graph-review-20260306`
 - Branch: `feat/graph-review-20260306`
 - Base commit/branch:
-  - merge-base with `bp`: `ef43594e` (`21` behind / `6` ahead)
+  - merge-base with `bp`: `ef43594e` (`22` behind / `7` ahead)
 - Key commit:
-  - `d9806dbf` fix(graph): guard variant rerenders
+  - `15b7dd72` fix(web): remove broken inline blueprint scripts
 - Validation status:
   - `lake exe cache get`
   - `lake build VersoBlueprint.Commands.Graph Tests.BlueprintGraph`
