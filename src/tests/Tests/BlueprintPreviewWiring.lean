@@ -200,25 +200,38 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
     let blocks := collectBlocks previewWiringDoc.toPart
     let (html, st) ← renderManualBlocksHtmlAndState blocks
     let out := html.asString
-    let graphJs? := findExtraJs st "function attachPreviewHandlers(graphContainer, panel, previewMap, panelBehavior)"
+    let graphJs? := findExtraJs st "function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController)"
     pure (
       hasSubstr out "class=\"bp_graph_preview\"" &&
       hasSubstr out "data-bp-preview-mode=\"pinned\"" &&
       hasSubstr out "data-bp-preview-placement=\"docked\"" &&
       hasSubstr out "class=\"bp_graph_preview_tpl\"" &&
       hasSubstr out "class=\"bp_group_hover_preview\"" &&
-      hasSubstr out "data-bp-preview-placement=\"anchored\"" &&
+      hasSubstr out "aria-label=\"Close group preview\"" &&
       hasSubstr out "class=\"bp-graph-variants\"" &&
       hasSubstr out "data-bp-tex-prelude" &&
       !hasSubstr out "bp_preview_tex_prelude" &&
       match graphJs? with
       | some graphJs =>
         hasSubstr graphJs "return utils.readPreviewTemplate(entry);" &&
+        hasSubstr graphJs "function layoutGraphCanvas(graphRoot)" &&
+        hasSubstr graphJs "function ensureGraphBlockState(graphBlock)" &&
+        hasSubstr graphJs "function createPanelController(panel, behavior, titleSelector, bodySelector, options)" &&
+        hasSubstr graphJs "function configurePanelCloseButton(previewUtils, closeButton, hidePanel, behavior)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(previewPanelNode, { mode: \"pinned\", placement: \"docked\" })" &&
-        hasSubstr graphJs "previewUtils.configureCloseButton(" &&
-        hasSubstr graphJs "previewPanelBehavior" &&
-        hasSubstr graphJs "attachPreviewHandlers(graphContainer, previewPanelNode, previewMap, previewPanelBehavior)" &&
-        hasSubstr graphJs "previewUtils.configureCloseButton(groupHoverClose, hideGroupHoverPreview, groupHoverBehavior)"
+        hasSubstr graphJs "previewUtils.readPanelBehavior(groupHoverPanel, { mode: \"pinned\", placement: \"docked\" })" &&
+        hasSubstr graphJs "attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController)" &&
+        hasSubstr graphJs "configurePanelCloseButton(previewUtils, previewClose" &&
+        hasSubstr graphJs "configurePanelCloseButton(previewUtils, groupHoverClose" &&
+        hasSubstr graphJs "graphviz: null," &&
+        hasSubstr graphJs "renderToken: 0," &&
+        hasSubstr graphJs "const finalizeRender = function () {" &&
+        hasSubstr graphJs "if (graphState.renderToken !== renderToken) return;" &&
+        hasSubstr graphJs "const gv = graphState.graphviz || graphContainer.graphviz();" &&
+        hasSubstr graphJs ".zoom(true)" &&
+        hasSubstr graphJs "const padX = variantKey === \"full\" ? 40 : 24;" &&
+        hasSubstr graphJs "const zoomFactor = Math.min(1, targetScale / fitScale);" &&
+        hasSubstr graphJs "syncLegend(graphBlock, activeKey)"
       | none => false
     )
 

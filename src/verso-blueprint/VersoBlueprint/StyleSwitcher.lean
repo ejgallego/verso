@@ -437,7 +437,6 @@ private def jsTemplate : String := r##"(function () {
   }
 
   applyStyle(getSavedStyle());
-  applyRenderer(getSavedRenderer());
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {

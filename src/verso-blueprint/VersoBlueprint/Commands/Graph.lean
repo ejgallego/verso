@@ -79,8 +79,8 @@ structure GraphRenderVariant where
   key : String
   label : String
   dot : String
-  selectOnNode : Array (String × String) := #[]
-  hoverOnNode : Array (String × String) := #[]
+  selectOnNodeId : Array (String × String) := #[]
+  hoverOnNodeId : Array (String × String) := #[]
 deriving Inhabited, ToJson
 
 def graphCss := include_str "graph.css"
@@ -105,6 +105,40 @@ def graphNodeParents (graph : Graph) : Lean.NameMap Name :=
 def graphParentTitle (groupTitles : Lean.NameMap String) (parent : Name) : String :=
   let title := (groupTitles.getD parent parent.toString).trimAscii.toString
   if title.isEmpty then parent.toString else title
+
+partial def wrapGraphLabelWords (words : List String) (lineWidth maxLines : Nat)
+    (current : String) (lines : Array String) : Array String :=
+  match words with
+  | [] =>
+    if current.isEmpty then lines else lines.push current
+  | word :: rest =>
+    if lines.size + 1 == maxLines then
+      let finalLine :=
+        if current.isEmpty then
+          String.intercalate " " (word :: rest)
+        else
+          String.intercalate " " (current :: word :: rest)
+      lines.push finalLine
+    else
+      let candidate := if current.isEmpty then word else current ++ " " ++ word
+      if !current.isEmpty && candidate.length > lineWidth then
+        wrapGraphLabelWords words lineWidth maxLines "" (lines.push current)
+      else
+        wrapGraphLabelWords rest lineWidth maxLines candidate lines
+
+def wrapGraphLabel (title : String) (lineWidth : Nat := 26) (maxLines : Nat := 3) : String :=
+  let words :=
+    (title.splitOn " ").foldr (init := ([] : List String)) fun word acc =>
+      let word := word.trimAscii.toString
+      if word.isEmpty then acc else word :: acc
+  match words with
+  | [] => title.trimAscii.toString
+  | _ =>
+    let lines := wrapGraphLabelWords words lineWidth maxLines "" #[]
+    String.intercalate "\n" lines.toList
+
+def graphParentDisplayLabel (groupTitles : Lean.NameMap String) (parent : Name) : String :=
+  wrapGraphLabel (graphParentTitle groupTitles parent)
 
 def hexNibble? (c : Char) : Option Nat :=
   match c with
@@ -222,7 +256,7 @@ def mkParentOverviewGraph (graph : Graph) (parents : Array Name)
       acc
     else
       acc.insert target (deps.push source)
-  let parentDeps :=
+  let collectParentDeps (depsOf : GraphNode → Array Name) :=
     graph.foldl (init := ({} : Lean.NameMap (Array Name))) fun acc node =>
       match node.parent? with
       | none => acc
@@ -230,7 +264,7 @@ def mkParentOverviewGraph (graph : Graph) (parents : Array Name)
         if !parentSet.contains target then
           acc
         else
-          (node.deps ++ node.proofDeps).foldl (init := acc) fun acc dep =>
+          (depsOf node).foldl (init := acc) fun acc dep =>
             match parentMap.get? dep with
             | some source =>
               if parentSet.contains source && source != target then
@@ -238,6 +272,8 @@ def mkParentOverviewGraph (graph : Graph) (parents : Array Name)
               else
                 acc
             | none => acc
+  let parentStatementDeps := collectParentDeps (·.deps)
+  let parentProofDeps := collectParentDeps (·.proofDeps)
   parents.map fun parent =>
     let childNodes :=
       (parentChildren.getD parent #[]).foldl (init := (#[] : Array GraphNode)) fun acc child =>
@@ -246,17 +282,19 @@ def mkParentOverviewGraph (graph : Graph) (parents : Array Name)
         | Option.none => acc
     let mixedFillColor := mixedNodeColor childNodes (·.fillcolor) "#e2e8f0"
     let mixedBorderColor := mixedNodeColor childNodes (·.color) "#475569"
+    let title := graphParentTitle groupTitles parent
     {
       label := parent
-      deps := parentDeps.getD parent #[]
-      proofDeps := #[]
-      shape := "diamond"
+      displayLabel? := some (graphParentDisplayLabel groupTitles parent)
+      deps := parentStatementDeps.getD parent #[]
+      proofDeps := parentProofDeps.getD parent #[]
+      shape := "tab"
       style := "filled"
       fillcolor := mixedFillColor
       color := mixedBorderColor
-      penwidth := "2.3"
+      penwidth := "2.4"
       fontcolor := fontColorForFill mixedFillColor
-      tooltip? := some s!"Group View: {graphParentTitle groupTitles parent} ({childNodes.size} nodes)"
+      tooltip? := some s!"Group View: {title} ({childNodes.size} nodes)"
       ref? := none
     }
 
@@ -275,25 +313,25 @@ def mkGraphVariants (graphData : GraphBlockData) (resolveHref : Name → Option 
       key := "full"
       label := "Full Graph"
       dot := graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
-      selectOnNode := #[]
-      hoverOnNode := #[]
+      selectOnNodeId := #[]
+      hoverOnNodeId := #[]
     }]
   else
-    let parentVariantRefs := parents.map (fun parent => (toString parent, parentVariantKey parent))
+    let parentVariantRefs := parents.map (fun parent => (Informal.Graph.graphNodeSvgId parent, parentVariantKey parent))
     let groupVariant : GraphRenderVariant := {
       key := groupVariantKey
       label := "Group View"
       dot := graphToDot (mkParentOverviewGraph graphData.graph parents groupTitles)
         graphData.direction (fun _ => none) (fun _ => none)
-      selectOnNode := parentVariantRefs
-      hoverOnNode := parentVariantRefs
+      selectOnNodeId := parentVariantRefs
+      hoverOnNodeId := parentVariantRefs
     }
     let fullVariant : GraphRenderVariant := {
       key := "full"
       label := "Full Graph"
       dot := graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
-      selectOnNode := #[]
-      hoverOnNode := #[]
+      selectOnNodeId := #[]
+      hoverOnNodeId := #[]
     }
     let parentVariants := parents.map fun parent =>
       let title := graphParentTitle groupTitles parent
@@ -302,696 +340,16 @@ def mkGraphVariants (graphData : GraphBlockData) (resolveHref : Name → Option 
         label := title
         dot := graphToDot (subgraphForParent graphData.graph parent)
           graphData.direction resolveHref resolveGroupTitle
-        selectOnNode := #[]
-        hoverOnNode := #[]
+        selectOnNodeId := #[]
+        hoverOnNodeId := #[]
       }
     #[fullVariant, groupVariant] ++ parentVariants
 
-def loadD3Dot :=
-  r##"(function () {
-    function debounce(fn, waitMs) {
-      let timeout = null;
-      return function () {
-        const args = arguments;
-        clearTimeout(timeout);
-        timeout = setTimeout(function () {
-          fn.apply(null, args);
-        }, waitMs);
-      };
-    }
+-- Keep this binding in Lean so asset updates flow through the command module rebuild.
+-- Updated when the runtime asset changes; current runtime keeps one graphviz instance per block.
+def loadD3Dot := include_str "graph.js"
 
-    function layoutGraphBlock(graphBlock) {
-      if (!graphBlock) return;
-
-      graphBlock.style.left = "0px";
-      graphBlock.style.width = "auto";
-      graphBlock.style.maxWidth = "none";
-
-      const main = document.querySelector(".with-toc > main");
-      const blockRect = graphBlock.getBoundingClientRect();
-      let left = 0;
-      let right = window.innerWidth;
-
-      if (main) {
-        const mainRect = main.getBoundingClientRect();
-        const mainStyle = window.getComputedStyle(main);
-        const padLeft = parseFloat(mainStyle.paddingLeft) || 0;
-        const padRight = parseFloat(mainStyle.paddingRight) || 0;
-        left = mainRect.left + padLeft;
-        right = mainRect.right - padRight;
-      }
-
-      const width = Math.max(320, right - left);
-      const shift = left - blockRect.left;
-
-      graphBlock.style.left = shift + "px";
-      graphBlock.style.width = width + "px";
-      graphBlock.style.maxWidth = width + "px";
-    }
-
-    function load(src) {
-      return new Promise(function (resolve, reject) {
-        const s = document.createElement("script");
-        s.src = src;
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
-    }
-
-    function collectPreviewTemplates(rootNode) {
-      const utils = window.bpPreviewUtils;
-      if (!utils || typeof utils.collectPreviewTemplates !== "function") {
-        return new Map();
-      }
-      return utils.collectPreviewTemplates(
-        rootNode || document,
-        "template.bp_graph_preview_tpl[data-bp-preview-label]"
-      );
-    }
-
-    function collectGraphVariants(graphContainer) {
-      const payloadNode = graphContainer.select("script.bp-graph-variants").node();
-      if (payloadNode) {
-        try {
-          const parsed = JSON.parse((payloadNode.textContent || "").trim());
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
-          }
-        } catch (_err) {}
-      }
-      const dotTxt = graphContainer.select("script.dot-source").text().trim();
-      if (!dotTxt) return [];
-      return [{ key: "full", label: "Full Graph", dot: dotTxt, selectOnNode: [], hoverOnNode: [] }];
-    }
-
-    function hidePreviewPanel(panel) {
-      if (!panel) return;
-      const title = panel.querySelector(".bp_graph_preview_title");
-      const body = panel.querySelector(".bp_graph_preview_body");
-      panel.hidden = true;
-      if (title) title.textContent = "";
-      if (body) body.innerHTML = "";
-    }
-
-    function graphNodeLabel(node) {
-      if (!node) return "";
-      const titleNode = node.querySelector("title");
-      const titleTxt =
-        titleNode && typeof titleNode.textContent === "string" ? titleNode.textContent.trim() : "";
-      if (titleTxt) return titleTxt;
-      const textNode = node.querySelector("text");
-      const textTxt =
-        textNode && typeof textNode.textContent === "string" ? textNode.textContent.trim() : "";
-      return textTxt || "";
-    }
-
-    function parsePreviewEntry(entry) {
-      const utils = window.bpPreviewUtils;
-      if (utils && typeof utils.readPreviewTemplate === "function") {
-        return utils.readPreviewTemplate(entry);
-      }
-      if (typeof entry === "string") {
-        return entry;
-      }
-      return "";
-    }
-
-    function renderMath(root) {
-      const utils = window.bpPreviewUtils;
-      if (!utils || typeof utils.renderMath !== "function") return;
-      utils.renderMath(root);
-    }
-
-    function attachPreviewHandlers(graphContainer, panel, previewMap, panelBehavior) {
-      if (!panel) return;
-      const title = panel.querySelector(".bp_graph_preview_title");
-      const body = panel.querySelector(".bp_graph_preview_body");
-      if (!title || !body || previewMap.size === 0) {
-        hidePreviewPanel(panel);
-        return;
-      }
-      const svg = graphContainer.select("svg").node();
-      if (!svg) {
-        hidePreviewPanel(panel);
-        return;
-      }
-      const behavior = panelBehavior || {
-        isPinned: true,
-        isHover: false,
-        isAnchored: false,
-        isDocked: true
-      };
-      let activeNode = null;
-      const show = function (label, anchorNode) {
-        const html = parsePreviewEntry(previewMap.get(label));
-        if (!html) return;
-        activeNode = anchorNode instanceof Element ? anchorNode : null;
-        title.textContent = label;
-        body.innerHTML = html;
-        renderMath(body);
-        panel.hidden = false;
-        const previewUtils = window.bpPreviewUtils;
-        if (behavior.isAnchored && previewUtils && typeof previewUtils.positionAnchoredPanel === "function" && activeNode) {
-          previewUtils.positionAnchoredPanel(panel, activeNode, 12, 10);
-        } else if (previewUtils && typeof previewUtils.resetPanelPosition === "function") {
-          previewUtils.resetPanelPosition(panel);
-        }
-      };
-      const nodes = svg.querySelectorAll("g.node");
-      nodes.forEach(function (node) {
-        const label = graphNodeLabel(node);
-        if (!previewMap.has(label)) return;
-        if (!label) return;
-        node.style.cursor = "pointer";
-        node.setAttribute("tabindex", "0");
-        const titleNode = node.querySelector("title");
-        if (titleNode) titleNode.remove();
-        const all = [node].concat(Array.from(node.querySelectorAll("*")));
-        all.forEach(function (el) {
-          if (el.hasAttribute && el.hasAttribute("title")) {
-            el.removeAttribute("title");
-          }
-          if (el.hasAttribute && el.hasAttribute("xlink:title")) {
-            el.removeAttribute("xlink:title");
-          }
-          if (el.removeAttributeNS) {
-            el.removeAttributeNS("http://www.w3.org/1999/xlink", "title");
-          }
-        });
-      });
-      const showFromTarget = function (target) {
-        if (!(target instanceof Element)) return;
-        const node = target.closest("g.node");
-        if (!node) return;
-        const label = graphNodeLabel(node);
-        if (label) show(label, node);
-      };
-      if (svg.getAttribute("data-bp-preview-bound") === "1") {
-        return;
-      }
-      svg.setAttribute("data-bp-preview-bound", "1");
-      svg.addEventListener("mouseover", function (ev) {
-        showFromTarget(ev.target);
-      });
-      svg.addEventListener("focusin", function (ev) {
-        showFromTarget(ev.target);
-      });
-      if (behavior.isHover) {
-        const previewUtils = window.bpPreviewUtils;
-        svg.addEventListener("mouseout", function (ev) {
-          if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
-          if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeNode, panel)) return;
-          hidePreviewPanel(panel);
-          activeNode = null;
-        });
-        svg.addEventListener("focusout", function (ev) {
-          if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
-          if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeNode, panel)) return;
-          hidePreviewPanel(panel);
-          activeNode = null;
-        });
-        panel.addEventListener("mouseleave", function (ev) {
-          if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
-          if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeNode, panel)) return;
-          hidePreviewPanel(panel);
-          activeNode = null;
-        });
-        panel.addEventListener("focusout", function (ev) {
-          if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
-          if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeNode, panel)) return;
-          hidePreviewPanel(panel);
-          activeNode = null;
-        });
-      }
-      window.addEventListener("resize", function () {
-        const previewUtils = window.bpPreviewUtils;
-        if (!behavior.isAnchored || !activeNode || panel.hidden) return;
-        if (!previewUtils || typeof previewUtils.positionAnchoredPanel !== "function") return;
-        previewUtils.positionAnchoredPanel(panel, activeNode, 12, 10);
-      });
-      window.addEventListener("scroll", function () {
-        const previewUtils = window.bpPreviewUtils;
-        if (!behavior.isAnchored || !activeNode || panel.hidden) return;
-        if (!previewUtils || typeof previewUtils.positionAnchoredPanel !== "function") return;
-        previewUtils.positionAnchoredPanel(panel, activeNode, 12, 10);
-      }, true);
-    }
-
-    function attachVariantSelectors(graphContainer, variantsByKey, activeVariant, onSelect, onHover, onHoverLeave) {
-      if (!activeVariant) {
-        return;
-      }
-      const mapNodeTargets = function (entries) {
-        const out = new Map();
-        if (!Array.isArray(entries)) return out;
-        entries.forEach(function (entry) {
-          if (!Array.isArray(entry) || entry.length !== 2) return;
-          const nodeLabel = String(entry[0] || "").trim();
-          const nextKey = String(entry[1] || "").trim();
-          if (!nodeLabel || !nextKey || !variantsByKey.has(nextKey)) return;
-          out.set(nodeLabel, nextKey);
-        });
-        return out;
-      };
-      const selectVariantByLabel = mapNodeTargets(activeVariant.selectOnNode);
-      const hoverVariantByLabel = mapNodeTargets(activeVariant.hoverOnNode);
-      const svg = graphContainer.select("svg").node();
-      if (!svg) return;
-      const readVariantState = function () {
-        const state = svg.__bpVariantState;
-        if (state && state.selectVariantByLabel instanceof Map && state.hoverVariantByLabel instanceof Map) {
-          return state;
-        }
-        return {
-          selectVariantByLabel: new Map(),
-          hoverVariantByLabel: new Map(),
-          lastHoverLabel: ""
-        };
-      };
-      svg.__bpVariantState = {
-        selectVariantByLabel: selectVariantByLabel,
-        hoverVariantByLabel: hoverVariantByLabel,
-        lastHoverLabel: ""
-      };
-
-      const nodeLabel = function (node) {
-        const label = graphNodeLabel(node);
-        if (!label) return "";
-        return label;
-      };
-      const nodeSelectKey = function (node) {
-        const label = nodeLabel(node);
-        if (!label) return "";
-        const state = readVariantState();
-        return state.selectVariantByLabel.get(label) || "";
-      };
-      const activateFromTarget = function (target, ev) {
-        if (!(target instanceof Element)) return;
-        const node = target.closest("g.node");
-        if (!node) return;
-        const nextKey = nodeSelectKey(node);
-        if (!nextKey) return;
-        if (ev) {
-          ev.preventDefault();
-          ev.stopPropagation();
-        }
-        onSelect(nextKey);
-      };
-      const hoverFromTarget = function (target) {
-        if (!(target instanceof Element)) return;
-        const node = target.closest("g.node");
-        if (!node) return;
-        const label = nodeLabel(node);
-        if (!label) return;
-        const state = readVariantState();
-        const nextKey = state.hoverVariantByLabel.get(label) || "";
-        if (!label || !nextKey) return;
-        if (label === state.lastHoverLabel) return;
-        state.lastHoverLabel = label;
-        onHover(label, nextKey, node);
-      };
-
-      svg.querySelectorAll("g.node").forEach(function (node) {
-        const selectKey = nodeSelectKey(node);
-        const label = nodeLabel(node);
-        const state = readVariantState();
-        const hoverKey = label ? (state.hoverVariantByLabel.get(label) || "") : "";
-        if (!selectKey && !hoverKey) return;
-        node.style.cursor = "pointer";
-        node.setAttribute("tabindex", "0");
-      });
-      if (svg.getAttribute("data-bp-variant-bound") === "1") {
-        return;
-      }
-      svg.setAttribute("data-bp-variant-bound", "1");
-      svg.addEventListener("click", function (ev) {
-        activateFromTarget(ev.target, ev);
-      });
-      svg.addEventListener("keydown", function (ev) {
-        if (ev.key !== "Enter" && ev.key !== " ") return;
-        activateFromTarget(ev.target, ev);
-      });
-      svg.addEventListener("mouseover", function (ev) {
-        hoverFromTarget(ev.target);
-      });
-      svg.addEventListener("mouseleave", function () {
-        const state = readVariantState();
-        state.lastHoverLabel = "";
-        if (typeof onHoverLeave === "function") onHoverLeave();
-      });
-    }
-
-    function applyGraphZoomHeuristic(graphContainer, width, height, variantKey) {
-      const svg = graphContainer.select("svg").node();
-      if (!svg) return;
-      const graphRoot = svg.querySelector("g.graph") || svg.querySelector("g");
-      if (!graphRoot || typeof graphRoot.getBBox !== "function") return;
-      const bounds = graphRoot.getBBox();
-      if (!bounds || !(bounds.width > 0) || !(bounds.height > 0)) return;
-
-      const pad = 24;
-      const fitScale = Math.min(
-        (width - pad * 2) / bounds.width,
-        (height - pad * 2) / bounds.height
-      );
-      if (!isFinite(fitScale) || fitScale <= 0) return;
-
-      // Baseline cap: avoid zooming small graphs too much.
-      const baselineScale = 1.0;
-      const targetScale = Math.min(baselineScale, fitScale);
-      if (!isFinite(targetScale) || targetScale <= 0) return;
-
-      const viewW = width / targetScale;
-      const viewH = height / targetScale;
-      const centerX = bounds.x + bounds.width / 2;
-      const viewX = centerX - viewW / 2;
-      const topBiased = variantKey === "group" || variantKey === "full";
-      const viewY = topBiased ? bounds.y - pad : bounds.y + bounds.height / 2 - viewH / 2;
-      svg.setAttribute("viewBox", [viewX, viewY, viewW, viewH].join(" "));
-      svg.setAttribute("preserveAspectRatio", topBiased ? "xMidYMin meet" : "xMidYMid meet");
-    }
-
-    Promise.resolve()
-      .then(() => load("https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"))
-      .then(() => load("https://cdn.jsdelivr.net/npm/d3-graphviz@5.6.0/build/d3-graphviz.min.js"))
-      .then(() => {
-  const graphBlocks = Array.from(document.querySelectorAll(".bp_graph_fullwidth"));
-  if (graphBlocks.length === 0) return;
-
-  function initGraphBlock(graphBlock) {
-    if (!(graphBlock instanceof Element)) return;
-    layoutGraphBlock(graphBlock);
-    const graphRoot = graphBlock.querySelector(".bp_graph_canvas");
-    if (!graphRoot) return;
-    const graphContainer = d3.select(graphRoot);
-    if (graphContainer.empty()) return;
-    const selector = graphBlock.querySelector(".bp_graph_view_select");
-    const previewMap = collectPreviewTemplates(graphBlock);
-    const previewPanelNode = graphBlock.querySelector(".bp_graph_preview");
-    const previewClose = previewPanelNode
-      ? previewPanelNode.querySelector(".bp_graph_preview_close")
-      : null;
-    const previewUtils = window.bpPreviewUtils;
-    const previewPanelBehavior =
-      previewUtils && typeof previewUtils.readPanelBehavior === "function"
-        ? previewUtils.readPanelBehavior(previewPanelNode, { mode: "pinned", placement: "docked" })
-        : { mode: "pinned", placement: "docked", isPinned: true, isHover: false, isAnchored: false, isDocked: true };
-    if (previewUtils && typeof previewUtils.configureCloseButton === "function") {
-      previewUtils.configureCloseButton(
-        previewClose,
-        function () { hidePreviewPanel(previewPanelNode); },
-        previewPanelBehavior
-      );
-    } else if (previewClose) {
-      if (previewPanelBehavior.isPinned) {
-        if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
-          previewUtils.bindCloseOnce(previewClose, function () {
-            hidePreviewPanel(previewPanelNode);
-          });
-        } else if (previewClose.getAttribute("data-bp-bound") !== "1") {
-          previewClose.setAttribute("data-bp-bound", "1");
-          previewClose.addEventListener("click", function (ev) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            hidePreviewPanel(previewPanelNode);
-          });
-        }
-      } else {
-        previewClose.hidden = true;
-        previewClose.style.display = "none";
-        previewClose.setAttribute("aria-hidden", "true");
-        previewClose.tabIndex = -1;
-      }
-    }
-
-    const rawVariants = collectGraphVariants(graphContainer);
-    if (!Array.isArray(rawVariants) || rawVariants.length === 0) return;
-    const variantsByKey = new Map();
-    rawVariants.forEach(function (variant) {
-      if (!variant || typeof variant !== "object") return;
-      const key = String(variant.key || "").trim();
-      const label = String(variant.label || key).trim();
-      const dot = String(variant.dot || "").trim();
-      const selectOnNode = Array.isArray(variant.selectOnNode) ? variant.selectOnNode : [];
-      const hoverOnNode = Array.isArray(variant.hoverOnNode) ? variant.hoverOnNode : [];
-      if (!key || !dot) return;
-      variantsByKey.set(key, {
-        key: key,
-        label: label || key,
-        dot: dot,
-        selectOnNode: selectOnNode,
-        hoverOnNode: hoverOnNode
-      });
-    });
-    const variants = Array.from(variantsByKey.values());
-    if (variants.length === 0) return;
-
-    if (selector && selector.options.length === 0) {
-      variants.forEach(function (variant) {
-        const option = document.createElement("option");
-        option.value = variant.key;
-        option.textContent = variant.label;
-        selector.appendChild(option);
-      });
-    }
-
-    let activeKey = variantsByKey.has("full") ? "full" : variants[0].key;
-    if (selector && variantsByKey.has(selector.value)) {
-      activeKey = selector.value;
-    }
-    if (selector) selector.value = activeKey;
-
-    const getActiveVariant = function () {
-      const fallback = variantsByKey.get("full") || variants[0];
-      return variantsByKey.get(activeKey) || fallback;
-    };
-
-    const groupHoverPanel = graphBlock.querySelector(".bp_group_hover_preview");
-    const groupHoverTitle = groupHoverPanel
-      ? groupHoverPanel.querySelector(".bp_group_hover_preview_title")
-      : null;
-    const groupHoverClose = groupHoverPanel
-      ? groupHoverPanel.querySelector(".bp_group_hover_preview_close")
-      : null;
-    const groupHoverGraph = groupHoverPanel
-      ? groupHoverPanel.querySelector(".bp_group_hover_preview_graph")
-      : null;
-    const groupHoverBehavior =
-      previewUtils && typeof previewUtils.readPanelBehavior === "function"
-        ? previewUtils.readPanelBehavior(groupHoverPanel, { mode: "pinned", placement: "anchored" })
-        : { mode: "pinned", placement: "anchored", isPinned: true, isHover: false, isAnchored: true, isDocked: false };
-    let groupHoverGraphviz = null;
-    let groupHoverShownKey = "";
-    let groupHoverShownLabel = "";
-
-    const hideGroupHoverPreview = function () {
-      if (!groupHoverPanel) return;
-      groupHoverPanel.hidden = true;
-      if (groupHoverTitle) groupHoverTitle.textContent = "";
-      groupHoverShownKey = "";
-      groupHoverShownLabel = "";
-    };
-    if (previewUtils && typeof previewUtils.configureCloseButton === "function") {
-      previewUtils.configureCloseButton(groupHoverClose, hideGroupHoverPreview, groupHoverBehavior);
-    } else if (groupHoverClose) {
-      if (groupHoverBehavior.isPinned) {
-        if (previewUtils && typeof previewUtils.bindCloseOnce === "function") {
-          previewUtils.bindCloseOnce(groupHoverClose, hideGroupHoverPreview);
-        } else {
-          groupHoverClose.addEventListener("click", function (ev) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            hideGroupHoverPreview();
-          });
-        }
-      } else {
-        groupHoverClose.hidden = true;
-        groupHoverClose.style.display = "none";
-        groupHoverClose.setAttribute("aria-hidden", "true");
-        groupHoverClose.tabIndex = -1;
-      }
-    }
-    window.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape") {
-        hideGroupHoverPreview();
-        hidePreviewPanel(previewPanelNode);
-      }
-    });
-
-    const positionGroupHoverPreview = function (anchorNode) {
-      if (!groupHoverPanel || !(anchorNode instanceof Element)) return;
-      if (!groupHoverBehavior.isAnchored) {
-        if (previewUtils && typeof previewUtils.resetPanelPosition === "function") {
-          previewUtils.resetPanelPosition(groupHoverPanel);
-        }
-        return;
-      }
-      const blockRect = graphBlock.getBoundingClientRect();
-      const nodeRect = anchorNode.getBoundingClientRect();
-      const panelRect = groupHoverPanel.getBoundingClientRect();
-      const gap = 10;
-
-      let left = nodeRect.right - blockRect.left + gap;
-      if (left + panelRect.width > blockRect.width - gap) {
-        left = nodeRect.left - blockRect.left - panelRect.width - gap;
-      }
-      let top = nodeRect.top - blockRect.top + (nodeRect.height - panelRect.height) / 2;
-
-      left = Math.max(gap, Math.min(left, blockRect.width - panelRect.width - gap));
-      top = Math.max(gap, Math.min(top, blockRect.height - panelRect.height - gap));
-      groupHoverPanel.style.left = left + "px";
-      groupHoverPanel.style.top = top + "px";
-    };
-
-    const showGroupHoverPreview = function (nodeLabel, nextKey, anchorNode) {
-      if (!groupHoverPanel || !groupHoverTitle || !groupHoverGraph) return;
-      if (activeKey !== "group") {
-        hideGroupHoverPreview();
-        return;
-      }
-      const variant = variantsByKey.get(nextKey);
-      if (!variant || !variant.dot) {
-        hideGroupHoverPreview();
-        return;
-      }
-      if (!nodeLabel) {
-        hideGroupHoverPreview();
-        return;
-      }
-      if (!groupHoverPanel.hidden && groupHoverShownKey === nextKey && groupHoverShownLabel === nodeLabel) {
-        positionGroupHoverPreview(anchorNode);
-        return;
-      }
-      groupHoverShownKey = nextKey;
-      groupHoverShownLabel = nodeLabel;
-      groupHoverPanel.hidden = false;
-      groupHoverTitle.textContent = "Preview: " + (variant.label || nodeLabel);
-      positionGroupHoverPreview(anchorNode);
-      const width = Math.max(320, groupHoverGraph.clientWidth || 0);
-      const height = Math.max(220, groupHoverGraph.clientHeight || 0);
-      const container = d3.select(groupHoverGraph);
-      if (!groupHoverGraphviz) {
-        groupHoverGraphviz = container.graphviz().fit(true);
-      }
-      groupHoverGraphviz
-        .width(width)
-        .height(height)
-        .renderDot(variant.dot);
-    };
-
-    const switchVariant = function (nextKey) {
-      if (!variantsByKey.has(nextKey) || nextKey === activeKey) return;
-      activeKey = nextKey;
-      if (selector) selector.value = nextKey;
-      renderGraph();
-    };
-
-    function renderGraph() {
-      const activeVariant = getActiveVariant();
-      if (!activeVariant || !activeVariant.dot) return;
-      hidePreviewPanel(previewPanelNode);
-      hideGroupHoverPreview();
-      layoutGraphBlock(graphBlock);
-      const width = graphRoot.clientWidth;
-      const height = graphRoot.clientHeight;
-
-      const gv = graphContainer.graphviz()
-        .width(width)
-        .height(height)
-        .fit(false)
-        .on("end", function () {
-          applyGraphZoomHeuristic(graphContainer, width, height, activeVariant.key);
-          attachPreviewHandlers(graphContainer, previewPanelNode, previewMap, previewPanelBehavior);
-          attachVariantSelectors(
-            graphContainer,
-            variantsByKey,
-            activeVariant,
-            switchVariant,
-            showGroupHoverPreview,
-            groupHoverBehavior.isHover ? hideGroupHoverPreview : null
-          );
-        });
-      gv.renderDot(activeVariant.dot);
-      // TODO: remove fallback once graphviz `end` is confirmed stable on our
-      // supported browser/runtime matrix.
-      // Fallback for runtimes where the graphviz `end` event is unreliable.
-      setTimeout(function () {
-        applyGraphZoomHeuristic(graphContainer, width, height, activeVariant.key);
-        attachPreviewHandlers(graphContainer, previewPanelNode, previewMap, previewPanelBehavior);
-        attachVariantSelectors(
-          graphContainer,
-          variantsByKey,
-          activeVariant,
-          switchVariant,
-          showGroupHoverPreview,
-          groupHoverBehavior.isHover ? hideGroupHoverPreview : null
-        );
-      }, 120);
-    }
-
-    if (selector) {
-      selector.addEventListener("change", function () {
-        switchVariant(selector.value);
-      });
-    }
-
-    renderGraph();
-    window.addEventListener("resize", debounce(renderGraph, 180));
-  }
-
-  graphBlocks.forEach(initGraphBlock);
-  });
-  })();
-  "##
-
-def graphTocToggleJs : String := r##"(function () {
-  const className = "bp-graph-toc-hidden";
-  const storageKey = "verso-blueprint-graph-toc-visible";
-  if (!document.querySelector(".bp_graph_fullwidth")) return;
-  if (!document.getElementById("toc")) return;
-
-  function readVisible() {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved === "1") return true;
-      if (saved === "0") return false;
-    } catch (_err) {}
-    return false; // default: hidden
-  }
-
-  let visible = readVisible();
-  const root = document.documentElement;
-  const button = document.createElement("button");
-  button.id = "bp-toc-toggle";
-  button.type = "button";
-
-  function apply() {
-    if (visible) root.classList.remove(className);
-    else root.classList.add(className);
-    button.textContent = visible ? "Hide ToC" : "Show ToC";
-    window.dispatchEvent(new Event("resize"));
-  }
-
-  function persist() {
-    try {
-      localStorage.setItem(storageKey, visible ? "1" : "0");
-    } catch (_err) {}
-  }
-
-  button.addEventListener("click", function () {
-    visible = !visible;
-    persist();
-    apply();
-  });
-
-  if (document.body) document.body.appendChild(button);
-  else document.addEventListener("DOMContentLoaded", function () {
-    if (document.body) document.body.appendChild(button);
-  }, { once: true });
-
-  apply();
-})();"##
+def graphTocToggleJs : String := include_str "graph-toc-toggle.js"
 
 def blueprintStyleSwitcherCss : String := Informal.StyleSwitcher.css
 
@@ -1035,36 +393,58 @@ block_extension Block.graph (graphData : GraphBlockData) where
           <option value={{variant.key}}>{{variant.label}}</option>
         }}
       let includeMathlibLegend := graphData.graph.any (fun node => node.color == Informal.Graph.statementBorderMathlibColor)
-      let legendGroups := Informal.Graph.graphLegendGroups includeMathlibLegend
-      let legendGroupHtml : Array Output.Html :=
-        legendGroups.map fun group =>
-          let itemHtml : Array Output.Html :=
-            group.items.map fun item =>
-              match item.swatch? with
-              | some swatch => {{
-                  <span class="bp_graph_legend_item">
-                    <span class="bp_graph_legend_swatch" "style"={{swatch.inlineStyle}}></span>
-                    {{.text false item.label}}
-                  </span>
-                }}
-              | Option.none => {{
-                  <span class="bp_graph_legend_item">
-                    {{.text false item.label}}
-                  </span>
-                }}
+      let renderLegend (kind : String) (groups : Array Informal.Graph.LegendGroup)
+          (note? : Option String := none) (hidden : Bool := false) : Output.Html :=
+        let legendGroupHtml : Array Output.Html :=
+          groups.map fun group =>
+            let itemHtml : Array Output.Html :=
+              group.items.map fun item =>
+                match item.swatch? with
+                | some swatch => {{
+                    <span class="bp_graph_legend_item">
+                      <span class="bp_graph_legend_swatch" "style"={{swatch.inlineStyle}}></span>
+                      {{.text false item.label}}
+                    </span>
+                  }}
+                | Option.none => {{
+                    <span class="bp_graph_legend_item">
+                      {{.text false item.label}}
+                    </span>
+                  }}
+            {{
+              <div class="bp_graph_legend_group">
+                <span class="bp_graph_legend_group_title">{{.text false group.title}}</span>
+                {{itemHtml}}
+              </div>
+            }}
+        let noteHtml : Output.Html :=
+          match note? with
+          | some note => {{
+              <p class="bp_graph_legend_note">
+                {{.text false note}}
+              </p>
+            }}
+          | Option.none => .empty
+        if hidden then
           {{
-            <div class="bp_graph_legend_group">
-              <span class="bp_graph_legend_group_title">{{.text false group.title}}</span>
-              {{itemHtml}}
+            <div class="bp_graph_legend" "data-bp-legend-kind"={{kind}} hidden>
+              {{noteHtml}}
+              {{legendGroupHtml}}
             </div>
           }}
-      let legendNoteHtml : Output.Html :=
-        if hasGroupVariant then
+        else
           {{
-            <p class="bp_graph_legend_note">
-              {{.text false Informal.Graph.graphLegendGroupViewNote}}
-            </p>
+            <div class="bp_graph_legend" "data-bp-legend-kind"={{kind}}>
+              {{noteHtml}}
+              {{legendGroupHtml}}
+            </div>
           }}
+      let fullLegendHtml :=
+        renderLegend "full" (Informal.Graph.graphLegendGroups includeMathlibLegend)
+      let groupLegendHtml : Output.Html :=
+        if hasGroupVariant then
+          renderLegend "group" Informal.Graph.groupGraphLegendGroups
+            (note? := some Informal.Graph.graphLegendGroupViewNote) (hidden := true)
         else
           .empty
       let fallbackDot : String :=
@@ -1081,7 +461,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
       let groupHoverPanel : Output.Html := {{
         <aside class="bp_group_hover_preview"
             "data-bp-preview-mode"="pinned"
-            "data-bp-preview-placement"="anchored"
+            "data-bp-preview-placement"="docked"
             hidden>
           <div class="bp_group_hover_preview_header">
             <div class="bp_group_hover_preview_title"></div>
@@ -1092,10 +472,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
       }}
       return {{
         <div class="bp_graph_fullwidth">
-          <div class="bp_graph_legend">
-            {{legendNoteHtml}}
-            {{legendGroupHtml}}
-          </div>
+          {{fullLegendHtml}}
+          {{groupLegendHtml}}
           <div class="bp_graph_controls">
             <label class="bp_graph_controls_label">"View"</label>
             <select class="bp_graph_controls_select bp_graph_view_select">
