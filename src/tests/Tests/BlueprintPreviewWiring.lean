@@ -309,7 +309,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr usedByJs "function bindUsedByPanel(panel)" &&
         hasSubstr usedByJs "item.addEventListener(\"mouseenter\"" &&
         hasSubstr usedByJs "item.addEventListener(\"focusin\"" &&
-        hasSubstr usedByJs "activate(items[0])"
+        hasSubstr usedByJs "activate(items[0], { openWrap: false })"
       | none => false
     )
 

@@ -862,10 +862,15 @@ def inlineLinkPreviewJs : String := r##"(function () {
       return;
     }
 
-    const behavior = previewUtils.readPanelBehavior(panel, { mode: "hover", placement: "anchored" });
+    function makeBehavior(mode, placement) {
+      return previewUtils.readPanelBehavior(null, { mode: mode, placement: placement });
+    }
+
+    let behavior = makeBehavior("hover", "anchored");
     let previewMap = new Map();
     let labelPreviewMap = new Map();
     let activeTrigger = null;
+    let activeHost = null;
     let activePreviewKey = "";
     let hideTimer = null;
     let updatingPanel = false;
@@ -899,6 +904,61 @@ def inlineLinkPreviewJs : String := r##"(function () {
           "template.bp_label_preview_tpl[data-bp-preview-label]",
           "data-bp-preview-label"
         );
+    }
+
+    function readInlinePreviewHost(trigger) {
+      if (!(trigger instanceof Element)) return null;
+      const host = trigger.closest(".bp_used_by_panel, .bp_graph_preview, .bp_group_hover_preview");
+      if (!(host instanceof Element)) return null;
+      if (panel.contains(host)) return null;
+      let kind = "generic";
+      if (host.matches(".bp_used_by_panel")) {
+        kind = "used-by";
+      } else if (host.matches(".bp_graph_preview")) {
+        kind = "graph";
+      } else if (host.matches(".bp_group_hover_preview")) {
+        kind = "graph-group";
+      }
+      return {
+        element: host,
+        kind: kind,
+        behavior: makeBehavior("pinned", "docked")
+      };
+    }
+
+    function positionDockedPanel(hostInfo) {
+      if (!hostInfo || !(hostInfo.element instanceof Element)) return;
+      const margin = 12;
+      const gap = 12;
+      const hostRect = hostInfo.element.getBoundingClientRect();
+      const panelRect = panel.getBoundingClientRect();
+      const panelWidth = panelRect.width || Math.min(520, window.innerWidth - margin * 2);
+      const panelHeight = panelRect.height || Math.min(420, window.innerHeight - margin * 2);
+      let left = hostRect.right + gap;
+      if (left + panelWidth > window.innerWidth - margin) {
+        left = hostRect.left - panelWidth - gap;
+      }
+      left = Math.max(margin, Math.min(left, window.innerWidth - panelWidth - margin));
+      let top = hostRect.top;
+      if (top + panelHeight > window.innerHeight - margin) {
+        top = window.innerHeight - panelHeight - margin;
+      }
+      top = Math.max(margin, top);
+      panel.style.left = left + "px";
+      panel.style.top = top + "px";
+    }
+
+    function applyBehavior(nextBehavior, hostInfo) {
+      behavior = nextBehavior || makeBehavior("hover", "anchored");
+      activeHost = hostInfo || null;
+      panel.setAttribute("data-bp-preview-mode", behavior.mode);
+      panel.setAttribute("data-bp-preview-placement", behavior.placement);
+      if (activeHost && activeHost.kind) {
+        panel.setAttribute("data-bp-inline-host", activeHost.kind);
+      } else {
+        panel.removeAttribute("data-bp-inline-host");
+      }
+      previewUtils.configureCloseButton(close, hidePanel, behavior);
     }
 
     function bindInlinePreviewTriggers(root) {
@@ -976,7 +1036,9 @@ def inlineLinkPreviewJs : String := r##"(function () {
       clearPanelSizeLock();
       previewUtils.hidePanelContent(panel, title, body);
       activeTrigger = null;
+      activeHost = null;
       activePreviewKey = "";
+      applyBehavior(makeBehavior("hover", "anchored"), null);
     }
 
     function scheduleHide() {
@@ -1054,11 +1116,14 @@ def inlineLinkPreviewJs : String := r##"(function () {
       const heading = (trigger.getAttribute("data-bp-preview-title") || key).trim() || key;
       activePreviewKey = key;
       const inPanel = panel.contains(trigger);
+      const hostInfo = inPanel ? activeHost : readInlinePreviewHost(trigger);
+      applyBehavior(hostInfo ? hostInfo.behavior : makeBehavior("hover", "anchored"), hostInfo);
       updatingPanel = inPanel;
       previewDebug("inline.show", {
         key: key,
         inPanel: inPanel,
         trigger: previewDebugLabel(trigger),
+        host: activeHost ? activeHost.kind : "",
         panelHover: panel.matches(":hover"),
         panelFocus: panel.matches(":focus-within")
       });
@@ -1071,6 +1136,9 @@ def inlineLinkPreviewJs : String := r##"(function () {
         previewUtils.hydratePreviewSubtree(body);
         previewUtils.renderMath(body);
         panel.hidden = false;
+        if (behavior.isDocked && activeHost) {
+          positionDockedPanel(activeHost);
+        }
         window.setTimeout(function () {
           updatingPanel = false;
         }, 180);
@@ -1078,10 +1146,12 @@ def inlineLinkPreviewJs : String := r##"(function () {
         clearPanelSizeLock();
         activeTrigger = trigger;
         previewUtils.showPanelContent(panel, title, body, heading, html, behavior, trigger, 12, 10);
+        if (behavior.isDocked && activeHost) {
+          positionDockedPanel(activeHost);
+        }
       }
     }
-
-    previewUtils.configureCloseButton(close, hidePanel, behavior);
+    applyBehavior(behavior, null);
     panel.addEventListener("mouseenter", function () {
       cancelHide();
     });
@@ -1147,11 +1217,15 @@ def inlineLinkPreviewJs : String := r##"(function () {
     window.addEventListener("resize", function () {
       if (behavior.isAnchored && activeTrigger && !panel.hidden) {
         previewUtils.positionAnchoredPanel(panel, activeTrigger, 12, 10);
+      } else if (behavior.isDocked && activeHost && !panel.hidden) {
+        positionDockedPanel(activeHost);
       }
     });
     window.addEventListener("scroll", function () {
       if (behavior.isAnchored && activeTrigger && !panel.hidden) {
         previewUtils.positionAnchoredPanel(panel, activeTrigger, 12, 10);
+      } else if (behavior.isDocked && activeHost && !panel.hidden) {
+        positionDockedPanel(activeHost);
       }
     }, true);
 
@@ -1233,12 +1307,15 @@ def usedByPanelJs : String := r##"(function () {
       }, 180);
     }
 
-    function activate(item) {
+    function activate(item, options) {
       if (!(item instanceof Element)) return;
+      const opts = options && typeof options === "object" ? options : {};
       const key = (item.getAttribute("data-bp-used-preview-id") || "").trim();
       const itemTitle = (item.getAttribute("data-bp-used-preview-title") || "").trim() || defaultTitle;
       const html = key ? (templates.get(key) || "") : "";
-      openWrap();
+      if (opts.openWrap !== false) {
+        openWrap();
+      }
       items.forEach(function (other) {
         if (other instanceof Element) {
           other.classList.toggle("bp_used_by_item_active", other === item);
@@ -1265,7 +1342,7 @@ def usedByPanelJs : String := r##"(function () {
     });
 
     if (items.length > 0) {
-      activate(items[0]);
+      activate(items[0], { openWrap: false });
     }
 
     if (wrap instanceof Element && chip instanceof Element) {
