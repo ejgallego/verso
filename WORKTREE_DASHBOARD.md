@@ -24,12 +24,12 @@ Last updated: 2026-03-10 (validated `feat/agents-merge-guardrails-20260310` afte
 
 ### `feat/agents-merge-guardrails-20260310`
 
-- Status: `ready-for-review` (owner action: inspect the AGENTS wording; do not merge/cleanup without explicit authorization)
+- Status: `ready-for-review` (owner action: inspect the AGENTS wording, then rebase before any eventual integration; do not merge/cleanup without explicit authorization)
 - Summary: isolated docs-only worktree for hardening AGENTS guidance around merge authorization, cleanup authorization, and the interpretation of “prepare for merge”.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/agents-merge-guardrails-20260310`
 - Branch: `feat/agents-merge-guardrails-20260310`
 - Base commit/branch:
-  - branched from `bp` at `4caaf01e`
+  - merge-base with `bp`: `4caaf01e` (`3` behind / `1` ahead)
 - Key commit:
   - `2f3edc7b` docs(agents): require explicit merge authorization
 - Validation status:
