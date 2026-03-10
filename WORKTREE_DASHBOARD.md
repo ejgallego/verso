@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (implemented and validated shared-manifest preview mode on `feat/blueprint-metadata-json-review-bp-20260311`)
+Last updated: 2026-03-11 (simplified `feat/blueprint-metadata-json-review-bp-20260311` to a single canonical shared-manifest mode)
 
 ## Active Worktrees
 
@@ -69,7 +69,7 @@ Last updated: 2026-03-11 (implemented and validated shared-manifest preview mode
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
   - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, and `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`
-  - shared-manifest mode now lives at the extra-step boundary via `Informal.PreviewManifest.emitSharedPreviewManifestWith .shared`
+  - canonical manifest mode now lives at the extra-step boundary via `Informal.PreviewManifest.emitSharedPreviewManifest`
 
 ### `feat/blueprint-metadata-json-review-20260310`
 
