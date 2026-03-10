@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (created `feat/lean-code-link-preview-api-20260311` and built its preview artifacts)
+Last updated: 2026-03-11 (implemented and validated shared-manifest preview mode on `feat/blueprint-metadata-json-review-bp-20260311`)
 
 ## Active Worktrees
 
@@ -47,8 +47,8 @@ Last updated: 2026-03-11 (created `feat/lean-code-link-preview-api-20260311` and
 
 ### `feat/blueprint-metadata-json-review-bp-20260311`
 
-- Status: `active` (owner action: rerun the metadata JSON review against current `bp` only)
-- Summary: fresh metadata-review worktree created directly from current `bp` after the preview/runtime work landed, so the analysis no longer depends on merged predecessor branches.
+- Status: `ready-for-review` (owner action: review the shared-manifest mode and decide whether to merge it)
+- Summary: makes the shared preview manifest the source of truth when requested by the extra-step wiring, strips embedded block label preview templates in that mode, prefers exact preview keys over label-only fallback, and stops eager manifest fetches at page bind time.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
 - Branch: `feat/blueprint-metadata-json-review-bp-20260311`
 - Base commit/branch:
@@ -57,16 +57,19 @@ Last updated: 2026-03-11 (created `feat/lean-code-link-preview-api-20260311` and
   - none yet
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
+  - `script/lean-low-priority lake build VersoBlueprint Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
   - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi`
   - emitted shared preview manifests:
-  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi/-verso-data/bp-previews.json` (`134` entries, `399424` bytes)
-  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/spherepackingblueprint/html-multi/-verso-data/bp-previews.json` (`222` entries, `212375` bytes)
+  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi/-verso-data/bp-previews.json` (`134` entries, `395840` bytes, minified)
+  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/spherepackingblueprint/html-multi/-verso-data/bp-previews.json` (`222` entries, `206547` bytes, minified)
+  - output shape check on `noperthedron`: `bp_label_preview_tpl=0`, `bp_summary_preview_tpl=0`, `bp_inline_preview_tpl=178`
 - Preview link:
   - `http://127.0.0.1:8154/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
-  - review only the code reachable from current `bp`
-  - ignore older preview-branch assumptions from `feat/blueprint-metadata-json-review-20260310`
+  - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, and `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`
+  - shared-manifest mode now lives at the extra-step boundary via `Informal.PreviewManifest.emitSharedPreviewManifestWith .shared`
 
 ### `feat/blueprint-metadata-json-review-20260310`
 
