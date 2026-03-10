@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (validated `feat/agents-merge-guardrails-20260310` after tightening AGENTS merge permissions)
+Last updated: 2026-03-10 (merged `feat/agents-merge-guardrails-20260310` into `bp` and cleaned up the worktree)
 
 ## Active Worktrees
 
@@ -21,29 +21,6 @@ Last updated: 2026-03-10 (validated `feat/agents-merge-guardrails-20260310` afte
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/agents-merge-guardrails-20260310`
-
-- Status: `ready-for-review` (owner action: inspect the AGENTS wording, then rebase before any eventual integration; do not merge/cleanup without explicit authorization)
-- Summary: isolated docs-only worktree for hardening AGENTS guidance around merge authorization, cleanup authorization, and the interpretation of “prepare for merge”.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/agents-merge-guardrails-20260310`
-- Branch: `feat/agents-merge-guardrails-20260310`
-- Base commit/branch:
-  - branched from `bp` at `4caaf01e`; rebase before integration
-- Key commit:
-  - `2f3edc7b` docs(agents): require explicit merge authorization
-- Validation status:
-  - setup complete: worktree created and `lake exe cache get` run
-  - passed: `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/example-blueprints`
-  - passed: `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/noperthedron`
-- Preview link:
-  - `http://127.0.0.1:8153/agents-merge-guardrails-20260310/noperthedron/html-multi/`
-  - example-blueprints root: `http://127.0.0.1:8153/agents-merge-guardrails-20260310/example-blueprints/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/agents-merge-guardrails-20260310`
-  - `git status --short`
-  - shared preview server currently expected on `http://127.0.0.1:8153/`
-  - inspect `AGENTS.md`
 
 ### `feat/summary-command-brainstorm-20260309`
 
@@ -109,6 +86,22 @@ Last updated: 2026-03-10 (validated `feat/agents-merge-guardrails-20260310` afte
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/agents-merge-guardrails-20260310` into `bp` (`d40267d3 -> 0e8c886b`, fast-forward).
+- Feature branch key commit:
+  - `0e8c886b` docs(agents): require explicit merge authorization
+- Validation on feature branch before merge:
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/noperthedron`
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Retained preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/example-blueprints`
+  - `/home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/noperthedron`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/agents-merge-guardrails-20260310`
+- Deleted branch:
+  - `feat/agents-merge-guardrails-20260310`
 
 - Merged `feat/global-numbering-20260309` into `bp` (`d2388e77 -> 31f8cda4`, fast-forward).
 - Feature branch key commits:
