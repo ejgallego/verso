@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (rebased `feat/link-preview-audit-20260308` on current `bp` and refreshed its checkpoint pointer)
+Last updated: 2026-03-10 (rebased `feat/link-preview-audit-20260308` on current `bp` and stabilized its checkpoint note)
 
 ## Active Worktrees
 
@@ -52,7 +52,7 @@ Last updated: 2026-03-10 (rebased `feat/link-preview-audit-20260308` on current 
 - Base commit/branch:
   - rebased on current `bp`
 - Key commit:
-  - `aa25dc28` checkpoint(preview): preserve nested hover investigation
+  - branch tip is the rebased replay of `checkpoint(preview): preserve nested hover investigation`
 - Validation status:
   - focused preview validation had passed before the checkpoint
   - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308`
