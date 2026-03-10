@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (updated `feat/lean-lean-interactive-latency-20260310` with the manual-documentation follow-up for interactive Lean latency)
+Last updated: 2026-03-10 (validated preview follow-up fixes for bibliography hovers and nested subhover panels on `feat/preview-hover-tweaks-20260310`)
 
 ## Active Worktrees
 
@@ -70,6 +70,34 @@ Last updated: 2026-03-10 (updated `feat/lean-lean-interactive-latency-20260310` 
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`, and `src/verso-blueprint/VersoBlueprint.lean`
   - the shared `_out` server was restarted in session `77001`
   - local summary/graph preview templates are now gone from the emitted HTML; inline preview still keeps its own local store
+
+### `feat/preview-hover-tweaks-20260310`
+
+- Status: `ready-for-review` (owner action: inspect the hover UX follow-up and decide whether this should replace `feat/preview-template-removal-20260310` as the active preview branch)
+- Summary: restores bibliography-page hover previews by rendering shared-manifest-backed inline preview refs in "Cited from" rows, and changes nested inline preview behavior so subhovers use a separate transient child panel instead of replacing the parent panel or inheriting pinned+docked behavior from graph/used-by hosts.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-hover-tweaks-20260310`
+- Branch: `feat/preview-hover-tweaks-20260310`
+- Base commit/branch:
+  - branched from `feat/preview-template-removal-20260310` at `bedcd57f`
+- Key commit:
+  - `e7da72e4` fix(preview): restore bibliography hovers and nested subhover panels
+- Validation status:
+  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-hover-tweaks-20260310`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-hover-tweaks-20260310/example-blueprints`
+  - built HTML spot checks:
+  - `Blueprint-Bibliography` now emits `.bp_inline_preview_ref` rows with manifest-backed `data-bp-preview-key`
+  - `Computational-Step` still emits the theorem 7.15 -> definition 7.10 nested trigger chain
+  - `Dependency-Graph` still renders graph previews with nested inline refs in the preview body
+  - note: an iframe-based headless hover smoke harness was inconclusive for firing the actual hover handlers, so final UX still wants an interactive browser pass
+- Preview link:
+  - `http://127.0.0.1:8154/preview-hover-tweaks-20260310/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-hover-tweaks-20260310`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean` and `src/verso-blueprint/VersoBlueprint/Commands/Bibliography.lean`
+  - shared `_out` server is running on `http://127.0.0.1:8154/` in session `77001`
 
 ### `feat/preview-manifest-generalize-20260310`
 
