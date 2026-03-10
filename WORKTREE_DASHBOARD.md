@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-20260310` after finishing the existing-data summary analytics and adding priority metadata)
+Last updated: 2026-03-10 (marked `feat/parent-link-ungrouped-research-20260310` ready for review after local group-preview implementation and browser regression coverage)
 
 ## Active Worktrees
 
@@ -24,16 +24,18 @@ Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-2026
 
 ### `feat/parent-link-ungrouped-research-20260310`
 
-- Status: `active` (owner action: finish the missing-parent-group behavior investigation and decide whether to add validation)
-- Summary: isolated research worktree for tracing how `(parent := "...")` behaves when no matching `group` directive exists, with fresh example blueprint outputs for spot checks.
+- Status: `ready-for-review` (owner action: review the local group-preview UI and decide whether to merge)
+- Summary: adds a local block-header `group` chip that reuses the `used by` preview UI, shows sibling entries in the same parent group, and renders a local warning state when `parent := "..."` is present but no matching `:::group` exists.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/parent-link-ungrouped-research-20260310`
 - Branch: `feat/parent-link-ungrouped-research-20260310`
 - Base commit/branch:
-  - branched from `bp` at `9399f492`
+  - rebased on current `bp` at `93f503dd`
 - Key commits:
-  - none yet
+  - `4f04a813` feat(blueprint): add local parent group previews
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
+  - `lake build Tests.BlueprintPreviewWiring`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_blueprint_group_preview.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron/html-multi`
   - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/example-blueprints`
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron`
 - Preview link:
@@ -41,7 +43,7 @@ Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-2026
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/parent-link-ungrouped-research-20260310`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Environment.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Group.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Group.lean`, `browser-tests/test_blueprint_group_preview.py`, `src/tests/Tests/BlueprintPreviewWiring.lean`
 
 ### `feat/link-preview-audit-20260308`
 
