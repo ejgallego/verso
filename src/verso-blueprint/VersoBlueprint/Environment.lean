@@ -19,6 +19,10 @@ structure InProgress where
   codeHint : Option CodeRef := none
   parent : Option Parent := none
   priority : Option String := none
+  owner : Option AuthorId := none
+  tags : Array String := #[]
+  effort : Option String := none
+  prUrl : Option String := none
   deps : Array Label := #[]
   elabStx : Array Syntax := #[]
 deriving Inhabited, Repr
@@ -28,12 +32,15 @@ structure State where
   localData : NameMap Node := {}
   groups : NameMap String := {}
   localGroups : NameMap String := {}
+  authors : NameMap AuthorInfo := {}
+  localAuthors : NameMap AuthorInfo := {}
   stack : List InProgress := []
 deriving Inhabited, Repr
 
 inductive Entry where
   | node (label : Name) (node : Node)
   | group (label : Name) (header : String)
+  | author (label : Name) (info : AuthorInfo)
 deriving Inhabited, Repr
 
 initialize informalExt : PersistentEnvExtension Entry Entry State ←
@@ -50,13 +57,20 @@ initialize informalExt : PersistentEnvExtension Entry Entry State ←
           groups := state.groups.insert label header
           localGroups := state.localGroups.insert label header
         }
+      | .author label info =>
+        { state with
+          authors := state.authors.insert label info
+          localAuthors := state.localAuthors.insert label info
+        }
     addImportedFn entries := do
-      let (data, groups) := entries.foldl (init := (({} : NameMap Node), ({} : NameMap String))) fun acc entry =>
-        entry.foldl (init := acc) fun (dataAcc, groupAcc) item =>
+      let (data, groups, authors) := entries.foldl
+          (init := (({} : NameMap Node), ({} : NameMap String), ({} : NameMap AuthorInfo))) fun acc entry =>
+        entry.foldl (init := acc) fun (dataAcc, groupAcc, authorAcc) item =>
           match item with
-          | .node label node => (dataAcc.insert label node, groupAcc)
-          | .group label header => (dataAcc, groupAcc.insert label header)
-      pure { data, groups }
+          | .node label node => (dataAcc.insert label node, groupAcc, authorAcc)
+          | .group label header => (dataAcc, groupAcc.insert label header, authorAcc)
+          | .author label info => (dataAcc, groupAcc, authorAcc.insert label info)
+      pure { data, groups, authors }
     -- Strip transient elaboration cache before exporting nodes to the environment.
     exportEntriesFnEx env := fun state _level =>
       let nodeEntries := state.localData.toArray.map fun (name, node) =>
@@ -65,7 +79,9 @@ initialize informalExt : PersistentEnvExtension Entry Entry State ←
         Entry.node name { node with statement, proof }
       let groupEntries := state.localGroups.toArray.map fun (label, header) =>
         Entry.group label header
-      nodeEntries ++ groupEntries
+      let authorEntries := state.localAuthors.toArray.map fun (label, info) =>
+        Entry.author label info
+      nodeEntries ++ groupEntries ++ authorEntries
   }
 
 section EnvOps
@@ -101,10 +117,12 @@ def checkLabelAndNesting (label : Label) (kind : Data.InProgressKind) : m Unit :
 
 -- stack operators, to associate {uses} role to the currently opened label
 def push (label : Label) (kind : Data.InProgressKind)
-    (codeHint : Option CodeRef := none) (parent : Option Parent := none) (priority : Option String := none) : m Unit := do
+    (codeHint : Option CodeRef := none) (parent : Option Parent := none) (priority : Option String := none)
+    (owner : Option AuthorId := none) (tags : Array String := #[]) (effort : Option String := none)
+    (prUrl : Option String := none) : m Unit := do
   checkLabelAndNesting label kind
   modify fun data =>
-    let pdata := { label, kind, codeHint, parent, priority }
+    let pdata := { label, kind, codeHint, parent, priority, owner, tags, effort, prUrl }
     { data with stack := pdata :: data.stack }
 
 def getCount : m Nat := do
@@ -135,7 +153,8 @@ def pop (ref : Syntax) : m Nat := do
           deps := cur.deps
           elabStx := cur.elabStx
         }
-        let data ← state.data.register cur.label cur.kind payload cur.codeHint cur.parent cur.priority
+        let data ← state.data.register
+          cur.label cur.kind payload cur.codeHint cur.parent cur.priority cur.owner cur.tags cur.effort cur.prUrl
         let localData :=
           match data.get? cur.label with
           | some node => state.localData.insert cur.label node
@@ -197,6 +216,31 @@ def registerGroup (label : Label) (header : String) : m Unit := do
         logWarning m!"Group {label} is declared multiple times with the same header; keeping '{currentHeader}'"
       else
         logError m!"Group {label} has conflicting headers: existing '{currentHeader}', new '{header}'"
+      return state
+
+def getAuthor? (label : AuthorId) : m (Option AuthorInfo) := do
+  return (informalExt.getState (← getEnv)).authors.get? label
+
+def registerAuthor (label : AuthorId) (info : AuthorInfo) : m Unit := do
+  let info := {
+    info with
+      displayName := info.displayName.trimAscii.toString
+      url := info.url.map (·.trimAscii.toString)
+      imageUrl := info.imageUrl.map (·.trimAscii.toString)
+  }
+  modifyM fun state => do
+    match state.authors.get? label with
+    | none =>
+      return {
+        state with
+        authors := state.authors.insert label info
+        localAuthors := state.localAuthors.insert label info
+      }
+    | some currentInfo =>
+      if currentInfo = info then
+        logWarning m!"Author {label} is declared multiple times with the same metadata; keeping '{currentInfo.displayName}'"
+      else
+        logError m!"Author {label} has conflicting metadata definitions"
       return state
 
 end EnvOps

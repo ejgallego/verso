@@ -11,6 +11,7 @@ import VersoBlueprint.Commands.Graph
 import VersoBlueprint.Commands.Summary
 import VersoBlueprint.Commands.Bibliography
 
+import Authors
 import Bibliography
 import Chapters.Noperthedron
 import Chapters.Bounding

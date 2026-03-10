@@ -14,6 +14,7 @@ import Tests.BlueprintSummaryStatus
 import Tests.BlueprintLinkHover
 import Tests.BlueprintPreviewWiring
 import Tests.BlueprintSummaryLinks
+import Tests.BlueprintMetadataPanel
 import Tests.Elab
 import Tests.BlueprintTexMacros
 import Tests.GenericCode

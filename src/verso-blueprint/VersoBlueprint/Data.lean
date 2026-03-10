@@ -39,6 +39,19 @@ instance [Repr A] : Repr (LabelMap A) := inferInstanceAs <| Repr (NameMap A)
 @[expose]
 abbrev Parent := Label
 
+@[expose]
+abbrev AuthorId := Label
+
+structure AuthorInfo where
+  displayName : String
+  url : Option String := none
+  imageUrl : Option String := none
+deriving Repr, Inhabited, DecidableEq, ToJson, FromJson
+
+open Syntax in
+instance : Quote AuthorInfo where
+  quote info := mkCApp ``AuthorInfo.mk #[quote info.displayName, quote info.url, quote info.imageUrl]
+
 inductive NodeKind where
   | definition
   | lemma
@@ -330,6 +343,10 @@ structure Node where
   code : Option CodeRef := none -- Informal Object associated code status
   parent : Option Parent := none -- Optional parent group for summaries/graphs
   priority : Option String := none -- Optional author-provided triage hint
+  owner : Option AuthorId := none
+  tags : Array String := #[]
+  effort : Option String := none
+  prUrl : Option String := none
 deriving Repr, Inhabited
 
 /-- Map of labels to Node data -/
@@ -402,6 +419,49 @@ private def mergePriority (label : Label) (current incoming : Option String) : m
       logError m!"Label {label} declares conflicting priorities: existing '{currentPriority}', new '{incomingPriority}'"
       return some currentPriority
 
+private def mergeOwner (label : Label) (current incoming : Option AuthorId) : m (Option AuthorId) := do
+  match current, incoming with
+  | none, none => return none
+  | some owner, none => return some owner
+  | none, some owner => return some owner
+  | some currentOwner, some incomingOwner =>
+    if currentOwner = incomingOwner then
+      logWarning m!"Label {label} repeats '(owner := \"{currentOwner}\")'; keeping the same owner"
+      return some currentOwner
+    else
+      logError m!"Label {label} declares conflicting owners: existing '{currentOwner}', new '{incomingOwner}'"
+      return some currentOwner
+
+private def mergeEffort (label : Label) (current incoming : Option String) : m (Option String) := do
+  match current, incoming with
+  | none, none => return none
+  | some effort, none => return some effort
+  | none, some effort => return some effort
+  | some currentEffort, some incomingEffort =>
+    if currentEffort = incomingEffort then
+      logWarning m!"Label {label} repeats '(effort := \"{currentEffort}\")'; keeping the same effort"
+      return some currentEffort
+    else
+      logError m!"Label {label} declares conflicting effort values: existing '{currentEffort}', new '{incomingEffort}'"
+      return some currentEffort
+
+private def mergePrUrl (label : Label) (current incoming : Option String) : m (Option String) := do
+  match current, incoming with
+  | none, none => return none
+  | some url, none => return some url
+  | none, some url => return some url
+  | some currentUrl, some incomingUrl =>
+    if currentUrl = incomingUrl then
+      logWarning m!"Label {label} repeats '(pr_url := \"{currentUrl}\")'; keeping the same URL"
+      return some currentUrl
+    else
+      logError m!"Label {label} declares conflicting PR URLs: existing '{currentUrl}', new '{incomingUrl}'"
+      return some currentUrl
+
+private def mergeTags (current incoming : Array String) : Array String :=
+  incoming.foldl (init := current) fun acc tag =>
+    if acc.contains tag then acc else acc.push tag
+
 def Data.registerCodeRef (data : Data) (label : Label) (codeRef : CodeRef) : m Data := do
   match data.get? label with
   | none =>
@@ -411,18 +471,28 @@ def Data.registerCodeRef (data : Data) (label : Label) (codeRef : CodeRef) : m D
     return data.insert label { node with code }
 
 def Data.register (data : Data) (label : Label) (kind : InProgressKind) (payload : InformalData)
-    (codeHint : Option CodeRef := none) (parent : Option Parent := none) (priority : Option String := none) : m Data := do
+    (codeHint : Option CodeRef := none) (parent : Option Parent := none) (priority : Option String := none)
+    (owner : Option AuthorId := none) (tags : Array String := #[]) (effort : Option String := none)
+    (prUrl : Option String := none) : m Data := do
   let applyHints (node : Node) : m Node := do
     match codeHint with
     | none =>
       let parent ← mergeParent label node.parent parent
       let priority ← mergePriority label node.priority priority
-      return { node with parent, priority }
+      let owner ← mergeOwner label node.owner owner
+      let effort ← mergeEffort label node.effort effort
+      let prUrl ← mergePrUrl label node.prUrl prUrl
+      let tags := mergeTags node.tags tags
+      return { node with parent, priority, owner, tags, effort, prUrl }
     | some hint =>
       let code ← mergeCodeRef label node.code hint
       let parent ← mergeParent label node.parent parent
       let priority ← mergePriority label node.priority priority
-      return { node with code, parent, priority }
+      let owner ← mergeOwner label node.owner owner
+      let effort ← mergeEffort label node.effort effort
+      let prUrl ← mergePrUrl label node.prUrl prUrl
+      let tags := mergeTags node.tags tags
+      return { node with code, parent, priority, owner, tags, effort, prUrl }
   let nextCount := data.size + 1
   match data.get? label, kind with
   -- First statement for a fresh label.

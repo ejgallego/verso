@@ -160,6 +160,14 @@ structure BlockData where
   statementDeps : Array Data.Label := #[]
   /-- Proof-side `{uses ...}` dependencies declared for this labeled block. -/
   proofDeps : Array Data.Label := #[]
+  owner : Option Data.AuthorId := none
+  ownerDisplayName : Option String := none
+  ownerUrl : Option String := none
+  ownerImageUrl : Option String := none
+  tags : Array String := #[]
+  effort : Option String := none
+  priority : Option String := none
+  prUrl : Option String := none
 deriving FromJson, ToJson, Quote
 
 /-- The first numbered part above the current block, used for chapter-style sub-numbering. -/

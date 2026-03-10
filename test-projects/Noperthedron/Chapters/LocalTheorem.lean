@@ -7,6 +7,7 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 import Verso
 import VersoManual
 import VersoBlueprint
+import Authors
 import Macros
 import Bibliography
 import Noperthedron.Local
@@ -114,7 +115,7 @@ Then the origin lies strictly in triangle $`ABC`.
 See {citet polyhedron.without.rupert (kind := lemma) (index := 26)}[].
 :::
 
-:::definition "def:eps-spanning" (parent := "local_spanning")
+:::definition "def:eps-spanning" (parent := "local_spanning") (owner := "david") (tags := "local, spanning, setup") (effort := "medium") (priority := "high")
 Let $`\theta, \varphi \in \mathbb{R}`, $`\varepsilon > 0`, and set $`M := M(\theta, \varphi)`.
 Three points $`P_1, P_2, P_3 \in \mathbb{R}^3` with $`\|P_1\|, \|P_2\|, \|P_3\| \leq 1`
 are called $`\varepsilon`-spanning for $`(\theta, \varphi)` if:
@@ -124,7 +125,7 @@ are called $`\varepsilon`-spanning for $`(\theta, \varphi)` if:
 - $`\langle R(\pi/2) M P_3,M P_{1}\rangle > 2 \epsilon(\sqrt{2} + \varepsilon)`
 :::
 
-:::lemma_ "lem:eps-spanning" (lean := "Local.vecX_spanning") (parent := "local_spanning")
+:::lemma_ "lem:eps-spanning" (lean := "Local.vecX_spanning") (parent := "local_spanning") (owner := "jason") (tags := "local, spanning, proof") (effort := "medium") (priority := "high")
 Using {uses "def:eps-spanning"}[] and {uses "def:spanp"}[].
 
 Let $`P_1, P_2, P_3 \in \mathbb{R}^3` with $`\|P_1\|,\|P_2\|,\|P_3\| \leq 1` be
@@ -207,7 +208,7 @@ Using {uses "lem:absscalar"}[] and {uses "lem:sqrt2"}[].
 See {citet polyhedron.without.rupert (kind := lemma) (index := 33)}[].
 :::
 
-:::lemma_ "lem:congruent" (lean := "Local.congruent_iff_sym_matrix_eq") (parent := "local_congruence")
+:::lemma_ "lem:congruent" (lean := "Local.congruent_iff_sym_matrix_eq") (parent := "local_congruence") (owner := "jason") (tags := "local, congruence") (effort := "small") (priority := "medium")
 Let $`P_1,P_2,P_3, Q_1,Q_2,Q_3 \in \mathbb{R}^3`.
 Define $`P := (P_1|P_2|P_3)` and $`Q := (Q_1|Q_2|Q_3)` and assume $`Q` is invertible.
 Then $`P_1, P_2, P_3` and $`Q_1, Q_2, Q_3` are congruent iff $`P^t P = Q^t Q`.
@@ -217,7 +218,7 @@ Then $`P_1, P_2, P_3` and $`Q_1, Q_2, Q_3` are congruent iff $`P^t P = Q^t Q`.
 From {citet polyhedron.without.rupert (kind := lemma) (index := 35)}[].
 :::
 
-:::theorem "thm:local" (lean := "Local.local_theorem") (parent := "local_main")
+:::theorem "thm:local" (lean := "Local.local_theorem") (parent := "local_main") (owner := "david") (tags := "local, main-theorem") (effort := "large") (priority := "high")
 Let $`\mathbf{P}` be a polyhedron of radius $`\rho=1`.
 Assume triangles $`P_1,P_2,P_3` and $`Q_1,Q_2,Q_3` in $`\mathbf{P}` are congruent,
 assume the sign conditions $`(A_\epsilon)`, the spanning hypotheses, and the quantitative

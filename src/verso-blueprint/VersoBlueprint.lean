@@ -27,6 +27,7 @@ import VersoBlueprint.Commands.Bibliography
 import VersoBlueprint.Informal.Code
 import VersoBlueprint.Informal.Block
 import VersoBlueprint.Informal.Group
+import VersoBlueprint.Informal.Author
 import VersoBlueprint.Informal.Uses
 import VersoBlueprint.DocGenNameRender
 import VersoBlueprint.Lean

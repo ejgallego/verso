@@ -73,6 +73,10 @@ structure Config where
   leanok : Option Bool := none
   parent : Option Data.Parent := none
   priority : Option String := none
+  owner : Option Data.AuthorId := none
+  tags : Array String := #[]
+  effort : Option String := none
+  prUrl : Option String := none
   externalCode : Array Data.ExternalRef := #[]
   invalidExternalCode : Array String := #[]
 --  hide : Bool := false
@@ -87,8 +91,22 @@ private def normalizePriority? (raw : String) : Option String :=
   | "low" => some "low"
   | _ => none
 
+private def normalizeEffort? (raw : String) : Option String :=
+  match raw.trimAscii.toString.toLower with
+  | "small" | "s" => some "small"
+  | "medium" | "m" => some "medium"
+  | "large" | "l" => some "large"
+  | _ => none
+
+private def normalizeTags (raw : String) : Array String :=
+  raw.splitOn ","
+    |>.toArray
+    |>.map (fun tag => tag.trimAscii.toString.toLower)
+    |>.filter (fun tag => !tag.isEmpty)
+    |>.foldl (init := #[]) fun acc tag => if acc.contains tag then acc else acc.push tag
+
 def Config.parse  : ArgParse m Config :=
-  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent priority =>
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent priority owner tags effort prUrl =>
     let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList lean
     {
       label := LabelNameParsing.parse labelArg.val
@@ -97,10 +115,16 @@ def Config.parse  : ArgParse m Config :=
       leanok := leanok
       parent := parent.map LabelNameParsing.parse
       priority := priority
+      owner := owner.map LabelNameParsing.parse
+      tags := normalizeTags (tags.getD "")
+      effort := effort
+      prUrl := prUrl.map (·.trimAscii.toString)
       externalCode := externalCode
       invalidExternalCode := invalidExternalCode
     }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true
         <*> .named `leanok .bool true <*> .named `parent .string true <*> .named `priority .string true
+        <*> .named `owner .string true <*> .named `tags .string true <*> .named `effort .string true
+        <*> .named `pr_url .string true
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
@@ -189,6 +213,79 @@ span[class$="_thmlabel"]::after {
 .bp_extra_slot_used_by {
   grid-area: used;
   justify-content: flex-start;
+}
+
+.bp_metadata_panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+  align-items: center;
+  margin: 0.45rem 0 0.7rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #dbe4ee;
+  border-radius: 0.55rem;
+  background: #f8fafc;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.bp_metadata_item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.bp_metadata_owner {
+  gap: 0.4rem;
+}
+
+.bp_metadata_key {
+  font-weight: 700;
+  color: #475569;
+}
+
+.bp_metadata_value {
+  color: #0f172a;
+}
+
+.bp_metadata_tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.24rem;
+}
+
+.bp_metadata_tag {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  padding: 0.06rem 0.38rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.bp_metadata_link {
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.bp_metadata_link:hover {
+  text-decoration: underline;
+}
+
+.bp_metadata_avatar {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
 }
 
 .bp_code_link {
@@ -1072,6 +1169,10 @@ private def mergeLabelArrays (xs ys : Array Data.Label) : Array Data.Label :=
   ys.foldl (init := xs) fun acc label =>
     if acc.contains label then acc else acc.push label
 
+private def mergeStringArrays (xs ys : Array String) : Array String :=
+  ys.foldl (init := xs) fun acc value =>
+    if acc.contains value then acc else acc.push value
+
 private def mergeStoredBlockData (existing incoming : BlockData) : BlockData :=
   let kind :=
     match existing.kind, incoming.kind with
@@ -1091,6 +1192,14 @@ private def mergeStoredBlockData (existing incoming : BlockData) : BlockData :=
       globalCount := existing.globalCount <|> incoming.globalCount
       statementDeps := mergeLabelArrays existing.statementDeps incoming.statementDeps
       proofDeps := mergeLabelArrays existing.proofDeps incoming.proofDeps
+      owner := existing.owner <|> incoming.owner
+      ownerDisplayName := existing.ownerDisplayName <|> incoming.ownerDisplayName
+      ownerUrl := existing.ownerUrl <|> incoming.ownerUrl
+      ownerImageUrl := existing.ownerImageUrl <|> incoming.ownerImageUrl
+      tags := mergeStringArrays existing.tags incoming.tags
+      effort := existing.effort <|> incoming.effort
+      priority := existing.priority <|> incoming.priority
+      prUrl := existing.prUrl <|> incoming.prUrl
   }
 
 private def blockSummaryTitle (state : Verso.Genre.Manual.TraverseState) (data : BlockData) : String :=
@@ -1518,6 +1627,66 @@ private def renderInformalBlock (data : BlockData) (numberText : String) (attrs 
           </span>
         </div>
       }}
+  let metadataPanel : Output.Html :=
+    match data.kind with
+    | .proof => .empty
+    | .statement _ =>
+      let ownerItem : Output.Html :=
+        let avatar : Output.Html :=
+          match data.ownerImageUrl with
+          | some href => {{ <img class="bp_metadata_avatar" src={{href}} alt="" /> }}
+          | none => .empty
+        match data.ownerDisplayName, data.owner, data.ownerUrl with
+        | some displayName, _, some href =>
+          {{ <span class="bp_metadata_item bp_metadata_owner"><span class="bp_metadata_key">"Owner"</span>{{avatar}}<a class="bp_metadata_link bp_metadata_value" href={{href}}>{{.text true displayName}}</a></span> }}
+        | some displayName, _, none =>
+          {{ <span class="bp_metadata_item bp_metadata_owner"><span class="bp_metadata_key">"Owner"</span>{{avatar}}<span class="bp_metadata_value">{{.text true displayName}}</span></span> }}
+        | none, some owner, some href =>
+          {{ <span class="bp_metadata_item bp_metadata_owner"><span class="bp_metadata_key">"Owner"</span>{{avatar}}<a class="bp_metadata_link bp_metadata_value" href={{href}}><code>s!"{owner}"</code></a></span> }}
+        | none, some owner, none =>
+          {{ <span class="bp_metadata_item bp_metadata_owner"><span class="bp_metadata_key">"Owner"</span>{{avatar}}<span class="bp_metadata_value"><code>s!"{owner}"</code></span></span> }}
+        | _, _, _ => .empty
+      let effortNode : Output.Html :=
+        match data.effort with
+        | some effort =>
+          {{ <span class="bp_metadata_item"><span class="bp_metadata_key">"Effort"</span><span class="bp_metadata_value">{{.text true effort}}</span></span> }}
+        | none => .empty
+      let priorityNode : Output.Html :=
+        match data.priority with
+        | some priority =>
+          {{ <span class="bp_metadata_item"><span class="bp_metadata_key">"Priority"</span><span class="bp_metadata_value">{{.text true priority}}</span></span> }}
+        | none => .empty
+      let prNode : Output.Html :=
+        match data.prUrl with
+        | some href =>
+          {{ <span class="bp_metadata_item"><span class="bp_metadata_key">"PR"</span><a class="bp_metadata_link bp_metadata_value" href={{href}}>{{.text true "link"}}</a></span> }}
+        | none => .empty
+      let tagNodes : Output.Html :=
+        if data.tags.isEmpty then
+          .empty
+        else
+          {{
+            <span class="bp_metadata_item">
+              <span class="bp_metadata_key">"Tags"</span>
+              <span class="bp_metadata_tags">
+                {{data.tags.map (fun tag => {{ <span class="bp_metadata_tag">{{.text true tag}}</span> }})}}
+              </span>
+            </span>
+          }}
+      let hasMetadata :=
+        data.owner.isSome || data.ownerDisplayName.isSome || !data.tags.isEmpty || data.effort.isSome || data.priority.isSome || data.prUrl.isSome
+      if hasMetadata then
+        {{
+          <div class="bp_metadata_panel">
+            {{ownerItem}}
+            {{effortNode}}
+            {{priorityNode}}
+            {{tagNodes}}
+            {{prNode}}
+          </div>
+        }}
+      else
+        .empty
   {{
     <div class={{wrapperClass}} title={{labelText}} {{attrs}}>
       <div class={{headingClass}}>
@@ -1525,6 +1694,7 @@ private def renderInformalBlock (data : BlockData) (numberText : String) (attrs 
         {{extras}}
         <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
       </div>
+      {{metadataPanel}}
       <div class={{contentClass}}> {{ content }} </div>
     </div>
   }}
@@ -1689,6 +1859,60 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         | none =>
           logErrorAt cfg.labelSyntax m!"Label {label} has invalid '(priority := \"{raw}\")'; expected one of \"high\", \"medium\", \"low\""
           pure none
+    let owner : Option Data.AuthorId ←
+      match cfg.owner with
+      | none => pure none
+      | some owner =>
+        if isProof then
+          logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(owner := ...)' in a proof block"
+          pure none
+        else if (← Environment.getAuthor? owner).isNone then
+          logErrorAt cfg.labelSyntax m!"Label {label} references unknown owner '{owner}'; declare it first with ':::author'"
+          pure none
+        else
+          pure (some owner)
+    let effort : Option String ←
+      match cfg.effort with
+      | none => pure none
+      | some raw =>
+        match normalizeEffort? raw with
+        | some normalized =>
+          if isProof then
+            logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(effort := ...)' in a proof block"
+            pure none
+          else
+            pure (some normalized)
+        | none =>
+          logErrorAt cfg.labelSyntax m!"Label {label} has invalid '(effort := \"{raw}\")'; expected one of \"small\", \"medium\", \"large\""
+          pure none
+    let tags : Array String :=
+      if isProof && !cfg.tags.isEmpty then
+        #[]
+      else
+        cfg.tags
+    if isProof && !cfg.tags.isEmpty then
+      logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(tags := ...)' in a proof block"
+    let prUrl : Option String :=
+      if isProof then
+        none
+      else
+        match cfg.prUrl with
+        | some url =>
+          let url := url.trimAscii.toString
+          if url.isEmpty then
+            none
+          else if url.startsWith "http://" || url.startsWith "https://" then
+            some url
+          else
+            none
+        | none => none
+    if isProof && cfg.prUrl.isSome then
+      logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(pr_url := ...)' in a proof block"
+    if !isProof then
+      if let some url := cfg.prUrl then
+        let url := url.trimAscii.toString
+        if !url.isEmpty && !(url.startsWith "http://" || url.startsWith "https://") then
+          logErrorAt cfg.labelSyntax m!"Label {label} has invalid '(pr_url := \"{url}\")'; expected an http(s) URL"
     let hasExternal := hasExternalRaw && !isProof
     let codeHint : Option Data.CodeRef :=
       if isProof then
@@ -1699,7 +1923,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         some .userOk
       else
         none
-    Environment.push label envKind codeHint cfg.parent priority
+    Environment.push label envKind codeHint cfg.parent priority owner tags effort prUrl
     let contents ← contents.mapM elabBlock
     if !isProof then
       -- TODO: consolidate this widget-oriented elaboration cache with the traversal preview cache
@@ -1725,6 +1949,11 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       | .statement _ => BlockCodeData.ofCodeRefHint nodeCodeRef?
     let statementDeps := node?.bind (·.statement.map (·.deps)) |>.getD #[]
     let proofDeps := node?.bind (·.proof.map (·.deps)) |>.getD #[]
+    let owner := node?.bind (·.owner)
+    let ownerInfo? ←
+      match owner with
+      | some owner => Environment.getAuthor? owner
+      | none => pure none
     -- Make the blueprint widget available when selecting this labeled block.
     activateForLabelDoc label blockRef
     let data : BlockData := {
@@ -1736,6 +1965,14 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       numberingMode := numberingMode (← getOptions)
       statementDeps
       proofDeps
+      owner
+      ownerDisplayName := ownerInfo?.map (·.displayName)
+      ownerUrl := ownerInfo?.bind (·.url)
+      ownerImageUrl := ownerInfo?.bind (·.imageUrl)
+      tags := node?.map (·.tags) |>.getD #[]
+      effort := node?.bind (·.effort)
+      priority := node?.bind (·.priority)
+      prUrl := node?.bind (·.prUrl)
     }
     ``(Block.other (Block.informal $(quote data)) #[$contents,*])
 

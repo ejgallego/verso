@@ -127,6 +127,23 @@ Duplicate `priority` declarations on the same label follow the same pattern:
 - Same `priority`: warning, keeping the existing value.
 - Different `priority`: error, keeping the existing value.
 
+Author metadata is declared separately:
+
+```md
+:::author "alice" (name := "Alice Example") (url := "https://example.com/alice")
+:::
+```
+
+Statement-like blueprint directives may then use:
+
+- `(owner := "alice")`
+- `(tags := "analysis, critical")`
+- `(effort := "small" | "medium" | "large")`
+- `(priority := "high" | "medium" | "low")`
+- `(pr_url := "https://github.com/org/repo/pull/123")`
+
+These metadata fields are currently intended for block-level display panels and for summary-side ranking/rollup work.
+
 ## Rendering Behavior
 
 The `parent` / `group` data is used in two places.

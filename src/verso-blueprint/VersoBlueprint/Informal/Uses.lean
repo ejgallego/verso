@@ -144,7 +144,16 @@ inline_extension Inline.informal (data : InlineData) where
   toTeX := none
 
 private def Data.Node.toBlockInfo (node : Data.Node) (label : Data.Label) : BlockData :=
-  { kind := .statement node.kind, label, count := node.count }
+  {
+    kind := .statement node.kind
+    label
+    count := node.count
+    owner := node.owner
+    tags := node.tags
+    effort := node.effort
+    priority := node.priority
+    prUrl := node.prUrl
+  }
 
 private def usesImpl : RoleExpanderOf Config
   | cfg, contents => do
