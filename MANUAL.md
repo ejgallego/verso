@@ -138,3 +138,6 @@ The `parent` / `group` data is used in two places.
 
 - Parent grouping is structural metadata; it does not change dependency edges.
 - Grouping currently targets summary/visualization, not proof status semantics.
+- Group labels are metadata, not first-class reference targets; linking to a parent/group label is not currently supported.
+- The local block-header group chip is shown only for entries whose parent is shared by other entries, or when a `parent := "..."` label is present but no matching `:::group` was declared. The summary and dependency graph still fall back to the raw parent label text instead of failing.
+- More generally, unresolved blueprint references are not currently accumulated into a global diagnostics report. Reference-oriented surfaces such as `{uses ...}` and `used by` resolve against the final traversal state and degrade locally if a target remains unavailable.

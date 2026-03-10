@@ -9,6 +9,8 @@ _out
 /.verso/
 /src/tests/integration/**/output
 /node_modules
+__pycache__/
+*.pyc
 *.hash
 profile.json
 profile.json.gz

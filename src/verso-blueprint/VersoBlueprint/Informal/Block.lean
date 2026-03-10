@@ -19,6 +19,7 @@ import VersoBlueprint.Environment
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Informal.CodeSummary
 import VersoBlueprint.Informal.ExternalCode
+import VersoBlueprint.Informal.Group
 import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.Lib.PreviewSource
@@ -154,6 +155,11 @@ span[class$="_thmlabel"]::after {
   margin-left: auto;
 }
 
+.bp_extras_with_group {
+  grid-template-columns: minmax(5rem, max-content) minmax(7.2rem, max-content) max-content;
+  grid-template-areas: "group used code";
+}
+
 .bp_extra_slot {
   display: inline-flex;
   align-items: center;
@@ -164,6 +170,11 @@ span[class$="_thmlabel"]::after {
 .bp_extra_slot_code {
   grid-area: code;
   justify-content: flex-end;
+}
+
+.bp_extra_slot_group {
+  grid-area: group;
+  justify-content: flex-start;
 }
 
 .bp_extra_slot_used_by {
@@ -427,6 +438,10 @@ span[class$="_thmlabel"]::after {
   font-weight: 500;
 }
 
+.bp_used_by_chip_warn {
+  color: #b45309;
+}
+
 .bp_used_by_panel {
   position: absolute;
   top: 100%;
@@ -592,6 +607,16 @@ span[class$="_thmlabel"]::after {
   color: #64748b;
   font-size: 0.76rem;
   font-style: italic;
+}
+
+.bp_used_by_preview_notice {
+  margin-bottom: 0.62rem;
+  padding: 0.48rem 0.58rem;
+  border: 1px solid #fcd34d;
+  border-radius: 0.45rem;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.74rem;
 }
 
 .bp_used_by_preview_store {
@@ -1052,6 +1077,7 @@ private def mergeStoredBlockData (existing incoming : BlockData) : BlockData :=
   { existing with
       kind
       codeData
+      parent := existing.parent <|> incoming.parent
       partPrefix := existing.partPrefix <|> incoming.partPrefix
       globalCount := existing.globalCount <|> incoming.globalCount
       statementDeps := mergeLabelArrays existing.statementDeps incoming.statementDeps
@@ -1060,6 +1086,64 @@ private def mergeStoredBlockData (existing incoming : BlockData) : BlockData :=
 
 private def blockSummaryTitle (state : Verso.Genre.Manual.TraverseState) (data : BlockData) : String :=
   data.displayTitle state
+
+private def sortBlockData (entries : Array BlockData) : Array BlockData :=
+  entries.qsort fun a b =>
+    let aNum := a.globalCount.getD a.count
+    let bNum := b.globalCount.getD b.count
+    aNum < bNum ||
+      (aNum == bNum && a.label.toString < b.label.toString)
+
+private def collectStoredBlocks
+    (state : Verso.Genre.Manual.TraverseState) : Array BlockData :=
+  match state.domains.get? informalDomain with
+  | none => #[]
+  | some domain =>
+    sortBlockData <| domain.objects.foldl (init := #[]) fun acc _canonical obj =>
+      match fromJson? (α := BlockData) obj.data with
+      | .ok block => acc.push block
+      | .error _ => acc
+
+private def resolveStoredGroupData?
+    (state : Verso.Genre.Manual.TraverseState) (label : Data.Label) : Option GroupBlockData :=
+  match state.getDomainObject? Resolve.informalGroupDomainName label.toString with
+  | none => none
+  | some obj =>
+    match fromJson? (α := GroupBlockData) obj.data with
+    | .ok groupData => some groupData
+    | .error _ => none
+
+private structure GroupRenderInfo where
+  label : Data.Label
+  title : String
+  declared : Bool := false
+
+private def groupRenderInfo?
+    (state : Verso.Genre.Manual.TraverseState) (data : BlockData) : Option GroupRenderInfo := do
+  let parent ← data.parent
+  match resolveStoredGroupData? state parent with
+  | some groupData => some { label := parent, title := groupData.header, declared := true }
+  | none => some { label := parent, title := parent.toString, declared := false }
+
+private structure RelatedPanelEntry where
+  source : BlockData
+  previewId : String
+  previewTitle : String
+  href : Option String := none
+  previewBody : Output.Html := .empty
+  metaHtml : Output.Html := .empty
+
+private structure RelatedPanelConfig where
+  chipText : Nat → String
+  chipTitle : Nat → String
+  singleTitle : RelatedPanelEntry → String
+  panelTitle : Nat → String
+  panelMeta : String
+  panelMetaClass : String := "bp_used_by_panel_meta"
+  previewDefaultTitle : String := "Hover an entry"
+  previewEmptyText : String := "Hover an entry to preview it."
+  chipClass : String := "bp_used_by_chip"
+  emptyChipClass : String := "bp_used_by_chip bp_used_by_chip_empty"
 
 private structure UsedByEntry where
   source : BlockData
@@ -1075,22 +1159,29 @@ private def sortUsedByEntries (entries : Array UsedByEntry) : Array UsedByEntry 
 
 private def collectUsedByEntries
     (state : Verso.Genre.Manual.TraverseState) (target : Data.Label) : Array UsedByEntry :=
-  match state.domains.get? informalDomain with
-  | none => #[]
-  | some domain =>
-    sortUsedByEntries <| domain.objects.foldl (init := #[]) fun acc _canonical obj =>
-      match fromJson? (α := BlockData) obj.data with
-      | .error _ => acc
-      | .ok source =>
-        if source.label == target then
-          acc
-        else
-          let inStatement := source.statementDeps.contains target
-          let inProof := source.proofDeps.contains target
-          if !inStatement && !inProof then
-            acc
-          else
-            acc.push { source, inStatement, inProof }
+  sortUsedByEntries <| (collectStoredBlocks state).foldl (init := #[]) fun acc source =>
+    if source.label == target then
+      acc
+    else
+      let inStatement := source.statementDeps.contains target
+      let inProof := source.proofDeps.contains target
+      if !inStatement && !inProof then
+        acc
+      else
+        acc.push { source, inStatement, inProof }
+
+private def collectGroupEntries
+    (state : Verso.Genre.Manual.TraverseState) (target : BlockData) (group : GroupRenderInfo) :
+    Array BlockData :=
+  (collectStoredBlocks state).foldl (init := #[]) fun acc source =>
+    if source.label == target.label then
+      acc
+    else if source.parent == some group.label then
+      match source.kind with
+      | .statement _ => acc.push source
+      | .proof => acc
+    else
+      acc
 
 private def usedByPreviewId (targetLabel sourceLabel : Data.Label) : String :=
   s!"bp-used-by-{Informal.HoverRender.previewKey (toString targetLabel)}-{Informal.HoverRender.previewKey (toString sourceLabel)}"
@@ -1130,6 +1221,124 @@ private def usedByPreviewFallbackBody (entry : UsedByEntry) : Output.Html :=
     </div>
   }}
 
+private def groupPreviewFallbackBody (group : GroupRenderInfo) (entry : BlockData) : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <div class="bp_code_hover_section">
+      <span class="bp_code_hover_label">"Blueprint label"</span>
+      <ul class="bp_code_hover_list">
+        <li><code>s!"{entry.label}"</code></li>
+      </ul>
+    </div>
+    <div class="bp_code_hover_section">
+      <span class="bp_code_hover_label">"Group"</span>
+      <ul class="bp_code_hover_list">
+        <li>{{.text true group.title}}</li>
+      </ul>
+    </div>
+  }}
+
+private def groupMissingNotice (group : GroupRenderInfo) : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <div class="bp_used_by_preview_notice">
+      "No matching " <code>":::group"</code> " declaration was found for parent "
+      <code>s!"{group.label}"</code> "."
+    </div>
+  }}
+
+private def mkRelatedPanelEntry {m}
+    [Monad m]
+    (state : Verso.Genre.Manual.TraverseState)
+    (renderBlock :
+      Verso.Doc.Block Verso.Genre.Manual →
+        Verso.Doc.Html.HtmlT Verso.Genre.Manual m Output.Html)
+    (source : BlockData) (previewId : String) (fallbackBody : Output.Html)
+    (metaHtml : Output.Html := .empty) (prefixHtml : Array Output.Html := #[]) :
+    Verso.Doc.Html.HtmlT Verso.Genre.Manual m RelatedPanelEntry := do
+  let previewTitle := blockSummaryTitle state source
+  let href := Resolve.resolveDomainHref? state Resolve.informalDomainName source.label.toString
+  let preview? ←
+    Informal.PreviewSource.renderTraversalPreview? state
+      (fun block =>
+        Informal.HoverRender.withInlinePreviewRenderContext (renderBlock block))
+      source.label
+  let renderedPreview : Output.Html :=
+    match preview? with
+    | some rendered => .seq rendered
+    | none => fallbackBody
+  let previewBody := .seq (prefixHtml.push renderedPreview)
+  pure { source, previewId, previewTitle, href, previewBody, metaHtml }
+
+private def renderRelatedPanel (cfg : RelatedPanelConfig) (entries : Array RelatedPanelEntry) :
+    Output.Html :=
+  open Verso.Output.Html in
+  let renderChip (chipClass : String) (chipTitle : String) (n : Nat) : Output.Html :=
+    {{<span class={{chipClass}} title={{chipTitle}}>{{.text true (cfg.chipText n)}}</span>}}
+  if entries.isEmpty then
+    renderChip cfg.emptyChipClass (cfg.chipTitle 0) 0
+  else if h : entries.size = 1 then
+    let entry := entries[0]'(by simp [h])
+    let chipNode : Output.Html :=
+      if let some href := entry.href then
+        {{<a class={{s!"{cfg.chipClass} bp_code_link"}} href={{href}} title={{cfg.singleTitle entry}}>
+            {{.text true (cfg.chipText 1)}}
+          </a>}}
+      else
+        renderChip cfg.chipClass (cfg.singleTitle entry) 1
+    Informal.HoverRender.inlinePreviewNode true chipNode entry.previewBody entry.previewId entry.previewTitle
+  else
+    let rows : Array Output.Html :=
+      entries.map fun entry =>
+        let rowNode : Output.Html :=
+          let titleNode := {{<span class="bp_used_by_target_title">{{.text true entry.previewTitle}}</span>}}
+          let metaNode := {{
+            <span class="bp_used_by_target_meta">
+              {{entry.metaHtml}}
+            </span>
+          }}
+          if let some href := entry.href then
+            {{<a class="bp_used_by_target" href={{href}}>{{titleNode}}{{metaNode}}</a>}}
+          else
+            {{<span class="bp_used_by_target">{{titleNode}}{{metaNode}}</span>}}
+        {{
+          <li class="bp_used_by_item"
+              "data-bp-used-preview-id"={{entry.previewId}}
+              "data-bp-used-preview-title"={{entry.previewTitle}}>
+            {{rowNode}}
+            <template class="bp_used_by_preview_tpl" "data-bp-used-preview-id"={{entry.previewId}}>
+              {{entry.previewBody}}
+            </template>
+          </li>
+        }}
+    {{
+      <div class="bp_used_by_wrap">
+        <span class={{cfg.chipClass}} tabindex="0" title={{cfg.chipTitle entries.size}}>
+          {{.text true (cfg.chipText entries.size)}}
+        </span>
+        <div class="bp_used_by_panel">
+          <div class="bp_used_by_panel_header">
+            <div class="bp_used_by_panel_title">{{.text true (cfg.panelTitle entries.size)}}</div>
+            <div class={{cfg.panelMetaClass}}>{{.text true cfg.panelMeta}}</div>
+          </div>
+          <div class="bp_used_by_panel_body">
+            <ul class="bp_used_by_list">
+              {{rows}}
+            </ul>
+            <div class="bp_used_by_preview_surface">
+              <div class="bp_used_by_preview_header">
+                <div class="bp_used_by_preview_label">"Preview"</div>
+                <div class="bp_used_by_preview_title">{{.text true cfg.previewDefaultTitle}}</div>
+              </div>
+              <div class="bp_used_by_preview_body">
+                <div class="bp_used_by_preview_empty">{{.text true cfg.previewEmptyText}}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }}
+
 private def renderUsedByEntry {m}
     [Monad m]
     (state : Verso.Genre.Manual.TraverseState)
@@ -1142,102 +1351,100 @@ private def renderUsedByEntry {m}
   | .proof => pure .empty
   | .statement _ =>
     let entries := collectUsedByEntries state data.label
-    if entries.isEmpty then
-      pure {{
-        <span class="bp_used_by_chip bp_used_by_chip_empty" title="No reverse dependencies">
-          {{.text true (usedByChipText 0)}}
-        </span>
-      }}
-    else if h : entries.size = 1 then
-      let entry := entries[0]'(by simp [h])
-      let previewId := usedByPreviewId data.label entry.source.label
-      let previewTitle := blockSummaryTitle state entry.source
-      let href := Resolve.resolveDomainHref? state Resolve.informalDomainName entry.source.label.toString
-      let preview? ←
-        Informal.PreviewSource.renderTraversalPreview? state
-          (fun block =>
-            Informal.HoverRender.withInlinePreviewRenderContext (renderBlock block))
-          entry.source.label
-      let previewBody :=
-        match preview? with
-        | some rendered => .seq rendered
-        | none => usedByPreviewFallbackBody entry
-      let chipNode : Output.Html :=
-        if let some href := href then
-          {{<a class="bp_used_by_chip bp_code_link" href={{href}} title={{s!"Reverse dependency: {previewTitle}"}}>
-              {{.text true (usedByChipText 1)}}
-            </a>}}
+    let panelEntries ← entries.mapM fun entry =>
+      mkRelatedPanelEntry state renderBlock entry.source
+        (usedByPreviewId data.label entry.source.label)
+        (usedByPreviewFallbackBody entry)
+        (metaHtml := {{
+          <code>s!"{entry.source.label}"</code>
+          {{renderUsedByAxisBadges entry}}
+        }})
+    let cfg : RelatedPanelConfig := {
+      chipText := usedByChipText
+      chipTitle := fun n =>
+        if n == 0 then
+          "No reverse dependencies"
         else
-          {{<span class="bp_used_by_chip" title={{s!"Reverse dependency: {previewTitle}"}}>
-              {{.text true (usedByChipText 1)}}
-            </span>}}
-      pure <| Informal.HoverRender.inlinePreviewNode true chipNode previewBody previewId previewTitle
-    else
-      let rows ← entries.mapM fun entry => do
-        let previewId := usedByPreviewId data.label entry.source.label
-        let previewTitle := blockSummaryTitle state entry.source
-        let href := Resolve.resolveDomainHref? state Resolve.informalDomainName entry.source.label.toString
-        let preview? ←
-          Informal.PreviewSource.renderTraversalPreview? state
-            (fun block =>
-              Informal.HoverRender.withInlinePreviewRenderContext (renderBlock block))
-            entry.source.label
-        let previewBody :=
-          match preview? with
-          | some rendered => .seq rendered
-          | none => usedByPreviewFallbackBody entry
-        let rowNode : Output.Html :=
-          let titleNode := {{<span class="bp_used_by_target_title">{{.text true previewTitle}}</span>}}
-          let metaNode := {{
-            <span class="bp_used_by_target_meta">
-              <code>s!"{entry.source.label}"</code>
-              {{renderUsedByAxisBadges entry}}
-            </span>
-          }}
-          if let some href := href then
-            {{<a class="bp_used_by_target" href={{href}}>{{titleNode}}{{metaNode}}</a>}}
+          s!"Reverse dependencies for {data.label}"
+      singleTitle := fun entry => s!"Reverse dependency: {entry.previewTitle}"
+      panelTitle := fun n => s!"Used by {n}"
+      panelMeta := "Hover a use site to preview it."
+      previewDefaultTitle := "Hover a use site"
+      previewEmptyText := "Hover a use site to preview it."
+    }
+    pure <| renderRelatedPanel cfg panelEntries
+
+private def renderGroupEntry {m}
+    [Monad m]
+    (state : Verso.Genre.Manual.TraverseState)
+    (renderBlock :
+      Verso.Doc.Block Verso.Genre.Manual →
+        Verso.Doc.Html.HtmlT Verso.Genre.Manual m Output.Html)
+    (data : BlockData) :
+    Verso.Doc.Html.HtmlT Verso.Genre.Manual m (Option Output.Html) := do
+  match data.kind, groupRenderInfo? state data with
+  | .proof, _ => pure none
+  | .statement _, none => pure none
+  | .statement _, some group =>
+    let siblings := collectGroupEntries state data group
+    if group.declared && siblings.isEmpty then
+      return none
+    let prefixHtml :=
+      if group.declared then
+        #[]
+      else
+        #[groupMissingNotice group]
+    let panelEntries ← siblings.mapM fun source =>
+      mkRelatedPanelEntry state renderBlock source
+        (s!"bp-group-{Informal.HoverRender.previewKey (toString data.label)}-{Informal.HoverRender.previewKey (toString source.label)}")
+        (groupPreviewFallbackBody group source)
+        (metaHtml := {{<code>s!"{source.label}"</code>}})
+        (prefixHtml := prefixHtml)
+    let chipClass :=
+      if group.declared then
+        "bp_used_by_chip"
+      else
+        "bp_used_by_chip bp_used_by_chip_warn"
+    let emptyChipClass :=
+      if group.declared then
+        "bp_used_by_chip bp_used_by_chip_empty"
+      else
+        "bp_used_by_chip bp_used_by_chip_empty bp_used_by_chip_warn"
+    let panelMeta :=
+      if group.declared then
+        "Hover another entry in this group to preview it."
+      else
+        s!"No :::group declaration was found for parent '{group.label}'; showing entries that share this parent label."
+    let cfg : RelatedPanelConfig := {
+      chipText := fun _ => "group"
+      chipTitle := fun n =>
+        if n == 0 then
+          if group.declared then
+            s!"Group: {group.title}. No other entries in this group."
           else
-            {{<span class="bp_used_by_target">{{titleNode}}{{metaNode}}</span>}}
-        pure {{
-          <li class="bp_used_by_item"
-              "data-bp-used-preview-id"={{previewId}}
-              "data-bp-used-preview-title"={{previewTitle}}>
-            {{rowNode}}
-            <template class="bp_used_by_preview_tpl" "data-bp-used-preview-id"={{previewId}}>
-              {{previewBody}}
-            </template>
-          </li>
-        }}
-      pure {{
-        <div class="bp_used_by_wrap">
-          <span class="bp_used_by_chip" tabindex="0" title={{s!"Reverse dependencies for {data.label}"}}>
-            {{.text true (usedByChipText entries.size)}}
-          </span>
-          <div class="bp_used_by_panel">
-            <div class="bp_used_by_panel_header">
-              <div class="bp_used_by_panel_title">{{.text true s!"Used by {entries.size}"}}</div>
-              <div class="bp_used_by_panel_meta">"Hover a use site to preview it."</div>
-            </div>
-            <div class="bp_used_by_panel_body">
-              <ul class="bp_used_by_list">
-                {{rows}}
-              </ul>
-              <div class="bp_used_by_preview_surface">
-                <div class="bp_used_by_preview_header">
-                  <div class="bp_used_by_preview_label">"Preview"</div>
-                  <div class="bp_used_by_preview_title">"Hover a use site"</div>
-                </div>
-                <div class="bp_used_by_preview_body">
-                  <div class="bp_used_by_preview_empty">"Hover a use site to preview it."</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      }}
+            s!"Parent group '{group.label}' is referenced here, but no :::group declaration was found."
+        else if group.declared then
+          s!"Other entries in group {group.title}"
+        else
+          s!"Undeclared group '{group.label}'"
+      singleTitle := fun entry =>
+        if group.declared then
+          s!"Group member: {entry.previewTitle}"
+        else
+          s!"Undeclared group '{group.label}': {entry.previewTitle}"
+      panelTitle := fun n => s!"Group: {group.title} ({n})"
+      panelMeta
+      panelMetaClass := if group.declared then "bp_used_by_panel_meta" else "bp_used_by_panel_meta bp_used_by_chip_warn"
+      previewDefaultTitle := "Hover a group entry"
+      previewEmptyText := "Hover a group entry to preview it."
+      chipClass
+      emptyChipClass
+    }
+    pure <| some (renderRelatedPanel cfg panelEntries)
 
 private def renderInformalBlock (data : BlockData) (numberText : String) (attrs : Array (String × String))
-    (_statusMark : Option BlockStatusMark) (codeEntry usedByEntry : Output.Html)
+    (_statusMark : Option BlockStatusMark) (codeEntry : Output.Html) (groupEntry? : Option Output.Html)
+    (usedByEntry : Output.Html)
     (content : Array Output.Html) : Output.Html :=
   open Verso.Output.Html in
   let labelText := s!"{data.label}"
@@ -1284,8 +1491,16 @@ private def renderInformalBlock (data : BlockData) (numberText : String) (attrs 
     match data.kind with
     | .proof => .empty
     | .statement _ =>
+      let extrasClass :=
+        if groupEntry?.isSome then
+          "bp_extras bp_extras_with_group thm_header_extras"
+        else
+          "bp_extras thm_header_extras"
       {{
-        <div class="bp_extras thm_header_extras">
+        <div class={{extrasClass}}>
+          {{match groupEntry? with
+            | some groupEntry => {{<span class="bp_extra_slot bp_extra_slot_group">{{groupEntry}}</span>}}
+            | none => .empty}}
           <span class="bp_extra_slot bp_extra_slot_code">
             {{codeEntry}}
           </span>
@@ -1430,9 +1645,10 @@ block_extension Block.informal (data : BlockData) where
         let content := (← blocks.mapM goB)
         let statusMark := headingParts?.bind (·.statusMark)
         let codeEntry := (headingParts?.map (·.codeEntry)).getD .empty
+        let groupEntry ← renderGroupEntry s goB data
         let usedByEntry ← renderUsedByEntry s goB data
         let informalBlock :=
-          renderInformalBlock data (data.displayNumber s) attrs statusMark codeEntry usedByEntry content
+          renderInformalBlock data (data.displayNumber s) attrs statusMark codeEntry groupEntry usedByEntry content
         return .seq #[informalBlock, externalPanel]
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
@@ -1492,6 +1708,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       kind := blockKind
       codeData
       label
+      parent := node?.bind (·.parent)
       count
       numberingMode := numberingMode (← getOptions)
       statementDeps

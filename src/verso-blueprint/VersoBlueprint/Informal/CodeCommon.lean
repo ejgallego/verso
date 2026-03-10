@@ -142,6 +142,7 @@ structure BlockData where
   /-- Optional code hint used for statement blocks (`.proof` always ignores this). -/
   codeData : Option BlockCodeData := none
   label : Data.Label
+  parent : Option Data.Parent := none
   count : Nat
   numberingMode : NumberingMode := .sub
   /--

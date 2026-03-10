@@ -10,6 +10,7 @@ import VersoBlueprint.Data
 import VersoBlueprint.Environment
 import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.Profiling
+import VersoBlueprint.Resolve
 
 open Verso Doc Elab
 open Verso.Genre Manual
@@ -22,6 +23,12 @@ namespace Informal
 structure GroupConfig where
   label : Data.Label
   labelSyntax : Syntax := Syntax.missing
+deriving Inhabited
+
+structure GroupBlockData where
+  label : Data.Label
+  header : String := ""
+deriving Inhabited, FromJson, ToJson, Quote
 
 section
 variable [Monad m] [MonadError m]
@@ -37,6 +44,26 @@ instance : FromArgs GroupConfig m where
   fromArgs := GroupConfig.parse
 
 end
+
+open Verso Doc Elab Genre Manual in
+block_extension Block.groupMetadata (groupData : GroupBlockData) where
+  data := toJson groupData
+  traverse _id data _contents := do
+    let .ok groupData := fromJson? (α := GroupBlockData) data
+      | logError "Malformed data in Block.groupMetadata.traverse"
+        return none
+    modify fun st =>
+      st.saveDomainObjectData Resolve.informalGroupDomainName groupData.label.toString (toJson groupData)
+    return none
+  toTeX := some <| fun _ _ _ _ _ => pure .empty
+  toHtml :=
+    open Verso.Doc.Html in
+    open Verso.Output.Html in
+    some <| fun _ _ _ data _ => do
+      let .ok _ := fromJson? (α := GroupBlockData) data
+        | HtmlT.logError "Malformed data in Block.groupMetadata.toHtml"
+          pure .empty
+      pure .empty
 
 private def collapseWhitespace (s : String) : String :=
   let s := s.replace "\n" " "
@@ -68,10 +95,13 @@ private def groupHeaderFromContents (contents : Array (TSyntax `block)) : DocEla
 private def groupExpanderImpl : DirectiveExpanderOf GroupConfig
   | cfg, contents => do
     let header ← groupHeaderFromContents contents
-    if header.isEmpty then
+    let headerWasEmpty := header.isEmpty
+    let header := if headerWasEmpty then cfg.label.toString else header
+    if headerWasEmpty then
       logWarningAt cfg.labelSyntax m!"Group {cfg.label} has an empty body; using the group label as header text"
-    Environment.registerGroup cfg.label (if header.isEmpty then cfg.label.toString else header)
-    ``(Block.concat #[])
+    let groupData : GroupBlockData := { label := cfg.label, header }
+    Environment.registerGroup cfg.label header
+    ``(Block.other (Block.groupMetadata $(quote groupData)) #[])
 
 @[directive] def «group» : DirectiveExpanderOf GroupConfig
   | cfg, contents => do

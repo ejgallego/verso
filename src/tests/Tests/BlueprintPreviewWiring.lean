@@ -100,6 +100,51 @@ Statement without Lean code.
 :::
 :::::::
 
+#docs (Genre.Manual) groupPreviewDoc "Blueprint Group Preview Wiring" :=
+:::::::
+:::group "grp:preview"
+Preview group title.
+:::
+
+:::definition "def:group.target" (parent := "grp:preview")
+Target statement in a declared group.
+:::
+
+:::lemma_ "lem:group.peer.one" (parent := "grp:preview")
+First peer in the same group.
+:::
+
+:::lemma_ "lem:group.peer.two" (parent := "grp:preview")
+Second peer in the same group.
+:::
+
+:::lemma_ "lem:group.user"
+Statement depends on {uses "def:group.target"}[].
+:::
+:::::::
+
+#docs (Genre.Manual) missingGroupPreviewDoc "Blueprint Missing Group Preview Wiring" :=
+:::::::
+:::definition "def:group.missing.target" (parent := "grp:missing")
+Target statement in an undeclared group.
+:::
+
+:::lemma_ "lem:group.missing.peer" (parent := "grp:missing")
+Peer statement sharing the undeclared parent.
+:::
+:::::::
+
+#docs (Genre.Manual) singleDeclaredGroupDoc "Blueprint Single Declared Group Wiring" :=
+:::::::
+:::group "grp:solo"
+Solo group title.
+:::
+
+:::definition "def:group.solo" (parent := "grp:solo")
+Only entry in its declared group.
+:::
+:::::::
+
 private partial def collectBlocks (part : Doc.Part Genre.Manual) : Array (Doc.Block Genre.Manual) :=
   let childBlocks := part.subParts.foldl (init := #[]) fun acc child =>
     acc ++ collectBlocks child
@@ -245,6 +290,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
     let usedByJs? := findExtraJs st "function bindUsedByPanel(panel)"
     pure (
       hasSubstr out "used by 2" &&
+      !hasSubstr out "class=\"bp_extra_slot bp_extra_slot_group\"" &&
       hasSubstr out "class=\"bp_extra_slot bp_extra_slot_used_by\"" &&
       hasSubstr out "class=\"bp_used_by_wrap\"" &&
       hasSubstr out "class=\"bp_used_by_panel\"" &&
@@ -281,6 +327,57 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       hasSubstr out "class=\"bp_inline_preview_ref\"" &&
       hasSubstr out "class=\"bp_inline_preview_tpl\"" &&
       hasSubstr out "data-bp-preview-id=\"bp-used-by-"
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
+    let blocks := collectBlocks groupPreviewDoc.toPart
+    let (html, st) ← renderManualBlocksHtmlAndState blocks
+    let out := html.asString
+    let usedByJs? := findExtraJs st "function bindUsedByPanel(panel)"
+    pure (
+      hasSubstr out "class=\"bp_extra_slot bp_extra_slot_group\"" &&
+      hasSubstr out "class=\"bp_extra_slot bp_extra_slot_used_by\"" &&
+      appearsBefore out "class=\"bp_extra_slot bp_extra_slot_group\"" "class=\"bp_extra_slot bp_extra_slot_used_by\"" &&
+      hasSubstr out "Hover another entry in this group to preview it." &&
+      hasSubstr out "data-bp-used-preview-id=\"bp-group-" &&
+      hasSubstr out "Preview group title." &&
+      hasSubstr out "used by 1" &&
+      match usedByJs? with
+      | some usedByJs =>
+        hasSubstr usedByJs "function bindUsedByPanel(panel)" &&
+        hasSubstr usedByJs "activate(items[0])"
+      | none => false
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
+    let blocks := collectBlocks missingGroupPreviewDoc.toPart
+    let (html, _st) ← renderManualBlocksHtmlAndState blocks
+    let out := html.asString
+    pure (
+      hasSubstr out "bp_used_by_chip_warn" &&
+      hasSubstr out "data-bp-preview-id=\"bp-group-" &&
+      hasSubstr out "No matching " &&
+      hasSubstr out ":::group" &&
+      hasSubstr out "grp:missing"
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
+    let blocks := collectBlocks singleDeclaredGroupDoc.toPart
+    let (html, _st) ← renderManualBlocksHtmlAndState blocks
+    let out := html.asString
+    pure (
+      !hasSubstr out "class=\"bp_extra_slot bp_extra_slot_group\"" &&
+      !hasSubstr out "bp_used_by_chip_warn" &&
+      !hasSubstr out "data-bp-used-preview-id=\"bp-group-"
     )
 
 /-- info: true -/

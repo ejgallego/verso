@@ -10,7 +10,18 @@ from playwright.sync_api import sync_playwright
 def default_site_dir() -> Path:
     repo_root = Path(__file__).resolve().parents[1]
     if repo_root.parent.name == ".worktrees":
-        return repo_root.parents[1] / "_out" / repo_root.name / "html-multi"
+        shared_out = repo_root.parents[1] / "_out" / repo_root.name
+        candidates = [
+            shared_out / "html-multi",
+            shared_out / "noperthedron" / "html-multi",
+            shared_out / "example-blueprints" / "noperthedron" / "html-multi",
+            shared_out / "spherepackingblueprint" / "html-multi",
+            shared_out / "example-blueprints" / "spherepackingblueprint" / "html-multi",
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return candidates[0]
     return repo_root / "_out" / "html-multi"
 
 
