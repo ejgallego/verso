@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (registered the preview runtime hotfix worktree for the missing child-hide helper regression)
+Last updated: 2026-03-10 (retired `feat/worktree-output-dedup-20260310` after landing its workflow updates on `bp`)
 
 ## Active Worktrees
 
@@ -122,28 +122,6 @@ Last updated: 2026-03-10 (registered the preview runtime hotfix worktree for the
   - inspect metadata JSON producers and consumers under `src/verso-blueprint`
   - source worktree `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310` was dirty at fork time; this review branch intentionally starts from committed head `a2a6c290`
 
-### `feat/worktree-output-dedup-20260310`
-
-- Status: `ready-for-review` (owner action: review and decide whether to merge the workflow-instruction cleanup)
-- Summary: updates the task-start instructions so example artifacts emitted by `generate-example-blueprints.sh` become the canonical preview outputs instead of forcing a duplicate top-level `lake exe` build for the same artifact.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`
-- Branch: `feat/worktree-output-dedup-20260310`
-- Base commit/branch:
-  - branched from `bp` at `89f17e2e`
-- Key commits:
-  - `43eade76` docs(agents): dedupe example preview outputs
-- Validation status:
-  - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints`
-  - canonical preview output now lives only under `/home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints/{noperthedron,spherepackingblueprint}`
-  - no duplicate `/home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/noperthedron` artifact was generated for this task
-- Preview link:
-  - `http://127.0.0.1:8154/worktree-output-dedup-20260310/example-blueprints/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`
-  - `git diff -- AGENTS.md`
-  - inspect `AGENTS.md` "Validation output" and "Starting a new task and Worktree Layout"
-
 ### `feat/code-summary-badge-unification-20260310`
 
 - Status: `ready-for-review` (owner action: inspect the validated renderer refactor and decide whether to polish further or prepare it for merge)
@@ -210,6 +188,15 @@ Last updated: 2026-03-10 (registered the preview runtime hotfix worktree for the
   - `git rebase bp`
 
 ## Recently Completed
+
+- Retired `feat/worktree-output-dedup-20260310` after landing its workflow updates directly on `bp` in `57795969` (`docs(agents): dedupe preview outputs and add lean wrapper`).
+- Validation carried forward from the feature worktree before cleanup:
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints`
+- Sanity check on `bp` after landing the wrapper:
+  - `script/lean-low-priority true`
+- Rebased `feat/worktree-output-dedup-20260310` onto `bp`; the stale one-commit delta dropped because `bp` already carried the stronger `AGENTS.md` wording plus the new tracked wrapper script.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`.
+- Deleted branch: `feat/worktree-output-dedup-20260310`.
 
 - Cleaned up superseded preview predecessor worktrees after promoting `feat/preview-hover-tweaks-20260310` as the active preview line.
 - Removed worktrees:
