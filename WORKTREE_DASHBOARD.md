@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (squashed and rebased `feat/summary-command-implementation-20260310`, then rebuilt its review artifacts)
+Last updated: 2026-03-10 (created `feat/code-summary-badge-unification-20260310` and built its preview artifacts)
 
 ## Active Worktrees
 
@@ -167,6 +167,28 @@ Last updated: 2026-03-10 (squashed and rebased `feat/summary-command-implementat
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/summary.css`, `src/tests/Tests/BlueprintSummaryLinks.lean`
+
+### `feat/code-summary-badge-unification-20260310`
+
+- Status: `active` (owner action: inspect badge/hover code paths, map duplication, and turn the findings into a concrete refactor plan)
+- Summary: analysis worktree for unifying the code-summary badge across summary rows, inline Lean hover surfaces, and external code blocks without exposing provenance-specific UI differences.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
+- Branch: `feat/code-summary-badge-unification-20260310`
+- Base commit/branch:
+  - branched from `bp` at `093cd40a`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310/noperthedron`
+- Preview link:
+  - `http://127.0.0.1:8156/code-summary-badge-unification-20260310/noperthedron/html-multi/`
+  - `http://127.0.0.1:8156/code-summary-badge-unification-20260310/example-blueprints/noperthedron/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
+  - `git status --short`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Lean/Output.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`, `src/verso-blueprint/VersoBlueprint/Lean/Server.lean`
 
 ### `feat/lean-commandm-incremental-20260306`
 
