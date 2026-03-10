@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (merged `feat/parent-link-ungrouped-research-20260310` into `bp` and cleaned up the worktree)
+Last updated: 2026-03-10 (retired the superseded preview worktrees and kept `feat/preview-manifest-20260310` as the active preview line)
 
 ## Active Worktrees
 
@@ -22,88 +22,10 @@ Last updated: 2026-03-10 (merged `feat/parent-link-ungrouped-research-20260310` 
   - `git status --short`
   - `git log --oneline -1`
 
-### `feat/link-preview-audit-20260308`
-
-- Status: `active` (owner action: resume implementation from the audit findings and address the nested preview regressions)
-- Summary: canonical implementation worktree for the preview refactor/coverage branch. The review-only fork has been retired, and its audit findings now feed back into this branch for follow-up fixes.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
-- Branch: `feat/link-preview-audit-20260308`
-- Base commit/branch:
-  - rebased on current `bp`
-- Key commit:
-  - branch tip includes the rebased replay of `checkpoint(preview): preserve nested hover investigation`
-  - branch tip also includes the branch-local docs checkpoint `checkpoint(preview): document hover-link architecture`
-- Validation status:
-  - focused preview validation had passed before the checkpoint
-  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308`
-  - latest rebuilt artifact snapshot: `/home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308/html-multi/index.html` at `2026-03-10 16:47:24 +0100`
-  - browser behavior note: nested inline preview recursion still broken after the checkpoint; child panel can stay open but still lacks stable content in the known repro
-- Preview link:
-  - `http://127.0.0.1:8152/link-preview-audit-20260308/html-multi/`
-- What Worked Well:
-  - shared preview hydration hook now exists in `Commands/Common.lean`, and custom panels like `used by` can opt into it
-  - summary decl/action links and bibliography backlinks gained preview coverage
-  - graph preview templates can carry nested inline refs, and graph HTML preview bodies hydrate nested preview refs before math rendering
-  - label-scoped fallback preview templates are emitted by `Informal/Block.lean`, so nested refs are no longer limited to local inline templates only
-- Current hover-link approach:
-  - traversal preview cache is the main shared preview-data source; widget previews still remain a separate cache path
-  - `window.bpPreviewUtils` is the shared browser runtime for template lookup, behavior decoding, positioning, subtree hydration, and debug tracing
-  - inline hover uses one global anchored panel with in-place recursive body swaps, plus local-template, label-template, and metadata-fallback resolution tiers
-  - summary, graph, and `used by` keep their own panel surfaces, but now rely on the shared runtime and subtree hydration so nested refs can be rebound
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
-  - `git status --short`
-  - implement against this worktree; the retired review branch had no divergent code, only audit notes
-  - known repro: `Rational-Versions`, hover theorem 15 then definition 10 inside the preview
-  - secondary repro: graph node preview with nested child link still needs manual verification after the same-panel bug is solved
-  - first files to inspect on resume:
-  - `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
-  - `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
-  - `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
-  - `src/verso-blueprint/VersoBlueprint/Commands/graph.js`
-  - detailed checkpoint design note: `doc/PreviewHoverDesignNotes.md` (`2026-03-10 Checkpoint`)
-  - highest-priority audit findings to address next:
-  - summary preview test expects shared `bindTemplatePreview`, but `Commands/Summary.lean` still uses the bespoke binder
-  - label-template fallback is unreachable because emitted inline refs still lack `data-bp-preview-fallback-label`
-  - graph hover bridge CSS does not cover the real trigger-to-panel gap, and graph preview hydration can rebinding-loop on repeated `mouseover`
-  - TODO: unify preview labels/titles behind one canonical API; right now some surfaces use `BlockData.displayTitle`, while others still fall back to raw labels or ad hoc `data-bp-preview-title` strings
-  - useful browser probes:
-  - enable trace with `localStorage.setItem("bp-debug-preview", "1")`
-  - after repro run `(window.bpPreviewTrace || []).slice(-30)`
-  - most relevant trace finding so far: after nested `Definition 10` show, a synthetic `inline.panel.mouseleave` can still arrive and schedule hide
-
-### `feat/link-preview-fixes-20260310`
-
-- Status: `ready-for-review` (owner action: review the fix branch and decide whether to merge or continue browser-level follow-up)
-- Summary: successor fix worktree forked from `feat/link-preview-audit-20260308`; it lands the audited summary/inline/graph preview fixes and refreshes the targeted regression tests.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-fixes-20260310`
-- Branch: `feat/link-preview-fixes-20260310`
-- Base commit/branch:
-  - branched from `feat/link-preview-audit-20260308` at `ac5d4b56`
-- Key commits:
-  - `b8c65bd3` fix(preview): repair shared hover wiring
-- Validation status:
-  - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
-  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
-  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
-  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/link-preview-fixes-20260310/example-blueprints`
-  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/link-preview-fixes-20260310`
-- Preview link:
-  - `http://127.0.0.1:8154/link-preview-fixes-20260310/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/link-preview-fixes-20260310`
-  - primary fix points: `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`, `src/verso-blueprint/VersoBlueprint/Commands/graph.js`, `src/verso-blueprint/VersoBlueprint/Commands/graph.css`
-  - landed fixes:
-  - summary preview now binds through shared `bpPreviewUtils.bindTemplatePreview`
-  - inline refs for `uses` and single-item `used by` chips now emit `data-bp-preview-fallback-label`
-  - graph hover mode now uses delayed hide/cancel logic instead of brittle immediate hide
-  - graph node preview skips redundant same-node rehydration on descendant `mouseover`
-
 ### `feat/preview-manifest-20260310`
 
-- Status: `ready-for-review` (owner action: review the shared preview-manifest slice and decide whether to expand it beyond inline hover)
-- Summary: first progressive move toward shared preview data. The branch emits `bp-previews.json` at build time, adds canonical preview keys to inline refs, and lets nested cross-page inline previews resolve through the shared manifest while preserving current page-local fallbacks first.
+- Status: `active` (owner action: decide whether to continue generalizing the manifest path to summary and graph previews)
+- Summary: canonical preview worktree. It supersedes both `feat/link-preview-audit-20260308` and `feat/link-preview-fixes-20260310`, emits `bp-previews.json` at build time, and proves the chapter-8 nested hover repro through the manifest-backed inline path.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-20260310`
 - Branch: `feat/preview-manifest-20260310`
 - Base commit/branch:
@@ -251,6 +173,22 @@ Last updated: 2026-03-10 (merged `feat/parent-link-ungrouped-research-20260310` 
   - `git rebase bp`
 
 ## Recently Completed
+
+- Retired `feat/link-preview-audit-20260308` after confirming it is fully contained in `feat/preview-manifest-20260310`.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
+- Deleted branch:
+  - `feat/link-preview-audit-20260308`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308`
+
+- Retired `feat/link-preview-fixes-20260310` after confirming it is fully contained in `feat/preview-manifest-20260310`.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-fixes-20260310`
+- Deleted branch:
+  - `feat/link-preview-fixes-20260310`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/link-preview-fixes-20260310`
 
 - Merged `feat/parent-link-ungrouped-research-20260310` into `bp` (`a603e818 -> ba6e9e1b`, fast-forward).
 - Feature branch key commit:
