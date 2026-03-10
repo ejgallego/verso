@@ -144,7 +144,14 @@ structure BlockData where
   label : Data.Label
   count : Nat
   numberingMode : NumberingMode := .sub
-  /-- Numbered-part prefix assigned during traversal (for example `3` or `4.2`). -/
+  /--
+  Top-level rendered part prefix assigned during traversal (for example `3` or `A`).
+
+  This is stored as `String` rather than `Manual.Numbering` because it is a
+  render-facing cache: the upstream part numbering may be numeric or alphabetic,
+  and all downstream consumers need here is the final display prefix that should
+  appear in cross-page references and HTML labels.
+  -/
   partPrefix : Option String := none
   /-- Document-order global index assigned during traversal. -/
   globalCount : Option Nat := none
@@ -154,6 +161,7 @@ structure BlockData where
   proofDeps : Array Data.Label := #[]
 deriving FromJson, ToJson, Quote
 
+/-- The first numbered part above the current block, used for chapter-style sub-numbering. -/
 def numberedPartPrefix? (ctxt : TraverseContext) : Option String := Id.run do
   for header in ctxt.headers[1:] do
     if let some n := header.metadata.bind (·.assignedNumber) then

@@ -2,6 +2,45 @@
 
 This page documents the `parent` / `group` feature for informal blueprint nodes.
 
+## Blueprint Options
+
+Set Blueprint options with ordinary Lean `set_option` commands in the module that
+elaborates your blueprint chapter/document:
+
+```lean
+set_option verso.blueprint.numbering global
+set_option verso.blueprint.foldProofs true
+```
+
+Current user-facing options:
+
+- `verso.blueprint.numbering`
+  - default: `sub`
+  - `sub`: chapter-prefixed numbering such as `Theorem 5.5`
+  - `global`: document-order numbering such as `Theorem 27`
+  - `local`: legacy local numbering without a chapter prefix
+- `verso.blueprint.foldProofs`
+  - default: `true`
+  - folds proof bodies in rendered Lean code panels after `by`
+- `verso.blueprint.trimTeXLabelPrefix`
+  - default: `false`
+  - trims TeX-style label prefixes when deriving Lean names (`thm:foo` becomes `foo`)
+- `verso.blueprint.math.lint`
+  - default: `true`
+  - runs best-effort KaTeX validation for blueprint math during elaboration
+- `verso.blueprint.externalCode.strictResolve`
+  - default: `false`
+  - upgrades unresolved or ambiguous `(lean := "...")` names from warnings to errors
+- `verso.blueprint.externalCode.sourceLinkTemplate`
+  - default: `""` (disabled)
+  - builds source links for external declarations using `{path}`, `{relpath}`, `{module}`, `{line}`, `{column}`
+- `verso.blueprint.graph.defaultDirection`
+  - default: `TB`
+  - sets the fallback graph direction for `blueprint_graph` when `(direction := ...)` is omitted
+- `verso.blueprint.profile`
+  - default: `false`
+  - enables timing logs for blueprint directive/code-block elaboration
+
 ## Lean Summary States
 
 Statement headers always show the Lean badge `L∃∀N`.
