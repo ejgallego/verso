@@ -6,6 +6,7 @@ Author: David Renshaw, Jason Reed, Adaptation to Verso by Emilio J. Gallego Aria
 
 import Std.Data.HashMap
 import VersoManual
+import VersoBlueprint.PreviewManifest
 import Contents
 
 open Verso Doc
@@ -90,4 +91,6 @@ private def checkInlinePreviewTemplateDedup : ExtraStep := fun mode logError cfg
             logError s!"Inline preview template duplicates found in {rel}: {sample}"
   | .single => pure ()
 
-def main := manualMain (%doc Contents) (config := renderConfig) (extraSteps := [checkInlinePreviewTemplateDedup])
+def main := manualMain (%doc Contents)
+  (config := renderConfig)
+  (extraSteps := [Informal.PreviewManifest.emitSharedPreviewManifest, checkInlinePreviewTemplateDedup])

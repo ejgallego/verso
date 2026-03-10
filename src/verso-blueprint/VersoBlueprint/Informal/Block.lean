@@ -1304,6 +1304,9 @@ private def collectGroupEntries
 private def usedByPreviewId (targetLabel sourceLabel : Data.Label) : String :=
   s!"bp-used-by-{Informal.HoverRender.previewKey (toString targetLabel)}-{Informal.HoverRender.previewKey (toString sourceLabel)}"
 
+private def usedByPreviewLookupKey (source : BlockData) : String :=
+  PreviewCache.key source.label (PreviewCache.Facet.ofInProgressKind source.kind)
+
 private def usedByChipText (count : Nat) : String :=
   s!"used by {count}"
 
@@ -1546,6 +1549,7 @@ private def renderGroupEntry {m}
             </span>}}
       pure <| Informal.HoverRender.inlinePreviewNode
         true chipNode previewBody previewId previewTitle
+        (previewLookupKey? := some (usedByPreviewLookupKey entry.source))
         (previewFallbackLabel? := some s!"{entry.source.label}")
     else
       let rows ← entries.mapM fun entry => do

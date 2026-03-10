@@ -215,6 +215,7 @@ def inlinePreviewTemplate (previewId : String) (body : Verso.Output.Html) : Vers
 
 private def inlinePreviewRefAttrs
     (previewId previewTitle : String)
+    (previewLookupKey? : Option String := none)
     (previewFallbackLabel? : Option String := none)
     (previewFallbackDetail? : Option String := none) :
     Array (String × String) := Id.run do
@@ -223,6 +224,8 @@ private def inlinePreviewRefAttrs
     ("data-bp-preview-id", previewId),
     ("data-bp-preview-title", previewTitle)
   ]
+  if let some previewKey := previewLookupKey? then
+    attrs := attrs.push ("data-bp-preview-key", previewKey)
   if let some label := previewFallbackLabel? then
     attrs := attrs.push ("data-bp-preview-fallback-label", label)
   if let some detail := previewFallbackDetail? then
@@ -232,28 +235,31 @@ private def inlinePreviewRefAttrs
 def inlinePreviewRef
     (node : Verso.Output.Html)
     (previewId previewTitle : String)
+    (previewLookupKey? : Option String := none)
     (previewFallbackLabel? : Option String := none)
     (previewFallbackDetail? : Option String := none) :
     Verso.Output.Html :=
   .tag "span"
-    (inlinePreviewRefAttrs previewId previewTitle previewFallbackLabel? previewFallbackDetail?)
+    (inlinePreviewRefAttrs previewId previewTitle previewLookupKey? previewFallbackLabel? previewFallbackDetail?)
     node
 
 def inlinePreviewEntry (node body : Verso.Output.Html)
     (previewId previewTitle : String)
+    (previewLookupKey? : Option String := none)
     (previewFallbackLabel? : Option String := none)
     (previewFallbackDetail? : Option String := none) : Verso.Output.Html := {{
-  {{inlinePreviewRef node previewId previewTitle previewFallbackLabel? previewFallbackDetail?}}
+  {{inlinePreviewRef node previewId previewTitle previewLookupKey? previewFallbackLabel? previewFallbackDetail?}}
   {{inlinePreviewTemplate previewId body}}
 }}
 
 def inlinePreviewNode (emitTemplate : Bool) (node body : Verso.Output.Html)
     (previewId previewTitle : String)
+    (previewLookupKey? : Option String := none)
     (previewFallbackLabel? : Option String := none)
     (previewFallbackDetail? : Option String := none) : Verso.Output.Html :=
   if emitTemplate then
-    inlinePreviewEntry node body previewId previewTitle previewFallbackLabel? previewFallbackDetail?
+    inlinePreviewEntry node body previewId previewTitle previewLookupKey? previewFallbackLabel? previewFallbackDetail?
   else
-    inlinePreviewRef node previewId previewTitle previewFallbackLabel? previewFallbackDetail?
+    inlinePreviewRef node previewId previewTitle previewLookupKey? previewFallbackLabel? previewFallbackDetail?
 
 end Informal.HoverRender

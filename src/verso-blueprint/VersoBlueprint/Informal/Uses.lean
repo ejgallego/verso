@@ -34,6 +34,9 @@ def usePreviewId (label : Data.Label) (block : BlockData) : String :=
   let facet := PreviewCache.Facet.ofInProgressKind block.kind
   s!"bp-uses-{Informal.HoverRender.previewKey (toString label)}-{facet.suffix}"
 
+def usePreviewLookupKey (label : Data.Label) (block : BlockData) : String :=
+  PreviewCache.key label (PreviewCache.Facet.ofInProgressKind block.kind)
+
 private def useLinkPreviewFallbackBody (label : Data.Label) : Verso.Output.Html :=
   open Verso.Output.Html in
   {{
@@ -50,9 +53,11 @@ private def wrapUseLinkPreview (node previewBody : Verso.Output.Html)
     (label : Data.Label) (block : BlockData) (emitTemplate : Bool) :
     Verso.Output.Html :=
   let pid := usePreviewId label block
+  let pkey := usePreviewLookupKey label block
   let ptitle := blockHoverTitle state block
   Informal.HoverRender.inlinePreviewNode
     emitTemplate node previewBody pid ptitle
+    (previewLookupKey? := some pkey)
     (previewFallbackLabel? := some s!"{label}")
 
 inline_extension Inline.informal (data : InlineData) where
@@ -133,15 +138,22 @@ inline_extension Inline.informal (data : InlineData) where
             {{<a href={{href}} title={{labelText}}>{{renderedInlines}}</a>}}
           else
             renderedInlines
-        if inPreviewRender then
-          return {{<span>{{plainContent}}</span>}}
         let previewId := usePreviewId label block
-        let emitTemplate := Informal.HoverRender.isInlinePreviewOwner st ctxt.path previewId id
+        let previewKey := usePreviewLookupKey label block
+        let emitTemplate :=
+          !inPreviewRender && Informal.HoverRender.isInlinePreviewOwner st ctxt.path previewId id
         let previewBody :=
           match preview? with
           | some rendered => Verso.Output.Html.seq rendered
           | Option.none => useLinkPreviewFallbackBody label
-        let hovered := wrapUseLinkPreview plainContent previewBody st label block emitTemplate
+        let hovered :=
+          if inPreviewRender then
+            Informal.HoverRender.inlinePreviewNode
+              false plainContent .empty previewId (blockHoverTitle st block)
+              (previewLookupKey? := some previewKey)
+              (previewFallbackLabel? := some s!"{label}")
+          else
+            wrapUseLinkPreview plainContent previewBody st label block emitTemplate
         return {{<span>{{hovered}}</span>}}
   toTeX := none
 

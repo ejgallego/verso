@@ -1,5 +1,6 @@
 import Std.Data.HashMap
 import VersoManual
+import VersoBlueprint.PreviewManifest
 import SpherePackingBlueprint.Contents
 
 open Verso Doc
@@ -30,4 +31,6 @@ def config : Config where
 def renderConfig : RenderConfig where
   toConfig := config
 
-def main := manualMain (%doc SpherePackingBlueprint.Contents) (config := renderConfig)
+def main := manualMain (%doc SpherePackingBlueprint.Contents)
+  (config := renderConfig)
+  (extraSteps := [Informal.PreviewManifest.emitSharedPreviewManifest])

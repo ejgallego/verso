@@ -856,7 +856,8 @@ The parameters are:
  * The final state of the traversal pass
  * The final text, post-traversal
 -/
-abbrev ExtraStep := Mode → (String → IO Unit) → Config → TraverseState → Part Manual → IO Unit
+abbrev ExtraStep := Mode → (String → IO Unit) → Config → TraverseState → Part Manual →
+  ReaderT ExtensionImpls IO Unit
 
 
 open Verso.CLI

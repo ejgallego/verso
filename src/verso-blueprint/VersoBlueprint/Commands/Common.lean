@@ -22,9 +22,11 @@ def previewHoverUtilsJs : String := r##"(function () {
     const parts = [node.tagName.toLowerCase()];
     const cls = (node.getAttribute("class") || "").trim();
     const pid = (node.getAttribute("data-bp-preview-id") || "").trim();
+    const pkey = (node.getAttribute("data-bp-preview-key") || "").trim();
     const title = (node.getAttribute("data-bp-preview-title") || "").trim();
     if (cls) parts.push("." + cls.replaceAll(" ", "."));
     if (pid) parts.push("pid=" + pid);
+    if (pkey) parts.push("pkey=" + pkey);
     if (title) parts.push("title=" + title);
     return parts.join(" ");
   }
@@ -88,6 +90,72 @@ def previewHoverUtilsJs : String := r##"(function () {
       return entry.html;
     }
     return "";
+  }
+
+  function decodeSharedPreviewManifest(data) {
+    const map = new Map();
+    const entries =
+      Array.isArray(data)
+        ? data
+        : data && typeof data === "object" && Array.isArray(data.previews)
+          ? data.previews
+          : [];
+    entries.forEach(function (entry) {
+      if (!entry || typeof entry !== "object") return;
+      const key = String(entry.key || "").trim();
+      const html = typeof entry.html === "string" ? entry.html.trim() : "";
+      if (!key || !html) return;
+      map.set(key, entry);
+    });
+    return map;
+  }
+
+  function sharedPreviewManifestUrl() {
+    try {
+      const url = new URL(window.location.href);
+      const markers = ["/html-multi/", "/html-single/"];
+      for (const marker of markers) {
+        const idx = url.pathname.indexOf(marker);
+        if (idx >= 0) {
+          const rootPath = url.pathname.slice(0, idx + marker.length);
+          return rootPath + "-verso-data/bp-previews.json";
+        }
+      }
+    } catch (_err) {}
+    return "-verso-data/bp-previews.json";
+  }
+
+  function loadSharedPreviewManifest() {
+    if (window.bpSharedPreviewManifest instanceof Map) {
+      return Promise.resolve(window.bpSharedPreviewManifest);
+    }
+    if (window.bpSharedPreviewManifestPromise) {
+      return window.bpSharedPreviewManifestPromise;
+    }
+    const promise = fetch(sharedPreviewManifestUrl())
+      .then(function (resp) {
+        if (!resp.ok) return { previews: [] };
+        return resp.json();
+      })
+      .then(function (data) {
+        const map = decodeSharedPreviewManifest(data);
+        window.bpSharedPreviewManifest = map;
+        return map;
+      })
+      .catch(function () {
+        const map = new Map();
+        window.bpSharedPreviewManifest = map;
+        return map;
+      });
+    window.bpSharedPreviewManifestPromise = promise;
+    return promise;
+  }
+
+  function readSharedPreviewEntry(previewKey) {
+    if (typeof previewKey !== "string" || previewKey.length === 0) return null;
+    const map = window.bpSharedPreviewManifest;
+    if (!(map instanceof Map)) return null;
+    return map.get(previewKey) || null;
   }
 
   function renderMath(root) {
@@ -487,6 +555,8 @@ def previewHoverUtilsJs : String := r##"(function () {
   window.bpPreviewUtils = {
     collectPreviewTemplates: collectPreviewTemplates,
     readPreviewTemplate: readPreviewTemplate,
+    loadSharedPreviewManifest: loadSharedPreviewManifest,
+    readSharedPreviewEntry: readSharedPreviewEntry,
     renderMath: renderMath,
     bindCloseOnce: bindCloseOnce,
     positionAnchoredPanel: positionAnchoredPanel,
@@ -779,6 +849,9 @@ def inlineLinkPreviewJs : String := r##"(function () {
       typeof previewUtils.previewDebugLabel === "function"
         ? previewUtils.previewDebugLabel
         : function (node) { return String(node); };
+    if (typeof previewUtils.loadSharedPreviewManifest === "function") {
+      previewUtils.loadSharedPreviewManifest();
+    }
 
     const store = ensureInlinePreviewStore();
     const panel = getPanel();
@@ -797,6 +870,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
     let hideTimer = null;
     let updatingPanel = false;
     let ignoreNextPanelExit = false;
+    let showRequestToken = 0;
 
     function clearPanelSizeLock() {
       panel.style.width = "";
@@ -891,6 +965,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
 
     function hidePanel() {
       cancelHide();
+      showRequestToken += 1;
       previewDebug("inline.hide", {
         activePreviewKey: activePreviewKey,
         activeTrigger: previewDebugLabel(activeTrigger),
@@ -923,7 +998,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
       }, 180);
     }
 
-    function resolvePreviewHtml(key, trigger) {
+    async function resolvePreviewHtml(key, trigger) {
       if (!previewMap.has(key)) {
         const localRoot = trigger instanceof Element ? (trigger.parentElement || document) : document;
         refresh(localRoot);
@@ -938,17 +1013,40 @@ def inlineLinkPreviewJs : String := r##"(function () {
           ? (trigger.getAttribute("data-bp-preview-fallback-label") || "").trim()
           : "";
       const labelHtml = label ? previewUtils.readPreviewTemplate(labelPreviewMap.get(label)) : "";
-      return labelHtml || fallbackInlinePreviewHtml(trigger, key);
+      if (labelHtml) return labelHtml;
+      const previewLookupKey =
+        trigger instanceof Element
+          ? (trigger.getAttribute("data-bp-preview-key") || "").trim()
+          : "";
+      if (previewLookupKey) {
+        const manifestEntry =
+          typeof previewUtils.readSharedPreviewEntry === "function"
+            ? previewUtils.readSharedPreviewEntry(previewLookupKey)
+            : null;
+        const manifestHtml = previewUtils.readPreviewTemplate(manifestEntry);
+        if (manifestHtml) return manifestHtml;
+        if (typeof previewUtils.loadSharedPreviewManifest === "function") {
+          const manifest = await previewUtils.loadSharedPreviewManifest();
+          const asyncHtml =
+            manifest instanceof Map
+              ? previewUtils.readPreviewTemplate(manifest.get(previewLookupKey))
+              : "";
+          if (asyncHtml) return asyncHtml;
+        }
+      }
+      return fallbackInlinePreviewHtml(trigger, key);
     }
 
-    function showFromTrigger(trigger) {
+    async function showFromTrigger(trigger) {
       if (!(trigger instanceof Element)) return;
       const key = (trigger.getAttribute("data-bp-preview-id") || "").trim();
       if (!key) {
         hidePanel();
         return;
       }
-      const html = resolvePreviewHtml(key, trigger);
+      const requestToken = ++showRequestToken;
+      const html = await resolvePreviewHtml(key, trigger);
+      if (requestToken !== showRequestToken) return;
       if (!html) {
         hidePanel();
         return;
