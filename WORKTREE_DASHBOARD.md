@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (prepared `feat/preview-runtime-regression-test-20260310` for merge after cross-browser preview regression validation)
+Last updated: 2026-03-11 (merged the preview runtime regression branch into `bp` and retired its predecessor preview worktrees)
 
 ## Active Worktrees
 
@@ -65,81 +65,6 @@ Last updated: 2026-03-11 (prepared `feat/preview-runtime-regression-test-2026031
   - inspect `src/verso-blueprint/VersoBlueprint/Lean.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`, `src/verso/Verso/Doc/Lsp.lean`, and `doc/UsersGuide/Elab.lean`
   - likely change shape: thread an explicit interactive flag from outer `Command.Context.snap?` into `DocElabContext`, then gate highlight generation and declaration analysis in blueprint Lean blocks
   - manual target: record that interactive Lean editing uses a latency-oriented fast path while batch builds still run full highlighting and blueprint analysis
-
-### `feat/preview-hover-tweaks-20260310`
-
-- Status: `ready-for-review` (owner action: inspect the hover UX follow-up and decide whether this should replace `feat/preview-template-removal-20260310` as the active preview branch)
-- Summary: restores bibliography-page hover previews by rendering shared-manifest-backed inline preview refs in "Cited from" rows, and changes nested inline preview behavior so subhovers use a separate transient child panel instead of replacing the parent panel or inheriting pinned+docked behavior from graph/used-by hosts.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-hover-tweaks-20260310`
-- Branch: `feat/preview-hover-tweaks-20260310`
-- Base commit/branch:
-  - rebased on current `bp`
-- Key commits:
-  - `db39ff3e` fix(preview): align block rebase resolution and group preview test
-  - `9e2885e1` fix(preview): restore bibliography hovers and nested subhover panels
-- Validation status:
-  - post-rebase validation:
-  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
-  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
-  - earlier branch validation before rebase:
-  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
-  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-hover-tweaks-20260310`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-hover-tweaks-20260310/example-blueprints`
-  - built HTML spot checks:
-  - `Blueprint-Bibliography` now emits `.bp_inline_preview_ref` rows with manifest-backed `data-bp-preview-key`
-  - `Computational-Step` still emits the theorem 7.15 -> definition 7.10 nested trigger chain
-  - `Dependency-Graph` still renders graph previews with nested inline refs in the preview body
-  - note: an iframe-based headless hover smoke harness was inconclusive for firing the actual hover handlers, so final UX still wants an interactive browser pass
-- Preview link:
-  - `http://127.0.0.1:8154/preview-hover-tweaks-20260310/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-hover-tweaks-20260310`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean` and `src/verso-blueprint/VersoBlueprint/Commands/Bibliography.lean`
-  - shared `_out` server is running on `http://127.0.0.1:8154/` in session `77001`
-
-### `feat/preview-runtime-fix-20260310`
-
-- Status: `checkpoint` (owner action: keep only if you want the source-only hotfix checkpoint; active work now continues on `feat/preview-runtime-regression-test-20260310`)
-- Summary: minimal runtime hotfix for the rebased preview line. The inline preview child panel path was calling `cancelChildHide()` without defining it inside `inlineLinkPreviewJs`, which broke all preview hides/shows at runtime. This worktree removes the stray helper from the unrelated shared binder and restores the helper in the actual inline preview closure.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-fix-20260310`
-- Branch: `feat/preview-runtime-fix-20260310`
-- Base commit/branch:
-  - branched from `feat/preview-hover-tweaks-20260310` at `50407611`
-- Key commit:
-  - `ab94e276` fix(preview): restore inline child hide helper
-- Validation status:
-  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
-  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
-  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
-  - note: the cold `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-runtime-fix-20260310` rebuild was still running when this dashboard entry was recorded
-- Preview link:
-  - `http://127.0.0.1:8154/preview-runtime-fix-20260310/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-fix-20260310`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
-  - browser repro to re-check after rebuild: `The-Global-Theorem` bibliography hover and inline preview hide path
-
-### `feat/preview-runtime-regression-test-20260310`
-
-- Status: `ready-for-review` (owner action: merge candidate; branch-prep and validation are complete, merge not yet performed)
-- Summary: adds a real Playwright regression test for runtime hover failures. The new test loads built blueprint pages, hovers a bibliography preview trigger and a nested theorem-then-definition preview chain, and fails on uncaught browser runtime errors like the missing `cancelChildHide` helper. This branch is based on the source hotfix from `feat/preview-runtime-fix-20260310`.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-regression-test-20260310`
-- Branch: `feat/preview-runtime-regression-test-20260310`
-- Base commit/branch:
-  - rebased on current `bp`
-- Key commit:
-  - `6a76a2c8` test(preview): cover runtime hover regressions
-- Validation status:
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/noperthedron`
-  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/noperthedron/html-multi`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/example-blueprints`
-- Preview link:
-  - `http://127.0.0.1:8154/preview-runtime-regression-test-20260310/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-regression-test-20260310`
-  - inspect `browser-tests/test_preview_runtime_regressions.py`
-  - current coverage checks both Chromium and Firefox via the shared Playwright fixture
 
 ### `feat/blueprint-metadata-json-review-20260310`
 
@@ -230,6 +155,22 @@ Last updated: 2026-03-11 (prepared `feat/preview-runtime-regression-test-2026031
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/preview-runtime-regression-test-20260310` into `bp` (`f97ebeca -> 79a12440`, fast-forward).
+- Feature branch key commits:
+  - `79a12440` test(preview): cover runtime hover regressions
+  - `bca5bdac` fix(preview): restore inline child hide helper
+  - `87c7d27a` fix(preview): restore bibliography hovers and nested subhover panels
+  - `91772825` refactor(preview): remove summary and graph template stores
+  - `61845190` feat(preview): generalize manifest-backed summary and graph previews
+- Validation on rebased feature branch:
+  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/noperthedron`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/noperthedron/html-multi`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/example-blueprints`
+- Preview cleanup authorized with this merge.
 
 - Retired `feat/worktree-output-dedup-20260310` after landing its workflow updates directly on `bp` in `57795969` (`docs(agents): dedupe preview outputs and add lean wrapper`).
 - Validation carried forward from the feature worktree before cleanup:
