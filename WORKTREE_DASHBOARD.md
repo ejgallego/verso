@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (rebased `feat/code-summary-badge-unification-20260310` onto the latest `bp` and refreshed its review checkpoint)
+Last updated: 2026-03-11 (created `feat/lean-code-link-preview-api-20260311` and built its preview artifacts)
 
 ## Active Worktrees
 
@@ -113,6 +113,28 @@ Last updated: 2026-03-11 (rebased `feat/code-summary-badge-unification-20260310`
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Informal/CodeSummary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/ExternalCode.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`
+
+### `feat/lean-code-link-preview-api-20260311`
+
+- Status: `active` (owner action: introduce a canonical Lean-code link API, switch existing Lean-link call sites onto it, then add hover preview through that single path)
+- Summary: new feature worktree for unifying Lean-code linking across code summary surfaces and blueprint summary views behind one API, with shared hover preview behavior layered on top.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/lean-code-link-preview-api-20260311`
+- Branch: `feat/lean-code-link-preview-api-20260311`
+- Base commit/branch:
+  - branched from `bp` at `c45986f8`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/lean-code-link-preview-api-20260311/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/lean-code-link-preview-api-20260311/noperthedron`
+- Preview link:
+  - `http://127.0.0.1:8156/lean-code-link-preview-api-20260311/noperthedron/html-multi/`
+  - `http://127.0.0.1:8156/lean-code-link-preview-api-20260311/example-blueprints/noperthedron/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/lean-code-link-preview-api-20260311`
+  - `git status --short`
+  - inspect `src/verso-blueprint/VersoBlueprint/Resolve.lean`, `src/verso-blueprint/VersoBlueprint/Informal/CodeSummary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
 
 ### `feat/lean-commandm-incremental-20260306`
 
