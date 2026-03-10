@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (marked `feat/worktree-output-dedup-20260310` ready for review after deduplicating example preview instructions)
+Last updated: 2026-03-10 (retired `review/link-preview-audit-20260310` and restored `feat/link-preview-audit-20260308` as the active implementation worktree)
 
 ## Active Worktrees
 
@@ -45,8 +45,8 @@ Last updated: 2026-03-10 (marked `feat/worktree-output-dedup-20260310` ready for
 
 ### `feat/link-preview-audit-20260308`
 
-- Status: `blocked` (owner action: resume the nested same-panel hover investigation later; current branch is checkpointed and rebased)
-- Summary: preview refactor/coverage work is checkpointed with substantial progress in shared preview hydration, bibliography/summary coverage, graph/used-by nested preview wiring, and live artifact generation, but recursive inline-preview-in-inline-preview behavior still fails in the browser (`Theorem 15 -> Definition 10` remains unstable/empty).
+- Status: `active` (owner action: resume implementation from the audit findings and address the nested preview regressions)
+- Summary: canonical implementation worktree for the preview refactor/coverage branch. The review-only fork has been retired, and its audit findings now feed back into this branch for follow-up fixes.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
 - Branch: `feat/link-preview-audit-20260308`
 - Base commit/branch:
@@ -74,6 +74,7 @@ Last updated: 2026-03-10 (marked `feat/worktree-output-dedup-20260310` ready for
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
   - `git status --short`
+  - implement against this worktree; the retired review branch had no divergent code, only audit notes
   - known repro: `Rational-Versions`, hover theorem 15 then definition 10 inside the preview
   - secondary repro: graph node preview with nested child link still needs manual verification after the same-panel bug is solved
   - first files to inspect on resume:
@@ -82,38 +83,15 @@ Last updated: 2026-03-10 (marked `feat/worktree-output-dedup-20260310` ready for
   - `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
   - `src/verso-blueprint/VersoBlueprint/Commands/graph.js`
   - detailed checkpoint design note: `doc/PreviewHoverDesignNotes.md` (`2026-03-10 Checkpoint`)
+  - highest-priority audit findings to address next:
+  - summary preview test expects shared `bindTemplatePreview`, but `Commands/Summary.lean` still uses the bespoke binder
+  - label-template fallback is unreachable because emitted inline refs still lack `data-bp-preview-fallback-label`
+  - graph hover bridge CSS does not cover the real trigger-to-panel gap, and graph preview hydration can rebinding-loop on repeated `mouseover`
   - TODO: unify preview labels/titles behind one canonical API; right now some surfaces use `BlockData.displayTitle`, while others still fall back to raw labels or ad hoc `data-bp-preview-title` strings
   - useful browser probes:
   - enable trace with `localStorage.setItem("bp-debug-preview", "1")`
   - after repro run `(window.bpPreviewTrace || []).slice(-30)`
   - most relevant trace finding so far: after nested `Definition 10` show, a synthetic `inline.panel.mouseleave` can still arrive and schedule hide
-
-### `review/link-preview-audit-20260310`
-
-- Status: `active` (owner action: consume the exhaustive audit findings; this is a review-only worktree)
-- Summary: isolated audit worktree forked from the checkpointed preview branch so the branch can be diffed, validated, and previewed without mutating the original feature worktree.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/review-link-preview-audit-20260310`
-- Branch: `review/link-preview-audit-20260310`
-- Base commit/branch:
-  - branched from `feat/link-preview-audit-20260308` at `ac5d4b56`
-  - merge-base with `bp`: `0ae05085`
-- Key commits:
-  - none yet
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/review-link-preview-audit-20260310/example-blueprints`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/review-link-preview-audit-20260310/noperthedron`
-  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean` fails at `src/tests/Tests/BlueprintPreviewWiring.lean:165` because the generated summary preview JS still reports `info: false`
-  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean` passed
-  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros` passed
-- Preview link:
-  - `http://127.0.0.1:8154/review-link-preview-audit-20260310/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/review-link-preview-audit-20260310`
-  - `git diff --stat bp...HEAD`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`
-  - confirmed audit mismatch: tests expect summary preview to bind through `bpPreviewUtils.bindTemplatePreview`, but `Commands/Summary.lean` still ships the older bespoke `bindSummaryPreview` code path
-  - confirmed audit mismatch: generated HTML contains `template.bp_label_preview_tpl[...]`, but no emitted element carries `data-bp-preview-fallback-label`, so the label-template fallback tier is unreachable
 
 ### `feat/worktree-output-dedup-20260310`
 
@@ -201,6 +179,18 @@ Last updated: 2026-03-10 (marked `feat/worktree-output-dedup-20260310` ready for
   - `git rebase bp`
 
 ## Recently Completed
+
+- Retired `review/link-preview-audit-20260310` after deciding `feat/link-preview-audit-20260308` remains the canonical implementation worktree.
+- Review validation preserved before cleanup:
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/review-link-preview-audit-20260310/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/review-link-preview-audit-20260310/noperthedron`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean` (failed with `info: false` at the summary preview wiring check)
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/review-link-preview-audit-20260310`
+- Deleted branch:
+  - `review/link-preview-audit-20260310`
 
 - Retired `feat/summary-command-brainstorm-20260309` without code changes after recovering its prompt/transcript from the Codex session log.
 - Validation already captured before retirement:
