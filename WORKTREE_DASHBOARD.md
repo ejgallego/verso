@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (started `feat/worktree-output-dedup-20260310` to remove duplicate example preview outputs)
+Last updated: 2026-03-10 (marked `feat/worktree-output-dedup-20260310` ready for review after deduplicating example preview instructions)
 
 ## Active Worktrees
 
@@ -117,14 +117,14 @@ Last updated: 2026-03-10 (started `feat/worktree-output-dedup-20260310` to remov
 
 ### `feat/worktree-output-dedup-20260310`
 
-- Status: `active` (owner action: review and merge the workflow-instruction cleanup)
+- Status: `ready-for-review` (owner action: review and decide whether to merge the workflow-instruction cleanup)
 - Summary: updates the task-start instructions so example artifacts emitted by `generate-example-blueprints.sh` become the canonical preview outputs instead of forcing a duplicate top-level `lake exe` build for the same artifact.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`
 - Branch: `feat/worktree-output-dedup-20260310`
 - Base commit/branch:
   - branched from `bp` at `89f17e2e`
 - Key commits:
-  - none yet
+  - `43eade76` docs(agents): dedupe example preview outputs
 - Validation status:
   - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
   - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints`
