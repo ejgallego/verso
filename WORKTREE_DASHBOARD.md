@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (marked `feat/parent-link-ungrouped-research-20260310` ready for review after local group-preview implementation and browser regression coverage)
+Last updated: 2026-03-10 (marked `feat/preview-manifest-20260310` ready for review after landing the shared preview-manifest slice)
 
 ## Active Worktrees
 
@@ -122,6 +122,43 @@ Last updated: 2026-03-10 (marked `feat/parent-link-ungrouped-research-20260310` 
   - inline refs for `uses` and single-item `used by` chips now emit `data-bp-preview-fallback-label`
   - graph hover mode now uses delayed hide/cancel logic instead of brittle immediate hide
   - graph node preview skips redundant same-node rehydration on descendant `mouseover`
+
+### `feat/preview-manifest-20260310`
+
+- Status: `ready-for-review` (owner action: review the shared preview-manifest slice and decide whether to expand it beyond inline hover)
+- Summary: first progressive move toward shared preview data. The branch emits `bp-previews.json` at build time, adds canonical preview keys to inline refs, and lets nested cross-page inline previews resolve through the shared manifest while preserving current page-local fallbacks first.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-20260310`
+- Branch: `feat/preview-manifest-20260310`
+- Base commit/branch:
+  - branched from `feat/link-preview-fixes-20260310` at `b8c65bd3`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
+  - `lake build VersoBlueprint.PreviewManifest`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310/example-blueprints`
+  - manifest emitted at:
+  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310/html-multi/-verso-data/bp-previews.json`
+  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310/example-blueprints/noperthedron/html-multi/-verso-data/bp-previews.json`
+  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310/example-blueprints/spherepackingblueprint/html-multi/-verso-data/bp-previews.json`
+  - browser smoke test on direct artifact:
+  - chapter 8 `Computational-Step`, hover theorem 7.15, then hover definition 7.10 inside the opened preview
+  - observed result: outer preview opened, nested trigger existed, panel title switched to `Definition 7.10`, and the panel body became the definition content
+- Preview link:
+  - `http://127.0.0.1:8154/preview-manifest-20260310/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-20260310`
+  - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`, `test-projects/Noperthedron/Main.lean`
+  - current scope is inline-preview consumption only; summary and graph still use page-local template stores
+  - manifest fallback order is intentionally conservative:
+  - local inline template
+  - local label template
+  - shared `bp-previews.json`
+  - synthetic metadata fallback
 
 ### `feat/worktree-output-dedup-20260310`
 
