@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (created `feat/code-summary-badge-unification-20260310` and built its preview artifacts)
+Last updated: 2026-03-10 (validated `feat/code-summary-badge-unification-20260310` after unifying code-summary rendering and preview binding)
 
 ## Active Worktrees
 
@@ -170,8 +170,8 @@ Last updated: 2026-03-10 (created `feat/code-summary-badge-unification-20260310`
 
 ### `feat/code-summary-badge-unification-20260310`
 
-- Status: `active` (owner action: inspect badge/hover code paths, map duplication, and turn the findings into a concrete refactor plan)
-- Summary: analysis worktree for unifying the code-summary badge across summary rows, inline Lean hover surfaces, and external code blocks without exposing provenance-specific UI differences.
+- Status: `ready-for-review` (owner action: inspect the validated renderer refactor and decide whether to polish further or prepare it for merge)
+- Summary: refactors code-summary rendering so normalized declaration summaries live in `Informal.CodeSummary`, both inline and external code panels take their top-right indicator from that shared module, and summary hover binding now reuses the shared preview utility.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
 - Branch: `feat/code-summary-badge-unification-20260310`
 - Base commit/branch:
@@ -180,6 +180,7 @@ Last updated: 2026-03-10 (created `feat/code-summary-badge-unification-20260310`
   - none yet
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
+  - `lake build VersoBlueprint.Informal.CodeSummary VersoBlueprint.Informal.Code VersoBlueprint.Informal.ExternalCode VersoBlueprint.Commands.Summary Tests.BlueprintExternalHeadingStatus Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover`
   - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310/example-blueprints`
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310/noperthedron`
 - Preview link:
@@ -188,7 +189,7 @@ Last updated: 2026-03-10 (created `feat/code-summary-badge-unification-20260310`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Lean/Output.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`, `src/verso-blueprint/VersoBlueprint/Lean/Server.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/Informal/CodeSummary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/ExternalCode.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`
 
 ### `feat/lean-commandm-incremental-20260306`
 
