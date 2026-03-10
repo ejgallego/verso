@@ -11,14 +11,14 @@
   - Default example-blueprint output is written to `_out/example-blueprints/{noperthedron,spherepackingblueprint}/`
   - Worktree previews should be written to the shared root `_out/<worktree>/`
 - Very important, check section "Starting a new task and Worktree Layout"
-- NEVER start a task WITHOUT creating a new worktree. DO NOT USE IDE CONTEXT TO GUESS WORKTREE.
+- NEVER start a new task WITHOUT creating a new worktree. For follow-up work in the same task, stay in the existing task worktree and checkpoint instead of spawning another one. DO NOT USE IDE CONTEXT TO GUESS WORKTREE.
 - When editing the `WORKTREE_DASHBOARD.md` ALWAYS commit the edit.
 
 ## Starting a new task and Worktree Layout (Parallel Features + Sub-Agents)
 
 - Keep the main checkout at:
   + `/home/egallego/lean/verso` (branch `bp`)
-- Very important, each time we start a task, we MUST:
+- Very important, each time we start a new task/workstream, we MUST:
   + create a new feature worktree under:
     - `/home/egallego/lean/verso/.worktrees/<feature>`
     This keeps all worktrees under the same writable root, so Codex sub-agents can edit without sandbox path issues.
@@ -35,6 +35,10 @@
   + Generate a link I can click to see the artifact, using `http://127.0.0.1:$port/<feature>/example-blueprints/<artifact>/html-multi/`, and add an entry to the shared root `WORKTREE_DASHBOARD.md` with the link
     Never create a separate `WORKTREE_DASHBOARD.md` inside a feature worktree; the root dashboard is the only dashboard file.
   + If you detect a mathlib rebuild, see the section "Important Information about Mathlib project"
+- For a follow-up request in the same task/workstream, stay in the current worktree instead of creating another one.
+  + Before continuing, checkpoint the task by reviewing `git status`, recording the current state in the worktree's dashboard entry, and making a local commit when the current state is worth preserving.
+  + Treat "same task" pragmatically: if the user is asking for iteration, review feedback, cleanup, polish, or a closely related extension of the same deliverable, keep using the same worktree.
+  + If it is unclear whether the request is a follow-up or a new task, ask the user which worktree to use before creating another one.
 - While working on the worktree, ensure that all the links are properly scoped to the worktree.
 - When we are done with a worktree, and the user has explicitly authorized integration/cleanup, you MUST:
   + ensure validation
@@ -127,3 +131,6 @@ When we create a worktree, it is possible that `lake` makes a choice to setup th
   - execute it explicitly,
   - update the item status to reflect implementation (or block reason),
   - keep a short audit note in the dashboard.
+- Completed-task history does not need to grow without bound.
+  - The user may remove completed items from the dashboard.
+  - When touching the dashboard, it is fine to consolidate older completed entries into shorter summaries or prune stale completed items, as long as active worktrees remain accurate and resumable.
