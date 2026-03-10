@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (rebased `feat/preview-hover-tweaks-20260310` onto current `bp` and reran its preview wiring validation)
+Last updated: 2026-03-10 (registered the preview runtime hotfix worktree for the missing child-hide helper regression)
 
 ## Active Worktrees
 
@@ -76,6 +76,28 @@ Last updated: 2026-03-10 (rebased `feat/preview-hover-tweaks-20260310` onto curr
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-hover-tweaks-20260310`
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean` and `src/verso-blueprint/VersoBlueprint/Commands/Bibliography.lean`
   - shared `_out` server is running on `http://127.0.0.1:8154/` in session `77001`
+
+### `feat/preview-runtime-fix-20260310`
+
+- Status: `active` (owner action: finish the cold artifact rebuild, then re-check the shipped page that was throwing `cancelChildHide is not defined`)
+- Summary: minimal runtime hotfix for the rebased preview line. The inline preview child panel path was calling `cancelChildHide()` without defining it inside `inlineLinkPreviewJs`, which broke all preview hides/shows at runtime. This worktree removes the stray helper from the unrelated shared binder and restores the helper in the actual inline preview closure.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-fix-20260310`
+- Branch: `feat/preview-runtime-fix-20260310`
+- Base commit/branch:
+  - branched from `feat/preview-hover-tweaks-20260310` at `50407611`
+- Key commit:
+  - `ab94e276` fix(preview): restore inline child hide helper
+- Validation status:
+  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - note: the cold `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-runtime-fix-20260310` rebuild was still running when this dashboard entry was recorded
+- Preview link:
+  - `http://127.0.0.1:8154/preview-runtime-fix-20260310/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-fix-20260310`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
+  - browser repro to re-check after rebuild: `The-Global-Theorem` bibliography hover and inline preview hide path
 
 ### `feat/blueprint-metadata-json-review-20260310`
 
