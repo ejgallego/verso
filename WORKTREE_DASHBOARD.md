@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-20260310` after adding capped triage sections and regression coverage)
+Last updated: 2026-03-10 (squashed and rebased `feat/summary-command-implementation-20260310`, then rebuilt its review artifacts)
 
 ## Active Worktrees
 
@@ -145,14 +145,14 @@ Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-2026
 
 ### `feat/summary-command-implementation-20260310`
 
-- Status: `active` (owner action: review the checkpoint and decide whether to tune ranking heuristics further or prepare the branch for landing)
-- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch now adds a triage section with ranked `Top priorities`, `Most used`, and `Group health`, plus capped visible lists, nested “show all” expansion, and per-group next-action hints.
+- Status: `ready-for-review` (owner action: review the rebuilt artifacts and decide whether to do one more polish pass or move to merge prep)
+- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch is now squashed to one review commit on top of current `bp`, with triage sections for ranked `Top priorities`, split statement/proof reuse views, capped visible lists, nested “show all” expansion, and per-group next-action hints.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
 - Branch: `feat/summary-command-implementation-20260310`
 - Base commit/branch:
-  - branched from `bp` at `0ae05085`
+  - rebased on current `bp`
 - Key commits:
-  - `4a927a1e` feat(summary): add triage rankings and capped detail lists
+  - `0522ce53` feat(summary): add triage rankings and capped detail lists
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
   - `lake build VersoBlueprint.Commands.Summary`
@@ -162,6 +162,7 @@ Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-2026
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
 - Preview link:
   - `http://127.0.0.1:8154/summary-command-implementation-20260310/noperthedron/html-multi/`
+  - `http://127.0.0.1:8154/summary-command-implementation-20260310/example-blueprints/noperthedron/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
   - `git status --short`
