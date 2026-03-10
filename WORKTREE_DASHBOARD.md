@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged and cleaned up `feat/agents-followup-policy-20260311` after validating the follow-up worktree policy update)
+Last updated: 2026-03-11 (created `feat/blueprint-metadata-json-review-bp-20260311` from current `bp` for a refreshed metadata JSON review)
 
 ## Active Worktrees
 
@@ -45,10 +45,29 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/agents-followup-policy-202
   - likely change shape: thread an explicit interactive flag from outer `Command.Context.snap?` into `DocElabContext`, then gate highlight generation and declaration analysis in blueprint Lean blocks
   - manual target: record that interactive Lean editing uses a latency-oriented fast path while batch builds still run full highlighting and blueprint analysis
 
+### `feat/blueprint-metadata-json-review-bp-20260311`
+
+- Status: `active` (owner action: rerun the metadata JSON review against current `bp` only)
+- Summary: fresh metadata-review worktree created directly from current `bp` after the preview/runtime work landed, so the analysis no longer depends on merged predecessor branches.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
+- Branch: `feat/blueprint-metadata-json-review-bp-20260311`
+- Base commit/branch:
+  - branched from `bp` at `6501559a`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created and root `.lake` copied
+  - pending: `script/lean-low-priority lake exe cache get`
+  - pending: `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
+  - review only the code reachable from current `bp`
+  - ignore older preview-branch assumptions from `feat/blueprint-metadata-json-review-20260310`
+
 ### `feat/blueprint-metadata-json-review-20260310`
 
-- Status: `active` (owner action: inspect metadata JSON generation and review it for invariants, duplication, and efficiency issues)
-- Summary: review worktree forked from the committed head of `feat/preview-template-removal-20260310` to audit the blueprint metadata JSON pipeline without disturbing the source worktree's uncommitted edits.
+- Status: `superseded` (owner action: ignore for current metadata review; fresh work now continues on `feat/blueprint-metadata-json-review-bp-20260311`)
+- Summary: earlier review worktree based on a pre-merge preview branch head; kept only as historical context until explicit cleanup is authorized.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-20260310`
 - Branch: `feat/blueprint-metadata-json-review-20260310`
 - Base commit/branch:
