@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (started `review/link-preview-audit-20260310` and recorded its validation findings)
+Last updated: 2026-03-10 (started `feat/worktree-output-dedup-20260310` to remove duplicate example preview outputs)
 
 ## Active Worktrees
 
@@ -114,6 +114,28 @@ Last updated: 2026-03-10 (started `review/link-preview-audit-20260310` and recor
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`
   - confirmed audit mismatch: tests expect summary preview to bind through `bpPreviewUtils.bindTemplatePreview`, but `Commands/Summary.lean` still ships the older bespoke `bindSummaryPreview` code path
   - confirmed audit mismatch: generated HTML contains `template.bp_label_preview_tpl[...]`, but no emitted element carries `data-bp-preview-fallback-label`, so the label-template fallback tier is unreachable
+
+### `feat/worktree-output-dedup-20260310`
+
+- Status: `active` (owner action: review and merge the workflow-instruction cleanup)
+- Summary: updates the task-start instructions so example artifacts emitted by `generate-example-blueprints.sh` become the canonical preview outputs instead of forcing a duplicate top-level `lake exe` build for the same artifact.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`
+- Branch: `feat/worktree-output-dedup-20260310`
+- Base commit/branch:
+  - branched from `bp` at `89f17e2e`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints`
+  - canonical preview output now lives only under `/home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints/{noperthedron,spherepackingblueprint}`
+  - no duplicate `/home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/noperthedron` artifact was generated for this task
+- Preview link:
+  - `http://127.0.0.1:8154/worktree-output-dedup-20260310/example-blueprints/noperthedron/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`
+  - `git diff -- AGENTS.md`
+  - inspect `AGENTS.md` "Validation output" and "Starting a new task and Worktree Layout"
 
 ### `feat/summary-command-implementation-20260310`
 
