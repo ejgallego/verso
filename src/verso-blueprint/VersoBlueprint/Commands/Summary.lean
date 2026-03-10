@@ -85,6 +85,83 @@ instance : Quote EntryStatusCounts where
       quote s.noProof
     ]
 
+structure PriorityItem where
+  label : Name
+  kind : String
+  stage : String
+  statementStatus : String
+  proofStatus : String := ""
+  directUses : Nat := 0
+  downstreamUses : Nat := 0
+  leanObjects : List Name := []
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote PriorityItem where
+  quote s := mkCApp ``PriorityItem.mk
+    #[
+      quote s.label,
+      quote s.kind,
+      quote s.stage,
+      quote s.statementStatus,
+      quote s.proofStatus,
+      quote s.directUses,
+      quote s.downstreamUses,
+      quote s.leanObjects
+    ]
+
+structure UsageItem where
+  label : Name
+  kind : String
+  statementUses : Nat := 0
+  proofUses : Nat := 0
+  directUses : Nat := 0
+  downstreamUses : Nat := 0
+  leanObjects : List Name := []
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote UsageItem where
+  quote s := mkCApp ``UsageItem.mk
+    #[
+      quote s.label,
+      quote s.kind,
+      quote s.statementUses,
+      quote s.proofUses,
+      quote s.directUses,
+      quote s.downstreamUses,
+      quote s.leanObjects
+    ]
+
+structure GroupHealthItem where
+  parent : Name
+  header : String := ""
+  totalEntries : Nat := 0
+  closedEntries : Nat := 0
+  localOnlyEntries : Nat := 0
+  readyEntries : Nat := 0
+  blockedEntries : Nat := 0
+  incompleteLeanEntries : Nat := 0
+  unlockScore : Nat := 0
+  nextPriority? : Option PriorityItem := none
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote GroupHealthItem where
+  quote s := mkCApp ``GroupHealthItem.mk
+    #[
+      quote s.parent,
+      quote s.header,
+      quote s.totalEntries,
+      quote s.closedEntries,
+      quote s.localOnlyEntries,
+      quote s.readyEntries,
+      quote s.blockedEntries,
+      quote s.incompleteLeanEntries,
+      quote s.unlockScore,
+      quote s.nextPriority?
+    ]
+
 structure Summary where
   totalEntries : Nat := 0
   definitions : Nat := 0
@@ -109,6 +186,9 @@ structure Summary where
   theoremLikeIndex : List IndexItem := []
   axiomIndex : List IndexItem := []
   theoremLikeByParent : List ParentTheoremGroup := []
+  topPriorities : List PriorityItem := []
+  mostUsed : List UsageItem := []
+  groupHealth : List GroupHealthItem := []
 deriving Inhabited, FromJson, ToJson
 
 open Syntax in
@@ -137,7 +217,10 @@ instance : Quote Summary where
       quote s.definitionIndex,
       quote s.theoremLikeIndex,
       quote s.axiomIndex,
-      quote s.theoremLikeByParent
+      quote s.theoremLikeByParent,
+      quote s.topPriorities,
+      quote s.mostUsed,
+      quote s.groupHealth
     ]
 
 structure EntryStatusFlags where
@@ -147,6 +230,107 @@ structure EntryStatusFlags where
   noProof : Bool := false
   hasAxiomLike : Bool := false
 deriving Inhabited
+
+private structure UsageCounts where
+  statementUses : Nat := 0
+  proofUses : Nat := 0
+deriving Inhabited
+
+private def UsageCounts.directUses (counts : UsageCounts) : Nat :=
+  counts.statementUses + counts.proofUses
+
+private def bumpUsageCounts (acc : UsageCounts) (inStatement inProof : Bool) : UsageCounts :=
+  {
+    statementUses := acc.statementUses + (if inStatement then 1 else 0)
+    proofUses := acc.proofUses + (if inProof then 1 else 0)
+  }
+
+private def pushUniqueName (xs : Array Name) (x : Name) : Array Name :=
+  if xs.contains x then xs else xs.push x
+
+private def buildUsageMaps (entries : Array (Name × Data.Node)) : NameMap UsageCounts × NameMap (Array Name) :=
+  entries.foldl (init := (({} : NameMap UsageCounts), ({} : NameMap (Array Name)))) fun (usageMap, reverseMap) (sourceLabel, node) =>
+    let statementDeps := Informal.Graph.eraseDups (Informal.Graph.statementDeps node)
+    let proofDeps := Informal.Graph.eraseDups (Informal.Graph.proofDeps node)
+    let usageMap :=
+      statementDeps.foldl (init := usageMap) fun acc dep =>
+        acc.insert dep (bumpUsageCounts (acc.getD dep {}) true false)
+    let usageMap :=
+      proofDeps.foldl (init := usageMap) fun acc dep =>
+        acc.insert dep (bumpUsageCounts (acc.getD dep {}) false true)
+    let reverseDeps := Informal.Graph.eraseDups (statementDeps ++ proofDeps)
+    let reverseMap :=
+      reverseDeps.foldl (init := reverseMap) fun acc dep =>
+        acc.insert dep (pushUniqueName (acc.getD dep #[]) sourceLabel)
+    (usageMap, reverseMap)
+
+partial def downstreamUseCount (reverseMap : NameMap (Array Name))
+    (pending : List Name) (visited : NameSet := {}) (count : Nat := 0) : Nat :=
+  match pending with
+  | [] => count
+  | label :: rest =>
+    if visited.contains label then
+      downstreamUseCount reverseMap rest visited count
+    else
+      let next := (reverseMap.getD label #[]).toList
+      downstreamUseCount reverseMap (next ++ rest) (visited.insert label) (count + 1)
+
+private def actionableStage? (node : Data.Node)
+    (statementStatus : Informal.Graph.StatementStatus) (proofStatus : Informal.Graph.ProofStatus) : Option String :=
+  if node.kind.isTheoremLike then
+    if proofStatus == .ready then
+      some "proof"
+    else if statementStatus == .ready then
+      some "statement"
+    else
+      none
+  else if statementStatus == .ready then
+    some "statement"
+  else
+    none
+
+private def priorityStageRank (stage : String) : Nat :=
+  if stage == "proof" then 0 else if stage == "statement" then 1 else 2
+
+private def sortPriorityItems (items : Array PriorityItem) : Array PriorityItem :=
+  items.qsort fun a b =>
+    a.downstreamUses > b.downstreamUses ||
+      (a.downstreamUses == b.downstreamUses &&
+        (a.directUses > b.directUses ||
+          (a.directUses == b.directUses &&
+            (priorityStageRank a.stage < priorityStageRank b.stage ||
+              (priorityStageRank a.stage == priorityStageRank b.stage &&
+                a.label.toString < b.label.toString)))))
+
+private def sortUsageItems (items : Array UsageItem) : Array UsageItem :=
+  items.qsort fun a b =>
+    a.directUses > b.directUses ||
+      (a.directUses == b.directUses &&
+        (a.downstreamUses > b.downstreamUses ||
+          (a.downstreamUses == b.downstreamUses &&
+            a.label.toString < b.label.toString)))
+
+private def sortUsageItemsByAxis (items : Array UsageItem) (axisUses : UsageItem → Nat) : Array UsageItem :=
+  items.qsort fun a b =>
+    axisUses a > axisUses b ||
+      (axisUses a == axisUses b &&
+        (a.downstreamUses > b.downstreamUses ||
+          (a.downstreamUses == b.downstreamUses &&
+            (a.directUses > b.directUses ||
+              (a.directUses == b.directUses &&
+                a.label.toString < b.label.toString)))))
+
+private def sortGroupHealthItems (items : Array GroupHealthItem) : Array GroupHealthItem :=
+  items.qsort fun a b =>
+    a.readyEntries > b.readyEntries ||
+      (a.readyEntries == b.readyEntries &&
+        (a.unlockScore > b.unlockScore ||
+          (a.unlockScore == b.unlockScore &&
+            (a.totalEntries > b.totalEntries ||
+              (a.totalEntries == b.totalEntries &&
+                a.header < b.header)))))
+
+private def triageVisibleLimit : Nat := 10
 
 private def bumpEntryStatus (acc : EntryStatusCounts) (flags : EntryStatusFlags) : EntryStatusCounts :=
   {
@@ -216,6 +400,34 @@ private def nodeLeanObjects (node : Data.Node) : List Name :=
   | some (.literate code) => (code.definedDefs.map (·.name) ++ code.definedTheorems.map (·.name)).toList
   | _ => []
 
+private def priorityItem? (state : Environment.State) (external : Informal.Graph.ExternalCodeStatus)
+    (usageMap : NameMap UsageCounts) (reverseMap : NameMap (Array Name))
+    (label : Name) (node : Data.Node) : Option PriorityItem :=
+  let statementStatus := Informal.Graph.statementStatus external state label node
+  let proofStatus := Informal.Graph.proofStatus external state label node
+  let localFormalized := Informal.Graph.nodeLocalFormalized external node
+  match actionableStage? node statementStatus proofStatus with
+  | Option.none => Option.none
+  | Option.some stage =>
+    if localFormalized then
+      Option.none
+    else
+      let usage := usageMap.getD label {}
+      let downstreamUses := downstreamUseCount reverseMap (reverseMap.getD label #[]).toList
+      if downstreamUses == 0 then
+        Option.none
+      else
+        Option.some {
+          label
+          kind := toString node.kind
+          stage
+          statementStatus := Informal.Graph.StatementStatus.toText statementStatus
+          proofStatus := if node.kind.isTheoremLike then Informal.Graph.ProofStatus.toText proofStatus else ""
+          directUses := usage.directUses
+          downstreamUses
+          leanObjects := nodeLeanObjects node
+        }
+
 private def addParentTheoremLikeItem (groups : NameMap (List IndexItem)) (parent : Name) (item : IndexItem) :
     NameMap (List IndexItem) :=
   groups.insert parent (item :: groups.getD parent [])
@@ -227,6 +439,7 @@ def buildSummary : CoreM Summary := do
   let parentChildren := state.data.parentChildren
   let groupHeaders := state.groups
   let external : Informal.Graph.ExternalCodeStatus := {}
+  let (usageMap, reverseMap) := buildUsageMaps entries
   let summary := entries.foldl (init := ({} : Summary)) fun acc (label, node) =>
       let hasStatement := node.statement.isSome
       let hasProof := node.proof.isSome
@@ -368,7 +581,84 @@ def buildSummary : CoreM Summary := do
       else
         let header := groupHeaders.getD parent parent.toString
         { parent, header, entries := items.reverse } :: acc
-  return { summary with theoremLikeByParent }
+  let topPriorities : List PriorityItem :=
+    let items := entries.foldl (init := #[]) fun acc (label, node) =>
+      match priorityItem? state external usageMap reverseMap label node with
+      | none => acc
+      | some item => acc.push item
+    (sortPriorityItems items).toList
+  let mostUsed : List UsageItem :=
+    let items := entries.foldl (init := #[]) fun acc (label, node) =>
+      let usage := usageMap.getD label {}
+      if usage.directUses == 0 then
+        acc
+      else
+        let downstreamUses := downstreamUseCount reverseMap (reverseMap.getD label #[]).toList
+        acc.push {
+          label
+          kind := toString node.kind
+          statementUses := usage.statementUses
+          proofUses := usage.proofUses
+          directUses := usage.directUses
+          downstreamUses
+          leanObjects := nodeLeanObjects node
+        }
+    (sortUsageItems items).toList
+  let groupHealth : List GroupHealthItem :=
+    let items := parentChildren.toArray.foldl (init := #[]) fun acc (parent, children) =>
+      if children.size <= 1 then
+        acc
+      else
+        let childEntries := children.foldl (init := #[]) fun acc child =>
+          match state.data.get? child with
+          | some node => acc.push (child, node)
+          | none => acc
+        let (totalEntries, closedEntries, localOnlyEntries, readyEntries, blockedEntries, incompleteLeanEntries, unlockScore) :=
+          childEntries.foldl (init := (0, 0, 0, 0, 0, 0, 0)) fun (totalEntries, closedEntries, localOnlyEntries, readyEntries, blockedEntries, incompleteLeanEntries, unlockScore) (child, node) =>
+            let statusFlags := entryStatusFlags state external node
+            let statementStatus := Informal.Graph.statementStatus external state child node
+            let proofStatus := Informal.Graph.proofStatus external state child node
+            let readyNow :=
+              !Informal.Graph.nodeLocalFormalized external node &&
+                (actionableStage? node statementStatus proofStatus).isSome
+            let blockedNow := !statusFlags.completed && !statusFlags.completedDepsNo && !readyNow
+            let incompleteLeanNow :=
+              Informal.Graph.nodeHasAssociatedCode node &&
+                (Informal.Graph.nodeHasSorries external node || Informal.Graph.nodeHasMissingExternalDecls external node)
+            let unlockScore := unlockScore + downstreamUseCount reverseMap (reverseMap.getD child #[]).toList
+            (
+              totalEntries + 1,
+              closedEntries + (if statusFlags.completed then 1 else 0),
+              localOnlyEntries + (if statusFlags.completedDepsNo then 1 else 0),
+              readyEntries + (if readyNow then 1 else 0),
+              blockedEntries + (if blockedNow then 1 else 0),
+              incompleteLeanEntries + (if incompleteLeanNow then 1 else 0),
+              unlockScore
+            )
+        let nextPriority? :=
+          let candidates := childEntries.foldl (init := #[]) fun acc (child, node) =>
+            match priorityItem? state external usageMap reverseMap child node with
+            | none => acc
+            | some item => acc.push item
+          let sorted := sortPriorityItems candidates
+          if h : 0 < sorted.size then
+            some sorted[0]
+          else
+            none
+        acc.push {
+          parent
+          header := groupHeaders.getD parent parent.toString
+          totalEntries
+          closedEntries
+          localOnlyEntries
+          readyEntries
+          blockedEntries
+          incompleteLeanEntries
+          unlockScore
+          nextPriority?
+        }
+    (sortGroupHealthItems items).toList
+  return { summary with theoremLikeByParent, topPriorities, mostUsed, groupHealth }
 
 private def Summary.previewLabels (data : Summary) : Array Name :=
   let allLabels : List Name :=
@@ -377,6 +667,8 @@ private def Summary.previewLabels (data : Summary) : Array Name :=
     data.missingLeanDecls.map (·.label) ++
     data.definitionIndex.map (·.label) ++
     data.theoremLikeIndex.map (·.label) ++
+    data.topPriorities.map (·.label) ++
+    data.mostUsed.map (·.label) ++
     data.theoremLikeByParent.foldr (init := []) fun group acc =>
       group.entries.map (·.label) ++ acc
   let (_, labels) := allLabels.foldl (init := (({} : NameSet), (#[] : Array Name))) fun (seen, labels) label =>
@@ -561,6 +853,29 @@ block_extension Block.summary (summary : Summary) where
           match getDeclHref label decl with
           | Option.some href => {{ <li><a href={{href}}> <code>s!"{decl}"</code> </a></li> }}
           | Option.none => {{ <li><code>s!"{decl}"</code></li> }}
+      let mkBadge (text : String) (className : String := "bp_summary_badge") : Output.Html :=
+        {{ <span class={{className}}>s!"{text}"</span> }}
+      let mkBadgeRow (badges : Array Output.Html) : Output.Html :=
+        if badges.isEmpty then
+          .empty
+        else
+          {{ <div class="bp_summary_badge_row">{{badges}}</div> }}
+      let capRows (rows : Array Output.Html) (noun : String) : Array Output.Html :=
+        let visible := (rows.toList.take triageVisibleLimit).toArray
+        let hidden := (rows.toList.drop triageVisibleLimit).toArray
+        if hidden.isEmpty then
+          visible
+        else
+          visible.push {{
+            <li class="bp_summary_item bp_summary_item_nested">
+              <details class="bp_summary_nested">
+                <summary>s!"Show all {hidden.size} more {noun}"</summary>
+                <ul class="bp_summary_list">
+                  {{hidden}}
+                </ul>
+              </details>
+            </li>
+          }}
       let mkLeanRow (label : Name) (kind : String) (leanObjects : List Name) := do
         let entryRef ← mkEntryRef label
         let codeHref := getCodeHref label
@@ -680,6 +995,137 @@ block_extension Block.summary (summary : Summary) where
                       else
                        .empty}}
                   </li> }}
+      let topPriorityRows ←
+        data.topPriorities.toArray.mapM fun item => do
+          let entryRef ← mkEntryRef item.label
+          let codeHref := getCodeHref item.label
+          let associatedDecls := !item.leanObjects.isEmpty
+          let proofBadges : Array Output.Html :=
+            if item.proofStatus.isEmpty then
+              #[]
+            else
+              #[mkBadge s!"proof: {item.proofStatus}"]
+          let badges :=
+            #[
+              mkBadge s!"stage: {item.stage}" "bp_summary_badge bp_summary_badge_warn",
+              mkBadge s!"statement: {item.statementStatus}",
+              mkBadge s!"direct uses: {item.directUses}",
+              mkBadge s!"downstream unlocks: {item.downstreamUses}"
+            ] ++ proofBadges
+          pure {{
+            <li class="bp_summary_item">
+              <div class="bp_summary_item_top">
+                <span class="bp_summary_item_head">{{entryRef}}</span>
+                <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+              </div>
+              <div class="bp_summary_item_body">s!"Ready for {item.stage} work."</div>
+              {{mkBadgeRow badges}}
+              {{if associatedDecls then
+                 {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.label item.leanObjects}}</ul></details>}}
+                else
+                 .empty}}
+              {{if let some href := codeHref then
+                 {{<div class="bp_summary_item_actions">"Jump: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
+                else
+                 .empty}}
+            </li>
+          }}
+      let statementUsedItems :=
+        sortUsageItemsByAxis
+          (data.mostUsed.toArray.filter fun item => item.statementUses > 0)
+          (fun item => item.statementUses)
+      let proofUsedItems :=
+        sortUsageItemsByAxis
+          (data.mostUsed.toArray.filter fun item => item.proofUses > 0)
+          (fun item => item.proofUses)
+      let mkUsageRow (item : UsageItem) (bodyText primaryLabel secondaryLabel : String)
+          (primaryCount secondaryCount : Nat) := do
+          let entryRef ← mkEntryRef item.label
+          let codeHref := getCodeHref item.label
+          let associatedDecls := !item.leanObjects.isEmpty
+          let badges :=
+            #[
+              mkBadge s!"{primaryLabel}: {primaryCount}" "bp_summary_badge bp_summary_badge_warn",
+              mkBadge s!"{secondaryLabel}: {secondaryCount}",
+              mkBadge s!"direct uses: {item.directUses}",
+              mkBadge s!"downstream unlocks: {item.downstreamUses}"
+            ]
+          pure {{
+            <li class="bp_summary_item">
+              <div class="bp_summary_item_top">
+                <span class="bp_summary_item_head">{{entryRef}}</span>
+                <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+              </div>
+              <div class="bp_summary_item_body">{{.text true bodyText}}</div>
+              {{mkBadgeRow badges}}
+              {{if associatedDecls then
+                 {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.label item.leanObjects}}</ul></details>}}
+                else
+                 .empty}}
+              {{if let some href := codeHref then
+                 {{<div class="bp_summary_item_actions">"Jump: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
+                else
+                 .empty}}
+            </li>
+          }}
+      let statementUsedRows ←
+        statementUsedItems.mapM fun item =>
+          mkUsageRow item
+            "Reverse dependencies recorded in statement dependencies."
+            "statement uses"
+            "proof uses"
+            item.statementUses
+            item.proofUses
+      let proofUsedRows ←
+        proofUsedItems.mapM fun item =>
+          mkUsageRow item
+            "Reverse dependencies recorded in proof dependencies."
+            "proof uses"
+            "statement uses"
+            item.proofUses
+            item.statementUses
+      let groupHealthRows ←
+        data.groupHealth.toArray.mapM fun item => do
+          let badges :=
+            #[
+              mkBadge s!"total: {item.totalEntries}",
+              mkBadge s!"closed: {item.closedEntries}",
+              mkBadge s!"local-only: {item.localOnlyEntries}",
+              mkBadge s!"ready: {item.readyEntries}" "bp_summary_badge bp_summary_badge_warn",
+              mkBadge s!"blocked: {item.blockedEntries}",
+              mkBadge s!"incomplete Lean: {item.incompleteLeanEntries}",
+              mkBadge s!"unlock score: {item.unlockScore}"
+            ]
+          match item.nextPriority? with
+          | Option.none =>
+            pure {{
+              <li class="bp_summary_item">
+                <div class="bp_summary_item_top">
+                  <span class="bp_summary_item_head">{{.text true item.header}}</span>
+                  <span class="bp_summary_item_meta"><code>s!"{item.parent}"</code></span>
+                </div>
+                <div class="bp_summary_item_body">"Grouped view over entries sharing the same parent."</div>
+                {{mkBadgeRow badges}}
+                <div class="bp_summary_item_actions">"Next: no ready child currently unlocks downstream work."</div>
+              </li>
+            }}
+          | Option.some next =>
+            let nextRef ← mkEntryRef next.label
+            pure {{
+              <li class="bp_summary_item">
+                <div class="bp_summary_item_top">
+                  <span class="bp_summary_item_head">{{.text true item.header}}</span>
+                  <span class="bp_summary_item_meta"><code>s!"{item.parent}"</code></span>
+                </div>
+                <div class="bp_summary_item_body">"Grouped view over entries sharing the same parent."</div>
+                {{mkBadgeRow badges}}
+                <div class="bp_summary_item_actions">
+                  "Next: " {{nextRef}} " "
+                  {{mkBadge s!"stage: {next.stage}" "bp_summary_badge bp_summary_badge_warn"}}
+                  {{mkBadge s!"downstream unlocks: {next.downstreamUses}"}}
+                </div>
+              </li>
+            }}
       let definitionRows ←
         data.definitionIndex.toArray.mapM fun item =>
           mkLeanRow item.label item.kind item.leanObjects
@@ -769,6 +1215,39 @@ block_extension Block.summary (summary : Summary) where
               <summary>s!"Incomplete details ({data.sorryDetails.length})"</summary>
               <ul class="bp_summary_list">
                 {{if sorryRows.isEmpty then {{<li class="bp_summary_empty">"No incomplete declarations detected."</li>}} else sorryRows}}
+              </ul>
+            </details>
+          </details>
+          <details class="bp_summary_section" open>
+            <summary>"Triage"</summary>
+            <div class="bp_summary_grid">
+              <div class="bp_summary_card"><span class="bp_summary_label">"Actionable priorities"</span><span class="bp_summary_value">s!"{data.topPriorities.length}"</span><span class="bp_summary_status">"Entries ready now and already unlocking downstream work."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Statement-used entries"</span><span class="bp_summary_value">s!"{statementUsedItems.size}"</span><span class="bp_summary_status">"Entries reused in statement dependencies."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Proof-used entries"</span><span class="bp_summary_value">s!"{proofUsedItems.size}"</span><span class="bp_summary_status">"Entries reused in proof-only dependencies."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Tracked parent groups"</span><span class="bp_summary_value">s!"{data.groupHealth.length}"</span><span class="bp_summary_status">"Grouped health rollups for parents with more than one child entry."</span></div>
+            </div>
+            <details class="bp_summary_subsection">
+              <summary>s!"Top priorities ({data.topPriorities.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if topPriorityRows.isEmpty then {{<li class="bp_summary_empty">"No entries are currently ready for a new statement/proof step."</li>}} else capRows topPriorityRows "priorities"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"Most used in statements ({statementUsedItems.size})"</summary>
+              <ul class="bp_summary_list">
+                {{if statementUsedRows.isEmpty then {{<li class="bp_summary_empty">"No statement dependencies recorded yet."</li>}} else capRows statementUsedRows "statement-used entries"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"Most used in proofs ({proofUsedItems.size})"</summary>
+              <ul class="bp_summary_list">
+                {{if proofUsedRows.isEmpty then {{<li class="bp_summary_empty">"No proof dependencies recorded yet."</li>}} else capRows proofUsedRows "proof-used entries"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"Group health ({data.groupHealth.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if groupHealthRows.isEmpty then {{<li class="bp_summary_empty">"No parent groups with multiple child entries were found."</li>}} else capRows groupHealthRows "groups"}}
               </ul>
             </details>
           </details>

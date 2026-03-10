@@ -24,6 +24,87 @@ External declaration wiring test.
 {bp_summary}
 :::::::
 
+#docs (Genre.Manual) summaryTriageDoc "Summary Triage" :=
+:::::::
+:::group "triage.group"
+Triage group heading.
+:::
+
+:::definition "def:triage.01" (parent := "triage.group")
+Definition 01.
+:::
+
+:::definition "def:triage.02" (parent := "triage.group")
+Definition 02.
+:::
+
+:::definition "def:triage.03" (parent := "triage.group")
+Definition 03.
+:::
+
+:::definition "def:triage.04" (parent := "triage.group")
+Definition 04.
+:::
+
+:::definition "def:triage.05" (parent := "triage.group")
+Definition 05.
+:::
+
+:::definition "def:triage.06" (parent := "triage.group")
+Definition 06.
+:::
+
+:::definition "def:triage.07" (parent := "triage.group")
+Definition 07.
+:::
+
+:::definition "def:triage.08" (parent := "triage.group")
+Definition 08.
+:::
+
+:::definition "def:triage.09" (parent := "triage.group")
+Definition 09.
+:::
+
+:::definition "def:triage.10" (parent := "triage.group")
+Definition 10.
+:::
+
+:::definition "def:triage.11" (parent := "triage.group")
+Definition 11.
+:::
+
+:::definition "def:triage.12" (parent := "triage.group")
+Definition 12.
+:::
+
+:::theorem "thm:triage.main" (parent := "triage.group")
+Depends on
+{uses "def:triage.01"}[],
+{uses "def:triage.02"}[],
+{uses "def:triage.03"}[],
+{uses "def:triage.04"}[],
+{uses "def:triage.05"}[],
+{uses "def:triage.06"}[],
+{uses "def:triage.07"}[],
+{uses "def:triage.08"}[],
+{uses "def:triage.09"}[],
+{uses "def:triage.10"}[],
+{uses "def:triage.11"}[],
+and {uses "def:triage.12"}[].
+:::
+
+:::theorem "thm:triage.proof" (parent := "triage.group")
+Proof-only dependency sample.
+:::
+
+:::proof "thm:triage.proof"
+Proof uses {uses "def:triage.01"}[] and {uses "def:triage.02"}[].
+:::
+
+{bp_summary}
+:::::::
+
 private partial def collectBlocks (part : Doc.Part Genre.Manual) : Array (Doc.Block Genre.Manual) :=
   let childBlocks := part.subParts.foldl (init := #[]) fun acc child =>
     acc ++ collectBlocks child
@@ -86,6 +167,29 @@ private def hasSubstr (s needle : String) : Bool :=
       hasSubstr out "class=\"bp_summary_decl_list\"" &&
       hasSubstr out "href=\"#--informal-external-decl-" &&
       hasSubstr out "class=\"bp_external_decl_item bp_external_decl_item_rendered\" id=\"--informal-external-decl-"
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
+    let blocks := collectBlocks summaryTriageDoc.toPart
+    let html ← renderManualBlocksHtml blocks
+    let out := html.asString
+    pure (
+      hasSubstr out "Actionable priorities</span><span class=\"bp_summary_value\">12</span>" &&
+      hasSubstr out "Statement-used entries</span><span class=\"bp_summary_value\">12</span>" &&
+      hasSubstr out "Proof-used entries</span><span class=\"bp_summary_value\">2</span>" &&
+      hasSubstr out "Top priorities (12)" &&
+      hasSubstr out "Show all 2 more priorities" &&
+      hasSubstr out "Most used in statements (12)" &&
+      hasSubstr out "Show all 2 more statement-used entries" &&
+      hasSubstr out "Most used in proofs (2)" &&
+      hasSubstr out "proof uses: 1" &&
+      hasSubstr out "Group health (1)" &&
+      hasSubstr out "Next:" &&
+      hasSubstr out "def:triage.01" &&
+      hasSubstr out "downstream unlocks: 1"
     )
 
 end Verso.Tests.BlueprintSummaryLinks
