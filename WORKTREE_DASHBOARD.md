@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (validated `feat/blueprint-metadata-json-review-20260310` example outputs and reviewed the shared preview metadata JSON pipeline)
+Last updated: 2026-03-10 (validated manifest-only summary and graph previews on `feat/preview-template-removal-20260310` after a clean `.lake` rebuild)
 
 ## Active Worktrees
 
@@ -22,9 +22,35 @@ Last updated: 2026-03-10 (validated `feat/blueprint-metadata-json-review-2026031
   - `git status --short`
   - `git log --oneline -1`
 
+### `feat/preview-template-removal-20260310`
+
+- Status: `ready-for-review` (owner action: review the manifest-only summary/graph path and decide whether this should replace the older preview checkpoints)
+- Summary: removes the remaining page-local summary and dependency-graph preview stores so those surfaces now ship only their panel shells and resolve preview bodies from the shared manifest. The branch also imports `VersoBlueprint.PreviewManifest` from the root library, which was necessary for a clean `.lake` rebuild to produce `VersoBlueprint.PreviewManifest:c.o` and let the preview executables link normally.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310`
+- Branch: `feat/preview-template-removal-20260310`
+- Base commit/branch:
+  - branched from `feat/preview-manifest-generalize-20260310` at `a2a6c290`
+- Key commit:
+  - `bedcd57f` refactor(preview): remove summary and graph template stores
+- Validation status:
+  - fresh-worktree reset: deleted `.lake`, reran `lake exe cache get`, then rebuilt from scratch
+  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros noperthedron spherepackingblueprint`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-template-removal-20260310`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-template-removal-20260310/example-blueprints`
+  - browser smoke on shipped pages:
+  - `Blueprint-Summary`: `templates=0`, preview title `«def:eps-spanning»`, non-empty body (`9206` chars)
+  - `Dependency-Graph`: `templates=0`, preview title `«thm:no_nopert_tight_pose»`, non-empty body (`1340` chars)
+- Preview link:
+  - `http://127.0.0.1:8154/preview-template-removal-20260310/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`, and `src/verso-blueprint/VersoBlueprint.lean`
+  - the shared `_out` server was restarted in session `77001`
+  - local summary/graph preview templates are now gone from the emitted HTML; inline preview still keeps its own local store
+
 ### `feat/preview-manifest-generalize-20260310`
 
-- Status: `ready-for-review` (owner action: review the generalized manifest path and decide whether this should replace the older preview checkpoint)
+- Status: `checkpoint` (owner action: keep only if you want the mixed local-template plus manifest fallback checkpoint; active preview work now continues on `feat/preview-template-removal-20260310`)
 - Summary: extends the shared preview manifest beyond inline hover so summary and dependency-graph previews can resolve without page-local template stores. Summary now opts into `allowSharedManifest`, graph hover falls back to `previewUtils.loadSharedPreviewEntry("", label)`, and the shared preview runtime preserves optional preview keys from local templates when present.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-generalize-20260310`
 - Branch: `feat/preview-manifest-generalize-20260310`
