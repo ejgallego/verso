@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (validated a cross-browser runtime hover regression test on `feat/preview-runtime-regression-test-20260310`)
+Last updated: 2026-03-11 (registered `feat/agents-followup-policy-20260311` after validating the follow-up worktree policy update)
 
 ## Active Worktrees
 
@@ -21,6 +21,27 @@ Last updated: 2026-03-10 (validated a cross-browser runtime hover regression tes
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/agents-followup-policy-20260311`
+
+- Status: `ready-for-review` (owner action: inspect the task/worktree continuity wording in `AGENTS.md`)
+- Summary: clarifies that only genuinely new tasks create fresh worktrees, same-task follow-ups stay in the existing worktree and checkpoint first, ambiguous cases must ask, and completed dashboard history may be consolidated instead of growing indefinitely.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/agents-followup-policy-20260311`
+- Branch: `feat/agents-followup-policy-20260311`
+- Base commit/branch:
+  - branched from `bp` at `d943c107`
+- Key commits:
+  - `c5a1d2a6` docs(agents): clarify follow-up worktree policy
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
+  - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/agents-followup-policy-20260311/example-blueprints`
+  - reused shared `_out` preview server on `http://127.0.0.1:8157` in session `14284`
+- Preview link:
+  - `http://127.0.0.1:8157/agents-followup-policy-20260311/example-blueprints/noperthedron/html-multi/`
+  - `http://127.0.0.1:8157/agents-followup-policy-20260311/example-blueprints/spherepackingblueprint/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/agents-followup-policy-20260311`
+  - inspect `AGENTS.md` top-level task rules, "Starting a new task and Worktree Layout", and "Worktree Dashboard File"
 
 ### `feat/lean-lean-interactive-latency-20260310`
 
