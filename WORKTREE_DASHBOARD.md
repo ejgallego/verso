@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (marked `feat/link-preview-fixes-20260310` ready for review after landing the audited link-preview fixes)
+Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-20260310` after adding capped triage sections and regression coverage)
 
 ## Active Worktrees
 
@@ -145,16 +145,19 @@ Last updated: 2026-03-10 (marked `feat/link-preview-fixes-20260310` ready for re
 
 ### `feat/summary-command-implementation-20260310`
 
-- Status: `active` (owner action: implement the first summary ranking sections using the existing graph/status payloads)
-- Summary: fresh successor worktree for turning the earlier summary brainstorm into code, starting with `Top priorities`, `Most used`, and `Group health` on top of the current `bp_summary` data.
+- Status: `active` (owner action: review the checkpoint and decide whether to tune ranking heuristics further or prepare the branch for landing)
+- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch now adds a triage section with ranked `Top priorities`, `Most used`, and `Group health`, plus capped visible lists, nested “show all” expansion, and per-group next-action hints.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
 - Branch: `feat/summary-command-implementation-20260310`
 - Base commit/branch:
   - branched from `bp` at `0ae05085`
 - Key commits:
-  - none yet
+  - `4a927a1e` feat(summary): add triage rankings and capped detail lists
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
+  - `lake build VersoBlueprint.Commands.Summary`
+  - `lake build Tests.BlueprintSummaryLinks`
+  - `lake build Tests.BlueprintPreviewWiring`
   - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints`
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
 - Preview link:
@@ -162,7 +165,7 @@ Last updated: 2026-03-10 (marked `feat/link-preview-fixes-20260310` ready for re
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/summary.css`, `src/tests/Tests/BlueprintSummaryLinks.lean`
 
 ### `feat/lean-commandm-incremental-20260306`
 
