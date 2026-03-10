@@ -1,6 +1,6 @@
 # Preview Hover Design Notes
 
-Last updated: 2026-03-06 (`feat/external-code-hover-locality-20260306`)
+Last updated: 2026-03-10 (`feat/link-preview-audit-20260308` checkpoint)
 
 ## Scope
 
@@ -103,3 +103,100 @@ Rationale: editor hovers are syntax/info-tree scoped, while rendered-page hovers
 - Shared hover JS now treats inline `.hover-info` payloads and fetched docs-json payloads uniformly, including docstring markdown rendering.
 
 Rationale: the real design boundary is not "hover vs non-hover", but "shared page-local hover table" vs "self-contained snippet". Upstream, this should likely become an explicit helper or rendering mode rather than a blueprint-local rewrite.
+
+## 2026-03-10 Checkpoint (`feat/link-preview-audit-20260308`)
+
+This section captures the branch-local hover-link architecture that survived the preview audit work. It is intentionally written as a resume checkpoint, not as a final design endorsement.
+
+### Current Hover-Link Approach
+
+1. Preview data is shared primarily through the traversal preview cache.
+
+- Informal blocks register canonical preview payloads in `Informal.Block` via `PreviewCache.Entry.ofBlocks`.
+- `uses` links derive stable inline preview ids from `usePreviewId`, keyed by label plus preview facet suffix.
+- Summary, graph, bibliography backrefs, and `used by` all reuse the same traversal-rendered preview bodies where available.
+- Widget previews are still the notable exception: they continue to use the widget/elaboration-side cache rather than the traversal cache.
+
+2. HTML hover surfaces use one shared browser runtime, but not one shared panel.
+
+- `window.bpPreviewUtils` in `Commands/Common.lean` owns the reusable browser-side helpers:
+  - template collection and decoding,
+  - hover-mode and placement decoding,
+  - anchored positioning,
+  - panel close-button policy,
+  - subtree hydration,
+  - trace/debug capture via `window.bpPreviewTrace`.
+- Inline preview uses a single global panel, `#bp-inline-preview-panel`.
+- Summary preview uses its own anchored hover panel, but binds through `bindTemplatePreview`.
+- Graph preview keeps its own preview and group-hover panels, but reuses shared behavior parsing, close-button wiring, positioning helpers, and subtree hydration.
+- `used by` remains a custom panel surface, but it now opts into the shared subtree-hydration path so nested refs can be rebound there too.
+
+3. Newly inserted preview DOM is now treated as a hydration boundary.
+
+- `bpPreviewUtils.registerPreviewHydrator` lets each preview surface register a local rebinding pass.
+- `bpPreviewUtils.hydratePreviewSubtree` is called whenever preview HTML is inserted into a panel body.
+- This is what lets nested refs inside summary, graph, and `used by` previews participate in the same preview runtime instead of remaining dead HTML.
+
+4. Inline preview resolution now has three tiers.
+
+- Tier 1: page-local inline preview templates in the hidden inline preview store (`template.bp_inline_preview_tpl[data-bp-preview-id]`).
+- Tier 2: page-level label preview templates emitted by informal blocks (`template.bp_label_preview_tpl[data-bp-preview-label]`).
+- Tier 3: metadata fallback cards synthesized from `data-bp-preview-fallback-*` attributes when neither template path is present.
+
+5. Nested same-panel inline hover is handled by replacing the global inline panel in place.
+
+- Outer inline refs anchor the panel to the hovered trigger.
+- Inner refs rendered inside that panel do not spawn a second panel; they swap the existing panel body/title in place.
+- The runtime keeps a short delayed hide (`180ms`), a temporary panel size lock, and an `ignoreNextPanelExit` guard to survive obvious synthetic leave events during DOM replacement.
+- Debugging for this path lives in `bpPreviewTrace`, with `inline.show`, `inline.trigger.*`, `inline.panel.*`, `inline.scheduleHide.fire`, and `inline.hide` entries.
+
+### What Works Well At This Checkpoint
+
+- Shared preview-data flow is much better aligned than before this branch:
+  - summary coverage expanded,
+  - bibliography backlinks gained previews,
+  - graph previews hydrate nested refs,
+  - `used by` nested hover is on the shared hydration path.
+- Label-scoped fallback templates emitted by `Informal.Block` mean nested refs are no longer restricted to the local inline-template owner.
+- The shared runtime now has enough instrumentation to trace hover ownership problems without guessing blindly.
+
+### Known Failures
+
+1. Nested inline-preview-in-inline-preview is still not correct.
+
+- Known repro: `Rational-Versions`, hover theorem 15, then definition 10 inside the preview.
+- Latest checkpoint behavior: the child panel can stay visible, but the nested content still resolves to an empty body in that path.
+- Earlier lifecycle failures were reduced, but payload resolution and/or same-panel ownership is still incomplete there.
+
+2. Graph-nested inline preview still needs follow-up validation after the same-panel fix.
+
+- The graph HTML preview body now hydrates nested refs before math rendering.
+- That fixed one class of dead nested links, but graph-child preview behavior still needs manual confirmation once the inline recursion bug is solved.
+
+3. Preview titles are still not fully canonicalized.
+
+- Some surfaces use `BlockData.displayTitle`/`displayNumber`.
+- Other paths still fall back to raw labels or ad hoc `data-bp-preview-title` strings.
+- This is now tracked in `TECHDEBT.md` as “unify preview labels/titles behind one canonical API”.
+
+### Resume Pointers
+
+- Primary files:
+  - `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
+  - `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
+  - `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
+  - `src/verso-blueprint/VersoBlueprint/Commands/graph.js`
+- Primary browser probe:
+  - `localStorage.setItem("bp-debug-preview", "1")`
+  - then inspect `(window.bpPreviewTrace || []).slice(-30)`
+- Most useful trace finding so far:
+  - after nested `Definition 10` show, panel exit events can still arrive in a way that leaves the child preview selected but without stable content.
+
+### Validation Snapshot
+
+- Focused tests had passed before this checkpoint:
+  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintLinkHover Tests.BlueprintPreviewWiring Tests.BlueprintTexMacros`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+- Reliable artifact build path for this branch:
+  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308`
