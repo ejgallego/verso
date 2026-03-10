@@ -52,8 +52,8 @@ Last updated: 2026-03-10 (checkpointed `feat/link-preview-audit-20260308` and ex
 - Base commit/branch:
   - rebased on current `bp`
 - Key commit:
-  - current tip at this checkpoint: `1f569fa8`
-  - branch tip is the rebased replay of `checkpoint(preview): preserve nested hover investigation`
+  - branch tip includes the rebased replay of `checkpoint(preview): preserve nested hover investigation`
+  - branch tip also includes the branch-local docs checkpoint `checkpoint(preview): document hover-link architecture`
 - Validation status:
   - focused preview validation had passed before the checkpoint
   - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308`
