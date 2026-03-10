@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (retired `review/link-preview-audit-20260310` and restored `feat/link-preview-audit-20260308` as the active implementation worktree)
+Last updated: 2026-03-10 (started `feat/link-preview-fixes-20260310` to land the audited link-preview fixes)
 
 ## Active Worktrees
 
@@ -92,6 +92,35 @@ Last updated: 2026-03-10 (retired `review/link-preview-audit-20260310` and resto
   - enable trace with `localStorage.setItem("bp-debug-preview", "1")`
   - after repro run `(window.bpPreviewTrace || []).slice(-30)`
   - most relevant trace finding so far: after nested `Definition 10` show, a synthetic `inline.panel.mouseleave` can still arrive and schedule hide
+
+### `feat/link-preview-fixes-20260310`
+
+- Status: `active` (owner action: implement the audited summary/inline/graph preview fixes and revalidate)
+- Summary: successor fix worktree forked from `feat/link-preview-audit-20260308` to land the concrete review findings without mutating the checkpointed branch.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-fixes-20260310`
+- Branch: `feat/link-preview-fixes-20260310`
+- Base commit/branch:
+  - branched from `feat/link-preview-audit-20260308` at `ac5d4b56`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
+  - pending implementation validation:
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/link-preview-fixes-20260310/example-blueprints`
+  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/link-preview-fixes-20260310`
+- Preview link:
+  - `http://127.0.0.1:8154/link-preview-fixes-20260310/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/link-preview-fixes-20260310`
+  - fix targets: `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/graph.js`, `src/verso-blueprint/VersoBlueprint/Commands/graph.css`
+  - priority list:
+  - make summary preview use the shared `bindTemplatePreview` path
+  - emit `data-bp-preview-fallback-label` for label-template fallback
+  - stop graph preview rehydrating on repeated same-node `mouseover`
+  - replace graph hover's brittle immediate hide with gap-tolerant hover lifecycle
 
 ### `feat/worktree-output-dedup-20260310`
 
