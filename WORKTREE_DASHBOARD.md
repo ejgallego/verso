@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (started `feat/link-preview-fixes-20260310` to land the audited link-preview fixes)
+Last updated: 2026-03-10 (marked `feat/link-preview-fixes-20260310` ready for review after landing the audited link-preview fixes)
 
 ## Active Worktrees
 
@@ -95,17 +95,16 @@ Last updated: 2026-03-10 (started `feat/link-preview-fixes-20260310` to land the
 
 ### `feat/link-preview-fixes-20260310`
 
-- Status: `active` (owner action: implement the audited summary/inline/graph preview fixes and revalidate)
-- Summary: successor fix worktree forked from `feat/link-preview-audit-20260308` to land the concrete review findings without mutating the checkpointed branch.
+- Status: `ready-for-review` (owner action: review the fix branch and decide whether to merge or continue browser-level follow-up)
+- Summary: successor fix worktree forked from `feat/link-preview-audit-20260308`; it lands the audited summary/inline/graph preview fixes and refreshes the targeted regression tests.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-fixes-20260310`
 - Branch: `feat/link-preview-fixes-20260310`
 - Base commit/branch:
   - branched from `feat/link-preview-audit-20260308` at `ac5d4b56`
 - Key commits:
-  - none yet
+  - `b8c65bd3` fix(preview): repair shared hover wiring
 - Validation status:
   - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
-  - pending implementation validation:
   - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
   - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
   - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
@@ -115,12 +114,12 @@ Last updated: 2026-03-10 (started `feat/link-preview-fixes-20260310` to land the
   - `http://127.0.0.1:8154/link-preview-fixes-20260310/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/link-preview-fixes-20260310`
-  - fix targets: `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/graph.js`, `src/verso-blueprint/VersoBlueprint/Commands/graph.css`
-  - priority list:
-  - make summary preview use the shared `bindTemplatePreview` path
-  - emit `data-bp-preview-fallback-label` for label-template fallback
-  - stop graph preview rehydrating on repeated same-node `mouseover`
-  - replace graph hover's brittle immediate hide with gap-tolerant hover lifecycle
+  - primary fix points: `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`, `src/verso-blueprint/VersoBlueprint/Commands/graph.js`, `src/verso-blueprint/VersoBlueprint/Commands/graph.css`
+  - landed fixes:
+  - summary preview now binds through shared `bpPreviewUtils.bindTemplatePreview`
+  - inline refs for `uses` and single-item `used by` chips now emit `data-bp-preview-fallback-label`
+  - graph hover mode now uses delayed hide/cancel logic instead of brittle immediate hide
+  - graph node preview skips redundant same-node rehydration on descendant `mouseover`
 
 ### `feat/worktree-output-dedup-20260310`
 
