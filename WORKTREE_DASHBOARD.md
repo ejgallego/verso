@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (retired `feat/worktree-output-dedup-20260310` after landing its workflow updates on `bp`)
+Last updated: 2026-03-10 (registered the preview runtime hotfix worktree for the missing child-hide helper regression)
 
 ## Active Worktrees
 
@@ -122,6 +122,28 @@ Last updated: 2026-03-10 (retired `feat/worktree-output-dedup-20260310` after la
   - inspect metadata JSON producers and consumers under `src/verso-blueprint`
   - source worktree `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310` was dirty at fork time; this review branch intentionally starts from committed head `a2a6c290`
 
+### `feat/worktree-output-dedup-20260310`
+
+- Status: `ready-for-review` (owner action: review and decide whether to merge the workflow-instruction cleanup)
+- Summary: updates the task-start instructions so example artifacts emitted by `generate-example-blueprints.sh` become the canonical preview outputs instead of forcing a duplicate top-level `lake exe` build for the same artifact.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`
+- Branch: `feat/worktree-output-dedup-20260310`
+- Base commit/branch:
+  - branched from `bp` at `89f17e2e`
+- Key commits:
+  - `43eade76` docs(agents): dedupe example preview outputs
+- Validation status:
+  - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints`
+  - canonical preview output now lives only under `/home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints/{noperthedron,spherepackingblueprint}`
+  - no duplicate `/home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/noperthedron` artifact was generated for this task
+- Preview link:
+  - `http://127.0.0.1:8154/worktree-output-dedup-20260310/example-blueprints/noperthedron/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`
+  - `git diff -- AGENTS.md`
+  - inspect `AGENTS.md` "Validation output" and "Starting a new task and Worktree Layout"
+
 ### `feat/code-summary-badge-unification-20260310`
 
 - Status: `ready-for-review` (owner action: inspect the validated renderer refactor and decide whether to polish further or prepare it for merge)
@@ -189,11 +211,668 @@ Last updated: 2026-03-10 (retired `feat/worktree-output-dedup-20260310` after la
 
 ## Recently Completed
 
-- Retired `feat/worktree-output-dedup-20260310` after landing its workflow updates directly on `bp` in `57795969` (`docs(agents): dedupe preview outputs and add lean wrapper`).
-- Validation carried forward from the feature worktree before cleanup:
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/worktree-output-dedup-20260310/example-blueprints`
-- Sanity check on `bp` after landing the wrapper:
-  - `script/lean-low-priority true`
-- Rebased `feat/worktree-output-dedup-20260310` onto `bp`; the stale one-commit delta dropped because `bp` already carried the stronger `AGENTS.md` wording plus the new tracked wrapper script.
-- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/worktree-output-dedup-20260310`.
-- Deleted branch: `feat/worktree-output-dedup-20260310`.
+- Cleaned up superseded preview predecessor worktrees after promoting `feat/preview-hover-tweaks-20260310` as the active preview line.
+- Removed worktrees:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
+  - `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-generalize-20260310`
+  - `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/preview-ux-followup-20260310`
+  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-generalize-20260310`
+  - `/home/egallego/lean/verso-blueprint/_out/preview-template-removal-20260310`
+- Branch refs were intentionally retained for now; only the worktrees and their stale outputs were cleaned up.
+
+- Merged `feat/summary-command-implementation-20260310` into `bp` (`ea01f5fe -> 9135c719`, fast-forward).
+- Feature branch key commits:
+  - `9135c719` feat(summary): add metadata-driven summary views
+  - `0abf0a8a` feat(blueprint): add author metadata panels
+  - `fd40b47e` feat(summary): add coverage analytics and priority metadata
+  - `550879a0` feat(summary): add triage rankings and capped detail lists
+- Validation on rebased feature branch:
+  - `lake build VersoBlueprint Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring`
+  - `lake build Authors Chapters.LocalTheorem`
+  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
+  - note: a clean compiled `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron` rebuild was still running when merge/cleanup was authorized, so it was not awaited for landing
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
+  - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints/noperthedron`
+  - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints/spherepackingblueprint`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
+- Deleted branch:
+  - `feat/summary-command-implementation-20260310`
+
+- Retired `feat/preview-manifest-20260310` after confirming it is fully contained in `feat/preview-ux-followup-20260310`.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-20260310`
+- Deleted branch:
+  - `feat/preview-manifest-20260310`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310`
+
+- Retired `feat/link-preview-audit-20260308` after confirming it is fully contained in `feat/preview-manifest-20260310`.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
+- Deleted branch:
+  - `feat/link-preview-audit-20260308`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308`
+
+- Retired `feat/link-preview-fixes-20260310` after confirming it is fully contained in `feat/preview-manifest-20260310`.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-fixes-20260310`
+- Deleted branch:
+  - `feat/link-preview-fixes-20260310`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/link-preview-fixes-20260310`
+
+- Merged `feat/parent-link-ungrouped-research-20260310` into `bp` (`a603e818 -> ba6e9e1b`, fast-forward).
+- Feature branch key commit:
+  - `ba6e9e1b` feat(blueprint): add local parent group previews
+- Validation on rebased feature branch:
+  - `lake build Tests.BlueprintPreviewWiring`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_blueprint_group_preview.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron/html-multi`
+  - note: the earlier `./generate-example-blueprints.sh` and `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron` outputs were reused because the final rebase only picked up dashboard-only `bp` commits
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Retained preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/example-blueprints`
+  - `/home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron`
+- Shared preview server `http://127.0.0.1:8154/` kept running in session `17595` because other active worktrees still publish artifacts there.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/parent-link-ungrouped-research-20260310`
+- Deleted branch:
+  - `feat/parent-link-ungrouped-research-20260310`
+
+- Retired `review/link-preview-audit-20260310` after deciding `feat/link-preview-audit-20260308` remains the canonical implementation worktree.
+- Review validation preserved before cleanup:
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/review-link-preview-audit-20260310/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/review-link-preview-audit-20260310/noperthedron`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean` (failed with `info: false` at the summary preview wiring check)
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/review-link-preview-audit-20260310`
+- Deleted branch:
+  - `review/link-preview-audit-20260310`
+
+- Retired `feat/summary-command-brainstorm-20260309` without code changes after recovering its prompt/transcript from the Codex session log.
+- Validation already captured before retirement:
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-brainstorm-20260309/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-brainstorm-20260309/noperthedron`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-brainstorm-20260309`
+- Deleted branch:
+  - `feat/summary-command-brainstorm-20260309`
+
+- Merged `feat/agents-merge-guardrails-20260310` into `bp` (`d40267d3 -> 0e8c886b`, fast-forward).
+- Feature branch key commit:
+  - `0e8c886b` docs(agents): require explicit merge authorization
+- Validation on feature branch before merge:
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/noperthedron`
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Retained preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/example-blueprints`
+  - `/home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/noperthedron`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/agents-merge-guardrails-20260310`
+- Deleted branch:
+  - `feat/agents-merge-guardrails-20260310`
+
+- Merged `feat/global-numbering-20260309` into `bp` (`d2388e77 -> 31f8cda4`, fast-forward).
+- Feature branch key commits:
+  - `effcec20` feat(blueprint): add configurable informal numbering
+  - `3ee220ff` docs(cite): document citation summary payloads
+  - `31f8cda4` docs(blueprint): explain numbering options
+- Validation on rebased feature branch:
+  - `lake build Tests.BlueprintNumbering Tests VersoBlueprint`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/noperthedron`
+  - spot checks in generated HTML:
+  - `Theorem 4.1`, `Theorem 4.2`, `Theorem 4.3`, `Theorem 5.5`, `Definition 6.7`, `Definition 7.10`
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Preview links:
+  - `http://127.0.0.1:8153/global-numbering-20260309/noperthedron/html-multi/`
+  - `http://127.0.0.1:8153/global-numbering-20260309/example-blueprints/noperthedron/html-multi/`
+- Shared preview server kept running in session `68635`.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
+- Deleted branch:
+  - `feat/global-numbering-20260309`
+
+- Merged `feat/graph-review-20260306` into `bp` (`f7defba0 -> be85a0cc`, fast-forward).
+- Feature branch key commit:
+  - `be85a0cc` refactor(graph): stabilize interactive graph views
+- Validation on rebased squashed feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/graph-review-20260306`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Shared preview server kept running in session `87423`; merged artifact remains available at:
+  - `http://127.0.0.1:8150/graph-review-20260306/html-multi/`
+- Follow-up roadmap note:
+  - add a browser-level regression for graph variant switching plus node/group hover previews when cycles allow
+
+- Merged `feat/informal-used-by-20260306` into `bp` (`62265b80 -> 9b6a9094`, fast-forward).
+- Feature branch key commit:
+  - `9b6a9094` feat(informal): add used-by header metadata
+- Validation on rebased squashed feature branch:
+  - `lake build Tests.BlueprintPreviewWiring`
+  - `lake build Tests`
+  - `lake env lean src/tests/Tests.lean`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/informal-used-by-20260306` (warnings only; no errors)
+- Validation on `bp` after merge:
+  - reused the rebuilt `/home/egallego/lean/verso-blueprint/_out/informal-used-by-20260306` artifact from the merged feature head
+- Removed preview output directory:
+  - `/home/egallego/lean/verso-blueprint/_out/informal-used-by-20260306`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/informal-used-by-20260306`
+- Deleted branch:
+  - `feat/informal-used-by-20260306`
+
+- Merged `feat/sphere-packing-blueprint` into `bp` (`c4fa5afa -> c055c4c0`, fast-forward).
+- Feature branch key commits:
+  - `5531c5ef` sphere-packing: add Verso blueprint port scaffold
+  - `dd28fa2b` sphere-packing: add temporary external-name workarounds
+  - `c055c4c0` sphere-packing: validate both example blueprints
+- Validation on rebased feature branch:
+  - root `.lake` cache resynced into the worktree from `bp`
+  - `lake build spherepackingblueprint`
+  - `./generate-example-blueprints.sh`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/sphere-packing-blueprint`.
+- Deleted branch: `feat/sphere-packing-blueprint`.
+
+- Closed `feat/preview-hover-review-20260305` without direct merge; its functional work was superseded by the consolidated preview-hover merge into `bp`.
+- Superseding `bp` commits:
+  - `aefa9e30` refactor(preview-hover): dedupe shared preview helpers and facet API
+  - `f7b4e353` test(preview): align graph wiring assertions with block-scoped DOM
+- Original review worktree validation:
+  - `lake exe cache get`
+  - `lake build VersoBlueprint.PreviewCache VersoBlueprint.Lib.HoverRender VersoBlueprint.Commands.Common VersoBlueprint.Informal.Uses VersoBlueprint.Commands.Summary VersoBlueprint.Commands.Graph`
+  - `lake build Tests`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake exe noperthedron` (warnings only; no errors)
+- No active preview server remained for that worktree at cleanup time.
+- Removed stale server logs from `/home/egallego/lean/verso-blueprint/.worktrees/preview-hover-review-20260305`.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/preview-hover-review-20260305`.
+- Deleted branch: `feat/preview-hover-review-20260305`.
+- Closed `feat/inline-command-codeblock-first-try` without merge (experiment discarded at user request).
+- Validation before discard:
+  - `lake exe cache get`
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron` (passed; warnings only)
+- Discarded local prototype changes in:
+  - `src/verso/Verso/Doc/Elab/Incremental.lean`
+  - `src/verso/Verso/Doc/Elab/Monad.lean`
+  - `src/verso/Verso/Doc/Concrete.lean`
+  - `src/verso/Verso/Doc/Concrete/InlineString.lean`
+  - `src/verso-manual/VersoManual/Literate.lean`
+  - `src/verso-blueprint/VersoBlueprint/Lean.lean`
+- Confirmed preview server `http://127.0.0.1:8141/` was not running at cleanup time.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/inline-command-codeblock-first-try`.
+- Deleted branch: `feat/inline-command-codeblock-first-try`.
+
+- Closed `feat/inline-prefix-incrementality` without merge (unused experiment removed during cleanup).
+- Validation before discard:
+  - none recorded in the dashboard for that worktree
+- No active preview listener tied to that worktree was detected at cleanup time.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/inline-prefix-incrementality`.
+- Deleted branch: `feat/inline-prefix-incrementality`.
+- Closed `feat/verso-block-incremental-snapshots-20260305` without merge (experiment discarded; uncommitted prototype changes were removed with the worktree).
+- Validation before discard:
+  - `lake exe cache get`
+  - `lake build Verso.Doc.Concrete VersoManual.InlineLean VersoBlueprint.Lean`
+  - `lake exe noperthedron` (passed; warnings only)
+  - note: full `lake build` in that worktree still hit the unrelated `test-projects/website-literate` clang crash
+- Confirmed preview server `http://127.0.0.1:8146/` was not running at cleanup time.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/verso-block-incremental-snapshots-20260305`.
+- Deleted branch: `feat/verso-block-incremental-snapshots-20260305`.
+- Merged `feat/external-code-hover-locality-20260306` into `bp` (`afce9b2e -> 8c2082f8`, fast-forward).
+- Feature branch key commit:
+  - `8c2082f8` fix(external-code): restore local hover payloads
+- Rebased feature branch on latest `bp` before merge (already up to date).
+- Validation on the squashed rebased feature branch:
+  - `lake build Verso.Code.Highlighted VersoBlueprint.DocGenNameRender Tests.DocGenNameRender`
+  - `lake env lean src/tests/Tests/DocGenNameRender.lean`
+  - `lake build Tests`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/external-code-hover-locality-20260306`
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
+- Stopped preview server session `92321` (`http://127.0.0.1:8151/`).
+- Removed preview output directory:
+  - `/home/egallego/lean/verso-blueprint/_out/external-code-hover-locality-20260306`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-hover-locality-20260306`.
+- Deleted branches:
+  - `feat/external-code-hover-locality-20260306`
+  - `feat/external-code-hover-locality-20260306-pre-squash`
+
+- Merged `feat/external-code-polish-20260306` into `bp` (`da39f0ca -> cd21e2a8`, fast-forward).
+- Feature branch key commit:
+  - `cd21e2a8` refactor(external-code): simplify canonical external code panels
+- Validation on the squashed rebased feature branch:
+  - `lake exe noperthedron` (warnings only; no errors)
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron` (warnings only; no errors)
+  - `python3 test-projects/Noperthedron/check_blueprint_code_panels.py`
+- No preview listener remained on `http://127.0.0.1:8149/` at cleanup time.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-polish-20260306`.
+- Deleted branch: `feat/external-code-polish-20260306`.
+
+- Removed obsolete external-code precursor worktrees after the canonical-verso review branch became the only relevant one.
+- No preview listeners were running on the old ports `8147` or `8148` at cleanup time.
+- Removed worktrees:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/external-code-visual-refresh-20260305`
+  - `/home/egallego/lean/verso-blueprint/.worktrees/external-code-renderer-switch-20260305`
+- Deleted branches:
+  - `feat/external-code-visual-refresh-20260305`
+  - `feat/external-code-renderer-switch-20260305`
+
+- Merged `feat/math-term-linter-20260305` into `bp` (`48ae71ea -> b8aeedbe`, fast-forward).
+- Feature branch key commit:
+  - `f280d975` feat(blueprint): add KaTeX math linting
+- Validation on rebased squashed feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/math-term-linter-20260305` (warnings only; no errors)
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Kept shared preview server session `53583` running because other active worktrees still use `http://127.0.0.1:8149/`.
+- Removed preview output directory:
+  - `/home/egallego/lean/verso-blueprint/_out/math-term-linter-20260305`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/math-term-linter-20260305`.
+- Deleted branch: `feat/math-term-linter-20260305`.
+
+- Cleaned up the obsolete shared-preview worktree after confirming `noperthedron` should use `--output` rather than a new alias.
+- Validation on `feat/cleanup-noperthedron-shared-out`:
+  - `lake exe cache get`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/cleanup-noperthedron-shared-out` (warnings only; no errors)
+- Removed preview output directories:
+  - `/home/egallego/lean/verso-blueprint/_out/noperthedron-shared-out`
+  - `/home/egallego/lean/verso-blueprint/_out/cleanup-noperthedron-shared-out`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/noperthedron-shared-out`.
+- Deleted branch: `feat/noperthedron-shared-out`.
+
+- Merged `feat/tex-macro-import-20260305` into `bp` (`938b63cf -> 88b678b5`, fast-forward).
+- Feature branch key commit:
+  - `88b678b5` refactor(blueprint): import tex macros per math node
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Validation on `bp` after merge:
+  - `lake build`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Stopped preview server session `11100` (`http://127.0.0.1:8148/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/tex-macro-import-20260305-wt`.
+- Deleted branch: `feat/tex-macro-import-20260305`.
+
+- Closed `feat/external-code-rendering-review-20260305` without merge (analysis-only review task).
+- Validation in the review worktree:
+  - `lake exe cache get`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Visual review used local headless screenshots of collapsed and expanded external-code panels.
+- Stopped preview server `http://127.0.0.1:8145/`.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-code-rendering-review-20260305`.
+- Deleted branch: `feat/external-code-rendering-review-20260305`.
+- Merged `feat/preview-modes-placement-20260305` into `bp` (`7915c4e6 -> f7b4e353`, fast-forward).
+- Feature branch key commits:
+  - `aefa9e30` refactor(preview-hover): dedupe shared preview helpers and facet API
+  - `f7b4e353` test(preview): align graph wiring assertions with block-scoped DOM
+- Rebased consolidated feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake build Tests`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron` (warnings only; no errors)
+- Stopped preview server process `858274` (`http://127.0.0.1:8142/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/preview-modes-placement-20260305`.
+- Deleted branch: `feat/preview-modes-placement-20260305`.
+- Merged `feat/graph-legend-review-20260305` into `bp` (`054b0c02 -> d2a373b3`, fast-forward).
+- Feature branch key commits:
+  - `4c5f0360` refactor(graph-legend): centralize legend contract and scope graph UI
+  - `d2a373b3` refactor(graph): move warnings from fill overlays to border markers
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Stopped preview server process `839443` (`http://127.0.0.1:8120/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/graph-legend-review-20260305`.
+- Deleted branch: `feat/graph-legend-review-20260305`.
+- Merged `feat/sorry-analysis-20260305` into `bp` (`ced2875e -> ee394bd0`, fast-forward).
+- Feature branch key commits:
+  - `6c3959da` refactor(status): split and document ProvedStatus API
+  - `9280ecc5` refactor(status): switch heading mark to statement/proof sorry semantics
+  - `52798463` fix(status): preserve sorry location payload in heading marks
+  - `ee394bd0` docs(code-summary): document public API contracts
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Stopped preview server processes `655290` and `655305` (`http://127.0.0.1:8131/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/sorry-analysis-20260305`.
+- Deleted branch: `feat/sorry-analysis-20260305`.
+- Merged `feat/biblio-hover-preview` into `bp` (`5cbe8477 -> 1aae8d88`, fast-forward).
+- Feature branch key commits:
+  - `3b89d113` feat(cite): render richer bibliography hover previews
+  - `1aae8d88` fix(cite): drop redundant bibliography hover action
+- Rebased feature branch on latest `bp` before merge (already up to date).
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Stopped preview server session `63588` (`http://127.0.0.1:8136/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/biblio-hover-preview`.
+- Deleted branch: `feat/biblio-hover-preview`.
+- Merged `feat/hover-links-biblio-20260305` into `bp` (`8bb0335b -> 9a17b334`, fast-forward).
+- Feature branch key commits:
+  - `1300da42` feat(hover): unify inline preview data for uses and citations
+  - `9a17b334` fix(uses): adapt hover labels to InProgressKind
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Stopped preview server process `665655` (`http://127.0.0.1:8126/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/hover-links-biblio-20260305`.
+- Deleted branch: `feat/hover-links-biblio-20260305`.
+- Merged `feat/tex-label-trim-20260305` into `bp` (`07861069 -> e6ce7c47`, fast-forward).
+- Feature branch key commits:
+  - `5e5a5c0b` feat(blueprint): trim TeX-style label prefixes for Lean-facing names
+  - `579f1c5a` fix(names): keep lean external refs untouched
+  - `0cc26f1d` refactor(name-parsing): split lean and label modules
+  - `9a4fe816` refactor(labels): collapse to single parse entrypoint
+  - `f7870ee2` refactor(lean-names): make normalize private
+- Rebased feature branch on `bp` before merge.
+- Final parser verification:
+  - `(lean := "...")` path parses only via `LeanNameParsing.splitCommaSeparatedList` + `LeanNameParsing.parseE` in `Informal/ExternalCode.lean`
+  - informal label paths parse only via `LabelNameParsing.parse` in `Informal/{Block,Code,Group}.lean` and `Attribute.lean`
+- Validation on feature branch:
+  - `lake exe noperthedron` (warnings only, no errors)
+- Stopped preview server process `637842` (`http://127.0.0.1:8127/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/tex-label-trim-20260305`.
+- Deleted branch: `feat/tex-label-trim-20260305`.
+- Merged `feat/summary-status-hardening-20260304` into `bp` (`7224dd31 -> 62ddf0e9`, fast-forward).
+- Feature branch key commits:
+  - `a082bc0c` refactor(status): enforce proof payload invariant and centralize completion policy
+  - `2d25f9ed` refactor(data): reuse NodeKind for external refs and remove fallback defaults
+  - `62ddf0e9` refactor(external): harden kind handling and simplify block payload model
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Stopped preview server session `1102` (`http://127.0.0.1:8128/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/summary-status-hardening-20260304`.
+- Deleted branch: `feat/summary-status-hardening-20260304`.
+- Closed `feat/previewrender-direct-poc-20260304` without merge (requested discard after experiment).
+- Feature branch note:
+  - `81f89752` docs(dashboard): register previewrender direct POC worktree
+- Validation before discard:
+  - `lake exe noperthedron`
+- Stopped preview server session `85818` (`http://127.0.0.1:8126/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/previewrender-direct-poc-20260304`.
+- Deleted branch: `feat/previewrender-direct-poc-20260304`.
+- Merged `feat/toc-no-number-special-sections-20260304` into `bp` (`d3fe626e -> 3ec15232`, fast-forward).
+- Feature branch key commits:
+  - `06b20584` fix(toc): unnumber blueprint graph, summary, and bibliography sections
+  - `3ec15232` docs(dashboard): mark toc-no-number worktree ready for review
+- Rebased feature branch on `bp` before merge (already up to date).
+- Validation on feature branch before merge:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server session `44287` (`http://127.0.0.1:8125/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/toc-no-number-special-sections-20260304`.
+- Deleted branch: `feat/toc-no-number-special-sections-20260304`.
+- Merged `feat/exists-solution-table-uses-20260304` into `bp` (`b7a2b42d -> 28d0e3ef`, fast-forward).
+- Feature branch key commits:
+  - `7742b120` fix(noperthedron): include main chapter in blueprint graph
+  - `28d0e3ef` docs(dashboard): mark exists-solution-table fix ready
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server session `53968` (`http://127.0.0.1:8122/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/exists-solution-table-uses-20260304`.
+- Deleted branch: `feat/exists-solution-table-uses-20260304`.
+- Merged `feat/graph-command-audit-20260303` into `bp` (`a4c68605 -> 3871af85`, fast-forward).
+- Feature branch key commits:
+  - `ac83a1ce` refactor(status): centralize theorem-like and proved-status helpers
+  - `3871af85` docs(dashboard): mark graph-command-audit rebased and merge-ready
+- Rebased feature branch on latest `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview processes for this worktree:
+  - `lake serve -- /home/egallego/lean/verso-blueprint/.worktrees/graph-command-audit-20260303` (pid `221106`)
+  - `python3/npm http.server _out -p 8096` (pid `218306`)
+  - lean server child `/home/egallego/lean/verso-blueprint/.worktrees/graph-command-audit-20260303` (pid `221229`)
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/graph-command-audit-20260303`.
+- Deleted branch: `feat/graph-command-audit-20260303`.
+- Merged `feat/hover-texprelude-investigate-20260304` into `bp` (`1523f50c -> 96de57c9`, fast-forward).
+- Feature branch key commits:
+  - `e0d7425c` fix(preview): preserve tex prelude text in hover templates
+  - `96de57c9` fix(preview): bypass wrapped katex render for explicit hover prelude
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build VersoBlueprint.Lib.HoverRender VersoBlueprint.Commands.Common VersoBlueprint.Commands.Graph VersoBlueprint.Commands.Summary`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Preview endpoint `http://127.0.0.1:8112/Blueprint-Summary/` confirmed stopped.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/hover-texprelude-investigate-20260304`.
+- Deleted branch: `feat/hover-texprelude-investigate-20260304`.
+- Merged `feat/external-def-link-targets-restore-20260304` into `bp` (`e3c6d140 -> 83ba5b77`, fast-forward).
+- Feature branch key commits:
+  - `a6d9a218` fix(summary): restore external decl anchors and add regression test
+  - `83ba5b77` docs(dashboard): mark external-def-link-target restore ready
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Preview endpoint `http://127.0.0.1:8113/` confirmed stopped (connection refused).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-restore-20260304`.
+- Deleted branch: `feat/external-def-link-targets-restore-20260304`.
+- Merged `feat/proved-status-audit-20260304` into `bp` (`f4e6fa8d -> a9fbebb7`, fast-forward).
+- Feature branch key commit:
+  - `a9fbebb7` refactor(informal): dedupe proved-status summary helpers
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server process `345600` (`http://127.0.0.1:8111/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/proved-status-audit-20260304`.
+- Deleted branch: `feat/proved-status-audit-20260304`.
+- Merged `feat/noperthedron-missing-def-warning` into `bp` (`4f743c2a -> 6a484f9b`, fast-forward).
+- Feature branch key commits:
+  - `f9215100` fix(local-theorem): import congruent module for lemma reference
+  - `6a484f9b` docs(dashboard): mark warning-fix worktree rebased
+- Rebased feature branch on `bp` before merge.
+- Validation on feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server process `360880` (`http://127.0.0.1:8114/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/noperthedron-missing-def-warning`.
+- Deleted branch: `feat/noperthedron-missing-def-warning`.
+- Merged `feat/summary-page-axioms-status-20260304` into `bp` (`ed37bfd0 -> b0b89028`, fast-forward).
+- Feature branch key commits:
+  - `068732e2` feat(summary): add axiom category and per-kind status breakdown
+  - `b0b89028` docs(plan): capture summary streamlining follow-ups
+- Rebased feature branch on `bp` before merge.
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server session `85915` (`http://127.0.0.1:8112/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/summary-page-axioms-status-20260304`.
+- Deleted branch: `feat/summary-page-axioms-status-20260304`.
+- Merged `feat/render-preview-refactor-20260304` into `bp` (`61576b10 -> 00d8f313`, fast-forward).
+- Feature branch key commits:
+  - `ce31e595` refactor(preview): share render helpers and cache summary previews
+  - `336eee98` refactor(summary-preview): switch to shared panel and template store
+  - `0b1914af` refactor(preview-js): share hover helpers across graph and summary
+  - `68aa9fe0` fix(rebase): restore code panel header API in code common
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview servers for this worktree:
+  - `lake serve -- /home/egallego/lean/verso-blueprint/.worktrees/render-preview-refactor-20260304`
+  - `python3 -m http.server 8104 --directory _out`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/render-preview-refactor-20260304`.
+- Deleted branch: `feat/render-preview-refactor-20260304`.
+- Merged `feat/external-def-link-targets-20260304` into `bp` (`c55685f7 -> 11dcbf94`, fast-forward).
+- Feature branch key commit:
+  - `11dcbf94` feat(summary): link external decls to rendered targets
+- Rebased feature branch on `bp` before merge (`9a176052 -> 11dcbf94`).
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server process `337274` (`http://127.0.0.1:8102/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-link-targets-20260304`.
+- Deleted branch: `feat/external-def-link-targets-20260304`.
+- Merged `feat/informal-code-header-unify-20260304` into `bp` (`238da35e -> 75f12d4d`, fast-forward).
+- Feature branch key commits:
+  - `3bbb730b` refactor(informal): unify code panel headers
+  - `75f12d4d` docs(dashboard): mark code header refactor validated
+- Rebased feature branch on `bp` before merge (`b0d65c10 -> 687d4fd5`, conflict resolved in `WORKTREE_DASHBOARD.md`).
+- Validation on rebased feature branch:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Preview endpoint `http://127.0.0.1:8110/` confirmed stopped (connection refused).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-header-unify-20260304`.
+- Deleted branch: `feat/informal-code-header-unify-20260304`.
+- Merged `feat/informal-block-tohtml-audit-20260303` into `bp` (`c9c744c8 -> aa0af98e`, fast-forward).
+- Feature branch key commits:
+  - `6f618850` Refactor inline block code metadata and decl link resolution
+  - `b79709d0` Refactor informal code heading source and tighten external refs
+  - `542d2625` Handle missing proved status in informal code summary
+- Validation on branch before merge:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server process:
+  - `lake serve -- /home/egallego/lean/verso-blueprint/.worktrees/informal-block-tohtml-audit-20260303` (pid `212503`)
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/informal-block-tohtml-audit-20260303`.
+- Deleted branch: `feat/informal-block-tohtml-audit-20260303`.
+- Merged `feat/commands-summary-audit-20260304` into `bp` (`646e0ea1 -> 63449f96`, merge commit).
+- Feature branch key commit:
+  - `062d9f26` refactor(summary): dedupe status logic and scope assets
+- Validation on branch before merge:
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Stopped preview server session `4519` (`http://127.0.0.1:8098/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/commands-summary-audit-20260304`.
+- Deleted branch: `feat/commands-summary-audit-20260304`.
+- Merged `feat/external-lean-html-audit-20260303` into `bp` (`8b560e02 -> 7c2c3b06`, fast-forward).
+- Follow-up on `bp`: `8df33b93` (`test(docgen): assert payload via rendered string length`).
+- Validation on `bp` after merge:
+  - `lake env lean src/tests/Tests/DocGenNameRender.lean`
+  - `lake exe noperthedron`
+- Stopped preview server session `39948` (`http://127.0.0.1:8101/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-lean-html-audit-20260303`.
+- Deleted branch: `feat/external-lean-html-audit-20260303`.
+- Merged `feat/blueprint-deadcode-audit-20260303` into `bp` (`e972f0ca -> 85cb522b`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintGraph.lean`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintGraph.lean`
+  - `lake exe noperthedron` (rerun after one transient clang frontend crash in `VersoBlueprint.Informal.CodeCommon:c.o`)
+- Stopped preview server session `98251` (`http://127.0.0.1:8095/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-deadcode-audit-20260303`.
+- Deleted branch: `feat/blueprint-deadcode-audit-20260303`.
+- Merged `feat/informal-code-audit` into `bp` (`66da6cd6 -> e5295f14`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Stopped preview server on `http://127.0.0.1:8087/`.
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit`.
+- Deleted branch: `feat/informal-code-audit`.
+- Merged `feat/lib-analysis-20260303` into `bp` (`df411fe8 -> ad1ac4e0`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Stopped preview server session `9175` (`http://127.0.0.1:8092/`).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/lib-analysis-20260303`.
+- Deleted branch: `feat/lib-analysis-20260303`.
+- Merged `feat/informal-code-audit-restart-20260303` into `bp` (`7a4bc3f5 -> b579013b`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintInformal.lean`
+  - `lake build Tests`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/informal-code-audit-restart-20260303`.
+- Deleted branch: `feat/informal-code-audit-restart-20260303`.
+- Merged `feat/versoblueprint-refactor` into `bp` (`1b49078e -> e6708cbc`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Validation on `bp` after merge:
+  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/versoblueprint-refactor`.
+- Deleted branch: `feat/versoblueprint-refactor`.
+- Merged `feat/blueprint-dataflow-audit` into `bp` (`9fcd85b3 -> c136a915`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake env lean src/tests/Tests/BlueprintGraph.lean`
+  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-dataflow-audit`.
+- Deleted branch: `feat/blueprint-dataflow-audit`.
+- Merged `feat/docgen-direct-render` into `bp` (`460a78b3 -> 24974b73`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/docgen-direct-render`.
+- Deleted branch: `feat/docgen-direct-render`.
+- Merged `feat/release-audit` into `bp` (`6dfda830 -> af04fe7b`, fast-forward).
+- Validation on branch before merge:
+  - `lake build VersoBlueprint`
+  - `lake exe noperthedron`
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/release-audit`.
+- Deleted branch: `feat/release-audit`.
+- Merged `feat/citation-reverse-details` into `bp` (`889a5814 -> c6f8a1b1`, fast-forward).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/citation-reverse-details`.
+- Deleted branch: `feat/citation-reverse-details`.
+- Merged `feat/external-def-display` into `bp` (`61a5f0a7 -> fd974295`, fast-forward).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/external-def-display`.
+- Deleted branch: `feat/external-def-display`.
+- Merged `feat/commands-path-refactor` into `bp` (`a3381ff3 -> 2d68ac9a`, fast-forward).
+- Removed worktree: `/home/egallego/lean/verso-blueprint/.worktrees/commands-path-refactor`.
+- Deleted branch: `feat/commands-path-refactor`.
