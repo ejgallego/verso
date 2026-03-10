@@ -364,7 +364,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       match usedByJs? with
       | some usedByJs =>
         hasSubstr usedByJs "function bindUsedByPanel(panel)" &&
-        hasSubstr usedByJs "activate(items[0])"
+        hasSubstr usedByJs "activate(items[0], { openWrap: false })"
       | none => false
     )
 

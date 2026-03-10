@@ -1407,7 +1407,10 @@ private def renderRelatedPanel (cfg : RelatedPanelConfig) (entries : Array Relat
           </a>}}
       else
         renderChip cfg.chipClass (cfg.singleTitle entry) 1
-    Informal.HoverRender.inlinePreviewNode true chipNode entry.previewBody entry.previewId entry.previewTitle
+    Informal.HoverRender.inlinePreviewNode
+      true chipNode entry.previewBody entry.previewId entry.previewTitle
+      (previewLookupKey? := some (usedByPreviewLookupKey entry.source))
+      (previewFallbackLabel? := some s!"{entry.source.label}")
   else
     let rows : Array Output.Html :=
       entries.map fun entry =>
@@ -1486,7 +1489,6 @@ private def renderUsedByEntry {m}
         if n == 0 then
           "No reverse dependencies"
         else
-<<<<<<< HEAD
           s!"Reverse dependencies for {data.label}"
       singleTitle := fun entry => s!"Reverse dependency: {entry.previewTitle}"
       panelTitle := fun n => s!"Used by {n}"
@@ -1543,39 +1545,6 @@ private def renderGroupEntry {m}
         if n == 0 then
           if group.declared then
             s!"Group: {group.title}. No other entries in this group."
-=======
-          {{<span class="bp_used_by_chip" title={{s!"Reverse dependency: {previewTitle}"}}>
-              {{.text true (usedByChipText 1)}}
-            </span>}}
-      pure <| Informal.HoverRender.inlinePreviewNode
-        true chipNode previewBody previewId previewTitle
-        (previewLookupKey? := some (usedByPreviewLookupKey entry.source))
-        (previewFallbackLabel? := some s!"{entry.source.label}")
-    else
-      let rows ← entries.mapM fun entry => do
-        let previewId := usedByPreviewId data.label entry.source.label
-        let previewTitle := blockSummaryTitle state entry.source
-        let href := Resolve.resolveDomainHref? state Resolve.informalDomainName entry.source.label.toString
-        let preview? ←
-          Informal.PreviewSource.renderTraversalPreview? state
-            (fun block =>
-              Informal.HoverRender.withInlinePreviewRenderContext (renderBlock block))
-            entry.source.label
-        let previewBody :=
-          match preview? with
-          | some rendered => .seq rendered
-          | none => usedByPreviewFallbackBody entry
-        let rowNode : Output.Html :=
-          let titleNode := {{<span class="bp_used_by_target_title">{{.text true previewTitle}}</span>}}
-          let metaNode := {{
-            <span class="bp_used_by_target_meta">
-              <code>s!"{entry.source.label}"</code>
-              {{renderUsedByAxisBadges entry}}
-            </span>
-          }}
-          if let some href := href then
-            {{<a class="bp_used_by_target" href={{href}}>{{titleNode}}{{metaNode}}</a>}}
->>>>>>> b8c65bd3 (fix(preview): repair shared hover wiring)
           else
             s!"Parent group '{group.label}' is referenced here, but no :::group declaration was found."
         else if group.declared then
