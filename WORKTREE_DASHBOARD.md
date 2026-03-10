@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (squashed and rebased `feat/code-summary-badge-unification-20260310`, then replayed its focused validation)
+Last updated: 2026-03-10 (rebased `feat/summary-command-implementation-20260310` onto current `bp` for merge prep; clean compiled `noperthedron` rebuild still in progress)
 
 ## Active Worktrees
 
@@ -74,23 +74,23 @@ Last updated: 2026-03-10 (squashed and rebased `feat/code-summary-badge-unificat
 
 ### `feat/summary-command-implementation-20260310`
 
-- Status: `active` (owner action: review the metadata-panel checkpoint and decide whether to keep enriching summary consumers or switch to merge prep)
-- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch now covers the full “use existing data better” pass, explicit `priority` ranking metadata, and a new author-metadata panel on statement blocks with real `Noperthedron` examples for David/Jason.
+- Status: `active` (owner action: let the clean compiled `noperthedron` rebuild finish, then stop for merge review unless that build exposes a real blocker)
+- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch now covers the full “use existing data better” pass, explicit `priority` ranking metadata, author-metadata panels on statement blocks, and metadata-driven summary consumers (`quick wins`, owner/tag rollups, linked PRs, metadata audit).
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
 - Branch: `feat/summary-command-implementation-20260310`
 - Base commit/branch:
   - rebased on current `bp`
 - Key commits:
-  - `3df372f3` feat(blueprint): add author metadata panels
-  - `16a9b0bb` feat(summary): add coverage analytics and priority metadata
-  - `0522ce53` feat(summary): add triage rankings and capped detail lists
+  - `d652f7f4` feat(summary): add metadata-driven summary views
+  - `0abf0a8a` feat(blueprint): add author metadata panels
+  - `fd40b47e` feat(summary): add coverage analytics and priority metadata
+  - `550879a0` feat(summary): add triage rankings and capped detail lists
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
   - `lake build VersoBlueprint Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring`
-  - `lake build Tests.BlueprintPreviewWiring`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints`
+  - `lake build Authors Chapters.LocalTheorem`
   - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
-  - note: direct `lake exe noperthedron` still hits a linker/stale-object failure in this worktree after the metadata-model changes, so the review artifact was rebuilt through the interpreter path instead
+  - note: after `lake clean`, the direct compiled `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron` rebuild is still running; no post-clean failure has surfaced yet
 - Preview link:
   - `http://127.0.0.1:8154/summary-command-implementation-20260310/noperthedron/html-multi/`
   - `http://127.0.0.1:8154/summary-command-implementation-20260310/example-blueprints/noperthedron/html-multi/`
@@ -98,7 +98,7 @@ Last updated: 2026-03-10 (squashed and rebased `feat/code-summary-badge-unificat
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Author.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Data.lean`, `src/verso-blueprint/VersoBlueprint/Environment.lean`, `src/tests/Tests/BlueprintMetadataPanel.lean`, `test-projects/Noperthedron/Authors.lean`, `test-projects/Noperthedron/Chapters/LocalTheorem.lean`, `MANUAL.md`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Author.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/tests/Tests/BlueprintMetadataPanel.lean`, `src/tests/Tests/BlueprintSummaryLinks.lean`, `test-projects/Noperthedron/Authors.lean`, `test-projects/Noperthedron/Chapters/LocalTheorem.lean`, `MANUAL.md`
 
 ### `feat/code-summary-badge-unification-20260310`
 
