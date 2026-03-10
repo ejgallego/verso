@@ -125,10 +125,13 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
     let html ← renderManualBlocksHtml blocks
     let out := html.asString
     pure (
-      hasSubstr out "class=\"bp_inline_preview_ref\"" &&
+      countSubstr out "class=\"bp_inline_preview_ref\"" >= 3 &&
       hasSubstr out "class=\"bp_inline_preview_tpl\"" &&
       hasSubstr out "Bibliography: hover.cite" &&
-      hasSubstr out "#bp-bib-hover-cite"
+      hasSubstr out "#bp-bib-hover-cite" &&
+      hasSubstr out "class=\"bp_bibliography_use_line\"" &&
+      hasSubstr out "data-bp-preview-key=\"«lem:hover.link»--statement\"" &&
+      hasSubstr out "data-bp-preview-fallback-label=\"«lem:hover.link»\""
     )
 
 /-- info: true -/

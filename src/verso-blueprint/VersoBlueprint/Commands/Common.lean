@@ -481,6 +481,13 @@ def previewHoverUtilsJs : String := r##"(function () {
       }
     }
 
+    function cancelChildHide() {
+      if (childHideTimer !== null) {
+        clearTimeout(childHideTimer);
+        childHideTimer = null;
+      }
+    }
+
     function hidePanel() {
       cancelHide();
       showRequestToken += 1;
@@ -657,6 +664,10 @@ def inlinePreviewCss : String := r##"
   border-radius: 0.45rem;
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2);
+}
+
+.bp_inline_preview_panel_child {
+  z-index: 71;
 }
 
 .bp_inline_preview_panel[data-bp-preview-placement="anchored"]::before {
@@ -865,10 +876,11 @@ def inlineLinkPreviewJs : String := r##"(function () {
     return changed;
   }
 
-  function makePanel() {
+  function makePanel(id, extraClass) {
     const panel = document.createElement("aside");
-    panel.id = "bp-inline-preview-panel";
-    panel.className = "bp_inline_preview_panel";
+    panel.id = id;
+    panel.className =
+      "bp_inline_preview_panel" + (typeof extraClass === "string" && extraClass.length > 0 ? " " + extraClass : "");
     panel.setAttribute("data-bp-preview-mode", "hover");
     panel.setAttribute("data-bp-preview-placement", "anchored");
     panel.hidden = true;
@@ -882,10 +894,10 @@ def inlineLinkPreviewJs : String := r##"(function () {
     return panel;
   }
 
-  function getPanel() {
-    const existing = document.getElementById("bp-inline-preview-panel");
+  function getPanel(id, extraClass) {
+    const existing = document.getElementById(id);
     if (existing instanceof Element) return existing;
-    return makePanel();
+    return makePanel(id, extraClass);
   }
 
   function bindInlinePreview() {
@@ -920,11 +932,18 @@ def inlineLinkPreviewJs : String := r##"(function () {
     }
 
     const store = ensureInlinePreviewStore();
-    const panel = getPanel();
+    const panel = getPanel("bp-inline-preview-panel", "");
     const title = panel.querySelector(".bp_inline_preview_panel_title");
     const body = panel.querySelector(".bp_inline_preview_panel_body");
     const close = panel.querySelector(".bp_inline_preview_panel_close");
-    if (!(title instanceof Element) || !(body instanceof Element) || !(close instanceof Element)) {
+    const childPanel = getPanel("bp-inline-preview-child-panel", "bp_inline_preview_panel_child");
+    const childTitle = childPanel.querySelector(".bp_inline_preview_panel_title");
+    const childBody = childPanel.querySelector(".bp_inline_preview_panel_body");
+    const childClose = childPanel.querySelector(".bp_inline_preview_panel_close");
+    if (
+      !(title instanceof Element) || !(body instanceof Element) || !(close instanceof Element) ||
+      !(childTitle instanceof Element) || !(childBody instanceof Element) || !(childClose instanceof Element)
+    ) {
       return;
     }
 
@@ -942,6 +961,11 @@ def inlineLinkPreviewJs : String := r##"(function () {
     let updatingPanel = false;
     let ignoreNextPanelExit = false;
     let showRequestToken = 0;
+    let childActiveTrigger = null;
+    let childPreviewKey = "";
+    let childHideTimer = null;
+    let childShowRequestToken = 0;
+    const childBehavior = makeBehavior("hover", "anchored");
 
     function clearPanelSizeLock() {
       panel.style.width = "";
@@ -988,7 +1012,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
       return {
         element: host,
         kind: kind,
-        behavior: makeBehavior("pinned", "docked")
+        behavior: makeBehavior("hover", "anchored")
       };
     }
 
@@ -1034,20 +1058,45 @@ def inlineLinkPreviewJs : String := r##"(function () {
         if (trigger.getAttribute("data-bp-inline-bound") === "1") return;
         trigger.setAttribute("data-bp-inline-bound", "1");
         const triggerKey = (trigger.getAttribute("data-bp-preview-id") || "").trim();
-        const triggerInsidePanel = panel.contains(trigger);
+        const triggerInsidePanel = panel.contains(trigger) || childPanel.contains(trigger);
         trigger.addEventListener("mouseenter", function () {
-          cancelHide();
-          showFromTrigger(trigger);
+          if (triggerInsidePanel) {
+            cancelHide();
+            cancelChildHide();
+            showChildFromTrigger(trigger);
+          } else {
+            cancelHide();
+            showFromTrigger(trigger);
+          }
         });
         trigger.addEventListener("focusin", function () {
-          cancelHide();
-          showFromTrigger(trigger);
+          if (triggerInsidePanel) {
+            cancelHide();
+            cancelChildHide();
+            showChildFromTrigger(trigger);
+          } else {
+            cancelHide();
+            showFromTrigger(trigger);
+          }
         });
-        if (triggerInsidePanel) return;
+        if (triggerInsidePanel) {
+          trigger.addEventListener("mouseleave", function (ev) {
+            if (childPanel.matches(":hover") || childPanel.matches(":focus-within")) return;
+            if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, childPanel)) return;
+            scheduleChildHide();
+          });
+          trigger.addEventListener("focusout", function (ev) {
+            if (childPanel.matches(":hover") || childPanel.matches(":focus-within")) return;
+            if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, childPanel)) return;
+            scheduleChildHide();
+          });
+          return;
+        }
         trigger.addEventListener("mouseleave", function (ev) {
           if (!behavior.isHover) return;
           if (!trigger.isConnected) return;
           if (triggerKey && activePreviewKey && triggerKey !== activePreviewKey) return;
+          if (childPanel.contains(ev.relatedTarget) || childPanel.matches(":hover") || childPanel.matches(":focus-within")) return;
           if (panel.matches(":hover") || panel.matches(":focus-within")) return;
           if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
           previewDebug("inline.trigger.mouseleave", {
@@ -1065,6 +1114,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
           if (!behavior.isHover) return;
           if (!trigger.isConnected) return;
           if (triggerKey && activePreviewKey && triggerKey !== activePreviewKey) return;
+          if (childPanel.contains(ev.relatedTarget) || childPanel.matches(":hover") || childPanel.matches(":focus-within")) return;
           if (panel.matches(":hover") || panel.matches(":focus-within")) return;
           if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
           previewDebug("inline.trigger.focusout", {
@@ -1092,6 +1142,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
     function hidePanel() {
       cancelHide();
       showRequestToken += 1;
+      hideChildPanel();
       previewDebug("inline.hide", {
         activePreviewKey: activePreviewKey,
         activeTrigger: previewDebugLabel(activeTrigger),
@@ -1105,6 +1156,14 @@ def inlineLinkPreviewJs : String := r##"(function () {
       activeHost = null;
       activePreviewKey = "";
       applyBehavior(makeBehavior("hover", "anchored"), null);
+    }
+
+    function hideChildPanel() {
+      cancelChildHide();
+      childShowRequestToken += 1;
+      previewUtils.hidePanelContent(childPanel, childTitle, childBody);
+      childActiveTrigger = null;
+      childPreviewKey = "";
     }
 
     function scheduleHide() {
@@ -1123,6 +1182,14 @@ def inlineLinkPreviewJs : String := r##"(function () {
           updatingPanel: updatingPanel
         });
         hidePanel();
+      }, 180);
+    }
+
+    function scheduleChildHide() {
+      cancelChildHide();
+      childHideTimer = window.setTimeout(function () {
+        childHideTimer = null;
+        hideChildPanel();
       }, 180);
     }
 
@@ -1165,8 +1232,34 @@ def inlineLinkPreviewJs : String := r##"(function () {
       return fallbackInlinePreviewHtml(trigger, key);
     }
 
+    async function showChildFromTrigger(trigger) {
+      if (!(trigger instanceof Element)) return;
+      const key = (trigger.getAttribute("data-bp-preview-id") || "").trim();
+      if (!key) {
+        hideChildPanel();
+        return;
+      }
+      const requestToken = ++childShowRequestToken;
+      const html = await resolvePreviewHtml(key, trigger);
+      if (requestToken !== childShowRequestToken) return;
+      if (!html) {
+        hideChildPanel();
+        return;
+      }
+      const heading = (trigger.getAttribute("data-bp-preview-title") || key).trim() || key;
+      cancelHide();
+      cancelChildHide();
+      childPreviewKey = key;
+      childActiveTrigger = trigger;
+      previewUtils.showPanelContent(childPanel, childTitle, childBody, heading, html, childBehavior, trigger, 12, 10);
+    }
+
     async function showFromTrigger(trigger) {
       if (!(trigger instanceof Element)) return;
+      if (panel.contains(trigger) || childPanel.contains(trigger)) {
+        showChildFromTrigger(trigger);
+        return;
+      }
       const key = (trigger.getAttribute("data-bp-preview-id") || "").trim();
       if (!key) {
         hidePanel();
@@ -1209,6 +1302,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
           updatingPanel = false;
         }, 180);
       } else {
+        hideChildPanel();
         clearPanelSizeLock();
         activeTrigger = trigger;
         previewUtils.showPanelContent(panel, title, body, heading, html, behavior, trigger, 12, 10);
@@ -1218,6 +1312,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
       }
     }
     applyBehavior(behavior, null);
+    previewUtils.configureCloseButton(childClose, hideChildPanel, childBehavior);
     panel.addEventListener("mouseenter", function () {
       cancelHide();
     });
@@ -1237,6 +1332,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
         });
         return;
       }
+      if (childPanel.contains(ev.relatedTarget) || childPanel.matches(":hover") || childPanel.matches(":focus-within")) return;
       if (previewUtils.pointerWithinPanel(panel, ev)) return;
       if (panel.matches(":hover") || panel.matches(":focus-within")) return;
       if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeTrigger, panel)) return;
@@ -1263,6 +1359,7 @@ def inlineLinkPreviewJs : String := r##"(function () {
         });
         return;
       }
+      if (childPanel.contains(ev.relatedTarget) || childPanel.matches(":hover") || childPanel.matches(":focus-within")) return;
       if (panel.matches(":hover") || panel.matches(":focus-within")) return;
       if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeTrigger, panel)) return;
       previewDebug("inline.panel.focusout", {
@@ -1280,11 +1377,31 @@ def inlineLinkPreviewJs : String := r##"(function () {
         hidePanel();
       }
     });
+    childPanel.addEventListener("mouseenter", function () {
+      cancelHide();
+      cancelChildHide();
+    });
+    childPanel.addEventListener("focusin", function () {
+      cancelHide();
+      cancelChildHide();
+    });
+    childPanel.addEventListener("mouseleave", function (ev) {
+      if (previewUtils.pointerWithinPanel(childPanel, ev)) return;
+      if (previewUtils.shouldKeepOpen(ev.relatedTarget, childActiveTrigger, childPanel)) return;
+      scheduleChildHide();
+    });
+    childPanel.addEventListener("focusout", function (ev) {
+      if (previewUtils.shouldKeepOpen(ev.relatedTarget, childActiveTrigger, childPanel)) return;
+      scheduleChildHide();
+    });
     window.addEventListener("resize", function () {
       if (behavior.isAnchored && activeTrigger && !panel.hidden) {
         previewUtils.positionAnchoredPanel(panel, activeTrigger, 12, 10);
       } else if (behavior.isDocked && activeHost && !panel.hidden) {
         positionDockedPanel(activeHost);
+      }
+      if (childActiveTrigger && !childPanel.hidden) {
+        previewUtils.positionAnchoredPanel(childPanel, childActiveTrigger, 12, 10);
       }
     });
     window.addEventListener("scroll", function () {
@@ -1292,6 +1409,9 @@ def inlineLinkPreviewJs : String := r##"(function () {
         previewUtils.positionAnchoredPanel(panel, activeTrigger, 12, 10);
       } else if (behavior.isDocked && activeHost && !panel.hidden) {
         positionDockedPanel(activeHost);
+      }
+      if (childActiveTrigger && !childPanel.hidden) {
+        previewUtils.positionAnchoredPanel(childPanel, childActiveTrigger, 12, 10);
       }
     }, true);
 

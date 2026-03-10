@@ -9,6 +9,7 @@ import Verso
 import VersoManual
 import VersoBlueprint.Cite
 import VersoBlueprint.Commands.Common
+import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 
 namespace Informal.Commands
@@ -89,11 +90,25 @@ block_extension Block.bibliography (biblio : BibliographyData) where
                     {{.text true s!" - {detail}"}}
                   </span>}}
                 | Option.none => .empty
-              {{<li class="bp_bibliography_use_item">
+              let lineNode : Output.Html := {{
                 <a href={{use.href}} class="bp_bibliography_use_line">
                   {{.text true summaryText}}
                   {{inlineMeta}}
-                </a>
+                </a>}}
+              let previewLine : Output.Html :=
+                match use.summary.theoremCtx with
+                | some theoremCtx =>
+                  let previewKey :=
+                    PreviewCache.key theoremCtx.label (PreviewCache.Facet.ofInProgressKind theoremCtx.kind)
+                  let previewId :=
+                    s!"bp-bib-use-{Informal.HoverRender.previewKey use.href}"
+                  Informal.HoverRender.inlinePreviewRef
+                    lineNode previewId summaryText
+                    (previewLookupKey? := some previewKey)
+                    (previewFallbackLabel? := some s!"{theoremCtx.label}")
+                | Option.none => lineNode
+              {{<li class="bp_bibliography_use_item">
+                {{previewLine}}
               </li>}}
         let usageCount := if usageDetails.isEmpty then usageHrefs.size else usageDetails.size
         pure {{
@@ -119,8 +134,8 @@ block_extension Block.bibliography (biblio : BibliographyData) where
           </details>
         </div>
       }}
-  extraCss := ([] : List String)
-  extraJs := ([] : List String)
+  extraCss := ([Informal.Commands.inlinePreviewCss] : List String)
+  extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs] : List String)
 
 open Verso Doc Elab Syntax in
 def mkBibliographyPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do

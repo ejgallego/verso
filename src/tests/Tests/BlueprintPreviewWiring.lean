@@ -215,6 +215,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
     let out := html.asString
     let summaryJs? := findExtraJs st "function bindSummaryPreview(root)"
     let previewUtilsJs? := findExtraJs st "window.bpPreviewUtils = {"
+    let inlineJs? := findExtraJs st "function bindInlinePreview()"
     pure (
       !hasSubstr out "class=\"bp_summary_preview_store\"" &&
       !hasSubstr out "class=\"bp_summary_preview_tpl\"" &&
@@ -226,8 +227,8 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       hasSubstr out "\\newcommand{\\previewmacro}{\\mathsf{Preview}}" &&
       !hasSubstr out "bp_preview_tex_prelude" &&
       !hasSubstr out "verso-tex-prelude" &&
-      match summaryJs?, previewUtilsJs? with
-      | some summaryJs, some previewUtilsJs =>
+      match summaryJs?, previewUtilsJs?, inlineJs? with
+      | some summaryJs, some previewUtilsJs, some inlineJs =>
         hasSubstr summaryJs "previewUtils.bindTemplatePreview({" &&
         hasSubstr summaryJs "allowSharedManifest: true" &&
         hasSubstr summaryJs "templateSelector: \"template.bp_summary_preview_tpl[data-bp-preview-label]\"" &&
@@ -240,8 +241,12 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr previewUtilsJs "function readSharedPreviewEntryByLabel(label)" &&
         hasSubstr previewUtilsJs "function loadSharedPreviewEntry(previewKey, label)" &&
         hasSubstr previewUtilsJs "function hydratePreviewSubtree(root)" &&
-        hasSubstr previewUtilsJs "window.setTimeout(function () {" 
-      | _, _ => false
+        hasSubstr previewUtilsJs "window.setTimeout(function () {" &&
+        hasSubstr inlineJs "bp-inline-preview-child-panel" &&
+        hasSubstr inlineJs "function showChildFromTrigger(trigger)" &&
+        hasSubstr inlineJs "triggerInsidePanel = panel.contains(trigger) || childPanel.contains(trigger)" &&
+        hasSubstr inlineJs "behavior: makeBehavior(\"hover\", \"anchored\")"
+      | _, _, _ => false
     )
 
 /-- info: true -/
