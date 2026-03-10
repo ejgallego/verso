@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (retired the superseded preview worktrees and kept `feat/preview-manifest-20260310` as the active preview line)
+Last updated: 2026-03-10 (rebased and revalidated `feat/code-summary-badge-unification-20260310` on current `bp`)
 
 ## Active Worktrees
 
@@ -114,12 +114,12 @@ Last updated: 2026-03-10 (retired the superseded preview worktrees and kept `fea
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
 - Branch: `feat/code-summary-badge-unification-20260310`
 - Base commit/branch:
-  - branched from `bp` at `093cd40a`
+  - rebased on current `bp`
 - Key commits:
-  - none yet
+  - `e4ee6b47` refactor(blueprint): unify code summary surfaces
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `lake build VersoBlueprint.Informal.CodeSummary VersoBlueprint.Informal.Code VersoBlueprint.Informal.ExternalCode VersoBlueprint.Commands.Summary Tests.BlueprintExternalHeadingStatus Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover`
+  - `lake build Tests.BlueprintExternalHeadingStatus Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks`
   - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310/example-blueprints`
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310/noperthedron`
 - Preview link:
