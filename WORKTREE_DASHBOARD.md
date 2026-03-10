@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (validated preview follow-up fixes for bibliography hovers and nested subhover panels on `feat/preview-hover-tweaks-20260310`)
+Last updated: 2026-03-10 (rebased `feat/preview-hover-tweaks-20260310` onto current `bp` and reran its preview wiring validation)
 
 ## Active Worktrees
 
@@ -78,11 +78,15 @@ Last updated: 2026-03-10 (validated preview follow-up fixes for bibliography hov
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-hover-tweaks-20260310`
 - Branch: `feat/preview-hover-tweaks-20260310`
 - Base commit/branch:
-  - branched from `feat/preview-template-removal-20260310` at `bedcd57f`
-- Key commit:
-  - `e7da72e4` fix(preview): restore bibliography hovers and nested subhover panels
+  - rebased on current `bp`
+- Key commits:
+  - `db39ff3e` fix(preview): align block rebase resolution and group preview test
+  - `9e2885e1` fix(preview): restore bibliography hovers and nested subhover panels
 - Validation status:
+  - post-rebase validation:
   - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - earlier branch validation before rebase:
   - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
   - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-hover-tweaks-20260310`
