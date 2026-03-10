@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (rebased `feat/global-numbering-20260309` onto `bp` after documenting numbering options)
+Last updated: 2026-03-10 (merged `feat/global-numbering-20260309` into `bp` and cleaned up the worktree)
 
 ## Active Worktrees
 
@@ -21,34 +21,6 @@ Last updated: 2026-03-10 (rebased `feat/global-numbering-20260309` onto `bp` aft
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/global-numbering-20260309`
-
-- Status: `ready-for-review` (owner action: inspect the preview artifact, then fast-forward merge onto `bp`)
-- Summary: configurable numbering landed for informal blueprint statements/proofs; default rendering now uses chapter-prefixed sub-numbering, while `(set_option verso.blueprint.numbering global)` enables document-order numbering.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
-- Branch: `feat/global-numbering-20260309`
-- Base commit/branch:
-  - merge-base with `bp`: `068d2c08` (`0` behind / `3` ahead)
-- Key commits:
-  - `c936ee30` docs(blueprint): explain numbering options
-  - `b7a73247` docs(cite): document citation summary payloads
-  - `6d4f8802` feat(blueprint): add configurable informal numbering
-- Validation status:
-  - setup complete: worktree created and `lake exe cache get` run
-  - passed: `lake build Tests.BlueprintNumbering Tests VersoBlueprint`
-  - passed: `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/example-blueprints`
-  - passed: `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/noperthedron`
-  - spot-checked generated HTML:
-  - `Theorem 4.1`, `Theorem 4.2`, `Theorem 4.3`, `Theorem 5.5`, `Definition 6.7`, `Definition 7.10`
-- Preview link:
-  - `http://127.0.0.1:8153/global-numbering-20260309/noperthedron/html-multi/`
-  - example-blueprints root: `http://127.0.0.1:8153/global-numbering-20260309/example-blueprints/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
-  - `git status --short`
-  - shared preview server started in session `68635` with `npx http-server -p 8153 _out`
-  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Informal/CodeCommon.lean`, `src/verso-blueprint/VersoBlueprint/Cite.lean`
 
 ### `feat/summary-command-brainstorm-20260309`
 
@@ -114,6 +86,28 @@ Last updated: 2026-03-10 (rebased `feat/global-numbering-20260309` onto `bp` aft
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/global-numbering-20260309` into `bp` (`d2388e77 -> 31f8cda4`, fast-forward).
+- Feature branch key commits:
+  - `effcec20` feat(blueprint): add configurable informal numbering
+  - `3ee220ff` docs(cite): document citation summary payloads
+  - `31f8cda4` docs(blueprint): explain numbering options
+- Validation on rebased feature branch:
+  - `lake build Tests.BlueprintNumbering Tests VersoBlueprint`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/global-numbering-20260309/noperthedron`
+  - spot checks in generated HTML:
+  - `Theorem 4.1`, `Theorem 4.2`, `Theorem 4.3`, `Theorem 5.5`, `Definition 6.7`, `Definition 7.10`
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Preview links:
+  - `http://127.0.0.1:8153/global-numbering-20260309/noperthedron/html-multi/`
+  - `http://127.0.0.1:8153/global-numbering-20260309/example-blueprints/noperthedron/html-multi/`
+- Shared preview server kept running in session `68635`.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
+- Deleted branch:
+  - `feat/global-numbering-20260309`
 
 - Merged `feat/graph-review-20260306` into `bp` (`f7defba0 -> be85a0cc`, fast-forward).
 - Feature branch key commit:
