@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (checkpointed `feat/link-preview-audit-20260308` and expanded its hover-link status notes)
+Last updated: 2026-03-10 (retired the stale summary brainstorm worktree and started `feat/summary-command-implementation-20260310`)
 
 ## Active Worktrees
 
@@ -88,24 +88,24 @@ Last updated: 2026-03-10 (checkpointed `feat/link-preview-audit-20260308` and ex
   - after repro run `(window.bpPreviewTrace || []).slice(-30)`
   - most relevant trace finding so far: after nested `Definition 10` show, a synthetic `inline.panel.mouseleave` can still arrive and schedule hide
 
-### `feat/summary-command-brainstorm-20260309`
+### `feat/summary-command-implementation-20260310`
 
-- Status: `active` (owner action: review the summary-metrics brainstorm and decide which sections to implement)
-- Summary: isolated worktree for analyzing `bp_summary`, validating the example blueprints, and grounding possible new summary sections in the current graph/summary payloads.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-brainstorm-20260309`
-- Branch: `feat/summary-command-brainstorm-20260309`
+- Status: `active` (owner action: implement the first summary ranking sections using the existing graph/status payloads)
+- Summary: fresh successor worktree for turning the earlier summary brainstorm into code, starting with `Top priorities`, `Most used`, and `Group health` on top of the current `bp_summary` data.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
+- Branch: `feat/summary-command-implementation-20260310`
 - Base commit/branch:
-  - branched from `bp` at `87916a5d`
+  - branched from `bp` at `0ae05085`
 - Key commits:
   - none yet
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-brainstorm-20260309/example-blueprints`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-brainstorm-20260309/noperthedron`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
 - Preview link:
-  - `http://127.0.0.1:8152/summary-command-brainstorm-20260309/noperthedron/html-multi/`
+  - `http://127.0.0.1:8154/summary-command-implementation-20260310/noperthedron/html-multi/`
 - Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-brainstorm-20260309`
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
 
@@ -152,6 +152,15 @@ Last updated: 2026-03-10 (checkpointed `feat/link-preview-audit-20260308` and ex
   - `git rebase bp`
 
 ## Recently Completed
+
+- Retired `feat/summary-command-brainstorm-20260309` without code changes after recovering its prompt/transcript from the Codex session log.
+- Validation already captured before retirement:
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-brainstorm-20260309/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-brainstorm-20260309/noperthedron`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-brainstorm-20260309`
+- Deleted branch:
+  - `feat/summary-command-brainstorm-20260309`
 
 - Merged `feat/agents-merge-guardrails-20260310` into `bp` (`d40267d3 -> 0e8c886b`, fast-forward).
 - Feature branch key commit:
