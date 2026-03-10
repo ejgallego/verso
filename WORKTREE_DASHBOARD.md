@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (validated `feat/code-summary-badge-unification-20260310` after unifying code-summary rendering and preview binding)
+Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-20260310` after finishing the existing-data summary analytics and adding priority metadata)
 
 ## Active Worktrees
 
@@ -145,28 +145,29 @@ Last updated: 2026-03-10 (validated `feat/code-summary-badge-unification-2026031
 
 ### `feat/summary-command-implementation-20260310`
 
-- Status: `ready-for-review` (owner action: review the rebuilt artifacts and decide whether to do one more polish pass or move to merge prep)
-- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch is now squashed to one review commit on top of current `bp`, with triage sections for ranked `Top priorities`, split statement/proof reuse views, capped visible lists, nested “show all” expansion, and per-group next-action hints.
+- Status: `active` (owner action: review the latest checkpoint and decide whether to stop here for merge prep or keep extending metadata)
+- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch now covers the full “use existing data better” pass with triage sections, split statement/proof reuse views, capped visible lists, per-group next-action hints, plus the new structure/coverage analytics. It also adds explicit `priority := "high"|"medium"|"low"` metadata to guide ranking.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
 - Branch: `feat/summary-command-implementation-20260310`
 - Base commit/branch:
   - rebased on current `bp`
 - Key commits:
+  - `16a9b0bb` feat(summary): add coverage analytics and priority metadata
   - `0522ce53` feat(summary): add triage rankings and capped detail lists
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `lake build VersoBlueprint.Commands.Summary`
-  - `lake build Tests.BlueprintSummaryLinks`
+  - `lake build VersoBlueprint.Commands.Summary Tests.BlueprintSummaryLinks`
   - `lake build Tests.BlueprintPreviewWiring`
   - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints`
   - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
 - Preview link:
   - `http://127.0.0.1:8154/summary-command-implementation-20260310/noperthedron/html-multi/`
   - `http://127.0.0.1:8154/summary-command-implementation-20260310/example-blueprints/noperthedron/html-multi/`
+  - `http://127.0.0.1:8154/summary-command-implementation-20260310/example-blueprints/spherepackingblueprint/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/summary.css`, `src/tests/Tests/BlueprintSummaryLinks.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Data.lean`, `src/verso-blueprint/VersoBlueprint/Environment.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/tests/Tests/BlueprintSummaryLinks.lean`, `MANUAL.md`
 
 ### `feat/code-summary-badge-unification-20260310`
 
