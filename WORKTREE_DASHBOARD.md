@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (rebased `feat/link-preview-audit-20260308` on current `bp` and stabilized its checkpoint note)
+Last updated: 2026-03-10 (checkpointed `feat/link-preview-audit-20260308` and expanded its hover-link status notes)
 
 ## Active Worktrees
 
@@ -52,10 +52,12 @@ Last updated: 2026-03-10 (rebased `feat/link-preview-audit-20260308` on current 
 - Base commit/branch:
   - rebased on current `bp`
 - Key commit:
+  - current tip at this checkpoint: `1f569fa8`
   - branch tip is the rebased replay of `checkpoint(preview): preserve nested hover investigation`
 - Validation status:
   - focused preview validation had passed before the checkpoint
   - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308`
+  - latest rebuilt artifact snapshot: `/home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308/html-multi/index.html` at `2026-03-10 16:47:24 +0100`
   - browser behavior note: nested inline preview recursion still broken after the checkpoint; child panel can stay open but still lacks stable content in the known repro
 - Preview link:
   - `http://127.0.0.1:8152/link-preview-audit-20260308/html-multi/`
@@ -64,6 +66,11 @@ Last updated: 2026-03-10 (rebased `feat/link-preview-audit-20260308` on current 
   - summary decl/action links and bibliography backlinks gained preview coverage
   - graph preview templates can carry nested inline refs, and graph HTML preview bodies hydrate nested preview refs before math rendering
   - label-scoped fallback preview templates are emitted by `Informal/Block.lean`, so nested refs are no longer limited to local inline templates only
+- Current hover-link approach:
+  - traversal preview cache is the main shared preview-data source; widget previews still remain a separate cache path
+  - `window.bpPreviewUtils` is the shared browser runtime for template lookup, behavior decoding, positioning, subtree hydration, and debug tracing
+  - inline hover uses one global anchored panel with in-place recursive body swaps, plus local-template, label-template, and metadata-fallback resolution tiers
+  - summary, graph, and `used by` keep their own panel surfaces, but now rely on the shared runtime and subtree hydration so nested refs can be rebound
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
   - `git status --short`
@@ -74,6 +81,7 @@ Last updated: 2026-03-10 (rebased `feat/link-preview-audit-20260308` on current 
   - `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
   - `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
   - `src/verso-blueprint/VersoBlueprint/Commands/graph.js`
+  - detailed checkpoint design note: `doc/PreviewHoverDesignNotes.md` (`2026-03-10 Checkpoint`)
   - TODO: unify preview labels/titles behind one canonical API; right now some surfaces use `BlockData.displayTitle`, while others still fall back to raw labels or ad hoc `data-bp-preview-title` strings
   - useful browser probes:
   - enable trace with `localStorage.setItem("bp-debug-preview", "1")`
