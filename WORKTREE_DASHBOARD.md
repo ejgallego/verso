@@ -45,32 +45,6 @@ Last updated: 2026-03-10 (rebased `feat/preview-hover-tweaks-20260310` onto curr
   - likely change shape: thread an explicit interactive flag from outer `Command.Context.snap?` into `DocElabContext`, then gate highlight generation and declaration analysis in blueprint Lean blocks
   - manual target: record that interactive Lean editing uses a latency-oriented fast path while batch builds still run full highlighting and blueprint analysis
 
-### `feat/preview-template-removal-20260310`
-
-- Status: `ready-for-review` (owner action: review the manifest-only summary/graph path and decide whether this should replace the older preview checkpoints)
-- Summary: removes the remaining page-local summary and dependency-graph preview stores so those surfaces now ship only their panel shells and resolve preview bodies from the shared manifest. The branch also imports `VersoBlueprint.PreviewManifest` from the root library, which was necessary for a clean `.lake` rebuild to produce `VersoBlueprint.PreviewManifest:c.o` and let the preview executables link normally.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310`
-- Branch: `feat/preview-template-removal-20260310`
-- Base commit/branch:
-  - branched from `feat/preview-manifest-generalize-20260310` at `a2a6c290`
-- Key commit:
-  - `bedcd57f` refactor(preview): remove summary and graph template stores
-- Validation status:
-  - fresh-worktree reset: deleted `.lake`, reran `lake exe cache get`, then rebuilt from scratch
-  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros noperthedron spherepackingblueprint`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-template-removal-20260310`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-template-removal-20260310/example-blueprints`
-  - browser smoke on shipped pages:
-  - `Blueprint-Summary`: `templates=0`, preview title `«def:eps-spanning»`, non-empty body (`9206` chars)
-  - `Dependency-Graph`: `templates=0`, preview title `«thm:no_nopert_tight_pose»`, non-empty body (`1340` chars)
-- Preview link:
-  - `http://127.0.0.1:8154/preview-template-removal-20260310/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`, and `src/verso-blueprint/VersoBlueprint.lean`
-  - the shared `_out` server was restarted in session `77001`
-  - local summary/graph preview templates are now gone from the emitted HTML; inline preview still keeps its own local store
-
 ### `feat/preview-hover-tweaks-20260310`
 
 - Status: `ready-for-review` (owner action: inspect the hover UX follow-up and decide whether this should replace `feat/preview-template-removal-20260310` as the active preview branch)
@@ -102,60 +76,6 @@ Last updated: 2026-03-10 (rebased `feat/preview-hover-tweaks-20260310` onto curr
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-hover-tweaks-20260310`
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean` and `src/verso-blueprint/VersoBlueprint/Commands/Bibliography.lean`
   - shared `_out` server is running on `http://127.0.0.1:8154/` in session `77001`
-
-### `feat/preview-manifest-generalize-20260310`
-
-- Status: `checkpoint` (owner action: keep only if you want the mixed local-template plus manifest fallback checkpoint; active preview work now continues on `feat/preview-template-removal-20260310`)
-- Summary: extends the shared preview manifest beyond inline hover so summary and dependency-graph previews can resolve without page-local template stores. Summary now opts into `allowSharedManifest`, graph hover falls back to `previewUtils.loadSharedPreviewEntry("", label)`, and the shared preview runtime preserves optional preview keys from local templates when present.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-generalize-20260310`
-- Branch: `feat/preview-manifest-generalize-20260310`
-- Base commit/branch:
-  - branched from `feat/preview-ux-followup-20260310` at `82b84005`
-- Key commit:
-  - `a2a6c290` feat(preview): generalize manifest-backed summary and graph previews
-- Validation status:
-  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
-  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
-  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-manifest-generalize-20260310`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-manifest-generalize-20260310/example-blueprints`
-  - browser smoke on patched `srcdoc` copies with local templates stripped before runtime binding:
-  - `Blueprint-Summary`: `templates=0`, preview title `«def:eps-spanning»`, non-empty body (`503` chars)
-  - `Dependency-Graph`: `templates=0`, preview title `«thm:no_nopert_tight_pose»`, non-empty body (`310` chars)
-- Preview link:
-  - `http://127.0.0.1:8154/preview-manifest-generalize-20260310/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-generalize-20260310`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, and `src/verso-blueprint/VersoBlueprint/Commands/graph.js`
-  - preview architecture is now split between page-local templates as an eager fast path and `html-multi/-verso-data/bp-previews.json` as the shared fallback source
-
-### `feat/preview-ux-followup-20260310`
-
-- Status: `checkpoint` (owner action: keep only if you want a pre-generalization preview checkpoint; active preview work now continues on `feat/preview-manifest-generalize-20260310`)
-- Summary: canonical preview worktree. It supersedes `feat/preview-manifest-20260310`, keeps the shared preview-manifest path, fixes the `used by` panel auto-opening on page load, and gives nested `uses` links inside pinned hosts a pinned+docked subpreview treatment.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
-- Branch: `feat/preview-ux-followup-20260310`
-- Base commit/branch:
-  - branched from `feat/preview-manifest-20260310` at `bdac5f35`
-- Key commits:
-  - none yet
-- Validation status:
-  - setup complete: existing worktree reused; `.lake` already present and `lake exe cache get` completed successfully
-  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
-  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
-  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-ux-followup-20260310`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-ux-followup-20260310/example-blueprints`
-  - browser smoke test on direct artifact:
-  - `Rational-Versions`: no `.bp_used_by_wrap_open` on load for `«def:ekspanning»`
-  - hovering the nested `Definition 7.10` link inside that `used by` panel opened the shared inline preview with `data-bp-preview-mode="pinned"` and `data-bp-preview-placement="docked"`
-- Preview link:
-  - `http://127.0.0.1:8154/preview-ux-followup-20260310/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
-  - current UX scope is runtime-only: no Lean rendering changes were needed beyond the existing preview-key plumbing
-  - re-check chapter 8 `Computational-Step` and `Rational-Versions` if you want visual polish beyond the now-working behavior
 
 ### `feat/blueprint-metadata-json-review-20260310`
 
@@ -268,6 +188,17 @@ Last updated: 2026-03-10 (rebased `feat/preview-hover-tweaks-20260310` onto curr
   - `git rebase bp`
 
 ## Recently Completed
+
+- Cleaned up superseded preview predecessor worktrees after promoting `feat/preview-hover-tweaks-20260310` as the active preview line.
+- Removed worktrees:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
+  - `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-generalize-20260310`
+  - `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/preview-ux-followup-20260310`
+  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-generalize-20260310`
+  - `/home/egallego/lean/verso-blueprint/_out/preview-template-removal-20260310`
+- Branch refs were intentionally retained for now; only the worktrees and their stale outputs were cleaned up.
 
 - Merged `feat/summary-command-implementation-20260310` into `bp` (`ea01f5fe -> 9135c719`, fast-forward).
 - Feature branch key commits:
