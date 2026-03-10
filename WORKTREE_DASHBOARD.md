@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged the preview runtime regression branch into `bp` and retired its predecessor preview worktrees)
+Last updated: 2026-03-11 (rebased and revalidated `feat/code-summary-badge-unification-20260310` on the latest preview-runtime work landed in `bp`)
 
 ## Active Worktrees
 
@@ -98,7 +98,7 @@ Last updated: 2026-03-11 (merged the preview runtime regression branch into `bp`
 - Base commit/branch:
   - rebased on current `bp`
 - Key commits:
-  - `b5eab05c` refactor(blueprint): unify code summary surfaces
+  - `31f67081` refactor(blueprint): unify code summary surfaces
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
   - `lake build Tests.BlueprintExternalHeadingStatus Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks`
