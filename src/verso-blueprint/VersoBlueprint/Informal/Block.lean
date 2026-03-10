@@ -72,6 +72,7 @@ structure Config where
   lean : Option String := none
   leanok : Option Bool := none
   parent : Option Data.Parent := none
+  priority : Option String := none
   externalCode : Array Data.ExternalRef := #[]
   invalidExternalCode : Array String := #[]
 --  hide : Bool := false
@@ -79,8 +80,15 @@ structure Config where
 section
 variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadError m] [MonadFileMap m]
 
+private def normalizePriority? (raw : String) : Option String :=
+  match raw.trimAscii.toString.toLower with
+  | "high" => some "high"
+  | "medium" => some "medium"
+  | "low" => some "low"
+  | _ => none
+
 def Config.parse  : ArgParse m Config :=
-  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent =>
+  (fun (labelArg : Verso.ArgParse.WithSyntax String) lean leanok parent priority =>
     let (externalCode, invalidExternalCode) := ExternalCode.parseExternalCodeList lean
     {
       label := LabelNameParsing.parse labelArg.val
@@ -88,10 +96,11 @@ def Config.parse  : ArgParse m Config :=
       lean := lean
       leanok := leanok
       parent := parent.map LabelNameParsing.parse
+      priority := priority
       externalCode := externalCode
       invalidExternalCode := invalidExternalCode
     }) <$> .positional `label (.withSyntax .string) <*> .named `lean .string true
-        <*> .named `leanok .bool true <*> .named `parent .string true
+        <*> .named `leanok .bool true <*> .named `parent .string true <*> .named `priority .string true
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
@@ -1666,6 +1675,20 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(leanok := true)' together with '(lean := ...)'"
     if isProof && hasExternalRaw then
       logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(lean := ...)' in a proof block"
+    let priority : Option String ←
+      match cfg.priority with
+      | none => pure none
+      | some raw =>
+        match normalizePriority? raw with
+        | some normalized =>
+          if isProof then
+            logErrorAt cfg.labelSyntax m!"Label {label} cannot use '(priority := ...)' in a proof block"
+            pure none
+          else
+            pure (some normalized)
+        | none =>
+          logErrorAt cfg.labelSyntax m!"Label {label} has invalid '(priority := \"{raw}\")'; expected one of \"high\", \"medium\", \"low\""
+          pure none
     let hasExternal := hasExternalRaw && !isProof
     let codeHint : Option Data.CodeRef :=
       if isProof then
@@ -1676,7 +1699,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         some .userOk
       else
         none
-    Environment.push label envKind codeHint cfg.parent
+    Environment.push label envKind codeHint cfg.parent priority
     let contents ← contents.mapM elabBlock
     if !isProof then
       -- TODO: consolidate this widget-oriented elaboration cache with the traversal preview cache

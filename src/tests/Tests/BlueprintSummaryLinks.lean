@@ -30,7 +30,7 @@ External declaration wiring test.
 Triage group heading.
 :::
 
-:::definition "def:triage.01" (parent := "triage.group")
+:::definition "def:triage.01" (parent := "triage.group") (priority := "low")
 Definition 01.
 :::
 
@@ -74,7 +74,7 @@ Definition 10.
 Definition 11.
 :::
 
-:::definition "def:triage.12" (parent := "triage.group")
+:::definition "def:triage.12" (parent := "triage.group") (priority := "high")
 Definition 12.
 :::
 
@@ -156,6 +156,11 @@ private def renderManualBlocksHtml (blocks : Array (Doc.Block Genre.Manual)) : I
 private def hasSubstr (s needle : String) : Bool :=
   (s.splitOn needle).length > 1
 
+private def appearsBefore (s lhs rhs : String) : Bool :=
+  match s.splitOn lhs with
+  | _ :: tail => hasSubstr (String.intercalate lhs tail) rhs
+  | [] => false
+
 /-- info: true -/
 #guard_msgs in
 #eval
@@ -187,7 +192,15 @@ private def hasSubstr (s needle : String) : Bool :=
       hasSubstr out "Most used in proofs (2)" &&
       hasSubstr out "proof uses: 1" &&
       hasSubstr out "Group health (1)" &&
+      hasSubstr out "Structure and coverage" &&
+      hasSubstr out "Heaviest prerequisites (" &&
+      hasSubstr out "No prerequisites (" &&
+      hasSubstr out "No dependents (" &&
+      hasSubstr out "Proof debt hotspots (0)" &&
       hasSubstr out "Next:" &&
+      hasSubstr out "priority: high" &&
+      hasSubstr out "priority: low" &&
+      appearsBefore out "def:triage.12" "def:triage.01" &&
       hasSubstr out "def:triage.01" &&
       hasSubstr out "downstream unlocks: 1"
     )

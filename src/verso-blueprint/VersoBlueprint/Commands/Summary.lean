@@ -89,6 +89,7 @@ structure PriorityItem where
   label : Name
   kind : String
   stage : String
+  priority : Option String := none
   statementStatus : String
   proofStatus : String := ""
   directUses : Nat := 0
@@ -103,6 +104,7 @@ instance : Quote PriorityItem where
       quote s.label,
       quote s.kind,
       quote s.stage,
+      quote s.priority,
       quote s.statementStatus,
       quote s.proofStatus,
       quote s.directUses,
@@ -162,6 +164,71 @@ instance : Quote GroupHealthItem where
       quote s.nextPriority?
     ]
 
+structure CoverageSplit where
+  informalOnly : Nat := 0
+  readyToFormalize : Nat := 0
+  formalizedWithoutAncestors : Nat := 0
+  fullyClosed : Nat := 0
+  blockedOrIncomplete : Nat := 0
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote CoverageSplit where
+  quote s := mkCApp ``CoverageSplit.mk
+    #[
+      quote s.informalOnly,
+      quote s.readyToFormalize,
+      quote s.formalizedWithoutAncestors,
+      quote s.fullyClosed,
+      quote s.blockedOrIncomplete
+    ]
+
+structure DependencyLoadItem where
+  label : Name
+  kind : String
+  statementDeps : Nat := 0
+  proofDeps : Nat := 0
+  totalDeps : Nat := 0
+  directUses : Nat := 0
+  downstreamUses : Nat := 0
+  leanObjects : List Name := []
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote DependencyLoadItem where
+  quote s := mkCApp ``DependencyLoadItem.mk
+    #[
+      quote s.label,
+      quote s.kind,
+      quote s.statementDeps,
+      quote s.proofDeps,
+      quote s.totalDeps,
+      quote s.directUses,
+      quote s.downstreamUses,
+      quote s.leanObjects
+    ]
+
+structure DebtHotspotItem where
+  parent : Name
+  header : String := ""
+  affectedEntries : Nat := 0
+  incompleteDecls : Nat := 0
+  missingDecls : Nat := 0
+  totalDebt : Nat := 0
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote DebtHotspotItem where
+  quote s := mkCApp ``DebtHotspotItem.mk
+    #[
+      quote s.parent,
+      quote s.header,
+      quote s.affectedEntries,
+      quote s.incompleteDecls,
+      quote s.missingDecls,
+      quote s.totalDebt
+    ]
+
 structure Summary where
   totalEntries : Nat := 0
   definitions : Nat := 0
@@ -189,6 +256,11 @@ structure Summary where
   topPriorities : List PriorityItem := []
   mostUsed : List UsageItem := []
   groupHealth : List GroupHealthItem := []
+  coverageSplit : CoverageSplit := {}
+  heaviestPrerequisites : List DependencyLoadItem := []
+  noPrerequisites : List IndexItem := []
+  noDependents : List IndexItem := []
+  proofDebtHotspots : List DebtHotspotItem := []
 deriving Inhabited, FromJson, ToJson
 
 open Syntax in
@@ -220,7 +292,12 @@ instance : Quote Summary where
       quote s.theoremLikeByParent,
       quote s.topPriorities,
       quote s.mostUsed,
-      quote s.groupHealth
+      quote s.groupHealth,
+      quote s.coverageSplit,
+      quote s.heaviestPrerequisites,
+      quote s.noPrerequisites,
+      quote s.noDependents,
+      quote s.proofDebtHotspots
     ]
 
 structure EntryStatusFlags where
@@ -292,15 +369,24 @@ private def actionableStage? (node : Data.Node)
 private def priorityStageRank (stage : String) : Nat :=
   if stage == "proof" then 0 else if stage == "statement" then 1 else 2
 
+private def explicitPriorityRank (priority? : Option String) : Nat :=
+  match priority? with
+  | some "high" => 0
+  | some "medium" => 1
+  | some "low" => 2
+  | _ => 3
+
 private def sortPriorityItems (items : Array PriorityItem) : Array PriorityItem :=
   items.qsort fun a b =>
-    a.downstreamUses > b.downstreamUses ||
+    explicitPriorityRank a.priority < explicitPriorityRank b.priority ||
+      (explicitPriorityRank a.priority == explicitPriorityRank b.priority &&
+        (a.downstreamUses > b.downstreamUses ||
       (a.downstreamUses == b.downstreamUses &&
         (a.directUses > b.directUses ||
           (a.directUses == b.directUses &&
             (priorityStageRank a.stage < priorityStageRank b.stage ||
               (priorityStageRank a.stage == priorityStageRank b.stage &&
-                a.label.toString < b.label.toString)))))
+                a.label.toString < b.label.toString)))))))
 
 private def sortUsageItems (items : Array UsageItem) : Array UsageItem :=
   items.qsort fun a b =>
@@ -319,6 +405,24 @@ private def sortUsageItemsByAxis (items : Array UsageItem) (axisUses : UsageItem
             (a.directUses > b.directUses ||
               (a.directUses == b.directUses &&
                 a.label.toString < b.label.toString)))))
+
+private def sortDependencyLoadItems (items : Array DependencyLoadItem) : Array DependencyLoadItem :=
+  items.qsort fun a b =>
+    a.totalDeps > b.totalDeps ||
+      (a.totalDeps == b.totalDeps &&
+        (a.proofDeps > b.proofDeps ||
+          (a.proofDeps == b.proofDeps &&
+            (a.statementDeps > b.statementDeps ||
+              (a.statementDeps == b.statementDeps &&
+                a.label.toString < b.label.toString)))))
+
+private def sortDebtHotspotItems (items : Array DebtHotspotItem) : Array DebtHotspotItem :=
+  items.qsort fun a b =>
+    a.totalDebt > b.totalDebt ||
+      (a.totalDebt == b.totalDebt &&
+        (a.affectedEntries > b.affectedEntries ||
+          (a.affectedEntries == b.affectedEntries &&
+            a.header < b.header)))
 
 private def sortGroupHealthItems (items : Array GroupHealthItem) : Array GroupHealthItem :=
   items.qsort fun a b =>
@@ -400,6 +504,23 @@ private def nodeLeanObjects (node : Data.Node) : List Name :=
   | some (.literate code) => (code.definedDefs.map (·.name) ++ code.definedTheorems.map (·.name)).toList
   | _ => []
 
+private def nodeMissingLeanDeclCount (external : Informal.Graph.ExternalCodeStatus) (node : Data.Node) : Nat :=
+  (Informal.Graph.nodeExternalDecls node).foldl (init := 0) fun acc decl =>
+    acc + (if Informal.Graph.externalDeclMissing external decl then 1 else 0)
+
+private def nodeIncompleteLeanDeclCount (external : Informal.Graph.ExternalCodeStatus) (node : Data.Node) : Nat :=
+  match node.code with
+  | some (.external decls) =>
+    decls.foldl (init := 0) fun acc decl =>
+      if Informal.Graph.externalDeclMissing external decl then
+        acc
+      else
+        acc + (if decl.provedStatus.isIncomplete then 1 else 0)
+  | some (.literate code) =>
+    countSorries code.definedDefs (fun (d : Data.LiterateDef) => d.provedStatus) +
+      countSorries code.definedTheorems (fun (d : Data.LiterateThm) => d.provedStatus)
+  | _ => 0
+
 private def priorityItem? (state : Environment.State) (external : Informal.Graph.ExternalCodeStatus)
     (usageMap : NameMap UsageCounts) (reverseMap : NameMap (Array Name))
     (label : Name) (node : Data.Node) : Option PriorityItem :=
@@ -421,6 +542,7 @@ private def priorityItem? (state : Environment.State) (external : Informal.Graph
           label
           kind := toString node.kind
           stage
+          priority := node.priority
           statementStatus := Informal.Graph.StatementStatus.toText statementStatus
           proofStatus := if node.kind.isTheoremLike then Informal.Graph.ProofStatus.toText proofStatus else ""
           directUses := usage.directUses
@@ -658,7 +780,100 @@ def buildSummary : CoreM Summary := do
           nextPriority?
         }
     (sortGroupHealthItems items).toList
-  return { summary with theoremLikeByParent, topPriorities, mostUsed, groupHealth }
+  let coverageSplit :=
+    entries.foldl (init := ({} : CoverageSplit)) fun acc (label, node) =>
+      let hasStatement := node.statement.isSome
+      let hasCode := node.code.isSome
+      let statusFlags := entryStatusFlags state external node
+      let statementStatus := Informal.Graph.statementStatus external state label node
+      let proofStatus := Informal.Graph.proofStatus external state label node
+      if hasStatement && !hasCode then
+        { acc with informalOnly := acc.informalOnly + 1 }
+      else if statusFlags.completed then
+        { acc with fullyClosed := acc.fullyClosed + 1 }
+      else if statusFlags.completedDepsNo then
+        { acc with formalizedWithoutAncestors := acc.formalizedWithoutAncestors + 1 }
+      else if (actionableStage? node statementStatus proofStatus).isSome then
+        { acc with readyToFormalize := acc.readyToFormalize + 1 }
+      else
+        { acc with blockedOrIncomplete := acc.blockedOrIncomplete + 1 }
+  let heaviestPrerequisites : List DependencyLoadItem :=
+    let items := entries.foldl (init := #[]) fun acc (label, node) =>
+      let statementDeps := Informal.Graph.eraseDups (Informal.Graph.statementDeps node)
+      let proofDeps := Informal.Graph.eraseDups (Informal.Graph.proofDeps node)
+      let totalDeps := (Informal.Graph.eraseDups (statementDeps ++ proofDeps)).size
+      if totalDeps == 0 then
+        acc
+      else
+        let usage := usageMap.getD label {}
+        let downstreamUses := downstreamUseCount reverseMap (reverseMap.getD label #[]).toList
+        acc.push {
+          label
+          kind := toString node.kind
+          statementDeps := statementDeps.size
+          proofDeps := proofDeps.size
+          totalDeps
+          directUses := usage.directUses
+          downstreamUses
+          leanObjects := nodeLeanObjects node
+        }
+    (sortDependencyLoadItems items).toList
+  let noPrerequisites : List IndexItem :=
+    entries.foldl (init := []) fun acc (label, node) =>
+      let totalDeps := (Informal.Graph.eraseDups (Informal.Graph.allDeps node)).size
+      if totalDeps == 0 then
+        mkIndexItem label node.kind (nodeLeanObjects node) :: acc
+      else
+        acc
+    |>.reverse
+  let noDependents : List IndexItem :=
+    entries.foldl (init := []) fun acc (label, node) =>
+      let usage := usageMap.getD label {}
+      if usage.directUses == 0 then
+        mkIndexItem label node.kind (nodeLeanObjects node) :: acc
+      else
+        acc
+    |>.reverse
+  let proofDebtHotspots : List DebtHotspotItem :=
+    let items := parentChildren.toArray.foldl (init := #[]) fun acc (parent, children) =>
+      let (affectedEntries, incompleteDecls, missingDecls) :=
+        children.foldl (init := (0, 0, 0)) fun (affectedEntries, incompleteDecls, missingDecls) child =>
+          match state.data.get? child with
+          | none => (affectedEntries, incompleteDecls, missingDecls)
+          | some node =>
+            let incompleteDeclCount := nodeIncompleteLeanDeclCount external node
+            let missingDeclCount := nodeMissingLeanDeclCount external node
+            let hasDebt := incompleteDeclCount > 0 || missingDeclCount > 0
+            (
+              affectedEntries + (if hasDebt then 1 else 0),
+              incompleteDecls + incompleteDeclCount,
+              missingDecls + missingDeclCount
+            )
+      let totalDebt := incompleteDecls + missingDecls
+      if totalDebt == 0 then
+        acc
+      else
+        acc.push {
+          parent
+          header := groupHeaders.getD parent parent.toString
+          affectedEntries
+          incompleteDecls
+          missingDecls
+          totalDebt
+        }
+    (sortDebtHotspotItems items).toList
+  return {
+    summary with
+      theoremLikeByParent,
+      topPriorities,
+      mostUsed,
+      groupHealth,
+      coverageSplit,
+      heaviestPrerequisites,
+      noPrerequisites,
+      noDependents,
+      proofDebtHotspots
+  }
 
 private def Summary.previewLabels (data : Summary) : Array Name :=
   let allLabels : List Name :=
@@ -669,6 +884,9 @@ private def Summary.previewLabels (data : Summary) : Array Name :=
     data.theoremLikeIndex.map (·.label) ++
     data.topPriorities.map (·.label) ++
     data.mostUsed.map (·.label) ++
+    data.heaviestPrerequisites.map (·.label) ++
+    data.noPrerequisites.map (·.label) ++
+    data.noDependents.map (·.label) ++
     data.theoremLikeByParent.foldr (init := []) fun group acc =>
       group.entries.map (·.label) ++ acc
   let (_, labels) := allLabels.foldl (init := (({} : NameSet), (#[] : Array Name))) fun (seen, labels) label =>
@@ -1000,14 +1218,18 @@ block_extension Block.summary (summary : Summary) where
           let entryRef ← mkEntryRef item.label
           let codeHref := getCodeHref item.label
           let associatedDecls := !item.leanObjects.isEmpty
+          let priorityBadges : Array Output.Html :=
+            match item.priority with
+            | Option.some priority => #[mkBadge s!"priority: {priority}" "bp_summary_badge bp_summary_badge_warn"]
+            | Option.none => #[]
           let proofBadges : Array Output.Html :=
             if item.proofStatus.isEmpty then
               #[]
             else
               #[mkBadge s!"proof: {item.proofStatus}"]
           let badges :=
-            #[
-              mkBadge s!"stage: {item.stage}" "bp_summary_badge bp_summary_badge_warn",
+            priorityBadges ++ #[
+              mkBadge s!"stage: {item.stage}",
               mkBadge s!"statement: {item.statementStatus}",
               mkBadge s!"direct uses: {item.directUses}",
               mkBadge s!"downstream unlocks: {item.downstreamUses}"
@@ -1084,6 +1306,62 @@ block_extension Block.summary (summary : Summary) where
             "statement uses"
             item.proofUses
             item.statementUses
+      let heaviestPrerequisiteRows ←
+        data.heaviestPrerequisites.toArray.mapM fun item => do
+          let entryRef ← mkEntryRef item.label
+          let codeHref := getCodeHref item.label
+          let associatedDecls := !item.leanObjects.isEmpty
+          let badges :=
+            #[
+              mkBadge s!"total deps: {item.totalDeps}" "bp_summary_badge bp_summary_badge_warn",
+              mkBadge s!"statement deps: {item.statementDeps}",
+              mkBadge s!"proof deps: {item.proofDeps}",
+              mkBadge s!"direct uses: {item.directUses}",
+              mkBadge s!"downstream unlocks: {item.downstreamUses}"
+            ]
+          pure {{
+            <li class="bp_summary_item">
+              <div class="bp_summary_item_top">
+                <span class="bp_summary_item_head">{{entryRef}}</span>
+                <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+              </div>
+              <div class="bp_summary_item_body">"Prerequisite fan-in measured from the current statement/proof dependency graph."</div>
+              {{mkBadgeRow badges}}
+              {{if associatedDecls then
+                 {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.label item.leanObjects}}</ul></details>}}
+                else
+                 .empty}}
+              {{if let some href := codeHref then
+                 {{<div class="bp_summary_item_actions">"Jump: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
+                else
+                 .empty}}
+            </li>
+          }}
+      let noPrerequisiteRows ←
+        data.noPrerequisites.toArray.mapM fun item =>
+          mkLeanRow item.label item.kind item.leanObjects
+      let noDependentRows ←
+        data.noDependents.toArray.mapM fun item =>
+          mkLeanRow item.label item.kind item.leanObjects
+      let proofDebtHotspotRows :=
+        data.proofDebtHotspots.toArray.map fun item =>
+          let badges :=
+            #[
+              mkBadge s!"affected entries: {item.affectedEntries}" "bp_summary_badge bp_summary_badge_warn",
+              mkBadge s!"incomplete decls: {item.incompleteDecls}",
+              mkBadge s!"missing decls: {item.missingDecls}",
+              mkBadge s!"total debt: {item.totalDebt}"
+            ]
+          {{
+            <li class="bp_summary_item">
+              <div class="bp_summary_item_top">
+                <span class="bp_summary_item_head">{{.text true item.header}}</span>
+                <span class="bp_summary_item_meta"><code>s!"{item.parent}"</code></span>
+              </div>
+              <div class="bp_summary_item_body">"Grouped proof/code debt derived from the current incomplete-declaration snapshots."</div>
+              {{mkBadgeRow badges}}
+            </li>
+          }}
       let groupHealthRows ←
         data.groupHealth.toArray.mapM fun item => do
           let badges :=
@@ -1111,6 +1389,10 @@ block_extension Block.summary (summary : Summary) where
             }}
           | Option.some next =>
             let nextRef ← mkEntryRef next.label
+            let priorityBadges : Array Output.Html :=
+              match next.priority with
+              | Option.some priority => #[mkBadge s!"priority: {priority}" "bp_summary_badge bp_summary_badge_warn"]
+              | Option.none => #[]
             pure {{
               <li class="bp_summary_item">
                 <div class="bp_summary_item_top">
@@ -1121,8 +1403,10 @@ block_extension Block.summary (summary : Summary) where
                 {{mkBadgeRow badges}}
                 <div class="bp_summary_item_actions">
                   "Next: " {{nextRef}} " "
-                  {{mkBadge s!"stage: {next.stage}" "bp_summary_badge bp_summary_badge_warn"}}
-                  {{mkBadge s!"downstream unlocks: {next.downstreamUses}"}}
+                  {{priorityBadges ++ #[
+                    mkBadge s!"stage: {next.stage}",
+                    mkBadge s!"downstream unlocks: {next.downstreamUses}"
+                  ]}}
                 </div>
               </li>
             }}
@@ -1248,6 +1532,40 @@ block_extension Block.summary (summary : Summary) where
               <summary>s!"Group health ({data.groupHealth.length})"</summary>
               <ul class="bp_summary_list">
                 {{if groupHealthRows.isEmpty then {{<li class="bp_summary_empty">"No parent groups with multiple child entries were found."</li>}} else capRows groupHealthRows "groups"}}
+              </ul>
+            </details>
+          </details>
+          <details class="bp_summary_section" open>
+            <summary>"Structure and coverage"</summary>
+            <div class="bp_summary_grid">
+              <div class="bp_summary_card"><span class="bp_summary_label">"Informal-only"</span><span class="bp_summary_value">s!"{data.coverageSplit.informalOnly}"</span><span class="bp_summary_status">"Statements with no associated Lean code yet."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Ready to formalize"</span><span class="bp_summary_value">s!"{data.coverageSplit.readyToFormalize}"</span><span class="bp_summary_status">"Entries whose next step is currently unblocked."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Formalized, ancestors open"</span><span class="bp_summary_value">s!"{data.coverageSplit.formalizedWithoutAncestors}"</span><span class="bp_summary_status">"Local Lean work is done, but prerequisite closure is still open."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Fully closed"</span><span class="bp_summary_value">s!"{data.coverageSplit.fullyClosed}"</span><span class="bp_summary_status">"Local code and ancestor closure are both complete."</span></div>
+              <div class="bp_summary_card bp_summary_card_warn"><span class="bp_summary_label">"Blocked or incomplete"</span><span class="bp_summary_value">s!"{data.coverageSplit.blockedOrIncomplete}"</span><span class="bp_summary_status">"Entries not covered by the highlighted readiness buckets above."</span></div>
+            </div>
+            <details class="bp_summary_subsection">
+              <summary>s!"Heaviest prerequisites ({data.heaviestPrerequisites.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if heaviestPrerequisiteRows.isEmpty then {{<li class="bp_summary_empty">"No dependency edges recorded yet."</li>}} else capRows heaviestPrerequisiteRows "heaviest-prerequisite entries"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"No prerequisites ({data.noPrerequisites.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if noPrerequisiteRows.isEmpty then {{<li class="bp_summary_empty">"Every entry depends on at least one other entry."</li>}} else capRows noPrerequisiteRows "entries without prerequisites"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"No dependents ({data.noDependents.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if noDependentRows.isEmpty then {{<li class="bp_summary_empty">"Every entry is used somewhere else in the current dependency graph."</li>}} else capRows noDependentRows "entries without dependents"}}
+              </ul>
+            </details>
+            <details class={{if data.proofDebtHotspots.isEmpty then "bp_summary_subsection" else "bp_summary_subsection bp_summary_subsection_warn"}}>
+              <summary>s!"Proof debt hotspots ({data.proofDebtHotspots.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if proofDebtHotspotRows.isEmpty then {{<li class="bp_summary_empty">"No grouped proof/code debt hotspots were detected."</li>}} else capRows proofDebtHotspotRows "proof-debt hotspots"}}
               </ul>
             </details>
           </details>

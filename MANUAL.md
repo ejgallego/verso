@@ -107,24 +107,46 @@ Linear-algebra lemmas for local geometry.
 
 ## Parent Attribute
 
-Informal nodes may declare `parent`:
+Informal nodes may declare `parent` and an optional triage `priority`:
 
 ```md
-:::lemma_ "lem:pythagoras" (parent := "local_linear_algebra")
+:::lemma_ "lem:pythagoras" (parent := "local_linear_algebra") (priority := "high")
 ...
 :::
 ```
+
+Supported priority values are `high`, `medium`, and `low`.
 
 Duplicate `parent` declarations on the same label follow this behavior:
 
 - Same `parent`: warning, keeping the existing value.
 - Different `parent`: error, keeping the existing value.
 
+Duplicate `priority` declarations on the same label follow the same pattern:
+
+- Same `priority`: warning, keeping the existing value.
+- Different `priority`: error, keeping the existing value.
+
 ## Rendering Behavior
 
 The `parent` / `group` data is used in two places.
 
 1. Blueprint summary (`blueprint_summary` / `bp_summary`):
+- Keeps the inventory-oriented sections for entry counts, Lean progress, and theorem-like entries by parent.
+- Shows a triage section derived from the current dependency/status data:
+  - `Actionable priorities`: entries whose next statement/proof step is ready now and already unlocks downstream work.
+  - `Statement-used entries`: entries reused in statement dependencies.
+  - `Proof-used entries`: entries reused in proof dependencies.
+  - `Top priorities`: ranked actionable entries, ordered by downstream unlock impact.
+  - `Most used in statements` / `Most used in proofs`: ranked reverse-dependency lists, split by dependency axis.
+  - `Group health`: per-parent rollups with counts plus the best next actionable child when one exists.
+- Caps long triage lists to a short visible slice and adds a nested "show all" expander for the remainder.
+- Uses explicit `(priority := "...")` metadata as an author override when ranking actionable items and parent-group next steps.
+- Shows a structure/coverage section derived from the same graph and completion snapshots:
+  - `Informal-only`, `Ready to formalize`, `Formalized, ancestors open`, `Fully closed`, and `Blocked or incomplete` coverage buckets.
+  - `Heaviest prerequisites`: entries with the largest combined statement/proof prerequisite fan-in.
+  - `No prerequisites` / `No dependents`: root and leaf views of the current dependency graph.
+  - `Proof debt hotspots`: grouped counts of incomplete declarations and missing external declarations.
 - Shows a "Theorem / Lemma / Corollary by Parent" section.
 - Uses the `:::group` header text when available.
 - Filters out groups with only one child.
@@ -137,7 +159,7 @@ The `parent` / `group` data is used in two places.
 ## Notes
 
 - Parent grouping is structural metadata; it does not change dependency edges.
-- Grouping currently targets summary/visualization, not proof status semantics.
+- Grouping currently targets summary/visualization and triage rollups, not proof status semantics.
 - Group labels are metadata, not first-class reference targets; linking to a parent/group label is not currently supported.
 - The local block-header group chip is shown only for entries whose parent is shared by other entries, or when a `parent := "..."` label is present but no matching `:::group` was declared. The summary and dependency graph still fall back to the raw parent label text instead of failing.
 - More generally, unresolved blueprint references are not currently accumulated into a global diagnostics report. Reference-oriented surfaces such as `{uses ...}` and `used by` resolve against the final traversal state and degrade locally if a target remains unavailable.

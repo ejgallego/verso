@@ -18,6 +18,7 @@ structure InProgress where
   kind : Data.InProgressKind := .proof
   codeHint : Option CodeRef := none
   parent : Option Parent := none
+  priority : Option String := none
   deps : Array Label := #[]
   elabStx : Array Syntax := #[]
 deriving Inhabited, Repr
@@ -100,10 +101,10 @@ def checkLabelAndNesting (label : Label) (kind : Data.InProgressKind) : m Unit :
 
 -- stack operators, to associate {uses} role to the currently opened label
 def push (label : Label) (kind : Data.InProgressKind)
-    (codeHint : Option CodeRef := none) (parent : Option Parent := none) : m Unit := do
+    (codeHint : Option CodeRef := none) (parent : Option Parent := none) (priority : Option String := none) : m Unit := do
   checkLabelAndNesting label kind
   modify fun data =>
-    let pdata := { label, kind, codeHint, parent }
+    let pdata := { label, kind, codeHint, parent, priority }
     { data with stack := pdata :: data.stack }
 
 def getCount : m Nat := do
@@ -134,7 +135,7 @@ def pop (ref : Syntax) : m Nat := do
           deps := cur.deps
           elabStx := cur.elabStx
         }
-        let data ← state.data.register cur.label cur.kind payload cur.codeHint cur.parent
+        let data ← state.data.register cur.label cur.kind payload cur.codeHint cur.parent cur.priority
         let localData :=
           match data.get? cur.label with
           | some node => state.localData.insert cur.label node

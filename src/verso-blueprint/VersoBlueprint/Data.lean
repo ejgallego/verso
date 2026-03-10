@@ -329,6 +329,7 @@ structure Node where
   proof : Option InformalData := none -- Informal Object proof
   code : Option CodeRef := none -- Informal Object associated code status
   parent : Option Parent := none -- Optional parent group for summaries/graphs
+  priority : Option String := none -- Optional author-provided triage hint
 deriving Repr, Inhabited
 
 /-- Map of labels to Node data -/
@@ -388,6 +389,19 @@ private def mergeParent (label : Label) (current incoming : Option Parent) : m (
       logError m!"Label {label} declares conflicting parents: existing '{currentParent}', new '{incomingParent}'"
       return some currentParent
 
+private def mergePriority (label : Label) (current incoming : Option String) : m (Option String) := do
+  match current, incoming with
+  | none, none => return none
+  | some priority, none => return some priority
+  | none, some priority => return some priority
+  | some currentPriority, some incomingPriority =>
+    if currentPriority = incomingPriority then
+      logWarning m!"Label {label} repeats '(priority := \"{currentPriority}\")'; keeping the same priority"
+      return some currentPriority
+    else
+      logError m!"Label {label} declares conflicting priorities: existing '{currentPriority}', new '{incomingPriority}'"
+      return some currentPriority
+
 def Data.registerCodeRef (data : Data) (label : Label) (codeRef : CodeRef) : m Data := do
   match data.get? label with
   | none =>
@@ -397,16 +411,18 @@ def Data.registerCodeRef (data : Data) (label : Label) (codeRef : CodeRef) : m D
     return data.insert label { node with code }
 
 def Data.register (data : Data) (label : Label) (kind : InProgressKind) (payload : InformalData)
-    (codeHint : Option CodeRef := none) (parent : Option Parent := none) : m Data := do
+    (codeHint : Option CodeRef := none) (parent : Option Parent := none) (priority : Option String := none) : m Data := do
   let applyHints (node : Node) : m Node := do
     match codeHint with
     | none =>
       let parent ← mergeParent label node.parent parent
-      return { node with parent }
+      let priority ← mergePriority label node.priority priority
+      return { node with parent, priority }
     | some hint =>
       let code ← mergeCodeRef label node.code hint
       let parent ← mergeParent label node.parent parent
-      return { node with code, parent }
+      let priority ← mergePriority label node.priority priority
+      return { node with code, parent, priority }
   let nextCount := data.size + 1
   match data.get? label, kind with
   -- First statement for a fresh label.
