@@ -228,6 +228,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       match summaryJs?, previewUtilsJs? with
       | some summaryJs, some previewUtilsJs =>
         hasSubstr summaryJs "previewUtils.bindTemplatePreview({" &&
+        hasSubstr summaryJs "allowSharedManifest: true" &&
         hasSubstr summaryJs "templateSelector: \"template.bp_summary_preview_tpl[data-bp-preview-label]\"" &&
         hasSubstr summaryJs "triggerSelector: \".bp_summary_preview_wrap_active[data-bp-preview-label]\"" &&
         hasSubstr summaryJs "readTitle: function (_wrap, label) { return label; }" &&
@@ -235,6 +236,8 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr previewUtilsJs "function shouldKeepOpen(nextTarget, trigger, panel)" &&
         hasSubstr previewUtilsJs "function readPanelBehavior(panel, defaults)" &&
         hasSubstr previewUtilsJs "function configureCloseButton(closeButton, onClose, behavior)" &&
+        hasSubstr previewUtilsJs "function readSharedPreviewEntryByLabel(label)" &&
+        hasSubstr previewUtilsJs "function loadSharedPreviewEntry(previewKey, label)" &&
         hasSubstr previewUtilsJs "function hydratePreviewSubtree(root)" &&
         hasSubstr previewUtilsJs "window.setTimeout(function () {" 
       | _, _ => false
@@ -266,6 +269,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr graphJs "function createPanelController(panel, behavior, titleSelector, bodySelector, options)" &&
         hasSubstr graphJs "function bindHoverablePanelLifetime(previewUtils, controller, getActiveAnchor, boundAttr)" &&
         hasSubstr graphJs "function configurePanelCloseButton(previewUtils, closeButton, hidePanel, behavior)" &&
+        hasSubstr graphJs "previewUtils.loadSharedPreviewEntry(\"\", label)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(previewPanelNode, { mode: \"pinned\", placement: \"docked\" })" &&
         hasSubstr graphJs "previewUtils.hydratePreviewSubtree(body)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(groupHoverPanel, { mode: \"pinned\", placement: \"docked\" })" &&

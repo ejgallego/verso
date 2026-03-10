@@ -75,8 +75,9 @@ def previewHoverUtilsJs : String := r##"(function () {
       if (!html) {
         html = (tpl.innerHTML || "").trim();
       }
+      const previewKey = (tpl.getAttribute("data-bp-preview-key") || "").trim();
       if (label && html) {
-        map.set(label, html);
+        map.set(label, previewKey ? { html: html, previewKey: previewKey } : html);
       }
     });
     return map;
@@ -156,6 +157,43 @@ def previewHoverUtilsJs : String := r##"(function () {
     const map = window.bpSharedPreviewManifest;
     if (!(map instanceof Map)) return null;
     return map.get(previewKey) || null;
+  }
+
+  function readSharedPreviewEntryByLabel(label) {
+    const trimmed = typeof label === "string" ? label.trim() : "";
+    if (!trimmed) return null;
+    return (
+      readSharedPreviewEntry(trimmed + "--statement") ||
+      readSharedPreviewEntry(trimmed + "--proof") ||
+      null
+    );
+  }
+
+  function readPreviewLookupKey(entry) {
+    if (entry && typeof entry === "object" && typeof entry.previewKey === "string") {
+      return entry.previewKey;
+    }
+    return "";
+  }
+
+  async function loadSharedPreviewEntry(previewKey, label) {
+    const exact = readSharedPreviewEntry(previewKey);
+    if (exact) return exact;
+    const byLabel = readSharedPreviewEntryByLabel(label);
+    if (byLabel) return byLabel;
+    const manifest = await loadSharedPreviewManifest();
+    if (!(manifest instanceof Map)) return null;
+    if (typeof previewKey === "string" && previewKey.length > 0 && manifest.has(previewKey)) {
+      return manifest.get(previewKey) || null;
+    }
+    if (typeof label === "string" && label.length > 0) {
+      return (
+        manifest.get(label + "--statement") ||
+        manifest.get(label + "--proof") ||
+        null
+      );
+    }
+    return null;
   }
 
   function renderMath(root) {
@@ -412,18 +450,29 @@ def previewHoverUtilsJs : String := r##"(function () {
             const heading = (trigger.getAttribute(titleAttr) || "").trim();
             return heading || key;
           };
+    const allowSharedManifest = !!(options && options.allowSharedManifest);
 
     const previewMap = collectPreviewTemplates(previewRoot, templateSelector, keyAttr);
+    const triggers = triggerRoot.querySelectorAll(triggerSelector);
     const title = panel ? panel.querySelector(titleSelector) : null;
     const body = panel ? panel.querySelector(bodySelector) : null;
     const close = panel ? panel.querySelector(closeSelector) : null;
-    if (!panel || !(title instanceof Element) || !(body instanceof Element) || previewMap.size === 0) {
+    if (!panel || !(title instanceof Element) || !(body instanceof Element) || (!allowSharedManifest && previewMap.size === 0)) {
       if (panel) hidePanelContent(panel, title, body);
+      return null;
+    }
+    if (triggers.length === 0) {
+      hidePanelContent(panel, title, body);
       return null;
     }
     const behavior = readPanelBehavior(panel, defaults);
     let activeTrigger = null;
     let hideTimer = null;
+    let showRequestToken = 0;
+
+    if (allowSharedManifest && typeof loadSharedPreviewManifest === "function") {
+      loadSharedPreviewManifest();
+    }
 
     function cancelHide() {
       if (hideTimer !== null) {
@@ -434,6 +483,7 @@ def previewHoverUtilsJs : String := r##"(function () {
 
     function hidePanel() {
       cancelHide();
+      showRequestToken += 1;
       hidePanelContent(panel, title, body);
       activeTrigger = null;
     }
@@ -471,10 +521,24 @@ def previewHoverUtilsJs : String := r##"(function () {
       positionAnchoredPanel(panel, anchor, margin, offset);
     }
 
-    function showFromTrigger(trigger) {
+    async function resolveTriggerHtml(trigger, key) {
+      const localEntry = previewMap.get(key);
+      const localHtml = readPreviewTemplate(localEntry);
+      if (localHtml) return localHtml;
+      if (!allowSharedManifest) return "";
+      const sharedEntry =
+        typeof loadSharedPreviewEntry === "function"
+          ? await loadSharedPreviewEntry(readPreviewLookupKey(localEntry), key)
+          : null;
+      return readPreviewTemplate(sharedEntry);
+    }
+
+    async function showFromTrigger(trigger) {
       if (!(trigger instanceof Element)) return;
       const key = readKey(trigger);
-      const html = readPreviewTemplate(previewMap.get(key));
+      const requestToken = ++showRequestToken;
+      const html = await resolveTriggerHtml(trigger, key);
+      if (requestToken !== showRequestToken) return;
       if (!key || !html) {
         hidePanel();
         return;
@@ -486,7 +550,6 @@ def previewHoverUtilsJs : String := r##"(function () {
 
     configureCloseButton(close, hidePanel, behavior);
 
-    const triggers = triggerRoot.querySelectorAll(triggerSelector);
     triggers.forEach(function (trigger) {
       if (!(trigger instanceof Element)) return;
       if (trigger.getAttribute(triggerBoundAttr) === "1") return;
@@ -557,6 +620,9 @@ def previewHoverUtilsJs : String := r##"(function () {
     readPreviewTemplate: readPreviewTemplate,
     loadSharedPreviewManifest: loadSharedPreviewManifest,
     readSharedPreviewEntry: readSharedPreviewEntry,
+    readSharedPreviewEntryByLabel: readSharedPreviewEntryByLabel,
+    readPreviewLookupKey: readPreviewLookupKey,
+    loadSharedPreviewEntry: loadSharedPreviewEntry,
     renderMath: renderMath,
     bindCloseOnce: bindCloseOnce,
     positionAnchoredPanel: positionAnchoredPanel,

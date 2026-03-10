@@ -110,6 +110,7 @@
     const state = {
       previewActiveNode: null,
       previewController: null,
+      previewRequestToken: 0,
       groupHoverAnchorNode: null,
       groupHoverController: null,
       groupHoverShownKey: "",
@@ -333,6 +334,8 @@
     if (!previewController) return;
     const graphState = ensureGraphBlockState(graphBlock);
     const previewUtils = window.bpPreviewUtils;
+    const canResolveSharedPreview =
+      previewUtils && typeof previewUtils.loadSharedPreviewEntry === "function";
     const hoverLifetime = bindHoverablePanelLifetime(
       previewUtils,
       previewController,
@@ -344,12 +347,18 @@
       previewController.hide();
       return;
     }
-    if (!previewController.title || !previewController.body || previewMap.size === 0) {
+    if (!previewController.title || !previewController.body || (previewMap.size === 0 && !canResolveSharedPreview)) {
       previewController.hide();
       return;
     }
-    const show = function (label, anchorNode) {
-      const html = parsePreviewEntry(previewMap.get(label));
+    const show = async function (label, anchorNode) {
+      const requestToken = ++graphState.previewRequestToken;
+      let html = parsePreviewEntry(previewMap.get(label));
+      if (!html && canResolveSharedPreview) {
+        const sharedEntry = await previewUtils.loadSharedPreviewEntry("", label);
+        html = parsePreviewEntry(sharedEntry);
+      }
+      if (requestToken !== graphState.previewRequestToken) return;
       if (!html) return;
       hoverLifetime.cancelHide();
       graphState.previewActiveNode = anchorNode instanceof Element ? anchorNode : null;
@@ -357,7 +366,7 @@
     };
     svg.querySelectorAll("g.node").forEach(function (node) {
       const label = graphNodeLabel(node);
-      if (!previewMap.has(label)) return;
+      if (!label || (!previewMap.has(label) && !canResolveSharedPreview)) return;
       node.style.cursor = "pointer";
       node.setAttribute("tabindex", "0");
       const titleNode = node.querySelector("title");
@@ -588,6 +597,7 @@
             },
             positionPanel: makeHtmlPanelPositioner(previewPanelBehavior),
             onHide: function () {
+              graphState.previewRequestToken += 1;
               graphState.previewActiveNode = null;
             }
           }
