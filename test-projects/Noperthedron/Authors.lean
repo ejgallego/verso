@@ -16,8 +16,8 @@ set_option doc.verso true
 
 #doc (Manual) "Blueprint Authors" =>
 
-:::author "david" (name := "David Renshaw") (image_url := "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%230f172a'/><text x='50%' y='53%' dominant-baseline='middle' text-anchor='middle' font-family='Verdana' font-size='24' fill='white'>DR</text></svg>")
+:::author "david" (name := "David Renshaw") (image_url := "https://ui-avatars.com/api/?name=David+Renshaw&background=0f172a&color=ffffff&size=64")
 :::
 
-:::author "jason" (name := "Jason Reed") (image_url := "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%231f2937'/><text x='50%' y='53%' dominant-baseline='middle' text-anchor='middle' font-family='Verdana' font-size='24' fill='white'>JR</text></svg>")
+:::author "jason" (name := "Jason Reed") (image_url := "https://ui-avatars.com/api/?name=Jason+Reed&background=1f2937&color=ffffff&size=64")
 :::

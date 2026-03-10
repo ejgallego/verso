@@ -90,6 +90,10 @@ structure PriorityItem where
   kind : String
   stage : String
   priority : Option String := none
+  ownerDisplayName : Option String := none
+  effort : Option String := none
+  prUrl : Option String := none
+  tags : List String := []
   statementStatus : String
   proofStatus : String := ""
   directUses : Nat := 0
@@ -105,6 +109,10 @@ instance : Quote PriorityItem where
       quote s.kind,
       quote s.stage,
       quote s.priority,
+      quote s.ownerDisplayName,
+      quote s.effort,
+      quote s.prUrl,
+      quote s.tags,
       quote s.statementStatus,
       quote s.proofStatus,
       quote s.directUses,
@@ -229,6 +237,71 @@ instance : Quote DebtHotspotItem where
       quote s.totalDebt
     ]
 
+structure OwnerRollupItem where
+  owner : Name
+  displayName : String := ""
+  totalEntries : Nat := 0
+  actionableEntries : Nat := 0
+  quickWins : Nat := 0
+  linkedPrs : Nat := 0
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote OwnerRollupItem where
+  quote s := mkCApp ``OwnerRollupItem.mk
+    #[
+      quote s.owner,
+      quote s.displayName,
+      quote s.totalEntries,
+      quote s.actionableEntries,
+      quote s.quickWins,
+      quote s.linkedPrs
+    ]
+
+structure TagRollupItem where
+  tag : String
+  totalEntries : Nat := 0
+  actionableEntries : Nat := 0
+  quickWins : Nat := 0
+  linkedPrs : Nat := 0
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote TagRollupItem where
+  quote s := mkCApp ``TagRollupItem.mk
+    #[
+      quote s.tag,
+      quote s.totalEntries,
+      quote s.actionableEntries,
+      quote s.quickWins,
+      quote s.linkedPrs
+    ]
+
+structure MetadataEntryItem where
+  label : Name
+  kind : String
+  ownerDisplayName : Option String := none
+  effort : Option String := none
+  priority : Option String := none
+  prUrl : Option String := none
+  tags : List String := []
+  leanObjects : List Name := []
+deriving Inhabited, FromJson, ToJson
+
+open Syntax in
+instance : Quote MetadataEntryItem where
+  quote s := mkCApp ``MetadataEntryItem.mk
+    #[
+      quote s.label,
+      quote s.kind,
+      quote s.ownerDisplayName,
+      quote s.effort,
+      quote s.priority,
+      quote s.prUrl,
+      quote s.tags,
+      quote s.leanObjects
+    ]
+
 structure Summary where
   totalEntries : Nat := 0
   definitions : Nat := 0
@@ -261,6 +334,13 @@ structure Summary where
   noPrerequisites : List IndexItem := []
   noDependents : List IndexItem := []
   proofDebtHotspots : List DebtHotspotItem := []
+  quickWins : List PriorityItem := []
+  ownerRollups : List OwnerRollupItem := []
+  tagRollups : List TagRollupItem := []
+  linkedPrs : List MetadataEntryItem := []
+  missingOwners : List MetadataEntryItem := []
+  missingEffort : List MetadataEntryItem := []
+  untaggedEntries : List MetadataEntryItem := []
 deriving Inhabited, FromJson, ToJson
 
 open Syntax in
@@ -297,7 +377,14 @@ instance : Quote Summary where
       quote s.heaviestPrerequisites,
       quote s.noPrerequisites,
       quote s.noDependents,
-      quote s.proofDebtHotspots
+      quote s.proofDebtHotspots,
+      quote s.quickWins,
+      quote s.ownerRollups,
+      quote s.tagRollups,
+      quote s.linkedPrs,
+      quote s.missingOwners,
+      quote s.missingEffort,
+      quote s.untaggedEntries
     ]
 
 structure EntryStatusFlags where
@@ -434,6 +521,30 @@ private def sortGroupHealthItems (items : Array GroupHealthItem) : Array GroupHe
               (a.totalEntries == b.totalEntries &&
                 a.header < b.header)))))
 
+private def sortOwnerRollupItems (items : Array OwnerRollupItem) : Array OwnerRollupItem :=
+  items.qsort fun a b =>
+    a.actionableEntries > b.actionableEntries ||
+      (a.actionableEntries == b.actionableEntries &&
+        (a.quickWins > b.quickWins ||
+          (a.quickWins == b.quickWins &&
+            (a.totalEntries > b.totalEntries ||
+              (a.totalEntries == b.totalEntries &&
+                a.displayName < b.displayName)))))
+
+private def sortTagRollupItems (items : Array TagRollupItem) : Array TagRollupItem :=
+  items.qsort fun a b =>
+    a.actionableEntries > b.actionableEntries ||
+      (a.actionableEntries == b.actionableEntries &&
+        (a.quickWins > b.quickWins ||
+          (a.quickWins == b.quickWins &&
+            (a.totalEntries > b.totalEntries ||
+              (a.totalEntries == b.totalEntries &&
+                a.tag < b.tag)))))
+
+private def sortMetadataEntryItems (items : Array MetadataEntryItem) : Array MetadataEntryItem :=
+  items.qsort fun a b =>
+    a.label.toString < b.label.toString
+
 private def triageVisibleLimit : Nat := 10
 
 private def bumpEntryStatus (acc : EntryStatusCounts) (flags : EntryStatusFlags) : EntryStatusCounts :=
@@ -517,9 +628,29 @@ private def nodeIncompleteLeanDeclCount (external : Informal.Graph.ExternalCodeS
       else
         acc + (if decl.provedStatus.isIncomplete then 1 else 0)
   | some (.literate code) =>
-    countSorries code.definedDefs (fun (d : Data.LiterateDef) => d.provedStatus) +
+      countSorries code.definedDefs (fun (d : Data.LiterateDef) => d.provedStatus) +
       countSorries code.definedTheorems (fun (d : Data.LiterateThm) => d.provedStatus)
   | _ => 0
+
+private def ownerDisplayName (state : Environment.State) (node : Data.Node) : Option String :=
+  match node.owner with
+  | some owner =>
+    match state.authors.get? owner with
+    | some info => some info.displayName
+    | none => some owner.toString
+  | none => none
+
+private def metadataEntryItem (state : Environment.State) (label : Name) (node : Data.Node) : MetadataEntryItem :=
+  {
+    label
+    kind := toString node.kind
+    ownerDisplayName := ownerDisplayName state node
+    effort := node.effort
+    priority := node.priority
+    prUrl := node.prUrl
+    tags := node.tags.toList
+    leanObjects := nodeLeanObjects node
+  }
 
 private def priorityItem? (state : Environment.State) (external : Informal.Graph.ExternalCodeStatus)
     (usageMap : NameMap UsageCounts) (reverseMap : NameMap (Array Name))
@@ -543,6 +674,10 @@ private def priorityItem? (state : Environment.State) (external : Informal.Graph
           kind := toString node.kind
           stage
           priority := node.priority
+          ownerDisplayName := ownerDisplayName state node
+          effort := node.effort
+          prUrl := node.prUrl
+          tags := node.tags.toList
           statementStatus := Informal.Graph.StatementStatus.toText statementStatus
           proofStatus := if node.kind.isTheoremLike then Informal.Graph.ProofStatus.toText proofStatus else ""
           directUses := usage.directUses
@@ -862,6 +997,69 @@ def buildSummary : CoreM Summary := do
           totalDebt
         }
     (sortDebtHotspotItems items).toList
+  let quickWins : List PriorityItem :=
+    topPriorities.filter fun item => item.priority == some "high" && item.effort == some "small"
+  let ownerRollups : List OwnerRollupItem :=
+    let rollups := entries.foldl (init := ({} : NameMap OwnerRollupItem)) fun acc (label, node) =>
+      match node.owner with
+      | none => acc
+      | some owner =>
+        let actionable := (priorityItem? state external usageMap reverseMap label node).isSome
+        let quickWin := actionable && node.priority == some "high" && node.effort == some "small"
+        let linkedPr := node.prUrl.isSome
+        let displayName := (ownerDisplayName state node).getD owner.toString
+        let cur := acc.getD owner { owner, displayName }
+        acc.insert owner {
+          cur with
+            totalEntries := cur.totalEntries + 1
+            actionableEntries := cur.actionableEntries + (if actionable then 1 else 0)
+            quickWins := cur.quickWins + (if quickWin then 1 else 0)
+            linkedPrs := cur.linkedPrs + (if linkedPr then 1 else 0)
+        }
+    (sortOwnerRollupItems (rollups.toArray.map fun pair => pair.2)).toList
+  let tagRollups : List TagRollupItem :=
+    let rollups := entries.foldl (init := ({} : Std.HashMap String TagRollupItem)) fun acc (label, node) =>
+      let actionable := (priorityItem? state external usageMap reverseMap label node).isSome
+      let quickWin := actionable && node.priority == some "high" && node.effort == some "small"
+      let linkedPr := node.prUrl.isSome
+      node.tags.foldl (init := acc) fun acc tag =>
+        let cur := acc.getD tag { tag }
+        acc.insert tag {
+          cur with
+            totalEntries := cur.totalEntries + 1
+            actionableEntries := cur.actionableEntries + (if actionable then 1 else 0)
+            quickWins := cur.quickWins + (if quickWin then 1 else 0)
+            linkedPrs := cur.linkedPrs + (if linkedPr then 1 else 0)
+        }
+    (sortTagRollupItems (rollups.toArray.map fun pair => pair.2)).toList
+  let linkedPrs : List MetadataEntryItem :=
+    let items := entries.foldl (init := #[]) fun acc (label, node) =>
+      if node.prUrl.isSome then
+        acc.push (metadataEntryItem state label node)
+      else
+        acc
+    (sortMetadataEntryItems items).toList
+  let missingOwners : List MetadataEntryItem :=
+    let items := entries.foldl (init := #[]) fun acc (label, node) =>
+      if node.owner.isNone then
+        acc.push (metadataEntryItem state label node)
+      else
+        acc
+    (sortMetadataEntryItems items).toList
+  let missingEffort : List MetadataEntryItem :=
+    let items := entries.foldl (init := #[]) fun acc (label, node) =>
+      if node.effort.isNone then
+        acc.push (metadataEntryItem state label node)
+      else
+        acc
+    (sortMetadataEntryItems items).toList
+  let untaggedEntries : List MetadataEntryItem :=
+    let items := entries.foldl (init := #[]) fun acc (label, node) =>
+      if node.tags.isEmpty then
+        acc.push (metadataEntryItem state label node)
+      else
+        acc
+    (sortMetadataEntryItems items).toList
   return {
     summary with
       theoremLikeByParent,
@@ -872,7 +1070,14 @@ def buildSummary : CoreM Summary := do
       heaviestPrerequisites,
       noPrerequisites,
       noDependents,
-      proofDebtHotspots
+      proofDebtHotspots,
+      quickWins,
+      ownerRollups,
+      tagRollups,
+      linkedPrs,
+      missingOwners,
+      missingEffort,
+      untaggedEntries
   }
 
 private def Summary.previewLabels (data : Summary) : Array Name :=
@@ -883,10 +1088,15 @@ private def Summary.previewLabels (data : Summary) : Array Name :=
     data.definitionIndex.map (·.label) ++
     data.theoremLikeIndex.map (·.label) ++
     data.topPriorities.map (·.label) ++
+    data.quickWins.map (·.label) ++
     data.mostUsed.map (·.label) ++
     data.heaviestPrerequisites.map (·.label) ++
     data.noPrerequisites.map (·.label) ++
     data.noDependents.map (·.label) ++
+    data.linkedPrs.map (·.label) ++
+    data.missingOwners.map (·.label) ++
+    data.missingEffort.map (·.label) ++
+    data.untaggedEntries.map (·.label) ++
     data.theoremLikeByParent.foldr (init := []) fun group acc =>
       group.entries.map (·.label) ++ acc
   let (_, labels) := allLabels.foldl (init := (({} : NameSet), (#[] : Array Name))) fun (seen, labels) label =>
@@ -1213,45 +1423,68 @@ block_extension Block.summary (summary : Summary) where
                       else
                        .empty}}
                   </li> }}
-      let topPriorityRows ←
-        data.topPriorities.toArray.mapM fun item => do
-          let entryRef ← mkEntryRef item.label
-          let codeHref := getCodeHref item.label
-          let associatedDecls := !item.leanObjects.isEmpty
-          let priorityBadges : Array Output.Html :=
-            match item.priority with
-            | Option.some priority => #[mkBadge s!"priority: {priority}" "bp_summary_badge bp_summary_badge_warn"]
+      let mkPriorityRow (item : PriorityItem) := do
+        let entryRef ← mkEntryRef item.label
+        let codeHref := getCodeHref item.label
+        let associatedDecls := !item.leanObjects.isEmpty
+        let priorityBadges : Array Output.Html :=
+          match item.priority with
+          | Option.some priority => #[mkBadge s!"priority: {priority}" "bp_summary_badge bp_summary_badge_warn"]
+          | Option.none => #[]
+        let ownerBadges : Array Output.Html :=
+          match item.ownerDisplayName with
+          | Option.some owner => #[mkBadge s!"owner: {owner}"]
+          | Option.none => #[]
+        let effortBadges : Array Output.Html :=
+          match item.effort with
+          | Option.some effort => #[mkBadge s!"effort: {effort}"]
+          | Option.none => #[]
+        let proofBadges : Array Output.Html :=
+          if item.proofStatus.isEmpty then
+            #[]
+          else
+            #[mkBadge s!"proof: {item.proofStatus}"]
+        let tagBadges : Array Output.Html :=
+          item.tags.toArray.map fun tag => mkBadge s!"tag: {tag}"
+        let actionLinks : Array Output.Html :=
+          let codeLinks :=
+            match codeHref with
+            | Option.some href => #[{{ <a class="bp_code_link" href={{href}}>"code"</a> }}]
             | Option.none => #[]
-          let proofBadges : Array Output.Html :=
-            if item.proofStatus.isEmpty then
-              #[]
-            else
-              #[mkBadge s!"proof: {item.proofStatus}"]
-          let badges :=
-            priorityBadges ++ #[
-              mkBadge s!"stage: {item.stage}",
-              mkBadge s!"statement: {item.statementStatus}",
-              mkBadge s!"direct uses: {item.directUses}",
-              mkBadge s!"downstream unlocks: {item.downstreamUses}"
-            ] ++ proofBadges
-          pure {{
-            <li class="bp_summary_item">
-              <div class="bp_summary_item_top">
-                <span class="bp_summary_item_head">{{entryRef}}</span>
-                <span class="bp_summary_item_meta">s!"({item.kind})"</span>
-              </div>
-              <div class="bp_summary_item_body">s!"Ready for {item.stage} work."</div>
-              {{mkBadgeRow badges}}
-              {{if associatedDecls then
-                 {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.label item.leanObjects}}</ul></details>}}
-                else
-                 .empty}}
-              {{if let some href := codeHref then
-                 {{<div class="bp_summary_item_actions">"Jump: " <a class="bp_code_link" href={{href}}>"code"</a></div>}}
-                else
-                 .empty}}
-            </li>
-          }}
+          let prLinks :=
+            match item.prUrl with
+            | Option.some href => #[{{ <a class="bp_code_link" href={{href}}>"PR"</a> }}]
+            | Option.none => #[]
+          codeLinks ++ prLinks
+        let badges :=
+          priorityBadges ++ ownerBadges ++ effortBadges ++ #[
+            mkBadge s!"stage: {item.stage}",
+            mkBadge s!"statement: {item.statementStatus}",
+            mkBadge s!"direct uses: {item.directUses}",
+            mkBadge s!"downstream unlocks: {item.downstreamUses}"
+          ] ++ proofBadges ++ tagBadges
+        pure {{
+          <li class="bp_summary_item">
+            <div class="bp_summary_item_top">
+              <span class="bp_summary_item_head">{{entryRef}}</span>
+              <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+            </div>
+            <div class="bp_summary_item_body">s!"Ready for {item.stage} work."</div>
+            {{mkBadgeRow badges}}
+            {{if associatedDecls then
+               {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.label item.leanObjects}}</ul></details>}}
+              else
+               .empty}}
+            {{if Array.isEmpty actionLinks then
+               .empty
+              else
+               {{<div class="bp_summary_item_actions">"Links: " {{(actionLinks.toList.intersperse {{<span class="bp_summary_sep">" | "</span>}}).toArray}}</div>}}}}
+          </li>
+        }}
+      let topPriorityRows ←
+        data.topPriorities.toArray.mapM mkPriorityRow
+      let quickWinRows ←
+        data.quickWins.toArray.mapM mkPriorityRow
       let statementUsedItems :=
         sortUsageItemsByAxis
           (data.mostUsed.toArray.filter fun item => item.statementUses > 0)
@@ -1362,6 +1595,100 @@ block_extension Block.summary (summary : Summary) where
               {{mkBadgeRow badges}}
             </li>
           }}
+      let ownerRollupRows :=
+        data.ownerRollups.toArray.map fun item =>
+          let badges :=
+            #[
+              mkBadge s!"entries: {item.totalEntries}",
+              mkBadge s!"actionable: {item.actionableEntries}" "bp_summary_badge bp_summary_badge_warn",
+              mkBadge s!"quick wins: {item.quickWins}",
+              mkBadge s!"linked PRs: {item.linkedPrs}"
+            ]
+          {{
+            <li class="bp_summary_item">
+              <div class="bp_summary_item_top">
+                <span class="bp_summary_item_head">{{.text true item.displayName}}</span>
+                <span class="bp_summary_item_meta"><code>s!"{item.owner}"</code></span>
+              </div>
+              {{mkBadgeRow badges}}
+            </li>
+          }}
+      let tagRollupRows :=
+        data.tagRollups.toArray.map fun item =>
+          let badges :=
+            #[
+              mkBadge s!"entries: {item.totalEntries}",
+              mkBadge s!"actionable: {item.actionableEntries}" "bp_summary_badge bp_summary_badge_warn",
+              mkBadge s!"quick wins: {item.quickWins}",
+              mkBadge s!"linked PRs: {item.linkedPrs}"
+            ]
+          {{
+            <li class="bp_summary_item">
+              <div class="bp_summary_item_top">
+                <span class="bp_summary_item_head">{{mkBadge s!"tag: {item.tag}" "bp_summary_badge bp_summary_badge_warn"}}</span>
+              </div>
+              {{mkBadgeRow badges}}
+            </li>
+          }}
+      let mkMetadataEntryRow (item : MetadataEntryItem) (bodyText : String) := do
+        let entryRef ← mkEntryRef item.label
+        let codeHref := getCodeHref item.label
+        let associatedDecls := !item.leanObjects.isEmpty
+        let ownerBadges : Array Output.Html :=
+          match item.ownerDisplayName with
+          | Option.some owner => #[mkBadge s!"owner: {owner}"]
+          | Option.none => #[]
+        let effortBadges : Array Output.Html :=
+          match item.effort with
+          | Option.some effort => #[mkBadge s!"effort: {effort}"]
+          | Option.none => #[]
+        let priorityBadges : Array Output.Html :=
+          match item.priority with
+          | Option.some priority => #[mkBadge s!"priority: {priority}" "bp_summary_badge bp_summary_badge_warn"]
+          | Option.none => #[]
+        let tagBadges : Array Output.Html :=
+          item.tags.toArray.map fun tag => mkBadge s!"tag: {tag}"
+        let actionLinks : Array Output.Html :=
+          let codeLinks :=
+            match codeHref with
+            | Option.some href => #[{{ <a class="bp_code_link" href={{href}}>"code"</a> }}]
+            | Option.none => #[]
+          let prLinks :=
+            match item.prUrl with
+            | Option.some href => #[{{ <a class="bp_code_link" href={{href}}>"PR"</a> }}]
+            | Option.none => #[]
+          codeLinks ++ prLinks
+        let badges := ownerBadges ++ effortBadges ++ priorityBadges ++ tagBadges
+        pure {{
+          <li class="bp_summary_item">
+            <div class="bp_summary_item_top">
+              <span class="bp_summary_item_head">{{entryRef}}</span>
+              <span class="bp_summary_item_meta">s!"({item.kind})"</span>
+            </div>
+            <div class="bp_summary_item_body">{{.text true bodyText}}</div>
+            {{mkBadgeRow badges}}
+            {{if associatedDecls then
+               {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.label item.leanObjects}}</ul></details>}}
+              else
+               .empty}}
+            {{if Array.isEmpty actionLinks then
+               .empty
+              else
+               {{<div class="bp_summary_item_actions">"Links: " {{(actionLinks.toList.intersperse {{<span class="bp_summary_sep">" | "</span>}}).toArray}}</div>}}}}
+          </li>
+        }}
+      let linkedPrRows ←
+        data.linkedPrs.toArray.mapM fun item =>
+          mkMetadataEntryRow item "Entry already linked to a review PR."
+      let missingOwnerRows ←
+        data.missingOwners.toArray.mapM fun item =>
+          mkMetadataEntryRow item "Missing owner metadata."
+      let missingEffortRows ←
+        data.missingEffort.toArray.mapM fun item =>
+          mkMetadataEntryRow item "Missing effort metadata."
+      let untaggedRows ←
+        data.untaggedEntries.toArray.mapM fun item =>
+          mkMetadataEntryRow item "Missing tag metadata."
       let groupHealthRows ←
         data.groupHealth.toArray.mapM fun item => do
           let badges :=
@@ -1533,6 +1860,65 @@ block_extension Block.summary (summary : Summary) where
               <ul class="bp_summary_list">
                 {{if groupHealthRows.isEmpty then {{<li class="bp_summary_empty">"No parent groups with multiple child entries were found."</li>}} else capRows groupHealthRows "groups"}}
               </ul>
+            </details>
+          </details>
+          <details class="bp_summary_section" open>
+            <summary>"Metadata"</summary>
+            <div class="bp_summary_grid">
+              <div class="bp_summary_card"><span class="bp_summary_label">"Quick wins"</span><span class="bp_summary_value">s!"{data.quickWins.length}"</span><span class="bp_summary_status">"Actionable entries with `high` priority and `small` effort."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Owners in use"</span><span class="bp_summary_value">s!"{data.ownerRollups.length}"</span><span class="bp_summary_status">"Distinct owners referenced by the current blueprint entries."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Tags in use"</span><span class="bp_summary_value">s!"{data.tagRollups.length}"</span><span class="bp_summary_status">"Distinct tags currently attached to blueprint entries."</span></div>
+              <div class="bp_summary_card"><span class="bp_summary_label">"Linked PRs"</span><span class="bp_summary_value">s!"{data.linkedPrs.length}"</span><span class="bp_summary_status">"Entries already linked to a review URL."</span></div>
+            </div>
+            <details class="bp_summary_subsection">
+              <summary>s!"Quick wins ({data.quickWins.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if quickWinRows.isEmpty then {{<li class="bp_summary_empty">"No quick wins detected with the current metadata."</li>}} else capRows quickWinRows "quick wins"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"Owner rollups ({data.ownerRollups.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if ownerRollupRows.isEmpty then {{<li class="bp_summary_empty">"No owned entries recorded yet."</li>}} else capRows ownerRollupRows "owners"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"Tag rollups ({data.tagRollups.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if tagRollupRows.isEmpty then {{<li class="bp_summary_empty">"No tag metadata recorded yet."</li>}} else capRows tagRollupRows "tags"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection">
+              <summary>s!"Linked PRs ({data.linkedPrs.length})"</summary>
+              <ul class="bp_summary_list">
+                {{if linkedPrRows.isEmpty then {{<li class="bp_summary_empty">"No PR URLs recorded yet."</li>}} else capRows linkedPrRows "linked PR entries"}}
+              </ul>
+            </details>
+            <details class="bp_summary_subsection bp_summary_subsection_warn">
+              <summary>"Metadata audit"</summary>
+              <div class="bp_summary_grid">
+                <div class="bp_summary_card bp_summary_card_warn"><span class="bp_summary_label">"Missing owner"</span><span class="bp_summary_value">s!"{data.missingOwners.length}"</span></div>
+                <div class="bp_summary_card bp_summary_card_warn"><span class="bp_summary_label">"Missing effort"</span><span class="bp_summary_value">s!"{data.missingEffort.length}"</span></div>
+                <div class="bp_summary_card bp_summary_card_warn"><span class="bp_summary_label">"Untagged"</span><span class="bp_summary_value">s!"{data.untaggedEntries.length}"</span></div>
+              </div>
+              <details class="bp_summary_nested">
+                <summary>s!"Missing owner ({data.missingOwners.length})"</summary>
+                <ul class="bp_summary_list">
+                  {{if missingOwnerRows.isEmpty then {{<li class="bp_summary_empty">"Every entry has an owner."</li>}} else capRows missingOwnerRows "entries missing owner"}}
+                </ul>
+              </details>
+              <details class="bp_summary_nested">
+                <summary>s!"Missing effort ({data.missingEffort.length})"</summary>
+                <ul class="bp_summary_list">
+                  {{if missingEffortRows.isEmpty then {{<li class="bp_summary_empty">"Every entry has an effort estimate."</li>}} else capRows missingEffortRows "entries missing effort"}}
+                </ul>
+              </details>
+              <details class="bp_summary_nested">
+                <summary>s!"Untagged ({data.untaggedEntries.length})"</summary>
+                <ul class="bp_summary_list">
+                  {{if untaggedRows.isEmpty then {{<li class="bp_summary_empty">"Every entry has at least one tag."</li>}} else capRows untaggedRows "untagged entries"}}
+                </ul>
+              </details>
             </details>
           </details>
           <details class="bp_summary_section" open>

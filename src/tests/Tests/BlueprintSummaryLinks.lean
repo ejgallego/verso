@@ -26,11 +26,17 @@ External declaration wiring test.
 
 #docs (Genre.Manual) summaryTriageDoc "Summary Triage" :=
 :::::::
+:::author "alice" (name := "Alice Example")
+:::
+
+:::author "bob" (name := "Bob Example")
+:::
+
 :::group "triage.group"
 Triage group heading.
 :::
 
-:::definition "def:triage.01" (parent := "triage.group") (priority := "low")
+:::definition "def:triage.01" (parent := "triage.group") (owner := "alice") (tags := "foundation, local") (effort := "small") (priority := "low") (pr_url := "https://example.com/pr/1")
 Definition 01.
 :::
 
@@ -74,11 +80,11 @@ Definition 10.
 Definition 11.
 :::
 
-:::definition "def:triage.12" (parent := "triage.group") (priority := "high")
+:::definition "def:triage.12" (parent := "triage.group") (owner := "bob") (tags := "critical, quick-win") (effort := "small") (priority := "high") (pr_url := "https://example.com/pr/12")
 Definition 12.
 :::
 
-:::theorem "thm:triage.main" (parent := "triage.group")
+:::theorem "thm:triage.main" (parent := "triage.group") (owner := "alice") (tags := "critical") (effort := "large")
 Depends on
 {uses "def:triage.01"}[],
 {uses "def:triage.02"}[],
@@ -192,6 +198,19 @@ private def appearsBefore (s lhs rhs : String) : Bool :=
       hasSubstr out "Most used in proofs (2)" &&
       hasSubstr out "proof uses: 1" &&
       hasSubstr out "Group health (1)" &&
+      hasSubstr out "Metadata" &&
+      hasSubstr out "Quick wins (1)" &&
+      hasSubstr out "Owner rollups (2)" &&
+      hasSubstr out "Tag rollups (" &&
+      hasSubstr out "Linked PRs (2)" &&
+      hasSubstr out "Metadata audit" &&
+      hasSubstr out "Missing owner (" &&
+      hasSubstr out "Missing effort (" &&
+      hasSubstr out "Untagged (" &&
+      hasSubstr out "Alice Example" &&
+      hasSubstr out "Bob Example" &&
+      hasSubstr out "https://example.com/pr/12" &&
+      hasSubstr out "quick-win" &&
       hasSubstr out "Structure and coverage" &&
       hasSubstr out "Heaviest prerequisites (" &&
       hasSubstr out "No prerequisites (" &&
