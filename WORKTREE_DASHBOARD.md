@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (validated manifest-backed summary and graph previews on `feat/preview-manifest-generalize-20260310`)
+Last updated: 2026-03-10 (created `feat/blueprint-metadata-json-review-20260310` from `feat/preview-template-removal-20260310` for metadata JSON review)
 
 ## Active Worktrees
 
@@ -75,6 +75,25 @@ Last updated: 2026-03-10 (validated manifest-backed summary and graph previews o
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
   - current UX scope is runtime-only: no Lean rendering changes were needed beyond the existing preview-key plumbing
   - re-check chapter 8 `Computational-Step` and `Rational-Versions` if you want visual polish beyond the now-working behavior
+
+### `feat/blueprint-metadata-json-review-20260310`
+
+- Status: `active` (owner action: inspect metadata JSON generation and review it for invariants, duplication, and efficiency issues)
+- Summary: review worktree forked from the committed head of `feat/preview-template-removal-20260310` to audit the blueprint metadata JSON pipeline without disturbing the source worktree's uncommitted edits.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-20260310`
+- Branch: `feat/blueprint-metadata-json-review-20260310`
+- Base commit/branch:
+  - branched from `feat/preview-template-removal-20260310` at `a2a6c290`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created and root `.lake` copied
+  - pending: `lake exe cache get`
+  - pending: example blueprint generation into `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310/example-blueprints`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-20260310`
+  - inspect metadata JSON producers and consumers under `src/verso-blueprint`
+  - source worktree `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310` was dirty at fork time; this review branch intentionally starts from committed head `a2a6c290`
 
 ### `feat/worktree-output-dedup-20260310`
 
