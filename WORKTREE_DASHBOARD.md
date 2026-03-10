@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (rebased and revalidated `feat/code-summary-badge-unification-20260310` on current `bp`)
+Last updated: 2026-03-10 (started `feat/preview-ux-followup-20260310` for preview panel UX polish)
 
 ## Active Worktrees
 
@@ -58,6 +58,28 @@ Last updated: 2026-03-10 (rebased and revalidated `feat/code-summary-badge-unifi
   - local label template
   - shared `bp-previews.json`
   - synthetic metadata fallback
+
+### `feat/preview-ux-followup-20260310`
+
+- Status: `active` (owner action: land the preview UX polish and re-run the chapter-8 browser repro)
+- Summary: follow-up worktree off `feat/preview-manifest-20260310` for two UX issues: `used by` panels currently open themselves on page load, and nested `uses` links inside pinned surfaces should get pinned-style subpreviews rather than the default floating hover treatment.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
+- Branch: `feat/preview-ux-followup-20260310`
+- Base commit/branch:
+  - branched from `feat/preview-manifest-20260310` at `bdac5f35`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: existing worktree reused; `.lake` already present and `lake exe cache get` completed successfully
+  - pending:
+  - fix `usedByPanelJs` so initial preview selection does not auto-open the wrapper on load
+  - make nested inline previews use pinned+docked presentation when triggered from pinned hosts such as `used by` and graph preview panels
+- Preview link:
+  - pending rebuild; expected direct preview at `http://127.0.0.1:8154/preview-ux-followup-20260310/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean` around `bindInlinePreview` and `bindUsedByPanel`
+  - re-check chapter 8 `Computational-Step`: theorem 7.15 -> definition 7.10 after the UX polish
 
 ### `feat/worktree-output-dedup-20260310`
 
