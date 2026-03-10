@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (marked `feat/preview-manifest-20260310` ready for review after landing the shared preview-manifest slice)
+Last updated: 2026-03-10 (merged `feat/parent-link-ungrouped-research-20260310` into `bp` and cleaned up the worktree)
 
 ## Active Worktrees
 
@@ -21,29 +21,6 @@ Last updated: 2026-03-10 (marked `feat/preview-manifest-20260310` ready for revi
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
-
-### `feat/parent-link-ungrouped-research-20260310`
-
-- Status: `ready-for-review` (owner action: review the local group-preview UI and decide whether to merge)
-- Summary: adds a local block-header `group` chip that reuses the `used by` preview UI, shows sibling entries in the same parent group, and renders a local warning state when `parent := "..."` is present but no matching `:::group` exists.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/parent-link-ungrouped-research-20260310`
-- Branch: `feat/parent-link-ungrouped-research-20260310`
-- Base commit/branch:
-  - rebased on current `bp` at `93f503dd`
-- Key commits:
-  - `4f04a813` feat(blueprint): add local parent group previews
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `lake build Tests.BlueprintPreviewWiring`
-  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_blueprint_group_preview.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron/html-multi`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/example-blueprints`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron`
-- Preview link:
-  - `http://127.0.0.1:8154/parent-link-ungrouped-research-20260310/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/parent-link-ungrouped-research-20260310`
-  - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Group.lean`, `browser-tests/test_blueprint_group_preview.py`, `src/tests/Tests/BlueprintPreviewWiring.lean`
 
 ### `feat/link-preview-audit-20260308`
 
@@ -274,6 +251,24 @@ Last updated: 2026-03-10 (marked `feat/preview-manifest-20260310` ready for revi
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/parent-link-ungrouped-research-20260310` into `bp` (`a603e818 -> ba6e9e1b`, fast-forward).
+- Feature branch key commit:
+  - `ba6e9e1b` feat(blueprint): add local parent group previews
+- Validation on rebased feature branch:
+  - `lake build Tests.BlueprintPreviewWiring`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_blueprint_group_preview.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron/html-multi`
+  - note: the earlier `./generate-example-blueprints.sh` and `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron` outputs were reused because the final rebase only picked up dashboard-only `bp` commits
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Retained preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/example-blueprints`
+  - `/home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron`
+- Shared preview server `http://127.0.0.1:8154/` kept running in session `17595` because other active worktrees still publish artifacts there.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/parent-link-ungrouped-research-20260310`
+- Deleted branch:
+  - `feat/parent-link-ungrouped-research-20260310`
 
 - Retired `review/link-preview-audit-20260310` after deciding `feat/link-preview-audit-20260308` remains the canonical implementation worktree.
 - Review validation preserved before cleanup:
