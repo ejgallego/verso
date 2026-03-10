@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-09 (documented `feat/global-numbering-20260309` citation summary payloads after validation)
+Last updated: 2026-03-10 (rebased `feat/global-numbering-20260309` onto `bp` after documenting numbering options)
 
 ## Active Worktrees
 
@@ -24,15 +24,16 @@ Last updated: 2026-03-09 (documented `feat/global-numbering-20260309` citation s
 
 ### `feat/global-numbering-20260309`
 
-- Status: `ready-for-review` (owner action: inspect the preview artifact, then rebase on `bp` before integration)
+- Status: `ready-for-review` (owner action: inspect the preview artifact, then fast-forward merge onto `bp`)
 - Summary: configurable numbering landed for informal blueprint statements/proofs; default rendering now uses chapter-prefixed sub-numbering, while `(set_option verso.blueprint.numbering global)` enables document-order numbering.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/global-numbering-20260309`
 - Branch: `feat/global-numbering-20260309`
 - Base commit/branch:
-  - branched from `bp` at `d317a6a6`
+  - merge-base with `bp`: `068d2c08` (`0` behind / `3` ahead)
 - Key commits:
-  - `269c040a` docs(cite): document citation summary payloads
-  - `cc810a05` feat(blueprint): add configurable informal numbering
+  - `c936ee30` docs(blueprint): explain numbering options
+  - `b7a73247` docs(cite): document citation summary payloads
+  - `6d4f8802` feat(blueprint): add configurable informal numbering
 - Validation status:
   - setup complete: worktree created and `lake exe cache get` run
   - passed: `lake build Tests.BlueprintNumbering Tests VersoBlueprint`
