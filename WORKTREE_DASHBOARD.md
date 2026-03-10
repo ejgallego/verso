@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (retired the stale summary brainstorm worktree and started `feat/summary-command-implementation-20260310`)
+Last updated: 2026-03-10 (started `review/link-preview-audit-20260310` and recorded its validation findings)
 
 ## Active Worktrees
 
@@ -87,6 +87,33 @@ Last updated: 2026-03-10 (retired the stale summary brainstorm worktree and star
   - enable trace with `localStorage.setItem("bp-debug-preview", "1")`
   - after repro run `(window.bpPreviewTrace || []).slice(-30)`
   - most relevant trace finding so far: after nested `Definition 10` show, a synthetic `inline.panel.mouseleave` can still arrive and schedule hide
+
+### `review/link-preview-audit-20260310`
+
+- Status: `active` (owner action: consume the exhaustive audit findings; this is a review-only worktree)
+- Summary: isolated audit worktree forked from the checkpointed preview branch so the branch can be diffed, validated, and previewed without mutating the original feature worktree.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/review-link-preview-audit-20260310`
+- Branch: `review/link-preview-audit-20260310`
+- Base commit/branch:
+  - branched from `feat/link-preview-audit-20260308` at `ac5d4b56`
+  - merge-base with `bp`: `0ae05085`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/review-link-preview-audit-20260310/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/review-link-preview-audit-20260310/noperthedron`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean` fails at `src/tests/Tests/BlueprintPreviewWiring.lean:165` because the generated summary preview JS still reports `info: false`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean` passed
+  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros` passed
+- Preview link:
+  - `http://127.0.0.1:8154/review-link-preview-audit-20260310/noperthedron/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/review-link-preview-audit-20260310`
+  - `git diff --stat bp...HEAD`
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`
+  - confirmed audit mismatch: tests expect summary preview to bind through `bpPreviewUtils.bindTemplatePreview`, but `Commands/Summary.lean` still ships the older bespoke `bindSummaryPreview` code path
+  - confirmed audit mismatch: generated HTML contains `template.bp_label_preview_tpl[...]`, but no emitted element carries `data-bp-preview-fallback-label`, so the label-template fallback tier is unreachable
 
 ### `feat/summary-command-implementation-20260310`
 
