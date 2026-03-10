@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (rebased `feat/summary-command-implementation-20260310` onto current `bp` for merge prep; clean compiled `noperthedron` rebuild still in progress)
+Last updated: 2026-03-10 (merged `feat/summary-command-implementation-20260310` into `bp` and cleaned up the worktree)
 
 ## Active Worktrees
 
@@ -72,34 +72,6 @@ Last updated: 2026-03-10 (rebased `feat/summary-command-implementation-20260310`
   - `git diff -- AGENTS.md`
   - inspect `AGENTS.md` "Validation output" and "Starting a new task and Worktree Layout"
 
-### `feat/summary-command-implementation-20260310`
-
-- Status: `active` (owner action: let the clean compiled `noperthedron` rebuild finish, then stop for merge review unless that build exposes a real blocker)
-- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch now covers the full “use existing data better” pass, explicit `priority` ranking metadata, author-metadata panels on statement blocks, and metadata-driven summary consumers (`quick wins`, owner/tag rollups, linked PRs, metadata audit).
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
-- Branch: `feat/summary-command-implementation-20260310`
-- Base commit/branch:
-  - rebased on current `bp`
-- Key commits:
-  - `d652f7f4` feat(summary): add metadata-driven summary views
-  - `0abf0a8a` feat(blueprint): add author metadata panels
-  - `fd40b47e` feat(summary): add coverage analytics and priority metadata
-  - `550879a0` feat(summary): add triage rankings and capped detail lists
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `lake build VersoBlueprint Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring`
-  - `lake build Authors Chapters.LocalTheorem`
-  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
-  - note: after `lake clean`, the direct compiled `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron` rebuild is still running; no post-clean failure has surfaced yet
-- Preview link:
-  - `http://127.0.0.1:8154/summary-command-implementation-20260310/noperthedron/html-multi/`
-  - `http://127.0.0.1:8154/summary-command-implementation-20260310/example-blueprints/noperthedron/html-multi/`
-  - `http://127.0.0.1:8154/summary-command-implementation-20260310/example-blueprints/spherepackingblueprint/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
-  - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Author.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/tests/Tests/BlueprintMetadataPanel.lean`, `src/tests/Tests/BlueprintSummaryLinks.lean`, `test-projects/Noperthedron/Authors.lean`, `test-projects/Noperthedron/Chapters/LocalTheorem.lean`, `MANUAL.md`
-
 ### `feat/code-summary-badge-unification-20260310`
 
 - Status: `ready-for-review` (owner action: inspect the validated renderer refactor and decide whether to polish further or prepare it for merge)
@@ -166,6 +138,28 @@ Last updated: 2026-03-10 (rebased `feat/summary-command-implementation-20260310`
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/summary-command-implementation-20260310` into `bp` (`ea01f5fe -> 9135c719`, fast-forward).
+- Feature branch key commits:
+  - `9135c719` feat(summary): add metadata-driven summary views
+  - `0abf0a8a` feat(blueprint): add author metadata panels
+  - `fd40b47e` feat(summary): add coverage analytics and priority metadata
+  - `550879a0` feat(summary): add triage rankings and capped detail lists
+- Validation on rebased feature branch:
+  - `lake build VersoBlueprint Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring`
+  - `lake build Authors Chapters.LocalTheorem`
+  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
+  - note: a clean compiled `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron` rebuild was still running when merge/cleanup was authorized, so it was not awaited for landing
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Retained preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
+  - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints/noperthedron`
+  - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints/spherepackingblueprint`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
+- Deleted branch:
+  - `feat/summary-command-implementation-20260310`
 
 - Retired `feat/preview-manifest-20260310` after confirming it is fully contained in `feat/preview-ux-followup-20260310`.
 - Removed worktree:
