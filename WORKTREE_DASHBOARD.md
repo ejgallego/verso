@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (merged `feat/global-numbering-20260309` into `bp` and cleaned up the worktree)
+Last updated: 2026-03-10 (created `feat/agents-merge-guardrails-20260310` to tighten AGENTS merge permissions)
 
 ## Active Worktrees
 
@@ -21,6 +21,27 @@ Last updated: 2026-03-10 (merged `feat/global-numbering-20260309` into `bp` and 
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/agents-merge-guardrails-20260310`
+
+- Status: `active` (owner action: review AGENTS guardrail wording after the instruction update lands)
+- Summary: isolated docs-only worktree for hardening AGENTS guidance around merge authorization, cleanup authorization, and the interpretation of “prepare for merge”.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/agents-merge-guardrails-20260310`
+- Branch: `feat/agents-merge-guardrails-20260310`
+- Base commit/branch:
+  - branched from `bp` at `4caaf01e`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created and `lake exe cache get` run
+  - pending: `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/example-blueprints`
+  - pending: `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/noperthedron`
+- Preview link:
+  - pending artifact generation; shared `_out` server already available on `http://127.0.0.1:8153/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/agents-merge-guardrails-20260310`
+  - `git status --short`
+  - inspect `AGENTS.md`
 
 ### `feat/summary-command-brainstorm-20260309`
 
