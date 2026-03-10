@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (started `feat/preview-ux-followup-20260310` for preview panel UX polish)
+Last updated: 2026-03-10 (marked `feat/preview-ux-followup-20260310` ready for review after preview panel UX polish)
 
 ## Active Worktrees
 
@@ -24,7 +24,7 @@ Last updated: 2026-03-10 (started `feat/preview-ux-followup-20260310` for previe
 
 ### `feat/preview-manifest-20260310`
 
-- Status: `active` (owner action: decide whether to continue generalizing the manifest path to summary and graph previews)
+- Status: `ready-for-review` (owner action: use as the base checkpoint if the UX follow-up should be split out or generalized later)
 - Summary: canonical preview worktree. It supersedes both `feat/link-preview-audit-20260308` and `feat/link-preview-fixes-20260310`, emits `bp-previews.json` at build time, and proves the chapter-8 nested hover repro through the manifest-backed inline path.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-20260310`
 - Branch: `feat/preview-manifest-20260310`
@@ -61,8 +61,8 @@ Last updated: 2026-03-10 (started `feat/preview-ux-followup-20260310` for previe
 
 ### `feat/preview-ux-followup-20260310`
 
-- Status: `active` (owner action: land the preview UX polish and re-run the chapter-8 browser repro)
-- Summary: follow-up worktree off `feat/preview-manifest-20260310` for two UX issues: `used by` panels currently open themselves on page load, and nested `uses` links inside pinned surfaces should get pinned-style subpreviews rather than the default floating hover treatment.
+- Status: `ready-for-review` (owner action: review the UX polish and decide whether it should replace `feat/preview-manifest-20260310` as the active preview branch)
+- Summary: follow-up worktree off `feat/preview-manifest-20260310` that fixes the `used by` panel auto-opening on page load and gives nested `uses` links inside pinned hosts a pinned+docked subpreview treatment.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
 - Branch: `feat/preview-ux-followup-20260310`
 - Base commit/branch:
@@ -71,15 +71,21 @@ Last updated: 2026-03-10 (started `feat/preview-ux-followup-20260310` for previe
   - none yet
 - Validation status:
   - setup complete: existing worktree reused; `.lake` already present and `lake exe cache get` completed successfully
-  - pending:
-  - fix `usedByPanelJs` so initial preview selection does not auto-open the wrapper on load
-  - make nested inline previews use pinned+docked presentation when triggered from pinned hosts such as `used by` and graph preview panels
+  - `lake build Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
+  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-ux-followup-20260310`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-ux-followup-20260310/example-blueprints`
+  - browser smoke test on direct artifact:
+  - `Rational-Versions`: no `.bp_used_by_wrap_open` on load for `«def:ekspanning»`
+  - hovering the nested `Definition 7.10` link inside that `used by` panel opened the shared inline preview with `data-bp-preview-mode="pinned"` and `data-bp-preview-placement="docked"`
 - Preview link:
-  - pending rebuild; expected direct preview at `http://127.0.0.1:8154/preview-ux-followup-20260310/html-multi/`
+  - `http://127.0.0.1:8154/preview-ux-followup-20260310/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean` around `bindInlinePreview` and `bindUsedByPanel`
-  - re-check chapter 8 `Computational-Step`: theorem 7.15 -> definition 7.10 after the UX polish
+  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
+  - current UX scope is runtime-only: no Lean rendering changes were needed beyond the existing preview-key plumbing
+  - re-check chapter 8 `Computational-Step` and `Rational-Versions` if you want visual polish beyond the now-working behavior
 
 ### `feat/worktree-output-dedup-20260310`
 
