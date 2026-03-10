@@ -4,8 +4,9 @@
   - `src/verso-blueprint`
   - `test-projects/Noperthedron` (core example project)
 - Primary work branch, at root `bp`
+- Run long Lean/Lake/Elan commands via `script/lean-low-priority ...` so Codex keeps Lean builds at lower CPU priority by default.
 - Main validation command:
-  - `./generate-example-blueprints.sh`
+  - `script/lean-low-priority ./generate-example-blueprints.sh`
 - Validation output:
   - Default example-blueprint output is written to `_out/example-blueprints/{noperthedron,spherepackingblueprint}/`
   - Worktree previews should be written to the shared root `_out/<worktree>/`
@@ -22,15 +23,16 @@
     - `/home/egallego/lean/verso/.worktrees/<feature>`
     This keeps all worktrees under the same writable root, so Codex sub-agents can edit without sandbox path issues.
   + Copy the root `.lake` directory to `/home/egallego/lean/verso/.worktrees/<feature>` , so we don't rebuild mathlib
-  + Validate the example blueprints with `./generate-example-blueprints.sh <repo-root>/_out/<feature>/example-blueprints`
-  + Build the artifact you want to preview into the shared root output tree, for example:
-    - `lake exe noperthedron --output <repo-root>/_out/<feature>/noperthedron`
-    - `lake exe spherepackingblueprint --output <repo-root>/_out/<feature>/spherepackingblueprint`
+  + Validate the example blueprints with `script/lean-low-priority ./generate-example-blueprints.sh <repo-root>/_out/<feature>/example-blueprints`
+  + Treat the generated example-blueprint outputs as the canonical preview artifacts:
+    - `<repo-root>/_out/<feature>/example-blueprints/noperthedron`
+    - `<repo-root>/_out/<feature>/example-blueprints/spherepackingblueprint`
+    - Do not generate duplicate top-level `lake exe noperthedron --output <repo-root>/_out/<feature>/noperthedron` or `lake exe spherepackingblueprint --output <repo-root>/_out/<feature>/spherepackingblueprint` artifacts unless the user explicitly asks for them.
   + Keep a single shared webserver serving the root `_out` directory
   + use always `npx http-server -p $port _out` as command to start the shared webserver
   + run the webserver with the right permissions as to avoid weird stuff
   + run the shared webserver in the background, for obvious reasons
-  + Generate a link I can click to see the artifact, using `http://127.0.0.1:$port/<feature>/<artifact>/html-multi/`, and add an entry to the shared root `WORKTREE_DASHBOARD.md` with the link
+  + Generate a link I can click to see the artifact, using `http://127.0.0.1:$port/<feature>/example-blueprints/<artifact>/html-multi/`, and add an entry to the shared root `WORKTREE_DASHBOARD.md` with the link
     Never create a separate `WORKTREE_DASHBOARD.md` inside a feature worktree; the root dashboard is the only dashboard file.
   + If you detect a mathlib rebuild, see the section "Important Information about Mathlib project"
 - While working on the worktree, ensure that all the links are properly scoped to the worktree.
@@ -57,12 +59,14 @@
 - One one single source of truth for each data point
 - Avoid abbrevs for renaming, backwards-compatibility is not important yet.
 - Don't introduce new inductives unless strictly necessary
+- For Codex-driven local work, wrap long-running `lake`, `lean`, `elan`, and `.lake/build/bin/*` commands with `script/lean-low-priority`.
+- Override the default niceness only when needed via `BP_LEAN_NICENESS=<n>`.
 
 ## Important Information about Mathlib project
 
 In the folder `test-projects/Noperthedron/` we have a mathlib project. This needs to be handled with care, due to dependencies. In particular, it will be hard to slice code examples there if they depend on mathlib, but of course YMMV.
 
-When we create a worktree, it is possible that `lake` makes a choice to setup their artifacts there. Try always to copy the `.lake` directory from root when setting the worktree, and also run once `lake exe cache get` so we get a mathlib cache.
+When we create a worktree, it is possible that `lake` makes a choice to setup their artifacts there. Try always to copy the `.lake` directory from root when setting the worktree, and also run once `script/lean-low-priority lake exe cache get` so we get a mathlib cache.
 
 ### Create feature worktrees
 
