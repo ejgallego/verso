@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (created `feat/lean-lean-interactive-latency-20260310` from `bp` to review interactive `VersoBlueprint.Lean` latency)
+Last updated: 2026-03-10 (updated `feat/lean-lean-interactive-latency-20260310` with the manual-documentation follow-up for interactive Lean latency)
 
 ## Active Worktrees
 
@@ -24,8 +24,8 @@ Last updated: 2026-03-10 (created `feat/lean-lean-interactive-latency-20260310` 
 
 ### `feat/lean-lean-interactive-latency-20260310`
 
-- Status: `active` (owner action: review the `VersoBlueprint.Lean` latency plan and decide whether to implement the interactive fast path next)
-- Summary: review worktree focused on `src/verso-blueprint/VersoBlueprint/Lean.lean`, where interactive elaboration still unconditionally builds highlighted Lean blocks and declaration metadata even though core editor LSP features appear to read from syntax and info trees.
+- Status: `active` (owner action: implement the interactive fast path and document the interactive-vs-batch behavior in the user guide)
+- Summary: review worktree focused on `src/verso-blueprint/VersoBlueprint/Lean.lean`, where interactive elaboration still unconditionally builds highlighted Lean blocks and declaration metadata even though core editor LSP features appear to read from syntax and info trees. The task now also includes documenting the resulting behavior in the manual.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/lean-lean-interactive-latency-20260310`
 - Branch: `feat/lean-lean-interactive-latency-20260310`
 - Base commit/branch:
@@ -41,8 +41,9 @@ Last updated: 2026-03-10 (created `feat/lean-lean-interactive-latency-20260310` 
   - `http://127.0.0.1:8154/lean-lean-interactive-latency-20260310/example-blueprints/spherepackingblueprint/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/lean-lean-interactive-latency-20260310`
-  - inspect `src/verso-blueprint/VersoBlueprint/Lean.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`, and `src/verso/Verso/Doc/Lsp.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/Lean.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`, `src/verso/Verso/Doc/Lsp.lean`, and `doc/UsersGuide/Elab.lean`
   - likely change shape: thread an explicit interactive flag from outer `Command.Context.snap?` into `DocElabContext`, then gate highlight generation and declaration analysis in blueprint Lean blocks
+  - manual target: record that interactive Lean editing uses a latency-oriented fast path while batch builds still run full highlighting and blueprint analysis
 
 ### `feat/preview-template-removal-20260310`
 
