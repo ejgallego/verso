@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (merged `feat/summary-command-implementation-20260310` into `bp` and cleaned up the worktree)
+Last updated: 2026-03-10 (removed the retained `_out/summary-command-implementation-20260310` artifacts after merging `feat/summary-command-implementation-20260310`)
 
 ## Active Worktrees
 
@@ -152,7 +152,7 @@ Last updated: 2026-03-10 (merged `feat/summary-command-implementation-20260310` 
   - note: a clean compiled `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron` rebuild was still running when merge/cleanup was authorized, so it was not awaited for landing
 - Validation on `bp` after merge:
   - merge was fast-forward from the already-validated rebased feature head
-- Retained preview artifacts:
+- Removed preview artifacts:
   - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
   - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints/noperthedron`
   - `/home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints/spherepackingblueprint`
