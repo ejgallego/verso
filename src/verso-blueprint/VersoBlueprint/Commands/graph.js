@@ -269,9 +269,76 @@
     }
   }
 
+  function bindHoverablePanelLifetime(previewUtils, controller, getActiveAnchor, boundAttr) {
+    const noop = {
+      cancelHide: function () {},
+      scheduleHide: function () {
+        if (controller) controller.hide();
+      }
+    };
+    if (!controller || !(controller.panel instanceof Element)) return noop;
+    if (!controller.behavior || !controller.behavior.isHover) return noop;
+    const panel = controller.panel;
+    const attr =
+      typeof boundAttr === "string" && boundAttr.length > 0
+        ? boundAttr
+        : "data-bp-preview-hover-bound";
+    let hideTimer = null;
+
+    function cancelHide() {
+      if (hideTimer !== null) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+    }
+
+    function scheduleHide() {
+      cancelHide();
+      hideTimer = window.setTimeout(function () {
+        hideTimer = null;
+        controller.hide();
+      }, 180);
+    }
+
+    function maybeScheduleHide(ev) {
+      if (
+        previewUtils &&
+        typeof previewUtils.shouldKeepOpen === "function" &&
+        previewUtils.shouldKeepOpen(
+          ev.relatedTarget,
+          typeof getActiveAnchor === "function" ? getActiveAnchor() : null,
+          panel
+        )
+      ) {
+        return;
+      }
+      scheduleHide();
+    }
+
+    if (panel.getAttribute(attr) !== "1") {
+      panel.setAttribute(attr, "1");
+      panel.addEventListener("mouseenter", cancelHide);
+      panel.addEventListener("focusin", cancelHide);
+      panel.addEventListener("mouseleave", maybeScheduleHide);
+      panel.addEventListener("focusout", maybeScheduleHide);
+    }
+
+    return {
+      cancelHide: cancelHide,
+      scheduleHide: scheduleHide
+    };
+  }
+
   function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController) {
     if (!previewController) return;
     const graphState = ensureGraphBlockState(graphBlock);
+    const previewUtils = window.bpPreviewUtils;
+    const hoverLifetime = bindHoverablePanelLifetime(
+      previewUtils,
+      previewController,
+      function () { return graphState.previewActiveNode; },
+      "data-bp-preview-hover-bound"
+    );
     const svg = graphContainer.select("svg").node();
     if (!svg || !(svg instanceof SVGElement)) {
       previewController.hide();
@@ -284,6 +351,7 @@
     const show = function (label, anchorNode) {
       const html = parsePreviewEntry(previewMap.get(label));
       if (!html) return;
+      hoverLifetime.cancelHide();
       graphState.previewActiveNode = anchorNode instanceof Element ? anchorNode : null;
       previewController.show(label, html, graphState.previewActiveNode);
     };
@@ -307,6 +375,11 @@
       if (!(target instanceof Element)) return;
       const node = target.closest("g.node");
       if (!node) return;
+       if (graphState.previewActiveNode === node && !previewController.panel.hidden) {
+        hoverLifetime.cancelHide();
+        previewController.position(node);
+        return;
+      }
       const label = graphNodeLabel(node);
       if (label) show(label, node);
     };
@@ -319,19 +392,18 @@
       showFromTarget(ev.target);
     });
     if (previewController.behavior && previewController.behavior.isHover) {
-      const previewUtils = window.bpPreviewUtils;
       const hideIfLeaving = function (ev) {
-        if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") return;
-        if (previewUtils.shouldKeepOpen(ev.relatedTarget, graphState.previewActiveNode, previewController.panel)) return;
-        previewController.hide();
+        if (
+          previewUtils &&
+          typeof previewUtils.shouldKeepOpen === "function" &&
+          previewUtils.shouldKeepOpen(ev.relatedTarget, graphState.previewActiveNode, previewController.panel)
+        ) {
+          return;
+        }
+        hoverLifetime.scheduleHide();
       };
       svg.addEventListener("mouseout", hideIfLeaving);
       svg.addEventListener("focusout", hideIfLeaving);
-      if (previewController.panel.getAttribute("data-bp-preview-hover-bound") !== "1") {
-        previewController.panel.setAttribute("data-bp-preview-hover-bound", "1");
-        previewController.panel.addEventListener("mouseleave", hideIfLeaving);
-        previewController.panel.addEventListener("focusout", hideIfLeaving);
-      }
     }
   }
 
@@ -605,6 +677,12 @@
           }
         );
         graphState.groupHoverController = groupHoverController;
+        const groupHoverLifetime = bindHoverablePanelLifetime(
+          previewUtils,
+          groupHoverController,
+          function () { return graphState.groupHoverAnchorNode; },
+          "data-bp-group-hover-bound"
+        );
         configurePanelCloseButton(previewUtils, groupHoverClose, function () {
           if (groupHoverController) groupHoverController.hide();
         }, groupHoverBehavior);
@@ -642,6 +720,7 @@
 
         const showGroupHoverPreview = function (nodeId, nextKey, anchorNode) {
           if (!groupHoverController) return;
+          groupHoverLifetime.cancelHide();
           if (activeKey !== "group") {
             groupHoverController.hide();
             return;
@@ -698,7 +777,7 @@
               switchVariant,
               showGroupHoverPreview,
               groupHoverBehavior.isHover && groupHoverController
-                ? function () { groupHoverController.hide(); }
+                ? function () { groupHoverLifetime.scheduleHide(); }
                 : null
             );
           };

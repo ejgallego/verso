@@ -142,6 +142,8 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
       countSubstr out
           "class=\"bp_inline_preview_ref\" data-bp-preview-id=\"bp-uses--00ABlem-003Ahover-002Ebase-00BB-statement\"" == 2 &&
       countSubstr out
+          "data-bp-preview-fallback-label=\"«lem:hover.base»\"" == 2 &&
+      countSubstr out
           "class=\"bp_inline_preview_tpl\" data-bp-preview-id=\"bp-uses--00ABlem-003Ahover-002Ebase-00BB-statement\"" == 1
     )
 

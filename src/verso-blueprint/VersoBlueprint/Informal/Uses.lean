@@ -51,7 +51,9 @@ private def wrapUseLinkPreview (node previewBody : Verso.Output.Html)
     Verso.Output.Html :=
   let pid := usePreviewId label block
   let ptitle := blockHoverTitle state block
-  Informal.HoverRender.inlinePreviewNode emitTemplate node previewBody pid ptitle
+  Informal.HoverRender.inlinePreviewNode
+    emitTemplate node previewBody pid ptitle
+    (previewFallbackLabel? := some s!"{label}")
 
 inline_extension Inline.informal (data : InlineData) where
   data := toJson data

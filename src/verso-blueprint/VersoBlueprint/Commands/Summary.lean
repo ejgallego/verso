@@ -1115,114 +1115,21 @@ def summaryPreviewJs : String := r##"(function () {
     root.setAttribute("data-bp-summary-preview-bound", "1");
 
     const previewUtils = window.bpPreviewUtils;
-    if (
-      !previewUtils ||
-      typeof previewUtils.collectPreviewTemplates !== "function" ||
-      typeof previewUtils.readPreviewTemplate !== "function" ||
-      typeof previewUtils.renderMath !== "function" ||
-      typeof previewUtils.positionAnchoredPanel !== "function" ||
-      typeof previewUtils.shouldKeepOpen !== "function" ||
-      typeof previewUtils.readPanelBehavior !== "function" ||
-      typeof previewUtils.resetPanelPosition !== "function" ||
-      typeof previewUtils.configureCloseButton !== "function"
-    ) {
-      return;
-    }
-    const previewMap =
-      previewUtils.collectPreviewTemplates(
-        root,
-        "template.bp_summary_preview_tpl[data-bp-preview-label]"
-      );
     const panel = root.querySelector(".bp_summary_preview_panel");
-    const title = panel ? panel.querySelector(".bp_summary_preview_panel_title") : null;
-    const body = panel ? panel.querySelector(".bp_summary_preview_panel_body") : null;
-    const close = panel ? panel.querySelector(".bp_summary_preview_panel_close") : null;
-    if (!panel || !title || !body || previewMap.size === 0) {
-      if (panel) panel.hidden = true;
-      return;
-    }
-    const behavior = previewUtils.readPanelBehavior(panel, { mode: "hover", placement: "anchored" });
-
-    let activeWrap = null;
-
-    function hidePanel() {
-      panel.hidden = true;
-      title.textContent = "";
-      body.innerHTML = "";
-      activeWrap = null;
-    }
-
-    function positionPanel(anchor) {
-      if (!behavior.isAnchored) {
-        previewUtils.resetPanelPosition(panel);
-        return;
-      }
-      previewUtils.positionAnchoredPanel(panel, anchor, 12, 10);
-    }
-
-    function showFromWrap(wrap) {
-      if (!(wrap instanceof Element)) return;
-      const label = wrap.getAttribute("data-bp-preview-label") || "";
-      const html = previewUtils.readPreviewTemplate(previewMap.get(label));
-      if (!label || !html) {
-        hidePanel();
-        return;
-      }
-      activeWrap = wrap;
-      title.textContent = label;
-      body.innerHTML = html;
-      previewUtils.renderMath(body);
-      panel.hidden = false;
-      positionPanel(wrap);
-    }
-
-    previewUtils.configureCloseButton(close, hidePanel, behavior);
-
-    const wraps = root.querySelectorAll(".bp_summary_preview_wrap_active[data-bp-preview-label]");
-    wraps.forEach(function (wrap) {
-      if (!(wrap instanceof Element)) return;
-      if (wrap.getAttribute("data-bp-bound") === "1") return;
-      wrap.setAttribute("data-bp-bound", "1");
-      wrap.addEventListener("mouseenter", function () {
-        showFromWrap(wrap);
-      });
-      wrap.addEventListener("focusin", function () {
-        showFromWrap(wrap);
-      });
-      wrap.addEventListener("mouseleave", function (ev) {
-        if (!behavior.isHover) return;
-        if (previewUtils.shouldKeepOpen(ev.relatedTarget, wrap, panel)) return;
-        hidePanel();
-      });
-      wrap.addEventListener("focusout", function (ev) {
-        if (!behavior.isHover) return;
-        if (previewUtils.shouldKeepOpen(ev.relatedTarget, wrap, panel)) return;
-        hidePanel();
-      });
+    if (!panel || !previewUtils || typeof previewUtils.bindTemplatePreview !== "function") return;
+    previewUtils.bindTemplatePreview({
+      root: root,
+      previewRoot: root,
+      triggerRoot: root,
+      panel: panel,
+      templateSelector: "template.bp_summary_preview_tpl[data-bp-preview-label]",
+      triggerSelector: ".bp_summary_preview_wrap_active[data-bp-preview-label]",
+      titleSelector: ".bp_summary_preview_panel_title",
+      bodySelector: ".bp_summary_preview_panel_body",
+      closeSelector: ".bp_summary_preview_panel_close",
+      defaults: { mode: "hover", placement: "anchored" },
+      readTitle: function (_wrap, label) { return label; }
     });
-
-    panel.addEventListener("mouseleave", function (ev) {
-      if (!behavior.isHover) return;
-      if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeWrap, panel)) return;
-      hidePanel();
-    });
-    panel.addEventListener("focusout", function (ev) {
-      if (!behavior.isHover) return;
-      if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeWrap, panel)) return;
-      hidePanel();
-    });
-
-    document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape") {
-        hidePanel();
-      }
-    });
-    window.addEventListener("resize", function () {
-      if (behavior.isAnchored && activeWrap && !panel.hidden) positionPanel(activeWrap);
-    });
-    window.addEventListener("scroll", function () {
-      if (behavior.isAnchored && activeWrap && !panel.hidden) positionPanel(activeWrap);
-    }, true);
   }
 
   function init() {

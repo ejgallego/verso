@@ -264,11 +264,13 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr graphJs "function layoutGraphCanvas(graphRoot)" &&
         hasSubstr graphJs "function ensureGraphBlockState(graphBlock)" &&
         hasSubstr graphJs "function createPanelController(panel, behavior, titleSelector, bodySelector, options)" &&
+        hasSubstr graphJs "function bindHoverablePanelLifetime(previewUtils, controller, getActiveAnchor, boundAttr)" &&
         hasSubstr graphJs "function configurePanelCloseButton(previewUtils, closeButton, hidePanel, behavior)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(previewPanelNode, { mode: \"pinned\", placement: \"docked\" })" &&
         hasSubstr graphJs "previewUtils.hydratePreviewSubtree(body)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(groupHoverPanel, { mode: \"pinned\", placement: \"docked\" })" &&
         hasSubstr graphJs "attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController)" &&
+        hasSubstr graphJs "graphState.previewActiveNode === node && !previewController.panel.hidden" &&
         hasSubstr graphJs "configurePanelCloseButton(previewUtils, previewClose" &&
         hasSubstr graphJs "configurePanelCloseButton(previewUtils, groupHoverClose" &&
         hasSubstr graphJs "graphviz: null," &&
