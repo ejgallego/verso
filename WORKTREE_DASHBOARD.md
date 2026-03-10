@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-20260310` after adding author metadata panels and real Noperthedron annotations)
+Last updated: 2026-03-10 (squashed and rebased `feat/code-summary-badge-unification-20260310`, then replayed its focused validation)
 
 ## Active Worktrees
 
@@ -103,13 +103,13 @@ Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-2026
 ### `feat/code-summary-badge-unification-20260310`
 
 - Status: `ready-for-review` (owner action: inspect the validated renderer refactor and decide whether to polish further or prepare it for merge)
-- Summary: refactors code-summary rendering so normalized declaration summaries live in `Informal.CodeSummary`, both inline and external code panels take their top-right indicator from that shared module, and summary hover binding now reuses the shared preview utility.
+- Summary: squashed review branch that unifies code-summary rendering in `Informal.CodeSummary`, keeps the pill and `L∃∀N` trigger skins, and routes both through one canonical hover-preview body listing associated constants plus status.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
 - Branch: `feat/code-summary-badge-unification-20260310`
 - Base commit/branch:
   - rebased on current `bp`
 - Key commits:
-  - `e4ee6b47` refactor(blueprint): unify code summary surfaces
+  - `b5eab05c` refactor(blueprint): unify code summary surfaces
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
   - `lake build Tests.BlueprintExternalHeadingStatus Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks`
