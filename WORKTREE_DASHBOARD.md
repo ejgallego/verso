@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (documented checkpoint for `feat/link-preview-audit-20260308` and added label-title follow-up)
+Last updated: 2026-03-10 (created `feat/parent-link-ungrouped-research-20260310` and started shared preview server session `17595`)
 
 ## Active Worktrees
 
@@ -21,6 +21,27 @@ Last updated: 2026-03-10 (documented checkpoint for `feat/link-preview-audit-202
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/parent-link-ungrouped-research-20260310`
+
+- Status: `active` (owner action: finish the missing-parent-group behavior investigation and decide whether to add validation)
+- Summary: isolated research worktree for tracing how `(parent := "...")` behaves when no matching `group` directive exists, with fresh example blueprint outputs for spot checks.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/parent-link-ungrouped-research-20260310`
+- Branch: `feat/parent-link-ungrouped-research-20260310`
+- Base commit/branch:
+  - branched from `bp` at `9399f492`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/example-blueprints`
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/parent-link-ungrouped-research-20260310/noperthedron`
+- Preview link:
+  - `http://127.0.0.1:8154/parent-link-ungrouped-research-20260310/noperthedron/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/parent-link-ungrouped-research-20260310`
+  - `git status --short`
+  - inspect `src/verso-blueprint/VersoBlueprint/Environment.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Group.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Graph.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`
 
 ### `feat/link-preview-audit-20260308`
 
