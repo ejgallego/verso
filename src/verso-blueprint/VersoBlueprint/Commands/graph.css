@@ -54,6 +54,15 @@ html.bp-graph-toc-hidden .with-toc > main {
   right: auto;
 }
 
+.bp_graph_preview[data-bp-preview-placement="anchored"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.85rem;
+  height: 0.85rem;
+}
+
 .bp_graph_preview[data-bp-preview-placement="docked"] {
   position: absolute;
   top: 0.9rem;
@@ -116,6 +125,15 @@ html.bp-graph-toc-hidden .with-toc > main {
   padding: 0.55rem 0.65rem;
   pointer-events: auto;
   backdrop-filter: blur(1px);
+}
+
+.bp_group_hover_preview[data-bp-preview-placement="anchored"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.85rem;
+  height: 0.85rem;
 }
 
 .bp_group_hover_preview[data-bp-preview-placement="docked"] {

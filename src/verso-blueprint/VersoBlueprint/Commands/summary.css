@@ -134,6 +134,15 @@
   padding: 0.65rem 0.75rem;
 }
 
+.bp_summary_preview_panel[data-bp-preview-placement="anchored"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.85rem;
+  height: 0.85rem;
+}
+
 .bp_summary_preview_panel[data-bp-preview-placement="docked"] {
   top: 0.9rem;
   right: 0.9rem;

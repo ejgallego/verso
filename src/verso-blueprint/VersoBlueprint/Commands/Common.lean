@@ -9,6 +9,47 @@ namespace Informal.Commands
 def previewHoverUtilsJs : String := r##"(function () {
   if (window.bpPreviewUtils) return;
 
+  function previewDebugEnabled() {
+    try {
+      return window.localStorage.getItem("bp-debug-preview") === "1";
+    } catch (_err) {
+      return false;
+    }
+  }
+
+  function previewDebugLabel(node) {
+    if (!(node instanceof Element)) return String(node);
+    const parts = [node.tagName.toLowerCase()];
+    const cls = (node.getAttribute("class") || "").trim();
+    const pid = (node.getAttribute("data-bp-preview-id") || "").trim();
+    const title = (node.getAttribute("data-bp-preview-title") || "").trim();
+    if (cls) parts.push("." + cls.replaceAll(" ", "."));
+    if (pid) parts.push("pid=" + pid);
+    if (title) parts.push("title=" + title);
+    return parts.join(" ");
+  }
+
+  function previewDebug(eventName, payload) {
+    const entry = {
+      at: Date.now(),
+      event: eventName,
+      payload: payload || {}
+    };
+    try {
+      if (!Array.isArray(window.bpPreviewTrace)) {
+        window.bpPreviewTrace = [];
+      }
+      window.bpPreviewTrace.push(entry);
+      if (window.bpPreviewTrace.length > 200) {
+        window.bpPreviewTrace.splice(0, window.bpPreviewTrace.length - 200);
+      }
+    } catch (_err) {}
+    if (!previewDebugEnabled()) return;
+    try {
+      console.log("[bp-preview]", eventName, payload || {});
+    } catch (_err) {}
+  }
+
   function collectPreviewTemplates(root, selector, keyAttr) {
     const map = new Map();
     if (!(root instanceof Element || root instanceof Document)) return map;
@@ -82,11 +123,29 @@ def previewHoverUtilsJs : String := r##"(function () {
     });
   }
 
+  function readAnchorRect(anchor) {
+    if (anchor instanceof Element) {
+      return anchor.getBoundingClientRect();
+    }
+    if (
+      anchor &&
+      typeof anchor === "object" &&
+      Number.isFinite(anchor.left) &&
+      Number.isFinite(anchor.right) &&
+      Number.isFinite(anchor.top) &&
+      Number.isFinite(anchor.bottom)
+    ) {
+      return anchor;
+    }
+    return null;
+  }
+
   function positionAnchoredPanel(panel, anchor, margin, offset) {
-    if (!(panel instanceof Element) || !(anchor instanceof Element)) return;
+    if (!(panel instanceof Element)) return;
+    const rect = readAnchorRect(anchor);
+    if (!rect) return;
     const safeMargin = Number.isFinite(margin) ? margin : 12;
     const safeOffset = Number.isFinite(offset) ? offset : 10;
-    const rect = anchor.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
     const panelWidth = panelRect.width || Math.min(520, window.innerWidth - safeMargin * 2);
     const panelHeight = panelRect.height || Math.min(420, window.innerHeight - safeMargin * 2);
@@ -108,6 +167,8 @@ def previewHoverUtilsJs : String := r##"(function () {
     if (!(nextTarget instanceof Element)) return false;
     if (trigger instanceof Element && trigger.contains(nextTarget)) return true;
     if (panel instanceof Element && panel.contains(nextTarget)) return true;
+    const inlinePanel = document.getElementById("bp-inline-preview-panel");
+    if (inlinePanel instanceof Element && inlinePanel.contains(nextTarget)) return true;
     return false;
   }
 
@@ -162,6 +223,267 @@ def previewHoverUtilsJs : String := r##"(function () {
     bindCloseOnce(closeButton, onClose);
   }
 
+  function pointerWithinPanel(panel, ev) {
+    if (!(panel instanceof Element)) return false;
+    if (!ev || !Number.isFinite(ev.clientX) || !Number.isFinite(ev.clientY)) return false;
+    const rect = panel.getBoundingClientRect();
+    return (
+      ev.clientX >= rect.left &&
+      ev.clientX <= rect.right &&
+      ev.clientY >= rect.top &&
+      ev.clientY <= rect.bottom
+    );
+  }
+
+  function registerPreviewHydrator(name, fn) {
+    if (typeof name !== "string" || name.length === 0) return;
+    if (typeof fn !== "function") return;
+    let registry = window.bpPreviewHydrators;
+    if (!(registry instanceof Map)) {
+      registry = new Map();
+      window.bpPreviewHydrators = registry;
+    }
+    registry.set(name, fn);
+  }
+
+  function hydratePreviewSubtree(root) {
+    if (!(root instanceof Element || root instanceof Document)) return;
+    const registry = window.bpPreviewHydrators;
+    if (!(registry instanceof Map)) return;
+    registry.forEach(function (fn) {
+      if (typeof fn !== "function") return;
+      try {
+        fn(root);
+      } catch (_err) {}
+    });
+  }
+
+  function hidePanelContent(panel, titleNode, bodyNode) {
+    if (!(panel instanceof Element)) return;
+    panel.hidden = true;
+    if (titleNode instanceof Element) titleNode.textContent = "";
+    if (bodyNode instanceof Element) bodyNode.innerHTML = "";
+  }
+
+  function showPanelContent(panel, titleNode, bodyNode, heading, html, behavior, anchor, margin, offset) {
+    if (!(panel instanceof Element) || !(titleNode instanceof Element) || !(bodyNode instanceof Element)) {
+      return false;
+    }
+    if (typeof html !== "string" || html.length === 0) {
+      hidePanelContent(panel, titleNode, bodyNode);
+      return false;
+    }
+    const safeMargin = Number.isFinite(margin) ? margin : 12;
+    const safeOffset = Number.isFinite(offset) ? offset : 10;
+    titleNode.textContent = typeof heading === "string" ? heading : "";
+    bodyNode.innerHTML = html;
+    hydratePreviewSubtree(bodyNode);
+    renderMath(bodyNode);
+    panel.hidden = false;
+    if (behavior && behavior.isAnchored && readAnchorRect(anchor)) {
+      positionAnchoredPanel(panel, anchor, safeMargin, safeOffset);
+    } else {
+      resetPanelPosition(panel);
+    }
+    return true;
+  }
+
+  function bindTemplatePreview(options) {
+    const root =
+      options && (options.root instanceof Element || options.root instanceof Document)
+        ? options.root
+        : document;
+    const previewRoot =
+      options && (options.previewRoot instanceof Element || options.previewRoot instanceof Document)
+        ? options.previewRoot
+        : root;
+    const triggerRoot =
+      options && (options.triggerRoot instanceof Element || options.triggerRoot instanceof Document)
+        ? options.triggerRoot
+        : root;
+    const panel = options && options.panel instanceof Element ? options.panel : null;
+    const templateSelector =
+      options && typeof options.templateSelector === "string" ? options.templateSelector : "";
+    const triggerSelector =
+      options && typeof options.triggerSelector === "string" ? options.triggerSelector : "";
+    const keyAttr =
+      options && typeof options.keyAttr === "string" && options.keyAttr.length > 0
+        ? options.keyAttr
+        : "data-bp-preview-label";
+    const titleAttr =
+      options && typeof options.titleAttr === "string" && options.titleAttr.length > 0
+        ? options.titleAttr
+        : keyAttr;
+    const titleSelector =
+      options && typeof options.titleSelector === "string" ? options.titleSelector : "";
+    const bodySelector =
+      options && typeof options.bodySelector === "string" ? options.bodySelector : "";
+    const closeSelector =
+      options && typeof options.closeSelector === "string" ? options.closeSelector : "";
+    const triggerBoundAttr =
+      options && typeof options.triggerBoundAttr === "string" && options.triggerBoundAttr.length > 0
+        ? options.triggerBoundAttr
+        : "data-bp-bound";
+    const defaults = options && typeof options.defaults === "object" ? options.defaults : {};
+    const margin =
+      options && Number.isFinite(options.margin) ? options.margin : 12;
+    const offset =
+      options && Number.isFinite(options.offset) ? options.offset : 10;
+    const readKey =
+      options && typeof options.readKey === "function"
+        ? options.readKey
+        : function (trigger) {
+            if (!(trigger instanceof Element)) return "";
+            return (trigger.getAttribute(keyAttr) || "").trim();
+          };
+    const readTitle =
+      options && typeof options.readTitle === "function"
+        ? options.readTitle
+        : function (trigger, key) {
+            if (!(trigger instanceof Element)) return key;
+            const heading = (trigger.getAttribute(titleAttr) || "").trim();
+            return heading || key;
+          };
+
+    const previewMap = collectPreviewTemplates(previewRoot, templateSelector, keyAttr);
+    const title = panel ? panel.querySelector(titleSelector) : null;
+    const body = panel ? panel.querySelector(bodySelector) : null;
+    const close = panel ? panel.querySelector(closeSelector) : null;
+    if (!panel || !(title instanceof Element) || !(body instanceof Element) || previewMap.size === 0) {
+      if (panel) hidePanelContent(panel, title, body);
+      return null;
+    }
+    const behavior = readPanelBehavior(panel, defaults);
+    let activeTrigger = null;
+    let hideTimer = null;
+
+    function cancelHide() {
+      if (hideTimer !== null) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+    }
+
+    function hidePanel() {
+      cancelHide();
+      hidePanelContent(panel, title, body);
+      activeTrigger = null;
+    }
+
+    function scheduleHide() {
+      cancelHide();
+      if (!behavior.isHover) {
+        hidePanel();
+        return;
+      }
+      hideTimer = window.setTimeout(function () {
+        hideTimer = null;
+        hidePanel();
+      }, 180);
+    }
+
+    function pointerWithinPanel(ev) {
+      if (!(panel instanceof Element)) return false;
+      if (!ev || !Number.isFinite(ev.clientX) || !Number.isFinite(ev.clientY)) return false;
+      const rect = panel.getBoundingClientRect();
+      return (
+        ev.clientX >= rect.left &&
+        ev.clientX <= rect.right &&
+        ev.clientY >= rect.top &&
+        ev.clientY <= rect.bottom
+      );
+    }
+
+    function positionPanel(anchor) {
+      if (!behavior.isAnchored) {
+        resetPanelPosition(panel);
+        return;
+      }
+      if (!(anchor instanceof Element)) return;
+      positionAnchoredPanel(panel, anchor, margin, offset);
+    }
+
+    function showFromTrigger(trigger) {
+      if (!(trigger instanceof Element)) return;
+      const key = readKey(trigger);
+      const html = readPreviewTemplate(previewMap.get(key));
+      if (!key || !html) {
+        hidePanel();
+        return;
+      }
+      activeTrigger = trigger;
+      const heading = readTitle(trigger, key);
+      showPanelContent(panel, title, body, heading, html, behavior, trigger, margin, offset);
+    }
+
+    configureCloseButton(close, hidePanel, behavior);
+
+    const triggers = triggerRoot.querySelectorAll(triggerSelector);
+    triggers.forEach(function (trigger) {
+      if (!(trigger instanceof Element)) return;
+      if (trigger.getAttribute(triggerBoundAttr) === "1") return;
+      trigger.setAttribute(triggerBoundAttr, "1");
+      trigger.addEventListener("mouseenter", function () {
+        cancelHide();
+        showFromTrigger(trigger);
+      });
+      trigger.addEventListener("focusin", function () {
+        cancelHide();
+        showFromTrigger(trigger);
+      });
+      trigger.addEventListener("mouseleave", function (ev) {
+        if (!behavior.isHover) return;
+        if (shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
+        scheduleHide();
+      });
+      trigger.addEventListener("focusout", function (ev) {
+        if (!behavior.isHover) return;
+        if (shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
+        scheduleHide();
+      });
+    });
+
+    panel.addEventListener("mouseenter", function () {
+      cancelHide();
+    });
+    panel.addEventListener("focusin", function () {
+      cancelHide();
+    });
+    panel.addEventListener("mouseleave", function (ev) {
+      if (!behavior.isHover) return;
+      if (shouldKeepOpen(ev.relatedTarget, activeTrigger, panel)) return;
+      scheduleHide();
+    });
+    panel.addEventListener("focusout", function (ev) {
+      if (!behavior.isHover) return;
+      if (shouldKeepOpen(ev.relatedTarget, activeTrigger, panel)) return;
+      scheduleHide();
+    });
+
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") {
+        hidePanel();
+      }
+    });
+    window.addEventListener("resize", function () {
+      if (behavior.isAnchored && activeTrigger && !panel.hidden) positionPanel(activeTrigger);
+    });
+    window.addEventListener(
+      "scroll",
+      function () {
+        if (behavior.isAnchored && activeTrigger && !panel.hidden) positionPanel(activeTrigger);
+      },
+      true
+    );
+
+    return {
+      previewMap: previewMap,
+      behavior: behavior,
+      hidePanel: hidePanel,
+      showFromTrigger: showFromTrigger
+    };
+  }
+
   window.bpPreviewUtils = {
     collectPreviewTemplates: collectPreviewTemplates,
     readPreviewTemplate: readPreviewTemplate,
@@ -171,7 +493,15 @@ def previewHoverUtilsJs : String := r##"(function () {
     shouldKeepOpen: shouldKeepOpen,
     readPanelBehavior: readPanelBehavior,
     resetPanelPosition: resetPanelPosition,
-    configureCloseButton: configureCloseButton
+    configureCloseButton: configureCloseButton,
+    pointerWithinPanel: pointerWithinPanel,
+    registerPreviewHydrator: registerPreviewHydrator,
+    hydratePreviewSubtree: hydratePreviewSubtree,
+    previewDebug: previewDebug,
+    previewDebugLabel: previewDebugLabel,
+    hidePanelContent: hidePanelContent,
+    showPanelContent: showPanelContent,
+    bindTemplatePreview: bindTemplatePreview
   };
 })();"##
 
@@ -191,6 +521,15 @@ def inlinePreviewCss : String := r##"
   border-radius: 0.45rem;
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2);
+}
+
+.bp_inline_preview_panel[data-bp-preview-placement="anchored"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.85rem;
+  height: 0.85rem;
 }
 
 .bp_inline_preview_panel[data-bp-preview-placement="docked"] {
@@ -315,6 +654,42 @@ def openTargetDetailsJs : String := r##"(function () {
 })();"##
 
 def inlineLinkPreviewJs : String := r##"(function () {
+  const templateSelector = "template.bp_inline_preview_tpl[data-bp-preview-id]";
+  const triggerSelector = ".bp_inline_preview_ref[data-bp-preview-id]";
+
+  function escapeHtml(text) {
+    return String(text || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function fallbackInlinePreviewHtml(trigger, key) {
+    if (!(trigger instanceof Element)) return "";
+    const title = (trigger.getAttribute("data-bp-preview-title") || key || "").trim();
+    const label = (trigger.getAttribute("data-bp-preview-fallback-label") || "").trim();
+    const detail = (trigger.getAttribute("data-bp-preview-fallback-detail") || "").trim();
+    const text = (trigger.textContent || "").trim();
+    let html = '<div class="bp_code_hover" role="tooltip">';
+    html += '<div class="bp_code_hover_title">' + escapeHtml(title || "Preview") + "</div>";
+    if (text.length > 0) {
+      html += '<div class="bp_code_hover_section"><span class="bp_code_hover_label">Reference</span><ul class="bp_code_hover_list"><li>' +
+        escapeHtml(text) + "</li></ul></div>";
+    }
+    if (label.length > 0) {
+      html += '<div class="bp_code_hover_section"><span class="bp_code_hover_label">Blueprint label</span><ul class="bp_code_hover_list"><li><code>' +
+        escapeHtml(label) + "</code></li></ul></div>";
+    }
+    if (detail.length > 0) {
+      html += '<div class="bp_code_hover_section"><span class="bp_code_hover_label">Detail</span><ul class="bp_code_hover_list"><li>' +
+        escapeHtml(detail) + "</li></ul></div>";
+    }
+    html += "</div>";
+    return html;
+  }
+
   function ensureInlinePreviewStore() {
     const existing = document.getElementById("bp-inline-preview-store");
     if (existing instanceof Element) return existing;
@@ -326,25 +701,32 @@ def inlineLinkPreviewJs : String := r##"(function () {
     return store;
   }
 
-  function buildInlinePreviewStore() {
-    const selector = "template.bp_inline_preview_tpl[data-bp-preview-id]";
-    const store = ensureInlinePreviewStore();
-    const templates = Array.from(document.querySelectorAll(selector));
+  function syncInlinePreviewStore(root, store) {
+    if (!(root instanceof Element || root instanceof Document)) return false;
     const seen = new Set();
-    templates.forEach(function (tpl) {
+    store.querySelectorAll(templateSelector).forEach(function (tpl) {
+      if (!(tpl instanceof HTMLTemplateElement)) return;
+      const key = (tpl.getAttribute("data-bp-preview-id") || "").trim();
+      if (key) seen.add(key);
+    });
+    let changed = false;
+    root.querySelectorAll(templateSelector).forEach(function (tpl) {
       if (!(tpl instanceof HTMLTemplateElement)) return;
       const key = (tpl.getAttribute("data-bp-preview-id") || "").trim();
       if (!key) return;
+      if (store.contains(tpl)) {
+        seen.add(key);
+        return;
+      }
       if (seen.has(key)) {
         tpl.remove();
         return;
       }
       seen.add(key);
-      if (!store.contains(tpl)) {
-        store.appendChild(tpl);
-      }
+      store.appendChild(tpl);
+      changed = true;
     });
-    return store;
+    return changed;
   }
 
   function makePanel() {
@@ -380,119 +762,305 @@ def inlineLinkPreviewJs : String := r##"(function () {
       !previewUtils ||
       typeof previewUtils.collectPreviewTemplates !== "function" ||
       typeof previewUtils.readPreviewTemplate !== "function" ||
-      typeof previewUtils.renderMath !== "function" ||
-      typeof previewUtils.positionAnchoredPanel !== "function" ||
-      typeof previewUtils.shouldKeepOpen !== "function" ||
       typeof previewUtils.readPanelBehavior !== "function" ||
-      typeof previewUtils.resetPanelPosition !== "function" ||
-      typeof previewUtils.configureCloseButton !== "function"
+      typeof previewUtils.showPanelContent !== "function" ||
+      typeof previewUtils.hidePanelContent !== "function" ||
+      typeof previewUtils.shouldKeepOpen !== "function" ||
+      typeof previewUtils.configureCloseButton !== "function" ||
+      typeof previewUtils.positionAnchoredPanel !== "function"
     ) {
       return;
     }
-    const store = buildInlinePreviewStore();
-    const previewMap = previewUtils.collectPreviewTemplates(
-      store,
-      "template.bp_inline_preview_tpl[data-bp-preview-id]",
-      "data-bp-preview-id"
-    );
-    if (!(previewMap instanceof Map) || previewMap.size === 0) return;
+    const previewDebug =
+      typeof previewUtils.previewDebug === "function"
+        ? previewUtils.previewDebug
+        : function () {};
+    const previewDebugLabel =
+      typeof previewUtils.previewDebugLabel === "function"
+        ? previewUtils.previewDebugLabel
+        : function (node) { return String(node); };
 
+    const store = ensureInlinePreviewStore();
     const panel = getPanel();
     const title = panel.querySelector(".bp_inline_preview_panel_title");
     const body = panel.querySelector(".bp_inline_preview_panel_body");
     const close = panel.querySelector(".bp_inline_preview_panel_close");
-    if (!(title instanceof Element) || !(body instanceof Element) || !(close instanceof Element)) return;
-    const behavior = previewUtils.readPanelBehavior(panel, { mode: "hover", placement: "anchored" });
-
-    let activeTrigger = null;
-
-    function hidePanel() {
-      panel.hidden = true;
-      title.textContent = "";
-      body.innerHTML = "";
-      activeTrigger = null;
+    if (!(title instanceof Element) || !(body instanceof Element) || !(close instanceof Element)) {
+      return;
     }
 
-    function positionPanel(anchor) {
-      if (!behavior.isAnchored) {
-        previewUtils.resetPanelPosition(panel);
+    const behavior = previewUtils.readPanelBehavior(panel, { mode: "hover", placement: "anchored" });
+    let previewMap = new Map();
+    let labelPreviewMap = new Map();
+    let activeTrigger = null;
+    let activePreviewKey = "";
+    let hideTimer = null;
+    let updatingPanel = false;
+    let ignoreNextPanelExit = false;
+
+    function clearPanelSizeLock() {
+      panel.style.width = "";
+      panel.style.minHeight = "";
+    }
+
+    function lockPanelSizeToCurrentRect() {
+      const rect = panel.getBoundingClientRect();
+      if (!(rect.width > 0) || !(rect.height > 0)) return;
+      panel.style.width = rect.width + "px";
+      panel.style.minHeight = rect.height + "px";
+    }
+
+    function cancelHide() {
+      if (hideTimer !== null) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+    }
+
+    function rebuildPreviewMap() {
+      previewMap = previewUtils.collectPreviewTemplates(store, templateSelector, "data-bp-preview-id");
+      labelPreviewMap =
+        previewUtils.collectPreviewTemplates(
+          document,
+          "template.bp_label_preview_tpl[data-bp-preview-label]",
+          "data-bp-preview-label"
+        );
+    }
+
+    function bindInlinePreviewTriggers(root) {
+      if (!(root instanceof Element || root instanceof Document)) return;
+      root.querySelectorAll(triggerSelector).forEach(function (trigger) {
+        if (!(trigger instanceof Element)) return;
+        if (trigger.getAttribute("data-bp-inline-bound") === "1") return;
+        trigger.setAttribute("data-bp-inline-bound", "1");
+        const triggerKey = (trigger.getAttribute("data-bp-preview-id") || "").trim();
+        const triggerInsidePanel = panel.contains(trigger);
+        trigger.addEventListener("mouseenter", function () {
+          cancelHide();
+          showFromTrigger(trigger);
+        });
+        trigger.addEventListener("focusin", function () {
+          cancelHide();
+          showFromTrigger(trigger);
+        });
+        if (triggerInsidePanel) return;
+        trigger.addEventListener("mouseleave", function (ev) {
+          if (!behavior.isHover) return;
+          if (!trigger.isConnected) return;
+          if (triggerKey && activePreviewKey && triggerKey !== activePreviewKey) return;
+          if (panel.matches(":hover") || panel.matches(":focus-within")) return;
+          if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
+          previewDebug("inline.trigger.mouseleave", {
+            triggerKey: triggerKey,
+            activePreviewKey: activePreviewKey,
+            trigger: previewDebugLabel(trigger),
+            relatedTarget: previewDebugLabel(ev.relatedTarget),
+            panelHover: panel.matches(":hover"),
+            panelFocus: panel.matches(":focus-within"),
+            updatingPanel: updatingPanel
+          });
+          scheduleHide();
+        });
+        trigger.addEventListener("focusout", function (ev) {
+          if (!behavior.isHover) return;
+          if (!trigger.isConnected) return;
+          if (triggerKey && activePreviewKey && triggerKey !== activePreviewKey) return;
+          if (panel.matches(":hover") || panel.matches(":focus-within")) return;
+          if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
+          previewDebug("inline.trigger.focusout", {
+            triggerKey: triggerKey,
+            activePreviewKey: activePreviewKey,
+            trigger: previewDebugLabel(trigger),
+            relatedTarget: previewDebugLabel(ev.relatedTarget),
+            panelHover: panel.matches(":hover"),
+            panelFocus: panel.matches(":focus-within"),
+            updatingPanel: updatingPanel
+          });
+          scheduleHide();
+        });
+      });
+    }
+
+    function refresh(root) {
+      const scope = root instanceof Element || root instanceof Document ? root : document;
+      if (syncInlinePreviewStore(scope, store)) {
+        rebuildPreviewMap();
+      }
+      bindInlinePreviewTriggers(scope);
+    }
+
+    function hidePanel() {
+      cancelHide();
+      previewDebug("inline.hide", {
+        activePreviewKey: activePreviewKey,
+        activeTrigger: previewDebugLabel(activeTrigger),
+        panelHover: panel.matches(":hover"),
+        panelFocus: panel.matches(":focus-within"),
+        updatingPanel: updatingPanel
+      });
+      clearPanelSizeLock();
+      previewUtils.hidePanelContent(panel, title, body);
+      activeTrigger = null;
+      activePreviewKey = "";
+    }
+
+    function scheduleHide() {
+      cancelHide();
+      if (!behavior.isHover) {
+        hidePanel();
         return;
       }
-      previewUtils.positionAnchoredPanel(panel, anchor, 12, 10);
+      hideTimer = window.setTimeout(function () {
+        hideTimer = null;
+        previewDebug("inline.scheduleHide.fire", {
+          activePreviewKey: activePreviewKey,
+          activeTrigger: previewDebugLabel(activeTrigger),
+          panelHover: panel.matches(":hover"),
+          panelFocus: panel.matches(":focus-within"),
+          updatingPanel: updatingPanel
+        });
+        hidePanel();
+      }, 180);
+    }
+
+    function resolvePreviewHtml(key, trigger) {
+      if (!previewMap.has(key)) {
+        const localRoot = trigger instanceof Element ? (trigger.parentElement || document) : document;
+        refresh(localRoot);
+        if (!previewMap.has(key)) {
+          refresh(document);
+        }
+      }
+      const html = previewUtils.readPreviewTemplate(previewMap.get(key));
+      if (html) return html;
+      const label =
+        trigger instanceof Element
+          ? (trigger.getAttribute("data-bp-preview-fallback-label") || "").trim()
+          : "";
+      const labelHtml = label ? previewUtils.readPreviewTemplate(labelPreviewMap.get(label)) : "";
+      return labelHtml || fallbackInlinePreviewHtml(trigger, key);
     }
 
     function showFromTrigger(trigger) {
       if (!(trigger instanceof Element)) return;
-      const key = trigger.getAttribute("data-bp-preview-id") || "";
+      const key = (trigger.getAttribute("data-bp-preview-id") || "").trim();
       if (!key) {
         hidePanel();
         return;
       }
-      const html = previewUtils.readPreviewTemplate(previewMap.get(key));
+      const html = resolvePreviewHtml(key, trigger);
       if (!html) {
         hidePanel();
         return;
       }
-      activeTrigger = trigger;
-      const heading = trigger.getAttribute("data-bp-preview-title") || key;
-      title.textContent = heading;
-      body.innerHTML = html;
-      previewUtils.renderMath(body);
-      panel.hidden = false;
-      positionPanel(trigger);
+      const heading = (trigger.getAttribute("data-bp-preview-title") || key).trim() || key;
+      activePreviewKey = key;
+      const inPanel = panel.contains(trigger);
+      updatingPanel = inPanel;
+      previewDebug("inline.show", {
+        key: key,
+        inPanel: inPanel,
+        trigger: previewDebugLabel(trigger),
+        panelHover: panel.matches(":hover"),
+        panelFocus: panel.matches(":focus-within")
+      });
+      if (inPanel) {
+        lockPanelSizeToCurrentRect();
+        activeTrigger = null;
+        ignoreNextPanelExit = true;
+        title.textContent = heading;
+        body.innerHTML = html;
+        previewUtils.hydratePreviewSubtree(body);
+        previewUtils.renderMath(body);
+        panel.hidden = false;
+        window.setTimeout(function () {
+          updatingPanel = false;
+        }, 180);
+      } else {
+        clearPanelSizeLock();
+        activeTrigger = trigger;
+        previewUtils.showPanelContent(panel, title, body, heading, html, behavior, trigger, 12, 10);
+      }
     }
 
     previewUtils.configureCloseButton(close, hidePanel, behavior);
-
-    const triggers = document.querySelectorAll(".bp_inline_preview_ref[data-bp-preview-id]");
-    triggers.forEach(function (trigger) {
-      if (!(trigger instanceof Element)) return;
-      if (trigger.getAttribute("data-bp-bound") === "1") return;
-      trigger.setAttribute("data-bp-bound", "1");
-      trigger.addEventListener("mouseenter", function () {
-        showFromTrigger(trigger);
-      });
-      trigger.addEventListener("focusin", function () {
-        showFromTrigger(trigger);
-      });
-      trigger.addEventListener("mouseleave", function (ev) {
-        if (!behavior.isHover) return;
-        if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
-        hidePanel();
-      });
-      trigger.addEventListener("focusout", function (ev) {
-        if (!behavior.isHover) return;
-        if (previewUtils.shouldKeepOpen(ev.relatedTarget, trigger, panel)) return;
-        hidePanel();
-      });
+    panel.addEventListener("mouseenter", function () {
+      cancelHide();
     });
-
+    panel.addEventListener("focusin", function () {
+      cancelHide();
+    });
     panel.addEventListener("mouseleave", function (ev) {
       if (!behavior.isHover) return;
+      if (updatingPanel) return;
+      if (ignoreNextPanelExit) {
+        ignoreNextPanelExit = false;
+        previewDebug("inline.panel.mouseleave.ignored", {
+          activePreviewKey: activePreviewKey,
+          relatedTarget: previewDebugLabel(ev.relatedTarget),
+          panelHover: panel.matches(":hover"),
+          panelFocus: panel.matches(":focus-within")
+        });
+        return;
+      }
+      if (previewUtils.pointerWithinPanel(panel, ev)) return;
+      if (panel.matches(":hover") || panel.matches(":focus-within")) return;
       if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeTrigger, panel)) return;
-      hidePanel();
+      previewDebug("inline.panel.mouseleave", {
+        activePreviewKey: activePreviewKey,
+        activeTrigger: previewDebugLabel(activeTrigger),
+        relatedTarget: previewDebugLabel(ev.relatedTarget),
+        panelHover: panel.matches(":hover"),
+        panelFocus: panel.matches(":focus-within"),
+        updatingPanel: updatingPanel
+      });
+      scheduleHide();
     });
     panel.addEventListener("focusout", function (ev) {
       if (!behavior.isHover) return;
+      if (updatingPanel) return;
+      if (ignoreNextPanelExit) {
+        ignoreNextPanelExit = false;
+        previewDebug("inline.panel.focusout.ignored", {
+          activePreviewKey: activePreviewKey,
+          relatedTarget: previewDebugLabel(ev.relatedTarget),
+          panelHover: panel.matches(":hover"),
+          panelFocus: panel.matches(":focus-within")
+        });
+        return;
+      }
+      if (panel.matches(":hover") || panel.matches(":focus-within")) return;
       if (previewUtils.shouldKeepOpen(ev.relatedTarget, activeTrigger, panel)) return;
-      hidePanel();
+      previewDebug("inline.panel.focusout", {
+        activePreviewKey: activePreviewKey,
+        activeTrigger: previewDebugLabel(activeTrigger),
+        relatedTarget: previewDebugLabel(ev.relatedTarget),
+        panelHover: panel.matches(":hover"),
+        panelFocus: panel.matches(":focus-within"),
+        updatingPanel: updatingPanel
+      });
+      scheduleHide();
     });
-
     document.addEventListener("keydown", function (ev) {
       if (ev.key === "Escape") {
         hidePanel();
       }
     });
     window.addEventListener("resize", function () {
-      if (behavior.isAnchored && activeTrigger && !panel.hidden) positionPanel(activeTrigger);
+      if (behavior.isAnchored && activeTrigger && !panel.hidden) {
+        previewUtils.positionAnchoredPanel(panel, activeTrigger, 12, 10);
+      }
     });
-    window.addEventListener(
-      "scroll",
-      function () {
-        if (behavior.isAnchored && activeTrigger && !panel.hidden) positionPanel(activeTrigger);
-      },
-      true
-    );
+    window.addEventListener("scroll", function () {
+      if (behavior.isAnchored && activeTrigger && !panel.hidden) {
+        previewUtils.positionAnchoredPanel(panel, activeTrigger, 12, 10);
+      }
+    }, true);
+
+    previewUtils.registerPreviewHydrator("inline", refresh);
+
+    refresh(document);
+    rebuildPreviewMap();
   }
 
   if (document.readyState === "loading") {
@@ -534,12 +1102,45 @@ def usedByPanelJs : String := r##"(function () {
     const defaultBody = body.innerHTML;
     const templates = collectPanelTemplates(panel);
     const items = Array.from(panel.querySelectorAll(".bp_used_by_item[data-bp-used-preview-id]"));
+    let closeTimer = null;
+
+    function cancelClose() {
+      if (closeTimer !== null) {
+        clearTimeout(closeTimer);
+        closeTimer = null;
+      }
+    }
+
+    function openWrap() {
+      cancelClose();
+      if (wrap instanceof Element) {
+        wrap.classList.add("bp_used_by_wrap_open");
+      }
+    }
+
+    function closeWrap() {
+      cancelClose();
+      if (wrap instanceof Element) {
+        wrap.classList.remove("bp_used_by_wrap_open");
+      }
+    }
+
+    function scheduleClose() {
+      cancelClose();
+      closeTimer = window.setTimeout(function () {
+        closeTimer = null;
+        if (wrap instanceof Element) {
+          wrap.classList.remove("bp_used_by_wrap_open");
+        }
+      }, 180);
+    }
 
     function activate(item) {
       if (!(item instanceof Element)) return;
       const key = (item.getAttribute("data-bp-used-preview-id") || "").trim();
       const itemTitle = (item.getAttribute("data-bp-used-preview-title") || "").trim() || defaultTitle;
       const html = key ? (templates.get(key) || "") : "";
+      openWrap();
       items.forEach(function (other) {
         if (other instanceof Element) {
           other.classList.toggle("bp_used_by_item_active", other === item);
@@ -547,6 +1148,9 @@ def usedByPanelJs : String := r##"(function () {
       });
       title.textContent = itemTitle;
       body.innerHTML = html || defaultBody;
+      if (previewUtils && typeof previewUtils.hydratePreviewSubtree === "function") {
+        previewUtils.hydratePreviewSubtree(body);
+      }
       if (previewUtils && typeof previewUtils.renderMath === "function") {
         previewUtils.renderMath(body);
       }
@@ -567,9 +1171,26 @@ def usedByPanelJs : String := r##"(function () {
     }
 
     if (wrap instanceof Element && chip instanceof Element) {
+      const previewAwareClose = function (ev) {
+        if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") {
+          scheduleClose();
+          return;
+        }
+        if (previewUtils.shouldKeepOpen(ev.relatedTarget, wrap, panel)) return;
+        scheduleClose();
+      };
+      chip.addEventListener("mouseenter", openWrap);
+      chip.addEventListener("focusin", openWrap);
+      chip.addEventListener("mouseleave", previewAwareClose);
+      chip.addEventListener("focusout", previewAwareClose);
+      panel.addEventListener("mouseenter", openWrap);
+      panel.addEventListener("focusin", openWrap);
+      panel.addEventListener("mouseleave", previewAwareClose);
+      panel.addEventListener("focusout", previewAwareClose);
       chip.addEventListener("click", function (ev) {
         ev.preventDefault();
         ev.stopPropagation();
+        cancelClose();
         wrap.classList.toggle("bp_used_by_wrap_open");
       });
       panel.addEventListener("click", function (ev) {
@@ -577,16 +1198,16 @@ def usedByPanelJs : String := r##"(function () {
       });
       document.addEventListener("click", function (ev) {
         if (!(ev.target instanceof Element)) {
-          wrap.classList.remove("bp_used_by_wrap_open");
+          closeWrap();
           return;
         }
         if (!wrap.contains(ev.target)) {
-          wrap.classList.remove("bp_used_by_wrap_open");
+          closeWrap();
         }
       });
       document.addEventListener("keydown", function (ev) {
         if (ev.key === "Escape") {
-          wrap.classList.remove("bp_used_by_wrap_open");
+          closeWrap();
         }
       });
     }
@@ -595,6 +1216,10 @@ def usedByPanelJs : String := r##"(function () {
   function bindAllUsedByPanels(root) {
     if (!(root instanceof Element || root instanceof Document)) return;
     root.querySelectorAll(".bp_used_by_panel").forEach(bindUsedByPanel);
+  }
+
+  if (window.bpPreviewUtils && typeof window.bpPreviewUtils.registerPreviewHydrator === "function") {
+    window.bpPreviewUtils.registerPreviewHydrator("usedBy", bindAllUsedByPanels);
   }
 
   if (document.readyState === "loading") {

@@ -509,6 +509,9 @@
             clearBody: function (body) { body.innerHTML = ""; },
             renderBody: function (body, html) {
               body.innerHTML = html;
+              if (previewUtils && typeof previewUtils.hydratePreviewSubtree === "function") {
+                previewUtils.hydratePreviewSubtree(body);
+              }
               renderMath(body);
             },
             positionPanel: makeHtmlPanelPositioner(previewPanelBehavior),

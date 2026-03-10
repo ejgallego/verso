@@ -227,14 +227,16 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       !hasSubstr out "verso-tex-prelude" &&
       match summaryJs?, previewUtilsJs? with
       | some summaryJs, some previewUtilsJs =>
-        hasSubstr summaryJs "previewUtils.readPanelBehavior(panel, { mode: \"hover\", placement: \"anchored\" })" &&
-        hasSubstr summaryJs "previewUtils.positionAnchoredPanel(panel, anchor, 12, 10)" &&
-        hasSubstr summaryJs "previewUtils.shouldKeepOpen(ev.relatedTarget, wrap, panel)" &&
-        hasSubstr summaryJs "previewUtils.configureCloseButton(close, hidePanel, behavior)" &&
+        hasSubstr summaryJs "previewUtils.bindTemplatePreview({" &&
+        hasSubstr summaryJs "templateSelector: \"template.bp_summary_preview_tpl[data-bp-preview-label]\"" &&
+        hasSubstr summaryJs "triggerSelector: \".bp_summary_preview_wrap_active[data-bp-preview-label]\"" &&
+        hasSubstr summaryJs "readTitle: function (_wrap, label) { return label; }" &&
         hasSubstr previewUtilsJs "function positionAnchoredPanel(panel, anchor, margin, offset)" &&
         hasSubstr previewUtilsJs "function shouldKeepOpen(nextTarget, trigger, panel)" &&
         hasSubstr previewUtilsJs "function readPanelBehavior(panel, defaults)" &&
-        hasSubstr previewUtilsJs "function configureCloseButton(closeButton, onClose, behavior)"
+        hasSubstr previewUtilsJs "function configureCloseButton(closeButton, onClose, behavior)" &&
+        hasSubstr previewUtilsJs "function hydratePreviewSubtree(root)" &&
+        hasSubstr previewUtilsJs "window.setTimeout(function () {" 
       | _, _ => false
     )
 
@@ -264,6 +266,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr graphJs "function createPanelController(panel, behavior, titleSelector, bodySelector, options)" &&
         hasSubstr graphJs "function configurePanelCloseButton(previewUtils, closeButton, hidePanel, behavior)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(previewPanelNode, { mode: \"pinned\", placement: \"docked\" })" &&
+        hasSubstr graphJs "previewUtils.hydratePreviewSubtree(body)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(groupHoverPanel, { mode: \"pinned\", placement: \"docked\" })" &&
         hasSubstr graphJs "attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController)" &&
         hasSubstr graphJs "configurePanelCloseButton(previewUtils, previewClose" &&

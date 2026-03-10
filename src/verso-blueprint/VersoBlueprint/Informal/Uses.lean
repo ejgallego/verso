@@ -30,7 +30,7 @@ private def blockHoverTitle
     (state : Verso.Genre.Manual.TraverseState) (block : BlockData) : String :=
   block.displayTitle state
 
-private def usePreviewId (label : Data.Label) (block : BlockData) : String :=
+def usePreviewId (label : Data.Label) (block : BlockData) : String :=
   let facet := PreviewCache.Facet.ofInProgressKind block.kind
   s!"bp-uses-{Informal.HoverRender.previewKey (toString label)}-{facet.suffix}"
 

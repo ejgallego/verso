@@ -1699,6 +1699,14 @@ private def renderInformalBlock (data : BlockData) (numberText : String) (attrs 
     </div>
   }}
 
+private def blockLabelPreviewTemplate (data : BlockData) (content : Array Output.Html) : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <template class="bp_label_preview_tpl" "data-bp-preview-label"={{s!"{data.label}"}}>
+      {{content}}
+    </template>
+  }}
+
 /- Informal custom blocks -/
 block_extension Block.informal (data : BlockData) where
   -- for TOC
@@ -1822,13 +1830,17 @@ block_extension Block.informal (data : BlockData) where
           | _, _ => none
         let externalPanel := (externalParts?.map (·.externalCodePanel)).getD .empty
         let content := (← blocks.mapM goB)
+        let previewContent ←
+          blocks.mapM fun block =>
+            Informal.HoverRender.withInlinePreviewRenderContext (goB block)
         let statusMark := headingParts?.bind (·.statusMark)
         let codeEntry := (headingParts?.map (·.codeEntry)).getD .empty
         let groupEntry ← renderGroupEntry s goB data
         let usedByEntry ← renderUsedByEntry s goB data
         let informalBlock :=
           renderInformalBlock data (data.displayNumber s) attrs statusMark codeEntry groupEntry usedByEntry content
-        return .seq #[informalBlock, externalPanel]
+        let labelPreviewTemplate := blockLabelPreviewTemplate data previewContent
+        return .seq #[informalBlock, labelPreviewTemplate, externalPanel]
 
 private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : DirectiveExpanderOf Config
   | cfg, contents => do
