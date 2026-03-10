@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (retired `feat/worktree-output-dedup-20260310` after landing its workflow updates on `bp`)
+Last updated: 2026-03-10 (validated a cross-browser runtime hover regression test on `feat/preview-runtime-regression-test-20260310`)
 
 ## Active Worktrees
 
@@ -79,7 +79,7 @@ Last updated: 2026-03-10 (retired `feat/worktree-output-dedup-20260310` after la
 
 ### `feat/preview-runtime-fix-20260310`
 
-- Status: `active` (owner action: finish the cold artifact rebuild, then re-check the shipped page that was throwing `cancelChildHide is not defined`)
+- Status: `checkpoint` (owner action: keep only if you want the source-only hotfix checkpoint; active work now continues on `feat/preview-runtime-regression-test-20260310`)
 - Summary: minimal runtime hotfix for the rebased preview line. The inline preview child panel path was calling `cancelChildHide()` without defining it inside `inlineLinkPreviewJs`, which broke all preview hides/shows at runtime. This worktree removes the stray helper from the unrelated shared binder and restores the helper in the actual inline preview closure.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-fix-20260310`
 - Branch: `feat/preview-runtime-fix-20260310`
@@ -98,6 +98,27 @@ Last updated: 2026-03-10 (retired `feat/worktree-output-dedup-20260310` after la
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-fix-20260310`
   - inspect `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
   - browser repro to re-check after rebuild: `The-Global-Theorem` bibliography hover and inline preview hide path
+
+### `feat/preview-runtime-regression-test-20260310`
+
+- Status: `ready-for-review` (owner action: inspect the new browser regression coverage and decide whether to keep this as the active preview runtime branch)
+- Summary: adds a real Playwright regression test for runtime hover failures. The new test loads built blueprint pages, hovers a bibliography preview trigger and a nested theorem-then-definition preview chain, and fails on uncaught browser runtime errors like the missing `cancelChildHide` helper. This branch is based on the source hotfix from `feat/preview-runtime-fix-20260310`.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-regression-test-20260310`
+- Branch: `feat/preview-runtime-regression-test-20260310`
+- Base commit/branch:
+  - branched from `feat/preview-runtime-fix-20260310` at `ab94e276`
+- Key commit:
+  - `6a76a2c8` test(preview): cover runtime hover regressions
+- Validation status:
+  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/noperthedron`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/noperthedron/html-multi`
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-runtime-regression-test-20260310/example-blueprints`
+- Preview link:
+  - `http://127.0.0.1:8154/preview-runtime-regression-test-20260310/noperthedron/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-regression-test-20260310`
+  - inspect `browser-tests/test_preview_runtime_regressions.py`
+  - current coverage checks both Chromium and Firefox via the shared Playwright fixture
 
 ### `feat/blueprint-metadata-json-review-20260310`
 
