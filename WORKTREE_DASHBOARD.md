@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (merged `feat/agents-merge-guardrails-20260310` into `bp` and cleaned up the worktree)
+Last updated: 2026-03-10 (documented checkpoint for `feat/link-preview-audit-20260308` and added label-title follow-up)
 
 ## Active Worktrees
 
@@ -21,6 +21,44 @@ Last updated: 2026-03-10 (merged `feat/agents-merge-guardrails-20260310` into `b
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/link-preview-audit-20260308`
+
+- Status: `blocked` (owner action: resume the nested same-panel hover investigation later; current branch is checkpointed and rebased)
+- Summary: preview refactor/coverage work is checkpointed with substantial progress in shared preview hydration, bibliography/summary coverage, graph/used-by nested preview wiring, and live artifact generation, but recursive inline-preview-in-inline-preview behavior still fails in the browser (`Theorem 15 -> Definition 10` remains unstable/empty).
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
+- Branch: `feat/link-preview-audit-20260308`
+- Base commit/branch:
+  - rebased on current `bp`
+- Key commit:
+  - `b8a2f132` checkpoint(preview): preserve nested hover investigation
+  - `51ca12f2` docs(dashboard): expand preview checkpoint notes
+- Validation status:
+  - focused preview validation had passed before the checkpoint
+  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/link-preview-audit-20260308`
+  - browser behavior note: nested inline preview recursion still broken after the checkpoint; child panel can stay open but still lacks stable content in the known repro
+- Preview link:
+  - `http://127.0.0.1:8152/link-preview-audit-20260308/html-multi/`
+- What Worked Well:
+  - shared preview hydration hook now exists in `Commands/Common.lean`, and custom panels like `used by` can opt into it
+  - summary decl/action links and bibliography backlinks gained preview coverage
+  - graph preview templates can carry nested inline refs, and graph HTML preview bodies hydrate nested preview refs before math rendering
+  - label-scoped fallback preview templates are emitted by `Informal/Block.lean`, so nested refs are no longer limited to local inline templates only
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/link-preview-audit-20260308`
+  - `git status --short`
+  - known repro: `Rational-Versions`, hover theorem 15 then definition 10 inside the preview
+  - secondary repro: graph node preview with nested child link still needs manual verification after the same-panel bug is solved
+  - first files to inspect on resume:
+  - `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`
+  - `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
+  - `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`
+  - `src/verso-blueprint/VersoBlueprint/Commands/graph.js`
+  - TODO: unify preview labels/titles behind one canonical API; right now some surfaces use `BlockData.displayTitle`, while others still fall back to raw labels or ad hoc `data-bp-preview-title` strings
+  - useful browser probes:
+  - enable trace with `localStorage.setItem("bp-debug-preview", "1")`
+  - after repro run `(window.bpPreviewTrace || []).slice(-30)`
+  - most relevant trace finding so far: after nested `Definition 10` show, a synthetic `inline.panel.mouseleave` can still arrive and schedule hide
 
 ### `feat/summary-command-brainstorm-20260309`
 
