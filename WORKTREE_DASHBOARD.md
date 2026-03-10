@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (created `feat/blueprint-metadata-json-review-20260310` from `feat/preview-template-removal-20260310` for metadata JSON review)
+Last updated: 2026-03-10 (validated `feat/blueprint-metadata-json-review-20260310` example outputs and reviewed the shared preview metadata JSON pipeline)
 
 ## Active Worktrees
 
@@ -87,9 +87,13 @@ Last updated: 2026-03-10 (created `feat/blueprint-metadata-json-review-20260310`
 - Key commits:
   - none yet
 - Validation status:
-  - setup complete: worktree created and root `.lake` copied
-  - pending: `lake exe cache get`
-  - pending: example blueprint generation into `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310/example-blueprints`
+  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` completed successfully
+  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310/example-blueprints`
+  - emitted shared preview manifests:
+  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310/example-blueprints/noperthedron/html-multi/-verso-data/bp-previews.json` (`134` entries, `399424` bytes)
+  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310/example-blueprints/spherepackingblueprint/html-multi/-verso-data/bp-previews.json` (`222` entries, `212375` bytes)
+- Preview link:
+  - `http://127.0.0.1:8154/blueprint-metadata-json-review-20260310/example-blueprints/noperthedron/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-20260310`
   - inspect metadata JSON producers and consumers under `src/verso-blueprint`
