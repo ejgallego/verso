@@ -481,13 +481,6 @@ def previewHoverUtilsJs : String := r##"(function () {
       }
     }
 
-    function cancelChildHide() {
-      if (childHideTimer !== null) {
-        clearTimeout(childHideTimer);
-        childHideTimer = null;
-      }
-    }
-
     function hidePanel() {
       cancelHide();
       showRequestToken += 1;
@@ -983,6 +976,13 @@ def inlineLinkPreviewJs : String := r##"(function () {
       if (hideTimer !== null) {
         clearTimeout(hideTimer);
         hideTimer = null;
+      }
+    }
+
+    function cancelChildHide() {
+      if (childHideTimer !== null) {
+        clearTimeout(childHideTimer);
+        childHideTimer = null;
       }
     }
 

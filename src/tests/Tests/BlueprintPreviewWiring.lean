@@ -243,6 +243,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr previewUtilsJs "function hydratePreviewSubtree(root)" &&
         hasSubstr previewUtilsJs "window.setTimeout(function () {" &&
         hasSubstr inlineJs "bp-inline-preview-child-panel" &&
+        hasSubstr inlineJs "function cancelChildHide()" &&
         hasSubstr inlineJs "function showChildFromTrigger(trigger)" &&
         hasSubstr inlineJs "triggerInsidePanel = panel.contains(trigger) || childPanel.contains(trigger)" &&
         hasSubstr inlineJs "behavior: makeBehavior(\"hover\", \"anchored\")"
