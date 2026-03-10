@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-10 (marked `feat/preview-ux-followup-20260310` ready for review after preview panel UX polish)
+Last updated: 2026-03-10 (checkpointed `feat/summary-command-implementation-20260310` after adding author metadata panels and real Noperthedron annotations)
 
 ## Active Worktrees
 
@@ -22,47 +22,10 @@ Last updated: 2026-03-10 (marked `feat/preview-ux-followup-20260310` ready for r
   - `git status --short`
   - `git log --oneline -1`
 
-### `feat/preview-manifest-20260310`
-
-- Status: `ready-for-review` (owner action: use as the base checkpoint if the UX follow-up should be split out or generalized later)
-- Summary: canonical preview worktree. It supersedes both `feat/link-preview-audit-20260308` and `feat/link-preview-fixes-20260310`, emits `bp-previews.json` at build time, and proves the chapter-8 nested hover repro through the manifest-backed inline path.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-20260310`
-- Branch: `feat/preview-manifest-20260310`
-- Base commit/branch:
-  - branched from `feat/link-preview-fixes-20260310` at `b8c65bd3`
-- Key commits:
-  - none yet
-- Validation status:
-  - setup complete: worktree created; `.lake` copy collided with preexisting package dirs, but `lake exe cache get` completed successfully afterward
-  - `lake build VersoBlueprint.PreviewManifest`
-  - `lake env lean src/tests/Tests/BlueprintLinkHover.lean`
-  - `lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
-  - `lake build Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310/example-blueprints`
-  - manifest emitted at:
-  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310/html-multi/-verso-data/bp-previews.json`
-  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310/example-blueprints/noperthedron/html-multi/-verso-data/bp-previews.json`
-  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310/example-blueprints/spherepackingblueprint/html-multi/-verso-data/bp-previews.json`
-  - browser smoke test on direct artifact:
-  - chapter 8 `Computational-Step`, hover theorem 7.15, then hover definition 7.10 inside the opened preview
-  - observed result: outer preview opened, nested trigger existed, panel title switched to `Definition 7.10`, and the panel body became the definition content
-- Preview link:
-  - `http://127.0.0.1:8154/preview-manifest-20260310/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-20260310`
-  - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Uses.lean`, `test-projects/Noperthedron/Main.lean`
-  - current scope is inline-preview consumption only; summary and graph still use page-local template stores
-  - manifest fallback order is intentionally conservative:
-  - local inline template
-  - local label template
-  - shared `bp-previews.json`
-  - synthetic metadata fallback
-
 ### `feat/preview-ux-followup-20260310`
 
-- Status: `ready-for-review` (owner action: review the UX polish and decide whether it should replace `feat/preview-manifest-20260310` as the active preview branch)
-- Summary: follow-up worktree off `feat/preview-manifest-20260310` that fixes the `used by` panel auto-opening on page load and gives nested `uses` links inside pinned hosts a pinned+docked subpreview treatment.
+- Status: `active` (owner action: use this as the sole preview branch and decide whether to generalize the pinned nested-panel treatment further)
+- Summary: canonical preview worktree. It supersedes `feat/preview-manifest-20260310`, keeps the shared preview-manifest path, fixes the `used by` panel auto-opening on page load, and gives nested `uses` links inside pinned hosts a pinned+docked subpreview treatment.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-ux-followup-20260310`
 - Branch: `feat/preview-ux-followup-20260310`
 - Base commit/branch:
@@ -111,21 +74,23 @@ Last updated: 2026-03-10 (marked `feat/preview-ux-followup-20260310` ready for r
 
 ### `feat/summary-command-implementation-20260310`
 
-- Status: `active` (owner action: review the latest checkpoint and decide whether to stop here for merge prep or keep extending metadata)
-- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch now covers the full “use existing data better” pass with triage sections, split statement/proof reuse views, capped visible lists, per-group next-action hints, plus the new structure/coverage analytics. It also adds explicit `priority := "high"|"medium"|"low"` metadata to guide ranking.
+- Status: `active` (owner action: review the metadata-panel checkpoint and decide whether to keep enriching summary consumers or switch to merge prep)
+- Summary: successor worktree for turning the earlier summary brainstorm into code. The branch now covers the full “use existing data better” pass, explicit `priority` ranking metadata, and a new author-metadata panel on statement blocks with real `Noperthedron` examples for David/Jason.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
 - Branch: `feat/summary-command-implementation-20260310`
 - Base commit/branch:
   - rebased on current `bp`
 - Key commits:
+  - `3df372f3` feat(blueprint): add author metadata panels
   - `16a9b0bb` feat(summary): add coverage analytics and priority metadata
   - `0522ce53` feat(summary): add triage rankings and capped detail lists
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `lake build VersoBlueprint.Commands.Summary Tests.BlueprintSummaryLinks`
+  - `lake build VersoBlueprint Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring`
   - `lake build Tests.BlueprintPreviewWiring`
   - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/example-blueprints`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
+  - `lake env lean --run test-projects/Noperthedron/Main.lean --output /home/egallego/lean/verso-blueprint/_out/summary-command-implementation-20260310/noperthedron`
+  - note: direct `lake exe noperthedron` still hits a linker/stale-object failure in this worktree after the metadata-model changes, so the review artifact was rebuilt through the interpreter path instead
 - Preview link:
   - `http://127.0.0.1:8154/summary-command-implementation-20260310/noperthedron/html-multi/`
   - `http://127.0.0.1:8154/summary-command-implementation-20260310/example-blueprints/noperthedron/html-multi/`
@@ -133,7 +98,7 @@ Last updated: 2026-03-10 (marked `feat/preview-ux-followup-20260310` ready for r
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/summary-command-implementation-20260310`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Data.lean`, `src/verso-blueprint/VersoBlueprint/Environment.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/tests/Tests/BlueprintSummaryLinks.lean`, `MANUAL.md`
+  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Author.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/Data.lean`, `src/verso-blueprint/VersoBlueprint/Environment.lean`, `src/tests/Tests/BlueprintMetadataPanel.lean`, `test-projects/Noperthedron/Authors.lean`, `test-projects/Noperthedron/Chapters/LocalTheorem.lean`, `MANUAL.md`
 
 ### `feat/code-summary-badge-unification-20260310`
 
@@ -201,6 +166,14 @@ Last updated: 2026-03-10 (marked `feat/preview-ux-followup-20260310` ready for r
   - `git rebase bp`
 
 ## Recently Completed
+
+- Retired `feat/preview-manifest-20260310` after confirming it is fully contained in `feat/preview-ux-followup-20260310`.
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-20260310`
+- Deleted branch:
+  - `feat/preview-manifest-20260310`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/preview-manifest-20260310`
 
 - Retired `feat/link-preview-audit-20260308` after confirming it is fully contained in `feat/preview-manifest-20260310`.
 - Removed worktree:
