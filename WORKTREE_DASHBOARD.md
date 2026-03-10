@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (validated `feat/blueprint-metadata-json-review-bp-20260311` example outputs and refreshed the metadata JSON review on current `bp`)
+Last updated: 2026-03-11 (rebased `feat/code-summary-badge-unification-20260310` onto the latest `bp` and refreshed its review checkpoint)
 
 ## Active Worktrees
 
@@ -100,7 +100,7 @@ Last updated: 2026-03-11 (validated `feat/blueprint-metadata-json-review-bp-2026
 - Base commit/branch:
   - rebased on current `bp`
 - Key commits:
-  - `31f67081` refactor(blueprint): unify code summary surfaces
+  - `b2fe2c20` refactor(blueprint): unify code summary surfaces
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
   - `lake build Tests.BlueprintExternalHeadingStatus Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks`
