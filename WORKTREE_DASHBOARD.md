@@ -30,8 +30,8 @@ Last updated: 2026-03-10 (validated `feat/agents-merge-guardrails-20260310` afte
 - Branch: `feat/agents-merge-guardrails-20260310`
 - Base commit/branch:
   - branched from `bp` at `4caaf01e`
-- Key commits:
-  - none yet
+- Key commit:
+  - `2f3edc7b` docs(agents): require explicit merge authorization
 - Validation status:
   - setup complete: worktree created and `lake exe cache get` run
   - passed: `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/agents-merge-guardrails-20260310/example-blueprints`
