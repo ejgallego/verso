@@ -216,7 +216,8 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
     let summaryJs? := findExtraJs st "function bindSummaryPreview(root)"
     let previewUtilsJs? := findExtraJs st "window.bpPreviewUtils = {"
     pure (
-      hasSubstr out "class=\"bp_summary_preview_tpl\"" &&
+      !hasSubstr out "class=\"bp_summary_preview_store\"" &&
+      !hasSubstr out "class=\"bp_summary_preview_tpl\"" &&
       hasSubstr out "class=\"bp_summary_preview_panel\"" &&
       hasSubstr out "data-bp-preview-mode=\"hover\"" &&
       hasSubstr out "data-bp-preview-placement=\"anchored\"" &&
@@ -255,7 +256,8 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       hasSubstr out "class=\"bp_graph_preview\"" &&
       hasSubstr out "data-bp-preview-mode=\"pinned\"" &&
       hasSubstr out "data-bp-preview-placement=\"docked\"" &&
-      hasSubstr out "class=\"bp_graph_preview_tpl\"" &&
+      !hasSubstr out "class=\"bp_graph_preview_store\"" &&
+      !hasSubstr out "class=\"bp_graph_preview_tpl\"" &&
       hasSubstr out "class=\"bp_group_hover_preview\"" &&
       hasSubstr out "aria-label=\"Close group preview\"" &&
       hasSubstr out "class=\"bp-graph-variants\"" &&

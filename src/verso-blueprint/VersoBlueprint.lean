@@ -34,6 +34,7 @@ import VersoBlueprint.Lean
 import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.LeanNameParsing
 import VersoBlueprint.PreviewCache
+import VersoBlueprint.PreviewManifest
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
 import VersoBlueprint.Widget

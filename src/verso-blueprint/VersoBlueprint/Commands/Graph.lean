@@ -367,7 +367,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
-    some <| fun _goI goB _id data _blocks => do
+    some <| fun _goI _goB _id data _blocks => do
       let graphData : GraphBlockData ←
         match fromJson? (α := GraphBlockData) data with
         | .ok gd => pure gd
@@ -451,13 +451,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
         match graphVariants[0]? with
         | some variant => variant.dot
         | Option.none => graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
-      let previewTemplates ← graphData.graph.foldlM (init := (#[] : Array Output.Html)) fun acc node => do
-        let some renderedBlocks ← Informal.PreviewSource.renderTraversalPreview? s
-          (fun b => Informal.HoverRender.withInlinePreviewRenderContext (goB b))
-          node.label
-          | pure acc
-        pure <| acc.push (Informal.HoverRender.graphPreviewTemplate node.label renderedBlocks)
-      let previewUi := Informal.HoverRender.graphPreviewUi previewTemplates
+      let previewUi := Informal.HoverRender.graphPreviewUi
       let groupHoverPanel : Output.Html := {{
         <aside class="bp_group_hover_preview"
             "data-bp-preview-mode"="pinned"

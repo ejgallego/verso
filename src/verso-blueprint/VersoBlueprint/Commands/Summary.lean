@@ -1153,7 +1153,7 @@ block_extension Block.summary (summary : Summary) where
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
-    some <| fun _goI goB _id data _blocks => do
+    some <| fun _goI _goB _id data _blocks => do
       let .ok data := fromJson? (α := Summary) data
         | HtmlT.logError "Malformed data in Block.summary.toHtml"
           pure .empty
@@ -1166,16 +1166,12 @@ block_extension Block.summary (summary : Summary) where
         match Resolve.resolveRenderedExternalDeclHref? s label decl with
         | Option.some href => Option.some href
         | Option.none => Resolve.resolveInlineLeanDeclHref? s decl
-      let (previewLabels, previewTemplates) ← (data.previewLabels).foldlM
-          (init := (({} : NameSet), (#[] : Array Output.Html))) fun (labels, templates) label => do
-        let preview? ← Informal.PreviewSource.renderTraversalPreview? s
-          (fun b => Informal.HoverRender.withInlinePreviewRenderContext (goB b))
-          label
-        match preview? with
-        | Option.none => pure (labels, templates)
-        | some rendered =>
-          pure (labels.insert label, templates.push (Informal.HoverRender.summaryPreviewTemplate label rendered))
-      let previewUi := Informal.HoverRender.summaryPreviewUi previewTemplates
+      let previewLabels := (data.previewLabels).foldl (init := ({} : NameSet)) fun labels label =>
+        if (Informal.PreviewSource.traversalPreview? s label).isSome then
+          labels.insert label
+        else
+          labels
+      let previewUi := Informal.HoverRender.summaryPreviewUi
       let mkEntryRef (label : Name) := do
         let previewLabel? : Option Name :=
           if previewLabels.contains label then some label else none

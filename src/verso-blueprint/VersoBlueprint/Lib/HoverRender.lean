@@ -130,69 +130,41 @@ def isInlinePreviewOwner (state : Verso.Genre.Manual.TraverseState)
   | some owner => owner == id
   | Option.none => true
 
-def graphPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html) : Verso.Output.Html := {{
-  <template class="bp_graph_preview_tpl"
-      "data-bp-preview-label"={{s!"{label}"}}>
-    {{renderedBlocks}}
-  </template>
-}}
-
-def graphPreviewUi (templates : Array Verso.Output.Html)
+def graphPreviewUi
     (mode : PreviewMode := .pinned) (placement : PreviewPlacement := .docked) : GraphPreviewUi :=
-  if templates.isEmpty then
-    { store := .empty, panel := .empty }
-  else
-    {
-      store := {{
-        <div class="bp_graph_preview_store" hidden>
-          {{templates}}
+  {
+    store := .empty
+    panel := {{
+      <aside class="bp_graph_preview"
+          "data-bp-preview-mode"={{mode.dataValue}}
+          "data-bp-preview-placement"={{placement.dataValue}}
+          hidden>
+        <div class="bp_graph_preview_header">
+          <div class="bp_graph_preview_title"></div>
+          <button type="button" class="bp_graph_preview_close" aria-label="Close informal preview">"Close"</button>
         </div>
-      }}
-      panel := {{
-        <aside class="bp_graph_preview"
-            "data-bp-preview-mode"={{mode.dataValue}}
-            "data-bp-preview-placement"={{placement.dataValue}}
-            hidden>
-          <div class="bp_graph_preview_header">
-            <div class="bp_graph_preview_title"></div>
-            <button type="button" class="bp_graph_preview_close" aria-label="Close informal preview">"Close"</button>
-          </div>
-          <div class="bp_graph_preview_body"></div>
-        </aside>
-      }}
-    }
+        <div class="bp_graph_preview_body"></div>
+      </aside>
+    }}
+  }
 
-def summaryPreviewTemplate (label : Name) (renderedBlocks : Array Verso.Output.Html) : Verso.Output.Html := {{
-  <template class="bp_summary_preview_tpl"
-      "data-bp-preview-label"={{s!"{label}"}}>
-    {{renderedBlocks}}
-  </template>
-}}
-
-def summaryPreviewUi (templates : Array Verso.Output.Html)
+def summaryPreviewUi
     (mode : PreviewMode := .hover) (placement : PreviewPlacement := .anchored) : SummaryPreviewUi :=
-  if templates.isEmpty then
-    { store := .empty, panel := .empty }
-  else
-    {
-      store := {{
-        <div class="bp_summary_preview_store" hidden>
-          {{templates}}
+  {
+    store := .empty
+    panel := {{
+      <aside class="bp_summary_preview_panel"
+          "data-bp-preview-mode"={{mode.dataValue}}
+          "data-bp-preview-placement"={{placement.dataValue}}
+          hidden>
+        <div class="bp_summary_preview_panel_header">
+          <div class="bp_summary_preview_panel_title"></div>
+          <button type="button" class="bp_summary_preview_panel_close" aria-label="Close summary preview">"Close"</button>
         </div>
-      }}
-      panel := {{
-        <aside class="bp_summary_preview_panel"
-            "data-bp-preview-mode"={{mode.dataValue}}
-            "data-bp-preview-placement"={{placement.dataValue}}
-            hidden>
-          <div class="bp_summary_preview_panel_header">
-            <div class="bp_summary_preview_panel_title"></div>
-            <button type="button" class="bp_summary_preview_panel_close" aria-label="Close summary preview">"Close"</button>
-          </div>
-          <div class="bp_summary_preview_panel_body"></div>
-        </aside>
-      }}
-    }
+        <div class="bp_summary_preview_panel_body"></div>
+      </aside>
+    }}
+  }
 
 def summaryPreviewWrap (labelNode : Verso.Output.Html) (previewLabel? : Option Name) : Verso.Output.Html :=
   match previewLabel? with
