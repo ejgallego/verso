@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (registered `feat/agents-followup-policy-20260311` after validating the follow-up worktree policy update)
+Last updated: 2026-03-11 (prepared `feat/preview-runtime-regression-test-20260310` for merge after cross-browser preview regression validation)
 
 ## Active Worktrees
 
@@ -122,12 +122,12 @@ Last updated: 2026-03-11 (registered `feat/agents-followup-policy-20260311` afte
 
 ### `feat/preview-runtime-regression-test-20260310`
 
-- Status: `ready-for-review` (owner action: inspect the new browser regression coverage and decide whether to keep this as the active preview runtime branch)
+- Status: `ready-for-review` (owner action: merge candidate; branch-prep and validation are complete, merge not yet performed)
 - Summary: adds a real Playwright regression test for runtime hover failures. The new test loads built blueprint pages, hovers a bibliography preview trigger and a nested theorem-then-definition preview chain, and fails on uncaught browser runtime errors like the missing `cancelChildHide` helper. This branch is based on the source hotfix from `feat/preview-runtime-fix-20260310`.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-runtime-regression-test-20260310`
 - Branch: `feat/preview-runtime-regression-test-20260310`
 - Base commit/branch:
-  - branched from `feat/preview-runtime-fix-20260310` at `ab94e276`
+  - rebased on current `bp`
 - Key commit:
   - `6a76a2c8` test(preview): cover runtime hover regressions
 - Validation status:
