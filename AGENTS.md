@@ -34,11 +34,22 @@
     Never create a separate `WORKTREE_DASHBOARD.md` inside a feature worktree; the root dashboard is the only dashboard file.
   + If you detect a mathlib rebuild, see the section "Important Information about Mathlib project"
 - While working on the worktree, ensure that all the links are properly scoped to the worktree.
-- When we are done with a worktree, you MUST:
+- When we are done with a worktree, and the user has explicitly authorized integration/cleanup, you MUST:
   + ensure validation
   + ensure we have rebased on top of the root `bp` branch
   + merge on top of `bp`, update WORKTREE_DASHBOARD.md and cleanup the worktree
     Stop the shared webserver only if this task started it and no other worktree still needs it.
+
+## Integration Permission Rules
+
+- Treat `prepare for merge`, `prepare for commit and merge`, `make it merge-ready`, `ready this for landing`, and similar wording as:
+  + do all implementation, validation, documentation, and branch-prep work
+  + STOP before `git merge`, branch deletion, worktree removal, or any other integration/cleanup action
+- Before merging into `bp`, deleting a feature branch, or removing a worktree, obtain explicit user authorization in the current turn.
+- Do not infer merge permission from words like `done`, `ready`, `ship`, `land soon`, or other ambiguous phrasing.
+- If the user authorizes `merge` but does not explicitly authorize cleanup, stop after the merge and ask before deleting the branch/worktree.
+- If the user explicitly authorizes `merge and cleanup`, it is fine to do both in sequence.
+- If wording is ambiguous, ask a short clarification question instead of acting.
 
 ## General recommendations:
 
