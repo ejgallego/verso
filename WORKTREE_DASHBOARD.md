@@ -54,8 +54,8 @@ Last updated: 2026-03-11 (retired the old `feat/code-summary-badge-unification-2
 - Base commit/branch:
   - branched from `bp` at `6501559a`
 - Key commits:
-  - `4f2e9ae1` refactor(preview): manifest-drive related-panel previews
-  - `ad71eb86` refactor(preview): canonicalize manifest-only block previews
+  - `3292bddd` refactor(preview): manifest-drive related-panel previews
+  - `248206c1` refactor(preview): canonicalize manifest-only block previews
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
   - `script/lean-low-priority lake build VersoBlueprint Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
