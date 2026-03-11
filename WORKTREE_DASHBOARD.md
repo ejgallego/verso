@@ -31,7 +31,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Base commit/branch:
   - branched from `bp` at `2a11a8f9`
 - Key commits:
-  - none yet
+  - `698ceb47` refactor(style): unify blueprint asset registration
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` completed successfully
   - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/lean-lean-interactive-latency-20260310/example-blueprints`
@@ -125,6 +125,9 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
   - reused shared `_out` preview server on `http://127.0.0.1:8155`
   - review checkpoint: generated outputs inspected at the HTML level; duplicated inline asset injection, legacy-selector drift, weak interactive semantics, and dead selectors confirmed in the emitted site
+  - asset-registration checkpoint validated after `698ceb47`:
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
+  - emitted HTML now carries one copy of the style-switcher JS; summary/bibliography assets now load through the regular page asset block instead of inline block HTML
 - Planned commit slices:
   - `1.` unify asset registration so each CSS/JS payload is added through one path only
   - `2.` preserve leanblueprint compatibility classes, but retarget blueprint-owned styling to primary `bp_*` selectors
