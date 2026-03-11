@@ -32,8 +32,11 @@ def renderConfig : RenderConfig where
   toConfig := config
 
 def main (args : List String) : IO UInt32 :=
-  Informal.PreviewManifest.manualMainWithSharedPreviewManifest
-    (%doc SpherePackingBlueprint.Contents)
-    args
-    (extensionImpls := by exact extension_impls%)
-    (config := renderConfig)
+  do
+    let (dumped?, args) ← Informal.PreviewManifest.handleDumpSchemaFlag args
+    if let some code := dumped? then
+      return code
+    manualMain (%doc SpherePackingBlueprint.Contents)
+      (options := args)
+      (extensionImpls := by exact extension_impls%)
+      (config := renderConfig)

@@ -24,13 +24,15 @@ open Informal.PreviewManifest
       let Except.ok entryPropsJson := Json.getObjVal? entrySchema "properties" | return false
       let Except.ok entryProps := entryPropsJson.getObj? | return false
       rootRef == "#/$defs/Informal.PreviewManifest.File" &&
-        defs.size == 2 &&
+        defs.size == 3 &&
+        fileProps.contains "version" &&
         fileProps.contains "previews" &&
         entryProps.contains "key" &&
+        entryProps.contains "label" &&
+        entryProps.contains "facet" &&
         entryProps.contains "title" &&
+        entryProps.contains "href" &&
         entryProps.contains "html" &&
-        !entryProps.contains "label" &&
-        !entryProps.contains "facet" &&
-        !(defs.contains "Informal.PreviewCache.Facet")
+        defs.contains "Informal.PreviewCache.Facet"
 
 end Verso.Tests.BlueprintPreviewSchema

@@ -111,7 +111,8 @@ To validate the blueprint example projects, run
 
 Each generated blueprint site also emits a shared preview manifest at
 `html-multi/-verso-data/bp-previews.json`. This is the canonical runtime
-source for blueprint statement/proof preview bodies.
+source for blueprint statement/proof preview bodies, and it is now emitted
+automatically by blueprint builds that import `VersoBlueprint`.
 
 To inspect the current JSON Schema for that manifest, run either example
 executable with `--dump-schema`, for example:

@@ -92,6 +92,22 @@ def previewHoverUtilsJs : String := r##"(function () {
     return "";
   }
 
+  function escapeHtml(text) {
+    return String(text || "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function sharedPreviewManifestVersion(data) {
+    if (data && typeof data === "object" && Number.isFinite(data.version)) {
+      return Math.trunc(data.version);
+    }
+    return null;
+  }
+
   function decodeSharedPreviewManifest(data) {
     const map = new Map();
     const entries =
@@ -108,6 +124,54 @@ def previewHoverUtilsJs : String := r##"(function () {
       map.set(key, entry);
     });
     return map;
+  }
+
+  function readSharedPreviewManifestStatus() {
+    const status = window.bpSharedPreviewManifestStatus;
+    if (status && typeof status === "object") return status;
+    return {
+      state: "idle",
+      attempts: 0,
+      url: sharedPreviewManifestUrl(),
+      lastError: "",
+      version: null,
+      entryCount: 0
+    };
+  }
+
+  function setSharedPreviewManifestStatus(status) {
+    window.bpSharedPreviewManifestStatus = status;
+    return status;
+  }
+
+  function sharedPreviewManifestDiagnosticHtml(previewKey) {
+    const status = readSharedPreviewManifestStatus();
+    const trimmedKey = typeof previewKey === "string" ? previewKey.trim() : "";
+    const keyHtml = trimmedKey ? "<code>" + escapeHtml(trimmedKey) + "</code>" : "this preview";
+    if (status.state === "error") {
+      const errorHtml = status.lastError
+        ? "<p>Last load error: <code>" + escapeHtml(status.lastError) + "</code></p>"
+        : "";
+      return (
+        "<div class=\"bp_manifest_preview_notice\">" +
+        "<p><strong>Preview manifest unavailable.</strong></p>" +
+        "<p>Blueprint previews require <code>-verso-data/bp-previews.json</code>. " +
+        "Rebuild the site or retry after the current build finishes.</p>" +
+        "<p>Requested preview: " + keyHtml + "</p>" +
+        errorHtml +
+        "</div>"
+      );
+    }
+    if (status.state === "ready" && trimmedKey) {
+      return (
+        "<div class=\"bp_manifest_preview_notice\">" +
+        "<p><strong>Preview entry missing from manifest.</strong></p>" +
+        "<p>Requested preview: " + keyHtml + "</p>" +
+        "<p>The site emitted a manifest, but this preview key was not present.</p>" +
+        "</div>"
+      );
+    }
+    return "";
   }
 
   function sharedPreviewManifestUrl() {
@@ -132,19 +196,70 @@ def previewHoverUtilsJs : String := r##"(function () {
     if (window.bpSharedPreviewManifestPromise) {
       return window.bpSharedPreviewManifestPromise;
     }
-    const promise = fetch(sharedPreviewManifestUrl())
+    const url = sharedPreviewManifestUrl();
+    const previousStatus = readSharedPreviewManifestStatus();
+    const attempts =
+      Number.isFinite(previousStatus.attempts) ? previousStatus.attempts + 1 : 1;
+    setSharedPreviewManifestStatus({
+      state: "loading",
+      attempts: attempts,
+      url: url,
+      lastError: "",
+      version: null,
+      entryCount: 0
+    });
+    let promise = null;
+    promise = fetch(url)
       .then(function (resp) {
-        if (!resp.ok) return { previews: [] };
+        if (!resp.ok) {
+          throw new Error("HTTP " + resp.status + " while loading " + url);
+        }
         return resp.json();
       })
       .then(function (data) {
         const map = decodeSharedPreviewManifest(data);
         window.bpSharedPreviewManifest = map;
+        setSharedPreviewManifestStatus({
+          state: "ready",
+          attempts: attempts,
+          url: url,
+          lastError: "",
+          version: sharedPreviewManifestVersion(data),
+          entryCount: map.size
+        });
         return map;
       })
-      .catch(function () {
-        const map = new Map();
-        window.bpSharedPreviewManifest = map;
+      .catch(function (err) {
+        const message =
+          err && typeof err.message === "string" && err.message.length > 0
+            ? err.message
+            : String(err);
+        window.bpSharedPreviewManifest = null;
+        setSharedPreviewManifestStatus({
+          state: "error",
+          attempts: attempts,
+          url: url,
+          lastError: message,
+          version: null,
+          entryCount: 0
+        });
+        previewDebug("sharedManifest.loadFailed", {
+          url: url,
+          attempts: attempts,
+          error: message
+        });
+        try {
+          console.error("[bp-preview] shared preview manifest load failed", {
+            url: url,
+            error: message
+          });
+        } catch (_consoleErr) {}
+        return new Map();
+      })
+      .then(function (map) {
+        if (window.bpSharedPreviewManifestPromise === promise) {
+          window.bpSharedPreviewManifestPromise = null;
+        }
         return map;
       });
     window.bpSharedPreviewManifestPromise = promise;
@@ -512,7 +627,9 @@ def previewHoverUtilsJs : String := r##"(function () {
         typeof loadSharedPreviewEntry === "function"
           ? await loadSharedPreviewEntry(lookupKey)
           : null;
-      return readPreviewTemplate(sharedEntry);
+      const sharedHtml = readPreviewTemplate(sharedEntry);
+      if (sharedHtml) return sharedHtml;
+      return sharedPreviewManifestDiagnosticHtml(lookupKey || key);
     }
 
     async function showFromTrigger(trigger) {
@@ -601,6 +718,7 @@ def previewHoverUtilsJs : String := r##"(function () {
     collectPreviewTemplates: collectPreviewTemplates,
     readPreviewTemplate: readPreviewTemplate,
     loadSharedPreviewManifest: loadSharedPreviewManifest,
+    readSharedPreviewManifestStatus: readSharedPreviewManifestStatus,
     readSharedPreviewEntry: readSharedPreviewEntry,
     statementPreviewKey: statementPreviewKey,
     loadSharedPreviewEntry: loadSharedPreviewEntry,

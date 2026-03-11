@@ -859,6 +859,21 @@ The parameters are:
 abbrev ExtraStep := Mode → (String → IO Unit) → Config → TraverseState → Part Manual →
   ReaderT ExtensionImpls IO Unit
 
+initialize registeredExtraStepsRef : IO.Ref (Array ExtraStep) ← IO.mkRef #[]
+
+/--
+Register an extra manual-rendering step that should run for every `manualMain` invocation.
+
+Extensions can use this to attach mandatory post-render artifacts without requiring each
+downstream executable to thread the corresponding `extraSteps` argument manually.
+-/
+def registerExtraStep (step : ExtraStep) : IO Unit :=
+  registeredExtraStepsRef.modify (·.push step)
+
+/-- Returns the globally registered manual-rendering extra steps. -/
+def registeredExtraSteps : IO (List ExtraStep) :=
+  (·.toList) <$> registeredExtraStepsRef.get
+
 
 open Verso.CLI
 
@@ -922,14 +937,15 @@ where
     let errorCount : IO.Ref Nat ← IO.mkRef 0
     let logError msg := do errorCount.modify (· + 1); IO.eprintln msg
     let cfg ← opts config options
+    let allExtraSteps := (← registeredExtraSteps) ++ extraSteps
 
     if cfg.emitTeX then
       if cfg.verbose then
         IO.println s!"Saving TeX"
       emitTeX logError cfg.toConfig text
 
-    emitHtml cfg.emitHtmlSingle .single logError cfg text traverseHtmlSingle emitHtmlSingle
-    emitHtml cfg.emitHtmlMulti .multi logError cfg text traverseHtmlMulti emitHtmlMulti
+    emitHtml cfg.emitHtmlSingle .single logError cfg text traverseHtmlSingle emitHtmlSingle allExtraSteps
+    emitHtml cfg.emitHtmlMulti .multi logError cfg text traverseHtmlMulti emitHtmlMulti allExtraSteps
 
     if let some wcFile := cfg.wordCount then
       if cfg.verbose then
@@ -944,7 +960,8 @@ where
   emitHtml
       (how : EmitHtml) (mode : Mode) (logError : String → IO Unit) (cfg : RenderConfig) (text : Part Manual)
       (traverse : (String → IO Unit) → RenderConfig → Part Manual → ReaderT ExtensionImpls IO (Part Manual × TraverseState))
-      (emit : (String → IO Unit) → RenderConfig → Part Manual → TraverseState → ReaderT ExtensionImpls IO Unit) :
+      (emit : (String → IO Unit) → RenderConfig → Part Manual → TraverseState → ReaderT ExtensionImpls IO Unit)
+      (extraSteps : List ExtraStep) :
       ReaderT ExtensionImpls IO Unit := do
     let outDir :=
       match mode with | .single => "html-single" | .multi => "html-multi"

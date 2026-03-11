@@ -19,13 +19,19 @@ open Lean Elab Command Term Meta
 open Verso Doc
 open Verso.Genre Manual
 
+def manifestVersion : Nat := 1
+
 structure Entry where
   key : String
+  label : Name
+  facet : PreviewCache.Facet
   title : String
+  href : Option String := none
   html : String
 deriving Inhabited, Repr, ToJson, FromJson
 
 structure File where
+  version : Nat := manifestVersion
   previews : Array Entry := #[]
 deriving Inhabited, Repr, ToJson, FromJson
 
@@ -152,6 +158,9 @@ private def blockTitle (state : TraverseState) (label : Name) : String :=
     | .ok blockData => blockData.withResolvedNumbering state |>.displayTitle state
     | .error _ => label.toString
 
+private def blockHref (state : TraverseState) (label : Name) : Option String :=
+  Resolve.resolveDomainHref? state Resolve.informalDomainName label.toString
+
 private def buildEntries
     (impls : ExtensionImpls)
     (logError : String → IO Unit)
@@ -172,7 +181,10 @@ private def buildEntries
       let key := PreviewCache.key entry.label entry.facet
       let manifestEntry : Entry := {
         key
+        label := entry.label
+        facet := entry.facet
         title := blockTitle state entry.label
+        href := blockHref state entry.label
         html
       }
       entries := entries.push manifestEntry
@@ -193,6 +205,8 @@ def emitSharedPreviewManifest : ExtraStep := fun mode logError cfg state _text =
   let json := (toJson ({ previews } : File)).compress
   IO.FS.writeFile (dataDir / "bp-previews.json") json
 
+initialize Verso.Genre.Manual.registerExtraStep emitSharedPreviewManifest
+
 def dumpSchemaFlag : String := "--dump-schema"
 
 def handleDumpSchemaFlag (args : List String) : IO (Option UInt32 × List String) := do
@@ -212,6 +226,6 @@ def manualMainWithSharedPreviewManifest
   if let some code := dumped? then
     return code
   manualMain text (extensionImpls := extensionImpls) (options := options) (config := config)
-    (extraSteps := emitSharedPreviewManifest :: extraSteps)
+    (extraSteps := extraSteps)
 
 end Informal.PreviewManifest
