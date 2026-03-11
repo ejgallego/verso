@@ -67,6 +67,28 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/preview-manifest-hardening
   - `git status --short`
   - inspect `src/verso-blueprint/VersoBlueprint/Resolve.lean`, `src/verso-blueprint/VersoBlueprint/Informal/CodeSummary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
 
+### `feat/preview-manifest-cli-20260311`
+
+- Status: `active` (owner action: add CLI dump/help support for the preview manifest and rename the emitted manifest file)
+- Summary: follow-up worktree for the preview manifest CLI, focused on adding `--dump-manifest`, a local `--help`, and renaming the emitted manifest file to a clearer public name that matches its purpose.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-cli-20260311`
+- Branch: `feat/preview-manifest-cli-20260311`
+- Base commit/branch:
+  - branched from `bp` at `fcbc6717`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed
+  - pending: `./script/lean-low-priority lake build VersoBlueprint.PreviewManifest Main SpherePackingBlueprintMain`
+  - pending: `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-manifest-cli-20260311/example-blueprints`
+- Preview link:
+  - planned root `_out` link via shared server session `33154` on `http://127.0.0.1:8154/preview-manifest-cli-20260311/example-blueprints/noperthedron/html-multi/`
+  - planned root `_out` link via shared server session `33154` on `http://127.0.0.1:8154/preview-manifest-cli-20260311/example-blueprints/spherepackingblueprint/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-cli-20260311`
+  - `git status --short`
+  - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `test-projects/Noperthedron/Main.lean`, `test-projects/Sphere-Packing-Lean/SpherePackingBlueprintMain.lean`
+
 ### `feat/lean-commandm-incremental-20260306`
 
 - Status: `active` (owner action: retest editor UX from the reverted “best current” checkpoint and decide whether a true incremental elaborator is still needed)
