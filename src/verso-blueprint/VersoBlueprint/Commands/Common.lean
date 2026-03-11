@@ -1535,6 +1535,12 @@ def usedByPanelJs : String := r##"(function () {
     let closeTimer = null;
     let activateRequestToken = 0;
 
+    function setExpanded(expanded) {
+      if (chip instanceof Element) {
+        chip.setAttribute("aria-expanded", expanded ? "true" : "false");
+      }
+    }
+
     function cancelClose() {
       if (closeTimer !== null) {
         clearTimeout(closeTimer);
@@ -1547,6 +1553,7 @@ def usedByPanelJs : String := r##"(function () {
       if (wrap instanceof Element) {
         wrap.classList.add("bp_used_by_wrap_open");
       }
+      setExpanded(true);
     }
 
     function closeWrap() {
@@ -1554,6 +1561,7 @@ def usedByPanelJs : String := r##"(function () {
       if (wrap instanceof Element) {
         wrap.classList.remove("bp_used_by_wrap_open");
       }
+      setExpanded(false);
     }
 
     function scheduleClose() {
@@ -1563,6 +1571,7 @@ def usedByPanelJs : String := r##"(function () {
         if (wrap instanceof Element) {
           wrap.classList.remove("bp_used_by_wrap_open");
         }
+        setExpanded(false);
       }, 180);
     }
 
@@ -1617,6 +1626,7 @@ def usedByPanelJs : String := r##"(function () {
     });
 
     if (wrap instanceof Element && chip instanceof Element) {
+      setExpanded(wrap.classList.contains("bp_used_by_wrap_open"));
       const previewAwareClose = function (ev) {
         if (!previewUtils || typeof previewUtils.shouldKeepOpen !== "function") {
           scheduleClose();
@@ -1638,6 +1648,7 @@ def usedByPanelJs : String := r##"(function () {
         ev.stopPropagation();
         cancelClose();
         wrap.classList.toggle("bp_used_by_wrap_open");
+        setExpanded(wrap.classList.contains("bp_used_by_wrap_open"));
       });
       panel.addEventListener("click", function (ev) {
         ev.stopPropagation();

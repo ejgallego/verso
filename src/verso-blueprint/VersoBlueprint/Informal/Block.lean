@@ -533,6 +533,14 @@ span[class$="_thmlabel"]::after {
 .bp_used_by_chip {
   display: inline-flex;
   align-items: center;
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
   font-size: 0.78rem;
   font-weight: 600;
   color: #334155;
@@ -1442,9 +1450,9 @@ private def renderRelatedPanel (cfg : RelatedPanelConfig) (entries : Array Relat
         }}
     {{
       <div class="bp_used_by_wrap">
-        <span class={{cfg.chipClass}} tabindex="0" title={{cfg.chipTitle entries.size}}>
+        <button type="button" class={{cfg.chipClass}} title={{cfg.chipTitle entries.size}} "aria-expanded"="false">
           {{.text true (cfg.chipText entries.size)}}
-        </span>
+        </button>
         <div class="bp_used_by_panel">
           <div class="bp_used_by_panel_header">
             <div class="bp_used_by_panel_title">{{.text true (cfg.panelTitle entries.size)}}</div>

@@ -372,7 +372,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
-    some <| fun _goI _goB _id data _blocks => do
+    some <| fun _goI _goB id data _blocks => do
       let graphData : GraphBlockData ←
         match fromJson? (α := GraphBlockData) data with
         | .ok gd => pure gd
@@ -452,6 +452,13 @@ block_extension Block.graph (graphData : GraphBlockData) where
             (note? := some Informal.Graph.graphLegendGroupViewNote) (hidden := true)
         else
           .empty
+      let graphViewSelectId : String :=
+        let attrs := s.htmlId id
+        match attrs.findSome? fun
+            | ("id", value) => some s!"{value}--view"
+            | _ => Option.none with
+        | some value => value
+        | Option.none => "bp-graph-view-select"
       let fallbackDot : String :=
         match graphVariants[0]? with
         | some variant => variant.dot
@@ -474,8 +481,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
           {{fullLegendHtml}}
           {{groupLegendHtml}}
           <div class="bp_graph_controls">
-            <label class="bp_graph_controls_label">"View"</label>
-            <select class="bp_graph_controls_select bp_graph_view_select">
+            <label class="bp_graph_controls_label" for={{graphViewSelectId}}>"View"</label>
+            <select id={{graphViewSelectId}} class="bp_graph_controls_select bp_graph_view_select">
               {{graphVariantOptions}}
             </select>
           </div>
