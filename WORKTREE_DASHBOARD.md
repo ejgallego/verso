@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged and cleaned up `feat/style-review-20260311`)
+Last updated: 2026-03-11 (created `feat/blueprint-tests-consolidation-20260311`)
 
 ## Active Worktrees
 
@@ -21,6 +21,23 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/style-review-20260311`)
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/blueprint-tests-consolidation-20260311`
+
+- Status: `active` (owner action: audit and consolidate the blueprint test suite, then validate the refactor against targeted test builds and example blueprint generation)
+- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The goal is to reduce duplication, normalize test structure and naming, centralize common helpers, and make it easier to understand what behavior each test module owns.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
+- Branch: `feat/blueprint-tests-consolidation-20260311`
+- Base commit/branch:
+  - branched from `bp` at `951d8fae`
+- Key commits:
+  - `951d8fae` feat(summary): streamline zero-state sections
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
+  - inspect `src/tests/Tests` for suite structure, duplication, and helper opportunities
+  - validate with targeted `lake build Tests...` commands before rerunning `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints`
 
 ### `feat/lean-lean-interactive-latency-20260310`
 
