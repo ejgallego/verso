@@ -16,6 +16,7 @@ import VersoBlueprint.Graph
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.Lib.PreviewSource
+import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 
 namespace Informal.Commands
@@ -1179,7 +1180,10 @@ block_extension Block.summary (summary : Summary) where
           match getEntryHref label with
           | Option.some href => {{ <a href={{href}}> <code>s!"{label}"</code> </a> }}
           | Option.none => {{ <code>s!"{label}"</code> }}
-        pure (Informal.HoverRender.summaryPreviewWrap labelNode previewLabel?)
+        let previewLookupKey? :=
+          previewLabel?.map fun previewLabel =>
+            PreviewCache.key previewLabel .statement
+        pure (Informal.HoverRender.summaryPreviewWrap labelNode previewLabel? previewLookupKey?)
       let mkDeclItems (label : Name) (decls : List Name) :=
         decls.toArray.map fun decl =>
           match getDeclHref label decl with

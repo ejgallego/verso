@@ -355,7 +355,11 @@
       const requestToken = ++graphState.previewRequestToken;
       let html = parsePreviewEntry(previewMap.get(label));
       if (!html && canResolveSharedPreview) {
-        const sharedEntry = await previewUtils.loadSharedPreviewEntry("", label);
+        const previewKey =
+          typeof previewUtils.statementPreviewKey === "function"
+            ? previewUtils.statementPreviewKey(label)
+            : (label ? label + "--statement" : "");
+        const sharedEntry = await previewUtils.loadSharedPreviewEntry(previewKey);
         html = parsePreviewEntry(sharedEntry);
       }
       if (requestToken !== graphState.previewRequestToken) return;

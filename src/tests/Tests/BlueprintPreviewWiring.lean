@@ -219,10 +219,12 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
     pure (
       !hasSubstr out "class=\"bp_summary_preview_store\"" &&
       !hasSubstr out "class=\"bp_summary_preview_tpl\"" &&
+      !hasSubstr out "class=\"bp_label_preview_tpl\"" &&
       hasSubstr out "class=\"bp_summary_preview_panel\"" &&
       hasSubstr out "data-bp-preview-mode=\"hover\"" &&
       hasSubstr out "data-bp-preview-placement=\"anchored\"" &&
       hasSubstr out "bp_summary_preview_wrap_active" &&
+      hasSubstr out "data-bp-preview-key=\"«def:preview.base»--statement\"" &&
       hasSubstr out "data-bp-tex-prelude" &&
       hasSubstr out "\\newcommand{\\previewmacro}{\\mathsf{Preview}}" &&
       !hasSubstr out "bp_preview_tex_prelude" &&
@@ -238,15 +240,17 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr previewUtilsJs "function shouldKeepOpen(nextTarget, trigger, panel)" &&
         hasSubstr previewUtilsJs "function readPanelBehavior(panel, defaults)" &&
         hasSubstr previewUtilsJs "function configureCloseButton(closeButton, onClose, behavior)" &&
-        hasSubstr previewUtilsJs "function readSharedPreviewEntryByLabel(label)" &&
-        hasSubstr previewUtilsJs "function loadSharedPreviewEntry(previewKey, label)" &&
+        !hasSubstr previewUtilsJs "function readSharedPreviewEntryByLabel(label)" &&
+        hasSubstr previewUtilsJs "function statementPreviewKey(label)" &&
+        hasSubstr previewUtilsJs "function loadSharedPreviewEntry(previewKey)" &&
         hasSubstr previewUtilsJs "function hydratePreviewSubtree(root)" &&
         hasSubstr previewUtilsJs "window.setTimeout(function () {" &&
         hasSubstr inlineJs "bp-inline-preview-child-panel" &&
         hasSubstr inlineJs "function cancelChildHide()" &&
         hasSubstr inlineJs "function showChildFromTrigger(trigger)" &&
         hasSubstr inlineJs "triggerInsidePanel = panel.contains(trigger) || childPanel.contains(trigger)" &&
-        hasSubstr inlineJs "behavior: makeBehavior(\"hover\", \"anchored\")"
+        hasSubstr inlineJs "behavior: makeBehavior(\"hover\", \"anchored\")" &&
+        !appearsBefore inlineJs "previewUtils.loadSharedPreviewManifest();" "const store = ensureInlinePreviewStore();"
       | _, _, _ => false
     )
 
@@ -277,7 +281,8 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr graphJs "function createPanelController(panel, behavior, titleSelector, bodySelector, options)" &&
         hasSubstr graphJs "function bindHoverablePanelLifetime(previewUtils, controller, getActiveAnchor, boundAttr)" &&
         hasSubstr graphJs "function configurePanelCloseButton(previewUtils, closeButton, hidePanel, behavior)" &&
-        hasSubstr graphJs "previewUtils.loadSharedPreviewEntry(\"\", label)" &&
+        hasSubstr graphJs "previewUtils.statementPreviewKey(label)" &&
+        hasSubstr graphJs "previewUtils.loadSharedPreviewEntry(previewKey)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(previewPanelNode, { mode: \"pinned\", placement: \"docked\" })" &&
         hasSubstr graphJs "previewUtils.hydratePreviewSubtree(body)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(groupHoverPanel, { mode: \"pinned\", placement: \"docked\" })" &&

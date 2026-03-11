@@ -25,6 +25,29 @@ def assert_no_runtime_errors(errors: list[str]):
 
 
 class TestPreviewRuntimeRegressions:
+    def test_exact_manifest_keys_keep_statement_and_proof_previews_distinct(self, server: str, page: Page):
+        errors = record_runtime_errors(page)
+        page.goto(f"{server}/The-Noperthedron/")
+
+        previews = page.evaluate(
+            """async () => {
+                const utils = window.bpPreviewUtils;
+                const statement = await utils.loadSharedPreviewEntry("c1_c2_c3_norms--statement");
+                const proof = await utils.loadSharedPreviewEntry("c1_c2_c3_norms--proof");
+                return {
+                    statement: utils.readPreviewTemplate(statement),
+                    proof: utils.readPreviewTemplate(proof)
+                };
+            }"""
+        )
+
+        assert "Trivial arithmetic." in previews["proof"]
+        assert "Trivial arithmetic." not in previews["statement"]
+        assert "C_1" in previews["statement"]
+        assert "bp_label_preview_tpl" not in page.content()
+
+        assert_no_runtime_errors(errors)
+
     def test_bibliography_hover_does_not_throw_and_opens_panel(self, server: str, page: Page):
         errors = record_runtime_errors(page)
         page.goto(f"{server}/The-Global-Theorem/")

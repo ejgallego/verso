@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean
 import VersoManual
+import VersoBlueprint.Lib.HoverRender
 
 namespace Informal
 
@@ -37,25 +38,42 @@ private def traverseManualBlocks
     st := st'
   return (cur, st)
 
-private def renderManualBlocksHtml
+def renderManualBlocksHtmlWithState
     (blocks : Array (Verso.Doc.Block Verso.Genre.Manual))
-    (impls : Verso.Genre.Manual.ExtensionImpls) : IO Verso.Output.Html := do
+    (impls : Verso.Genre.Manual.ExtensionImpls)
+    (st : Verso.Genre.Manual.TraverseState)
+    (linkTargets : Verso.Code.LinkTargets Verso.Genre.Manual.TraverseContext := st.localTargets) :
+    IO Verso.Output.Html := do
   let opts : Verso.Doc.Html.Options (ReaderT Verso.Multi.AllRemotes (ReaderT Verso.Genre.Manual.ExtensionImpls IO)) := {
     headerLevel := 1
     logError := fun _ => pure ()
   }
-  let (blocks, st) ← traverseManualBlocks blocks impls
   let ctxt : Verso.Genre.Manual.TraverseContext := {
     logError := fun _ => pure ()
   }
   let definitionIds : Lean.NameMap String := {}
-  let linkTargets : Verso.Code.LinkTargets Verso.Genre.Manual.TraverseContext := {}
   let codeOptions : Verso.Code.HighlightHtmlM.Options := {}
   let remotes : Verso.Multi.AllRemotes := {}
   let block := Verso.Doc.Block.concat blocks
-  let htmlState := Verso.Genre.Manual.toHtml opts ctxt st definitionIds linkTargets codeOptions block
-  let (html, _hover) ← ((htmlState.run {}).run remotes).run impls
+  let htmlContext : Verso.Doc.Html.HtmlT.Context Verso.Genre.Manual (ReaderT Verso.Multi.AllRemotes (ReaderT Verso.Genre.Manual.ExtensionImpls IO)) := {
+    options := opts
+    traverseContext := ctxt
+    traverseState := st
+    definitionIds := definitionIds
+    linkTargets := linkTargets
+    codeOptions := codeOptions
+  }
+  let htmlState :=
+    Informal.HoverRender.withInlinePreviewRenderContext <|
+      Verso.Doc.Html.ToHtml.toHtml (genre := Verso.Genre.Manual) block
+  let (html, _hover) ← ((htmlState htmlContext).run {}).run remotes |>.run impls
   pure html
+
+private def renderManualBlocksHtml
+    (blocks : Array (Verso.Doc.Block Verso.Genre.Manual))
+    (impls : Verso.Genre.Manual.ExtensionImpls) : IO Verso.Output.Html := do
+  let (blocks, st) ← traverseManualBlocks blocks impls
+  renderManualBlocksHtmlWithState blocks impls st
 
 private unsafe def evalElaboratedBlocks (stxs : Array Lean.Syntax) :
     Lean.Elab.Term.TermElabM (Array (Verso.Doc.Block Verso.Genre.Manual)) := do

@@ -7,8 +7,8 @@ Author: OpenAI Codex
 import Lean
 import VersoManual
 import VersoBlueprint.Informal.Block
-import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.PreviewCache
+import VersoBlueprint.PreviewRender
 import VersoBlueprint.Resolve
 
 namespace Informal.PreviewManifest
@@ -40,40 +40,6 @@ private def blockTitle (state : TraverseState) (label : Name) : String :=
     | .ok blockData => blockData.withResolvedNumbering state |>.displayTitle state
     | .error _ => label.toString
 
-private def renderPreviewHtml
-    (impls : ExtensionImpls)
-    (state : TraverseState)
-    (blocks : Array (Doc.Block Manual)) : IO String := do
-  let opts : Doc.Html.Options (ReaderT Multi.AllRemotes (ReaderT ExtensionImpls IO)) := {
-    headerLevel := 1
-    logError := fun _ => pure ()
-  }
-  let ctxt : TraverseContext := {
-    path := #[]
-    headers := #[]
-    blockContext := #[]
-    draft := false
-    logError := fun _ => pure ()
-  }
-  let definitionIds : Lean.NameMap String := {}
-  let linkTargets : Code.LinkTargets TraverseContext := state.localTargets
-  let codeOptions : Code.HighlightHtmlM.Options := {}
-  let remotes : Multi.AllRemotes := {}
-  let block := Verso.Doc.Block.concat blocks
-  let htmlContext : Verso.Doc.Html.HtmlT.Context Manual (ReaderT Multi.AllRemotes (ReaderT ExtensionImpls IO)) := {
-    options := opts
-    traverseContext := ctxt
-    traverseState := state
-    definitionIds := definitionIds
-    linkTargets := linkTargets
-    codeOptions := codeOptions
-  }
-  let htmlState :=
-    Informal.HoverRender.withInlinePreviewRenderContext <|
-      Verso.Doc.Html.ToHtml.toHtml (genre := Manual) block
-  let (html, _hover) ← ((htmlState htmlContext).run {}).run remotes |>.run impls
-  pure <| Output.Html.asString html
-
 private def buildEntries
     (impls : ExtensionImpls)
     (logError : String → IO Unit)
@@ -88,7 +54,7 @@ private def buildEntries
     | .ok entry =>
       if entry.blocks.isEmpty then
         continue
-      let html ← renderPreviewHtml impls state entry.blocks
+      let html ← Output.Html.asString <$> Informal.renderManualBlocksHtmlWithState entry.blocks impls state
       if html.trimAscii.isEmpty then
         continue
       let key := PreviewCache.key entry.label entry.facet
@@ -102,13 +68,19 @@ private def buildEntries
       entries := entries.push manifestEntry
   pure <| entries.qsort (fun a b => a.key < b.key)
 
+/--
+Emit the canonical `bp-previews.json` manifest.
+
+Block preview bodies are expected to be consumed from the manifest rather than
+embedded as page-local label preview templates.
+-/
 def emitSharedPreviewManifest : ExtraStep := fun mode logError cfg state _text => do
   let impls ← read
   let previews ← buildEntries impls logError state
   let outDir := outDirForMode cfg mode
   let dataDir := outDir / "-verso-data"
   IO.FS.createDirAll dataDir
-  let json := toString <| toJson ({ previews } : File)
+  let json := (toJson ({ previews } : File)).compress
   IO.FS.writeFile (dataDir / "bp-previews.json") json
 
 end Informal.PreviewManifest

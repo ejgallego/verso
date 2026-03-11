@@ -166,13 +166,21 @@ def summaryPreviewUi
     }}
   }
 
-def summaryPreviewWrap (labelNode : Verso.Output.Html) (previewLabel? : Option Name) : Verso.Output.Html :=
+def summaryPreviewWrap
+    (labelNode : Verso.Output.Html)
+    (previewLabel? : Option Name)
+    (previewLookupKey? : Option String := none) : Verso.Output.Html :=
   match previewLabel? with
-  | some label => {{
-      <span class="bp_summary_preview_wrap bp_summary_preview_wrap_active" "data-bp-preview-label"={{s!"{label}"}}>
-        {{labelNode}}
-      </span>
-    }}
+  | some label =>
+      let attrs := Id.run do
+        let mut attrs := #[
+          ("class", "bp_summary_preview_wrap bp_summary_preview_wrap_active"),
+          ("data-bp-preview-label", s!"{label}")
+        ]
+        if let some previewKey := previewLookupKey? then
+          attrs := attrs.push ("data-bp-preview-key", previewKey)
+        pure attrs
+      .tag "span" attrs labelNode
   | none => {{
       <span class="bp_summary_preview_wrap">
         {{labelNode}}

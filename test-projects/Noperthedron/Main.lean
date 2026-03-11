@@ -53,6 +53,9 @@ where
 private def inlinePreviewTemplatePrefix : String :=
   "<template class=\"bp_inline_preview_tpl\" data-bp-preview-id=\""
 
+private def labelPreviewTemplatePrefix : String :=
+  "<template class=\"bp_label_preview_tpl\""
+
 private def inlinePreviewTemplateIds (html : String) : List String :=
   (html.splitOn inlinePreviewTemplatePrefix).drop 1 |>.filterMap fun frag =>
     match frag.splitOn "\"" with
@@ -68,9 +71,29 @@ private def duplicateInlinePreviewTemplateIds (html : String) : List (String × 
       m.insert id (n + 1))
   counts.toList.filter (fun (_id, n) => n > 1)
 
+private def hasSubstr (s needle : String) : Bool :=
+  (s.splitOn needle).length > 1
+
 private def isIndexHtml (path : System.FilePath) : Bool :=
   let s := path.toString
   s == "index.html" || s.endsWith "/index.html"
+
+private def checkSharedPreviewManifestMode : ExtraStep := fun mode logError cfg _st _text => do
+  match mode with
+  | .multi =>
+      let htmlRoot := cfg.destination / "html-multi"
+      if !(← htmlRoot.pathExists) then
+        logError s!"Shared preview manifest check: output directory not found: {htmlRoot}"
+      else
+        let files ← filesBelow htmlRoot
+        for rel in files do
+          if !isIndexHtml rel then
+            continue
+          let full := htmlRoot / rel
+          let html ← IO.FS.readFile full
+          if hasSubstr html labelPreviewTemplatePrefix then
+            logError s!"Shared preview manifest mode should strip label preview templates from {rel}"
+  | .single => pure ()
 
 private def checkInlinePreviewTemplateDedup : ExtraStep := fun mode logError cfg _st _text => do
   match mode with
@@ -93,4 +116,8 @@ private def checkInlinePreviewTemplateDedup : ExtraStep := fun mode logError cfg
 
 def main := manualMain (%doc Contents)
   (config := renderConfig)
-  (extraSteps := [Informal.PreviewManifest.emitSharedPreviewManifest, checkInlinePreviewTemplateDedup])
+  (extraSteps := [
+    Informal.PreviewManifest.emitSharedPreviewManifest,
+    checkSharedPreviewManifestMode,
+    checkInlinePreviewTemplateDedup
+  ])
