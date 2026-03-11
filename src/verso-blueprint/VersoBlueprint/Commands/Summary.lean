@@ -1109,6 +1109,7 @@ private def Summary.previewLabels (data : Summary) : Array Name :=
       (seen.insert label, labels.push label)
   labels
 
+-- Keep this binding in Lean so summary CSS edits ride along with command module rebuilds.
 def summaryCss := include_str "summary.css"
 
 def summaryPreviewJs : String := r##"(function () {

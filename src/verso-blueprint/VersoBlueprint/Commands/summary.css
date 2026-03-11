@@ -279,11 +279,6 @@
     padding-left: 0.6rem;
     padding-right: 0.6rem;
   }
-
-  .bp_summary_preview {
-    min-width: min(22rem, 92vw);
-    max-width: 92vw;
-  }
 }
 
 html[data-bp-style="modern"] .bp_summary_card {

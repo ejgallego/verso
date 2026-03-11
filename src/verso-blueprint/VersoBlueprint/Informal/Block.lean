@@ -1704,7 +1704,6 @@ private def renderInformalBlock (data : BlockData) (numberText : String) (attrs 
       <div class={{headingClass}}>
         {{titleRow}}
         {{extras}}
-        <div class="bp_hiddenextras thm_header_hidden_extras"> </div>
       </div>
       {{metadataPanel}}
       <div class={{contentClass}}> {{ content }} </div>
