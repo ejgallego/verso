@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (created review worktree `feat/style-review-20260311`)
+Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-review-20260311`)
 
 ## Active Worktrees
 
@@ -111,8 +111,8 @@ Last updated: 2026-03-11 (created review worktree `feat/style-review-20260311`)
 
 ### `feat/style-review-20260311`
 
-- Status: `active` (owner action: finish the visual-style audit and report prioritized findings)
-- Summary: isolated review worktree for blueprint styling organization, focused on duplicated CSS/JS handling, weak HTML structure, inconsistent style conventions, and drift from Verso plus leanblueprint heritage.
+- Status: `active` (owner action: execute the staged cleanup commits one slice at a time)
+- Summary: isolated review worktree for blueprint styling organization. The audit is complete; next work is a staged cleanup preserving leanblueprint-compatible theorem wrapper/content classes while moving blueprint-owned styling toward a single Verso-aligned asset and component model.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/style-review-20260311`
 - Branch: `feat/style-review-20260311`
 - Base commit/branch:
@@ -123,6 +123,12 @@ Last updated: 2026-03-11 (created review worktree `feat/style-review-20260311`)
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
   - reused shared `_out` preview server on `http://127.0.0.1:8155`
+  - review checkpoint: generated outputs inspected at the HTML level; duplicated inline asset injection, legacy-selector drift, weak interactive semantics, and dead selectors confirmed in the emitted site
+- Planned commit slices:
+  - `1.` unify asset registration so each CSS/JS payload is added through one path only
+  - `2.` preserve leanblueprint compatibility classes, but retarget blueprint-owned styling to primary `bp_*` selectors
+  - `3.` tighten interactive HTML semantics (`button`, label/select wiring, keyboard behavior) without visual redesign
+  - `4.` extract shared preview/panel primitives and remove dead selectors/placeholders
 - Preview link:
   - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/noperthedron/html-multi/`
   - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/spherepackingblueprint/html-multi/`
@@ -130,6 +136,9 @@ Last updated: 2026-03-11 (created review worktree `feat/style-review-20260311`)
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/style-review-20260311`
   - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/StyleSwitcher.lean`, and `src/verso-blueprint/VersoBlueprint/Commands/{Graph,Summary,Bibliography}.lean`
   - compare generated HTML against Verso asset conventions and preserve leanblueprint-compatible wrapper/content class heritage where it still provides value
+  - after each commit, rerun `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints` and compare:
+  - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/noperthedron/html-multi/`
+  - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/spherepackingblueprint/html-multi/`
 
 ## Recently Completed
 
