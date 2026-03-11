@@ -21,8 +21,6 @@ open Verso.Genre Manual
 
 structure Entry where
   key : String
-  label : Name
-  facet : PreviewCache.Facet
   title : String
   html : String
 deriving Inhabited, Repr, ToJson, FromJson
@@ -174,8 +172,6 @@ private def buildEntries
       let key := PreviewCache.key entry.label entry.facet
       let manifestEntry : Entry := {
         key
-        label := entry.label
-        facet := entry.facet
         title := blockTitle state entry.label
         html
       }

@@ -109,6 +109,17 @@ To validate the blueprint example projects, run
 `spherepackingblueprint` in parallel under
 `_out/example-blueprints/`.
 
+Each generated blueprint site also emits a shared preview manifest at
+`html-multi/-verso-data/bp-previews.json`. This is the canonical runtime
+source for blueprint statement/proof preview bodies.
+
+To inspect the current JSON Schema for that manifest, run either example
+executable with `--dump-schema`, for example:
+
+```bash
+lake exe noperthedron --dump-schema
+```
+
 ### Customization of Manual Genre HTML
 
 The title of the book being written in the manual genre can be

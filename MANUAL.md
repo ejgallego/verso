@@ -173,6 +173,22 @@ The `parent` / `group` data is used in two places.
 - Uses the `:::group` header text as cluster labels when available.
 - Filters out groups with only one child.
 
+## Preview Manifest
+
+Blueprint example builds emit a shared preview manifest at:
+
+- `html-multi/-verso-data/bp-previews.json`
+
+This file is the canonical runtime source for informal statement/proof preview
+bodies. The page HTML no longer embeds a second copy of those block previews.
+
+To print the current JSON Schema for the manifest, run an example executable
+with `--dump-schema`, for example:
+
+```bash
+lake exe noperthedron --dump-schema
+```
+
 ## Notes
 
 - Parent grouping is structural metadata; it does not change dependency edges.

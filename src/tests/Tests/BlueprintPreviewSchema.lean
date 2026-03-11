@@ -19,16 +19,18 @@ open Informal.PreviewManifest
       let Except.ok rootRef := fromJson? (α := String) rootRefJson | return false
       let some fileSchema := defs.get? "Informal.PreviewManifest.File" | return false
       let some entrySchema := defs.get? "Informal.PreviewManifest.Entry" | return false
-      let some facetSchema := defs.get? "Informal.PreviewCache.Facet" | return false
       let Except.ok filePropsJson := Json.getObjVal? fileSchema "properties" | return false
       let Except.ok fileProps := filePropsJson.getObj? | return false
       let Except.ok entryPropsJson := Json.getObjVal? entrySchema "properties" | return false
       let Except.ok entryProps := entryPropsJson.getObj? | return false
       rootRef == "#/$defs/Informal.PreviewManifest.File" &&
-        defs.size == 3 &&
+        defs.size == 2 &&
         fileProps.contains "previews" &&
         entryProps.contains "key" &&
-        entryProps.contains "facet" &&
-        (Json.getObjVal? facetSchema "enum").isOk
+        entryProps.contains "title" &&
+        entryProps.contains "html" &&
+        !entryProps.contains "label" &&
+        !entryProps.contains "facet" &&
+        !(defs.contains "Informal.PreviewCache.Facet")
 
 end Verso.Tests.BlueprintPreviewSchema
