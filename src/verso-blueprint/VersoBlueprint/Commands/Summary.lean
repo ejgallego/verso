@@ -1806,8 +1806,8 @@ block_extension Block.summary (summary : Summary) where
           </details>
         </div>
       }}
-  extraCss := ([blueprintTokensCss, previewPanelCss, summaryCss, inlinePreviewCss] : List String)
-  extraJs := ([openTargetDetailsJs, previewHoverUtilsJs, inlineLinkPreviewJs, summaryPreviewJs] : List String)
+  extraCss := withPreviewPanelInlinePreviewCssAssets [summaryCss]
+  extraJs := withInlinePreviewJsAssets [openTargetDetailsJs] [summaryPreviewJs]
 
 open Verso Doc Elab Syntax in
 def mkSummaryPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do

@@ -49,18 +49,18 @@
 
 .bp_summary_card_warn {
   background: var(--bp-color-surface-warn);
-  color: #9a3412;
-  border-color: #fdba74;
+  color: var(--bp-color-status-warning-strong);
+  border-color: var(--bp-color-status-warning-border);
 }
 
 .bp_summary_subsection_warn {
   background: var(--bp-color-surface-warn);
-  border-color: #fdba74;
+  border-color: var(--bp-color-status-warning-border);
 }
 
 .bp_summary_label {
   font-size: 0.82rem;
-  color: #4b5563;
+  color: var(--bp-color-text-subtle);
 }
 
 .bp_summary_value {
@@ -107,7 +107,7 @@
 
 .bp_summary_item_meta {
   color: var(--bp-color-text-subtle);
-  border: 1px solid #dbe3ef;
+  border: 1px solid var(--bp-color-border-panel);
   border-radius: var(--bp-radius-pill);
   padding: 0.03rem 0.45rem;
   font-size: 0.78rem;
@@ -186,15 +186,15 @@
 }
 
 .bp_summary_badge_warn {
-  border-color: #fed7aa;
-  background: #ffedd5;
-  color: #9a3412;
+  border-color: var(--bp-color-status-warning-border-soft);
+  background: var(--bp-color-surface-warn-soft);
+  color: var(--bp-color-status-warning-strong);
 }
 
 .bp_summary_badge_error {
-  border-color: #fecaca;
-  background: #fee2e2;
-  color: #991b1b;
+  border-color: var(--bp-color-status-error-border-soft);
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--bp-color-status-error-strong);
 }
 
 .bp_summary_badge_row {

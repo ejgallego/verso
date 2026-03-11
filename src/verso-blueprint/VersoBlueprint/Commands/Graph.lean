@@ -499,8 +499,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
           {{groupHoverPanel}}
         </div>
       }}
-  extraCss := ([blueprintTokensCss, previewPanelCss, graphCss] : List String)
-  extraJs := ([previewHoverUtilsJs, loadD3Dot, graphTocToggleJs] : List String)
+  extraCss := withPreviewPanelCssAssets [graphCss]
+  extraJs := withPreviewRuntimeJsAssets [] [loadD3Dot, graphTocToggleJs]
 
 def buildAll : CoreM (Graph × Array (Name × String)) := do
   let env ← getEnv

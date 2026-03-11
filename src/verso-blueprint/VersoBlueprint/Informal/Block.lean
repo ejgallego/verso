@@ -420,7 +420,7 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_code_progress_segment_sorry {
-  background: #eab308;
+  background: var(--bp-color-accent-warning);
 }
 
 .bp_code_progress_segment_missing {
@@ -470,38 +470,38 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_decl_target {
-  background: rgba(59, 130, 246, 0.18);
+  background: var(--bp-color-selection);
   border-radius: 0.18rem;
-  box-shadow: 0 0 0 0.12rem rgba(59, 130, 246, 0.22);
+  box-shadow: 0 0 0 0.12rem var(--bp-color-selection-ring);
   animation: bp-decl-target-pulse 1.8s ease-out;
 }
 
 .bp_decl_target_block {
   border-radius: 0.3rem;
-  box-shadow: 0 0 0 0.18rem rgba(59, 130, 246, 0.2);
-  background: linear-gradient(180deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.04));
+  box-shadow: 0 0 0 0.18rem var(--bp-color-selection-ring);
+  background: linear-gradient(180deg, var(--bp-color-selection-surface-soft), rgba(59, 130, 246, 0.04));
   animation: bp-decl-block-pulse 2.2s ease-out;
 }
 
 @keyframes bp-decl-target-pulse {
   0% {
-    background: rgba(59, 130, 246, 0.28);
-    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.3);
+    background: var(--bp-color-selection-surface-strong);
+    box-shadow: 0 0 0 0.2rem var(--bp-color-selection-shadow-strong);
   }
   100% {
-    background: rgba(59, 130, 246, 0.1);
-    box-shadow: 0 0 0 0.08rem rgba(59, 130, 246, 0.16);
+    background: var(--bp-color-selection-surface-faint);
+    box-shadow: 0 0 0 0.08rem var(--bp-color-selection-shadow-faint);
   }
 }
 
 @keyframes bp-decl-block-pulse {
   0% {
-    background: rgba(59, 130, 246, 0.14);
-    box-shadow: 0 0 0 0.28rem rgba(59, 130, 246, 0.24);
+    background: var(--bp-color-selection-surface-soft);
+    box-shadow: 0 0 0 0.28rem var(--bp-color-selection-shadow-soft);
   }
   100% {
     background: rgba(59, 130, 246, 0.04);
-    box-shadow: 0 0 0 0.14rem rgba(59, 130, 246, 0.16);
+    box-shadow: 0 0 0 0.14rem var(--bp-color-selection-shadow-faint);
   }
 }
 
@@ -554,7 +554,7 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_used_by_chip_warn {
-  color: #b45309;
+  color: var(--bp-color-status-warning-text);
 }
 
 .bp_used_by_panel {
@@ -631,9 +631,9 @@ span[class$="_thmlabel"]::after {
 .bp_used_by_item:hover,
 .bp_used_by_item:focus-within,
 .bp_used_by_item.bp_used_by_item_active {
-  border-color: #93c5fd;
-  background: #eff6ff;
-  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.12);
+  border-color: var(--bp-color-focus-border);
+  background: var(--bp-color-focus-surface);
+  box-shadow: inset 0 0 0 1px var(--bp-color-focus-ring);
 }
 
 .bp_used_by_target {
@@ -727,10 +727,10 @@ span[class$="_thmlabel"]::after {
 .bp_used_by_preview_notice {
   margin-bottom: 0.62rem;
   padding: 0.48rem 0.58rem;
-  border: 1px solid #fcd34d;
+  border: 1px solid var(--bp-color-status-note-border);
   border-radius: 0.45rem;
-  background: #fffbeb;
-  color: #92400e;
+  background: var(--bp-color-surface-note);
+  color: var(--bp-color-status-note-text);
   font-size: 0.74rem;
 }
 
@@ -796,15 +796,15 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_external_decl_ok {
-  color: #166534;
+  color: var(--bp-color-status-success-text);
 }
 
 .bp_external_decl_sorry {
-  color: #a16207;
+  color: var(--bp-color-status-warning-text);
 }
 
 .bp_external_decl_missing {
-  color: #b91c1c;
+  color: var(--bp-color-status-error-text);
 }
 
 .bp_external_decl_error {
@@ -912,7 +912,7 @@ span[class$="_thmlabel"]::after {
 .bp_external_decl_preview summary {
   cursor: pointer;
   font-size: 0.72rem;
-  color: #1e293b;
+  color: var(--bp-color-text-strong);
 }
 
 .bp_external_decl_preview pre {
@@ -1104,7 +1104,7 @@ span[class$="_thmlabel"]::after {
 
 .bp-proof-by-toggle::after {
   content: " ...";
-  color: #64748b;
+  color: var(--bp-color-text-faint);
 }
 
 .bp-proof-by-toggle.bp-proof-open::after {
@@ -1155,18 +1155,18 @@ div.proof_content {
 
 .bp_wrapper:target {
   animation: bp-target-pulse 1.6s ease-out;
-  box-shadow: 0 0 0 0.18rem rgba(37, 99, 235, 0.22);
+  box-shadow: 0 0 0 0.18rem var(--bp-color-target-ring);
   border-radius: 0.35rem;
 }
 
 @keyframes bp-target-pulse {
   0% {
-    background-color: rgba(37, 99, 235, 0.14);
-    box-shadow: 0 0 0 0.28rem rgba(37, 99, 235, 0.28);
+    background-color: var(--bp-color-target-surface);
+    box-shadow: 0 0 0 0.28rem var(--bp-color-target-ring-strong);
   }
   100% {
     background-color: transparent;
-    box-shadow: 0 0 0 0.18rem rgba(37, 99, 235, 0.22);
+    box-shadow: 0 0 0 0.18rem var(--bp-color-target-ring);
   }
 }
 "##
@@ -1777,8 +1777,8 @@ block_extension Block.informal (data : BlockData) where
             |> (·.saveDomainObjectData informalDomain label.toString (toJson blockData))
         return none
   toTeX := none
-  extraCss := ([Informal.Commands.blueprintTokensCss, blueprintCss, Informal.Commands.inlinePreviewCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
-  extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs, Informal.Commands.usedByPanelJs, blueprintStyleSwitcherJs] : List String)
+  extraCss := Informal.Commands.withInlinePreviewCssAssets [blueprintCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle]
+  extraJs := Informal.Commands.withInlinePreviewJsAssets [] [Informal.Commands.usedByPanelJs, blueprintStyleSwitcherJs]
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in

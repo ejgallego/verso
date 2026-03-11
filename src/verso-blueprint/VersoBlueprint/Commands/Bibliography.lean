@@ -132,8 +132,8 @@ block_extension Block.bibliography (biblio : BibliographyData) where
           </details>
         </div>
       }}
-  extraCss := ([Informal.Commands.blueprintTokensCss, bibliographyCss, Informal.Commands.inlinePreviewCss] : List String)
-  extraJs := ([openTargetDetailsJs, Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs] : List String)
+  extraCss := Informal.Commands.withInlinePreviewCssAssets [bibliographyCss]
+  extraJs := Informal.Commands.withInlinePreviewJsAssets [openTargetDetailsJs] []
 
 open Verso Doc Elab Syntax in
 def mkBibliographyPart (stx : Syntax) (endPos : String.Pos.Raw) : PartElabM FinishedPart := do

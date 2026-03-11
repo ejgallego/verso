@@ -29,6 +29,30 @@ def blueprintTokensCss : String := r##"
   --bp-color-accent-warning: #ca8a04;
   --bp-color-accent-danger: #dc2626;
   --bp-color-accent-info: #7c3aed;
+  --bp-color-status-success-text: #166534;
+  --bp-color-status-warning-text: #a16207;
+  --bp-color-status-warning-strong: #9a3412;
+  --bp-color-status-warning-border: #fdba74;
+  --bp-color-status-warning-border-soft: #fed7aa;
+  --bp-color-status-error-text: #b91c1c;
+  --bp-color-status-error-strong: #991b1b;
+  --bp-color-status-error-border-soft: #fecaca;
+  --bp-color-status-note-border: #fcd34d;
+  --bp-color-status-note-text: #92400e;
+  --bp-color-focus-border: #93c5fd;
+  --bp-color-focus-surface: #eff6ff;
+  --bp-color-focus-ring: rgba(59, 130, 246, 0.12);
+  --bp-color-selection: rgba(59, 130, 246, 0.18);
+  --bp-color-selection-ring: rgba(59, 130, 246, 0.22);
+  --bp-color-selection-surface-strong: rgba(59, 130, 246, 0.28);
+  --bp-color-selection-surface-soft: rgba(59, 130, 246, 0.14);
+  --bp-color-selection-surface-faint: rgba(59, 130, 246, 0.1);
+  --bp-color-selection-shadow-strong: rgba(59, 130, 246, 0.3);
+  --bp-color-selection-shadow-soft: rgba(59, 130, 246, 0.24);
+  --bp-color-selection-shadow-faint: rgba(59, 130, 246, 0.16);
+  --bp-color-target-ring: rgba(37, 99, 235, 0.22);
+  --bp-color-target-surface: rgba(37, 99, 235, 0.14);
+  --bp-color-target-ring-strong: rgba(37, 99, 235, 0.28);
   --bp-color-modern-border: #d6deea;
   --bp-color-modern-surface-alt: #f5f9ff;
   --bp-color-modern-caption: #e0ecff;
@@ -1616,6 +1640,30 @@ def inlineLinkPreviewJs : String := r##"(function () {
     bindInlinePreview();
   }
 })();"##
+
+def withBlueprintCssAssets (extras : List String := []) : List String :=
+  [blueprintTokensCss] ++ extras
+
+def withPreviewPanelCssAssets (extras : List String := []) : List String :=
+  withBlueprintCssAssets ([previewPanelCss] ++ extras)
+
+def withInlinePreviewCssAssets (extras : List String := []) : List String :=
+  withBlueprintCssAssets (extras ++ [inlinePreviewCss])
+
+def withPreviewPanelInlinePreviewCssAssets (extras : List String := []) : List String :=
+  withPreviewPanelCssAssets (extras ++ [inlinePreviewCss])
+
+def previewRuntimeJsAssets : List String :=
+  [previewHoverUtilsJs]
+
+def inlinePreviewJsAssets : List String :=
+  previewRuntimeJsAssets ++ [inlineLinkPreviewJs]
+
+def withPreviewRuntimeJsAssets (before : List String) (after : List String) : List String :=
+  before ++ previewRuntimeJsAssets ++ after
+
+def withInlinePreviewJsAssets (before : List String) (after : List String) : List String :=
+  before ++ inlinePreviewJsAssets ++ after
 
 def usedByPanelJs : String := r##"(function () {
   function collectPanelFallbackTemplates(panel) {

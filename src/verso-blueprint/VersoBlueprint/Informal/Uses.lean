@@ -80,8 +80,8 @@ inline_extension Inline.informal (data : InlineData) where
       modify fun st =>
         Informal.HoverRender.registerInlinePreviewOwner st path (usePreviewId label bdata) id
       pure none
-  extraCss := ([Informal.Commands.blueprintTokensCss, Informal.Commands.inlinePreviewCss] : List String)
-  extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs] : List String)
+  extraCss := Informal.Commands.withInlinePreviewCssAssets
+  extraJs := Informal.Commands.withInlinePreviewJsAssets [] []
   toHtml :=
     open Verso.Doc.Html in
     open Verso.Output.Html in
