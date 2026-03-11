@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (registered and validated `feat/preview-manifest-hardening-20260311`)
+Last updated: 2026-03-11 (refreshed `feat/preview-manifest-hardening-20260311` with docstring-driven schema descriptions)
 
 ## Active Worktrees
 
@@ -70,17 +70,20 @@ Last updated: 2026-03-11 (registered and validated `feat/preview-manifest-harden
 ### `feat/preview-manifest-hardening-20260311`
 
 - Status: `ready-for-review` (owner action: review validated manifest hardening changes and decide whether to merge)
-- Summary: follow-up worktree for the shared blueprint preview manifest, focused on removing optional-emission footguns, adding retry/failure visibility in the browser runtime, and enriching the manifest with explicit metadata such as label/facet/href.
+- Summary: follow-up worktree for the shared blueprint preview manifest, focused on removing optional-emission footguns, adding retry/failure visibility in the browser runtime, and enriching the manifest with explicit metadata plus docstring-driven schema descriptions.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-hardening-20260311`
 - Branch: `feat/preview-manifest-hardening-20260311`
 - Base commit/branch:
   - branched from `bp` at `ce06d72a`
 - Key commits:
+  - `cedcc727` feat(preview): enrich manifest metadata schema
   - `fee8c80f` fix(preview): auto-emit and harden shared manifest
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed
   - `./script/lean-low-priority lake build VersoBlueprint.PreviewManifest Tests.BlueprintPreviewSchema Main SpherePackingBlueprintMain`
   - `./script/lean-low-priority lake env lean src/tests/Tests/BlueprintPreviewSchema.lean`
+  - rerun after docstring/schema follow-up: `./script/lean-low-priority lake build VersoBlueprint.PreviewManifest Tests.BlueprintPreviewSchema`
+  - rerun after docstring/schema follow-up: `./script/lean-low-priority lake exe noperthedron --dump-schema`
   - `./script/lean-low-priority lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
   - `./script/lean-low-priority lake exe noperthedron --dump-schema`
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-manifest-hardening-20260311/example-blueprints`
@@ -93,6 +96,7 @@ Last updated: 2026-03-11 (registered and validated `feat/preview-manifest-harden
   - `git status --short`
   - manifest now auto-registers through `Verso.Genre.Manual.registerExtraStep`; plain blueprint `manualMain` calls still emit `bp-previews.json`
   - runtime retries failed manifest fetches and surfaces an explicit diagnostic instead of silently caching an empty manifest
+  - manifest schema now reads field descriptions from field docstrings, and the top-level `version` field was removed
 
 ### `feat/lean-commandm-incremental-20260306`
 
