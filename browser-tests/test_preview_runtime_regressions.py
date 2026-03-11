@@ -48,6 +48,29 @@ class TestPreviewRuntimeRegressions:
 
         assert_no_runtime_errors(errors)
 
+    def test_used_by_panel_loads_manifest_backed_preview(self, server: str, page: Page):
+        errors = record_runtime_errors(page)
+        page.goto(f"{server}/The-Noperthedron/")
+
+        wrap = page.locator(".bp_used_by_wrap").first
+        expect(wrap).to_have_count(1)
+        assert "bp_used_by_preview_tpl" not in page.content()
+
+        chip = wrap.locator(".bp_used_by_chip").first
+        chip.hover()
+
+        item = wrap.locator(".bp_used_by_item").first
+        expect(item).to_have_count(1)
+        item.hover()
+
+        body = wrap.locator(".bp_used_by_preview_body")
+        page.wait_for_function(
+            "(el) => !!el && el.innerHTML.includes('<p')",
+            arg=body.element_handle(),
+        )
+
+        assert_no_runtime_errors(errors)
+
     def test_bibliography_hover_does_not_throw_and_opens_panel(self, server: str, page: Page):
         errors = record_runtime_errors(page)
         page.goto(f"{server}/The-Global-Theorem/")

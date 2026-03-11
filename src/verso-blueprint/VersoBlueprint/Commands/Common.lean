@@ -1394,10 +1394,10 @@ def inlineLinkPreviewJs : String := r##"(function () {
 })();"##
 
 def usedByPanelJs : String := r##"(function () {
-  function collectPanelTemplates(panel) {
+  function collectPanelFallbackTemplates(panel) {
     const map = new Map();
     if (!(panel instanceof Element)) return map;
-    panel.querySelectorAll("template.bp_used_by_preview_tpl[data-bp-used-preview-id]").forEach(function (tpl) {
+    panel.querySelectorAll("template.bp_used_by_preview_fallback_tpl[data-bp-used-preview-id]").forEach(function (tpl) {
       if (!(tpl instanceof HTMLTemplateElement)) return;
       const key = (tpl.getAttribute("data-bp-used-preview-id") || "").trim();
       if (!key) return;
@@ -1423,9 +1423,10 @@ def usedByPanelJs : String := r##"(function () {
 
     const defaultTitle = (title.textContent || "").trim() || "Hover a use site";
     const defaultBody = body.innerHTML;
-    const templates = collectPanelTemplates(panel);
+    const fallbackTemplates = collectPanelFallbackTemplates(panel);
     const items = Array.from(panel.querySelectorAll(".bp_used_by_item[data-bp-used-preview-id]"));
     let closeTimer = null;
+    let activateRequestToken = 0;
 
     function cancelClose() {
       if (closeTimer !== null) {
@@ -1458,12 +1459,14 @@ def usedByPanelJs : String := r##"(function () {
       }, 180);
     }
 
-    function activate(item, options) {
+    async function activate(item, options) {
       if (!(item instanceof Element)) return;
       const opts = options && typeof options === "object" ? options : {};
       const key = (item.getAttribute("data-bp-used-preview-id") || "").trim();
+      const previewKey = (item.getAttribute("data-bp-used-preview-key") || "").trim();
       const itemTitle = (item.getAttribute("data-bp-used-preview-title") || "").trim() || defaultTitle;
-      const html = key ? (templates.get(key) || "") : "";
+      const fallbackHtml = key ? (fallbackTemplates.get(key) || "") : "";
+      const requestToken = ++activateRequestToken;
       if (opts.openWrap !== false) {
         openWrap();
       }
@@ -1473,7 +1476,21 @@ def usedByPanelJs : String := r##"(function () {
         }
       });
       title.textContent = itemTitle;
-      body.innerHTML = html || defaultBody;
+      body.innerHTML = fallbackHtml || defaultBody;
+      if (previewUtils && typeof previewUtils.hydratePreviewSubtree === "function") {
+        previewUtils.hydratePreviewSubtree(body);
+      }
+      if (previewUtils && typeof previewUtils.renderMath === "function") {
+        previewUtils.renderMath(body);
+      }
+      if (!previewKey || !previewUtils || typeof previewUtils.loadSharedPreviewEntry !== "function") {
+        return;
+      }
+      const sharedEntry = await previewUtils.loadSharedPreviewEntry(previewKey);
+      if (requestToken !== activateRequestToken) return;
+      const html = previewUtils.readPreviewTemplate(sharedEntry);
+      if (!html) return;
+      body.innerHTML = html;
       if (previewUtils && typeof previewUtils.hydratePreviewSubtree === "function") {
         previewUtils.hydratePreviewSubtree(body);
       }
@@ -1491,10 +1508,6 @@ def usedByPanelJs : String := r##"(function () {
         activate(item);
       });
     });
-
-    if (items.length > 0) {
-      activate(items[0], { openWrap: false });
-    }
 
     if (wrap instanceof Element && chip instanceof Element) {
       const previewAwareClose = function (ev) {

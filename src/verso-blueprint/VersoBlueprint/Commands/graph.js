@@ -330,12 +330,14 @@
     };
   }
 
-  function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController) {
+  function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController, previewKeyByNodeId) {
     if (!previewController) return;
     const graphState = ensureGraphBlockState(graphBlock);
     const previewUtils = window.bpPreviewUtils;
     const canResolveSharedPreview =
       previewUtils && typeof previewUtils.loadSharedPreviewEntry === "function";
+    const previewKeys =
+      previewKeyByNodeId instanceof Map ? previewKeyByNodeId : new Map();
     const hoverLifetime = bindHoverablePanelLifetime(
       previewUtils,
       previewController,
@@ -353,12 +355,10 @@
     }
     const show = async function (label, anchorNode) {
       const requestToken = ++graphState.previewRequestToken;
+      const nodeId = anchorNode instanceof Element ? graphNodeId(anchorNode) : "";
+      const previewKey = nodeId ? (previewKeys.get(nodeId) || "") : "";
       let html = parsePreviewEntry(previewMap.get(label));
-      if (!html && canResolveSharedPreview) {
-        const previewKey =
-          typeof previewUtils.statementPreviewKey === "function"
-            ? previewUtils.statementPreviewKey(label)
-            : (label ? label + "--statement" : "");
+      if (!html && canResolveSharedPreview && previewKey) {
         const sharedEntry = await previewUtils.loadSharedPreviewEntry(previewKey);
         html = parsePreviewEntry(sharedEntry);
       }
@@ -370,7 +370,9 @@
     };
     svg.querySelectorAll("g.node").forEach(function (node) {
       const label = graphNodeLabel(node);
-      if (!label || (!previewMap.has(label) && !canResolveSharedPreview)) return;
+      const nodeId = graphNodeId(node);
+      const previewKey = nodeId ? (previewKeys.get(nodeId) || "") : "";
+      if (!label || (!previewMap.has(label) && !(canResolveSharedPreview && previewKey))) return;
       node.style.cursor = "pointer";
       node.setAttribute("tabindex", "0");
       const titleNode = node.querySelector("title");
@@ -615,21 +617,23 @@
         if (!Array.isArray(rawVariants) || rawVariants.length === 0) return;
         const variantsByKey = new Map();
         rawVariants.forEach(function (variant) {
-          if (!variant || typeof variant !== "object") return;
-          const key = String(variant.key || "").trim();
-          const label = String(variant.label || key).trim();
-          const dot = String(variant.dot || "").trim();
-          const selectOnNodeId = Array.isArray(variant.selectOnNodeId) ? variant.selectOnNodeId : [];
-          const hoverOnNodeId = Array.isArray(variant.hoverOnNodeId) ? variant.hoverOnNodeId : [];
-          if (!key || !dot) return;
-          variantsByKey.set(key, {
-            key: key,
-            label: label || key,
-            dot: dot,
-            selectOnNodeId: selectOnNodeId,
-            hoverOnNodeId: hoverOnNodeId
-          });
+        if (!variant || typeof variant !== "object") return;
+        const key = String(variant.key || "").trim();
+        const label = String(variant.label || key).trim();
+        const dot = String(variant.dot || "").trim();
+        const selectOnNodeId = Array.isArray(variant.selectOnNodeId) ? variant.selectOnNodeId : [];
+        const hoverOnNodeId = Array.isArray(variant.hoverOnNodeId) ? variant.hoverOnNodeId : [];
+        const previewKeyByNodeId = Array.isArray(variant.previewKeyByNodeId) ? variant.previewKeyByNodeId : [];
+        if (!key || !dot) return;
+        variantsByKey.set(key, {
+          key: key,
+          label: label || key,
+          dot: dot,
+          selectOnNodeId: selectOnNodeId,
+          hoverOnNodeId: hoverOnNodeId,
+          previewKeyByNodeId: new Map(previewKeyByNodeId)
         });
+      });
         const variants = Array.from(variantsByKey.values());
         if (variants.length === 0) return;
 
@@ -783,7 +787,13 @@
             if (graphState.renderFinalizedToken === renderToken) return;
             graphState.renderFinalizedToken = renderToken;
             applyGraphZoomHeuristic(graphContainer, width, height, activeVariant.key);
-            attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController);
+            attachPreviewHandlers(
+              graphBlock,
+              graphContainer,
+              previewMap,
+              previewController,
+              activeVariant.previewKeyByNodeId
+            );
             attachVariantSelectors(
               graphContainer,
               variantsByKey,

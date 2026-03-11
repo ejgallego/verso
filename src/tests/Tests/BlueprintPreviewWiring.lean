@@ -261,7 +261,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
     let blocks := collectBlocks previewWiringDoc.toPart
     let (html, st) ← renderManualBlocksHtmlAndState blocks
     let out := html.asString
-    let graphJs? := findExtraJs st "function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController)"
+    let graphJs? := findExtraJs st "function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController, previewKeyByNodeId)"
     pure (
       hasSubstr out "class=\"bp_graph_preview\"" &&
       hasSubstr out "data-bp-preview-mode=\"pinned\"" &&
@@ -281,15 +281,16 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr graphJs "function createPanelController(panel, behavior, titleSelector, bodySelector, options)" &&
         hasSubstr graphJs "function bindHoverablePanelLifetime(previewUtils, controller, getActiveAnchor, boundAttr)" &&
         hasSubstr graphJs "function configurePanelCloseButton(previewUtils, closeButton, hidePanel, behavior)" &&
-        hasSubstr graphJs "previewUtils.statementPreviewKey(label)" &&
+        hasSubstr graphJs "const previewKey = nodeId ? (previewKeys.get(nodeId) || \"\") : \"\";" &&
         hasSubstr graphJs "previewUtils.loadSharedPreviewEntry(previewKey)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(previewPanelNode, { mode: \"pinned\", placement: \"docked\" })" &&
         hasSubstr graphJs "previewUtils.hydratePreviewSubtree(body)" &&
         hasSubstr graphJs "previewUtils.readPanelBehavior(groupHoverPanel, { mode: \"pinned\", placement: \"docked\" })" &&
-        hasSubstr graphJs "attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController)" &&
+        hasSubstr graphJs "attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController, previewKeyByNodeId)" &&
         hasSubstr graphJs "graphState.previewActiveNode === node && !previewController.panel.hidden" &&
         hasSubstr graphJs "configurePanelCloseButton(previewUtils, previewClose" &&
         hasSubstr graphJs "configurePanelCloseButton(previewUtils, groupHoverClose" &&
+        hasSubstr graphJs "previewKeyByNodeId: new Map(previewKeyByNodeId)" &&
         hasSubstr graphJs "graphviz: null," &&
         hasSubstr graphJs "renderToken: 0," &&
         hasSubstr graphJs "const finalizeRender = function () {" &&
@@ -316,17 +317,20 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       hasSubstr out "class=\"bp_extra_slot bp_extra_slot_used_by\"" &&
       hasSubstr out "class=\"bp_used_by_wrap\"" &&
       hasSubstr out "class=\"bp_used_by_panel\"" &&
-      hasSubstr out "class=\"bp_used_by_preview_tpl\"" &&
+      hasSubstr out "class=\"bp_used_by_preview_fallback_tpl\"" &&
       hasSubstr out "data-bp-used-preview-id" &&
+      hasSubstr out "data-bp-used-preview-key" &&
       hasSubstr out ">statement</span>" &&
       hasSubstr out ">proof</span>" &&
       appearsBefore out "class=\"bp_code_link_wrap\"" "class=\"bp_used_by_wrap\"" &&
       match usedByJs? with
       | some usedByJs =>
         hasSubstr usedByJs "function bindUsedByPanel(panel)" &&
+        hasSubstr usedByJs "previewUtils.loadSharedPreviewEntry(previewKey)" &&
+        hasSubstr usedByJs "const fallbackTemplates = collectPanelFallbackTemplates(panel);" &&
         hasSubstr usedByJs "item.addEventListener(\"mouseenter\"" &&
         hasSubstr usedByJs "item.addEventListener(\"focusin\"" &&
-        hasSubstr usedByJs "activate(items[0], { openWrap: false })"
+        !hasSubstr usedByJs "activate(items[0], { openWrap: false })"
       | none => false
     )
 
@@ -347,8 +351,9 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       hasSubstr out ">L∃∀N</span>" &&
       hasSubstr out "class=\"bp_used_by_chip bp_used_by_chip_empty\"" &&
       hasSubstr out "class=\"bp_inline_preview_ref\"" &&
-      hasSubstr out "class=\"bp_inline_preview_tpl\"" &&
-      hasSubstr out "data-bp-preview-id=\"bp-used-by-"
+      !hasSubstr out "class=\"bp_inline_preview_tpl\" data-bp-preview-id=\"bp-used-by-" &&
+      hasSubstr out "data-bp-preview-id=\"bp-used-by-" &&
+      hasSubstr out "data-bp-preview-key="
     )
 
 /-- info: true -/
@@ -370,7 +375,8 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
       match usedByJs? with
       | some usedByJs =>
         hasSubstr usedByJs "function bindUsedByPanel(panel)" &&
-        hasSubstr usedByJs "activate(items[0], { openWrap: false })"
+        hasSubstr usedByJs "previewUtils.loadSharedPreviewEntry(previewKey)" &&
+        !hasSubstr usedByJs "activate(items[0], { openWrap: false })"
       | none => false
     )
 
@@ -384,8 +390,7 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
     pure (
       hasSubstr out "bp_used_by_chip_warn" &&
       hasSubstr out "data-bp-preview-id=\"bp-group-" &&
-      hasSubstr out "No matching " &&
-      hasSubstr out ":::group" &&
+      hasSubstr out "data-bp-preview-key=" &&
       hasSubstr out "grp:missing"
     )
 

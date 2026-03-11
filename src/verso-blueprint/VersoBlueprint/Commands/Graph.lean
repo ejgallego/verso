@@ -11,6 +11,7 @@ import VersoBlueprint.Commands.Common
 import VersoBlueprint.Environment
 import VersoBlueprint.Graph
 import VersoBlueprint.Lib.HoverRender
+import VersoBlueprint.PreviewCache
 import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
@@ -81,6 +82,7 @@ structure GraphRenderVariant where
   dot : String
   selectOnNodeId : Array (String × String) := #[]
   hoverOnNodeId : Array (String × String) := #[]
+  previewKeyByNodeId : Array (String × String) := #[]
 deriving Inhabited, ToJson
 
 def graphCss := include_str "graph.css"
@@ -300,6 +302,9 @@ def mkParentOverviewGraph (graph : Graph) (parents : Array Name)
 
 def mkGraphVariants (graphData : GraphBlockData) (resolveHref : Name → Option String)
     (groupTitles : Lean.NameMap String) : Array GraphRenderVariant :=
+  let previewKeyByNodeId (graph : Graph) : Array (String × String) :=
+    graph.map fun node =>
+      (Informal.Graph.graphNodeSvgId node.label, PreviewCache.key node.label .statement)
   let resolveGroupTitle : Name → Option String := fun group =>
     groupTitles.get? group
   let parentChildren := graphParentChildren graphData.graph
@@ -315,6 +320,7 @@ def mkGraphVariants (graphData : GraphBlockData) (resolveHref : Name → Option 
       dot := graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
       selectOnNodeId := #[]
       hoverOnNodeId := #[]
+      previewKeyByNodeId := previewKeyByNodeId graphData.graph
     }]
   else
     let parentVariantRefs := parents.map (fun parent => (Informal.Graph.graphNodeSvgId parent, parentVariantKey parent))
@@ -325,6 +331,7 @@ def mkGraphVariants (graphData : GraphBlockData) (resolveHref : Name → Option 
         graphData.direction (fun _ => none) (fun _ => none)
       selectOnNodeId := parentVariantRefs
       hoverOnNodeId := parentVariantRefs
+      previewKeyByNodeId := #[]
     }
     let fullVariant : GraphRenderVariant := {
       key := "full"
@@ -332,16 +339,19 @@ def mkGraphVariants (graphData : GraphBlockData) (resolveHref : Name → Option 
       dot := graphToDot graphData.graph graphData.direction resolveHref resolveGroupTitle
       selectOnNodeId := #[]
       hoverOnNodeId := #[]
+      previewKeyByNodeId := previewKeyByNodeId graphData.graph
     }
     let parentVariants := parents.map fun parent =>
+      let parentSubgraph := subgraphForParent graphData.graph parent
       let title := graphParentTitle groupTitles parent
       {
         key := parentVariantKey parent
         label := title
-        dot := graphToDot (subgraphForParent graphData.graph parent)
+        dot := graphToDot parentSubgraph
           graphData.direction resolveHref resolveGroupTitle
         selectOnNodeId := #[]
         hoverOnNodeId := #[]
+        previewKeyByNodeId := previewKeyByNodeId parentSubgraph
       }
     #[fullVariant, groupVariant] ++ parentVariants
 

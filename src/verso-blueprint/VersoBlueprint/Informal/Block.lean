@@ -22,7 +22,6 @@ import VersoBlueprint.Informal.ExternalCode
 import VersoBlueprint.Informal.Group
 import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.Lib.HoverRender
-import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
@@ -1246,9 +1245,10 @@ private def groupRenderInfo?
 private structure RelatedPanelEntry where
   source : BlockData
   previewId : String
+  previewKey : String
   previewTitle : String
   href : Option String := none
-  previewBody : Output.Html := .empty
+  previewFallbackBody : Output.Html := .empty
   metaHtml : Output.Html := .empty
 
 private structure RelatedPanelConfig where
@@ -1371,25 +1371,20 @@ private def groupMissingNotice (group : GroupRenderInfo) : Output.Html :=
 private def mkRelatedPanelEntry {m}
     [Monad m]
     (state : Verso.Genre.Manual.TraverseState)
-    (renderBlock :
-      Verso.Doc.Block Verso.Genre.Manual →
-        Verso.Doc.Html.HtmlT Verso.Genre.Manual m Output.Html)
     (source : BlockData) (previewId : String) (fallbackBody : Output.Html)
-    (metaHtml : Output.Html := .empty) (prefixHtml : Array Output.Html := #[]) :
+    (metaHtml : Output.Html := .empty) :
     Verso.Doc.Html.HtmlT Verso.Genre.Manual m RelatedPanelEntry := do
   let previewTitle := blockSummaryTitle state source
   let href := Resolve.resolveDomainHref? state Resolve.informalDomainName source.label.toString
-  let preview? ←
-    Informal.PreviewSource.renderTraversalPreview? state
-      (fun block =>
-        Informal.HoverRender.withInlinePreviewRenderContext (renderBlock block))
-      source.label
-  let renderedPreview : Output.Html :=
-    match preview? with
-    | some rendered => .seq rendered
-    | none => fallbackBody
-  let previewBody := .seq (prefixHtml.push renderedPreview)
-  pure { source, previewId, previewTitle, href, previewBody, metaHtml }
+  pure {
+    source
+    previewId
+    previewKey := usedByPreviewLookupKey source
+    previewTitle
+    href
+    previewFallbackBody := fallbackBody
+    metaHtml
+  }
 
 private def renderRelatedPanel (cfg : RelatedPanelConfig) (entries : Array RelatedPanelEntry) :
     Output.Html :=
@@ -1408,8 +1403,8 @@ private def renderRelatedPanel (cfg : RelatedPanelConfig) (entries : Array Relat
       else
         renderChip cfg.chipClass (cfg.singleTitle entry) 1
     Informal.HoverRender.inlinePreviewNode
-      true chipNode entry.previewBody entry.previewId entry.previewTitle
-      (previewLookupKey? := some (usedByPreviewLookupKey entry.source))
+      false chipNode .empty entry.previewId entry.previewTitle
+      (previewLookupKey? := some entry.previewKey)
       (previewFallbackLabel? := some s!"{entry.source.label}")
   else
     let rows : Array Output.Html :=
@@ -1428,10 +1423,11 @@ private def renderRelatedPanel (cfg : RelatedPanelConfig) (entries : Array Relat
         {{
           <li class="bp_used_by_item"
               "data-bp-used-preview-id"={{entry.previewId}}
+              "data-bp-used-preview-key"={{entry.previewKey}}
               "data-bp-used-preview-title"={{entry.previewTitle}}>
             {{rowNode}}
-            <template class="bp_used_by_preview_tpl" "data-bp-used-preview-id"={{entry.previewId}}>
-              {{entry.previewBody}}
+            <template class="bp_used_by_preview_fallback_tpl" "data-bp-used-preview-id"={{entry.previewId}}>
+              {{entry.previewFallbackBody}}
             </template>
           </li>
         }}
@@ -1466,9 +1462,6 @@ private def renderRelatedPanel (cfg : RelatedPanelConfig) (entries : Array Relat
 private def renderUsedByEntry {m}
     [Monad m]
     (state : Verso.Genre.Manual.TraverseState)
-    (renderBlock :
-      Verso.Doc.Block Verso.Genre.Manual →
-        Verso.Doc.Html.HtmlT Verso.Genre.Manual m Output.Html)
     (data : BlockData) :
     Verso.Doc.Html.HtmlT Verso.Genre.Manual m Output.Html := do
   match data.kind with
@@ -1476,7 +1469,7 @@ private def renderUsedByEntry {m}
   | .statement _ =>
     let entries := collectUsedByEntries state data.label
     let panelEntries ← entries.mapM fun entry =>
-      mkRelatedPanelEntry state renderBlock entry.source
+      mkRelatedPanelEntry state entry.source
         (usedByPreviewId data.label entry.source.label)
         (usedByPreviewFallbackBody entry)
         (metaHtml := {{
@@ -1501,9 +1494,6 @@ private def renderUsedByEntry {m}
 private def renderGroupEntry {m}
     [Monad m]
     (state : Verso.Genre.Manual.TraverseState)
-    (renderBlock :
-      Verso.Doc.Block Verso.Genre.Manual →
-        Verso.Doc.Html.HtmlT Verso.Genre.Manual m Output.Html)
     (data : BlockData) :
     Verso.Doc.Html.HtmlT Verso.Genre.Manual m (Option Output.Html) := do
   match data.kind, groupRenderInfo? state data with
@@ -1513,17 +1503,16 @@ private def renderGroupEntry {m}
     let siblings := collectGroupEntries state data group
     if group.declared && siblings.isEmpty then
       return none
-    let prefixHtml :=
-      if group.declared then
-        #[]
-      else
-        #[groupMissingNotice group]
     let panelEntries ← siblings.mapM fun source =>
-      mkRelatedPanelEntry state renderBlock source
+      let fallbackBody :=
+        if group.declared then
+          groupPreviewFallbackBody group source
+        else
+          .seq #[groupMissingNotice group, groupPreviewFallbackBody group source]
+      mkRelatedPanelEntry state source
         (s!"bp-group-{Informal.HoverRender.previewKey (toString data.label)}-{Informal.HoverRender.previewKey (toString source.label)}")
-        (groupPreviewFallbackBody group source)
+        fallbackBody
         (metaHtml := {{<code>s!"{source.label}"</code>}})
-        (prefixHtml := prefixHtml)
     let chipClass :=
       if group.declared then
         "bp_used_by_chip"
@@ -1830,8 +1819,8 @@ block_extension Block.informal (data : BlockData) where
         let content := (← blocks.mapM goB)
         let statusMark := headingParts?.bind (·.statusMark)
         let codeEntry := (headingParts?.map (·.codeEntry)).getD .empty
-        let groupEntry ← renderGroupEntry s goB data
-        let usedByEntry ← renderUsedByEntry s goB data
+        let groupEntry ← renderGroupEntry s data
+        let usedByEntry ← renderUsedByEntry s data
         let informalBlock :=
           renderInformalBlock data (data.displayNumber s) attrs statusMark codeEntry groupEntry usedByEntry content
         return .seq #[informalBlock, externalPanel]
