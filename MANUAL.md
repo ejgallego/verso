@@ -177,7 +177,7 @@ The `parent` / `group` data is used in two places.
 
 Blueprint builds that import `VersoBlueprint` emit a shared preview manifest automatically at:
 
-- `html-multi/-verso-data/bp-previews.json`
+- `html-multi/-verso-data/blueprint-preview-manifest.json`
 
 This file is the canonical runtime source for informal statement/proof preview
 bodies. The page HTML no longer embeds a second copy of those block previews.
@@ -191,6 +191,20 @@ with `--dump-schema`, for example:
 
 ```bash
 lake exe noperthedron --dump-schema
+```
+
+To print the generated manifest JSON itself instead of writing the site and then
+reading the file, use `--dump-manifest`:
+
+```bash
+lake exe noperthedron --dump-manifest
+```
+
+For a short CLI summary of these preview-manifest-specific options plus the
+standard manual-rendering flags, use:
+
+```bash
+lake exe noperthedron --help
 ```
 
 ## Notes

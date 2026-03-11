@@ -80,7 +80,7 @@ class TestPreviewRuntimeRegressions:
             else:
                 route.continue_()
 
-        page.route("**/-verso-data/bp-previews.json", fail_once)
+        page.route("**/-verso-data/blueprint-preview-manifest.json", fail_once)
         page.goto(f"{server}/Blueprint-Summary/")
 
         manifest = page.evaluate(

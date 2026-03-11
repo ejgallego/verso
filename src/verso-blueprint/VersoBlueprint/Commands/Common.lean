@@ -101,13 +101,6 @@ def previewHoverUtilsJs : String := r##"(function () {
       .replaceAll("'", "&#39;");
   }
 
-  function sharedPreviewManifestVersion(data) {
-    if (data && typeof data === "object" && Number.isFinite(data.version)) {
-      return Math.trunc(data.version);
-    }
-    return null;
-  }
-
   function decodeSharedPreviewManifest(data) {
     const map = new Map();
     const entries =
@@ -134,7 +127,6 @@ def previewHoverUtilsJs : String := r##"(function () {
       attempts: 0,
       url: sharedPreviewManifestUrl(),
       lastError: "",
-      version: null,
       entryCount: 0
     };
   }
@@ -155,7 +147,7 @@ def previewHoverUtilsJs : String := r##"(function () {
       return (
         "<div class=\"bp_manifest_preview_notice\">" +
         "<p><strong>Preview manifest unavailable.</strong></p>" +
-        "<p>Blueprint previews require <code>-verso-data/bp-previews.json</code>. " +
+        "<p>Blueprint previews require <code>-verso-data/blueprint-preview-manifest.json</code>. " +
         "Rebuild the site or retry after the current build finishes.</p>" +
         "<p>Requested preview: " + keyHtml + "</p>" +
         errorHtml +
@@ -182,11 +174,11 @@ def previewHoverUtilsJs : String := r##"(function () {
         const idx = url.pathname.indexOf(marker);
         if (idx >= 0) {
           const rootPath = url.pathname.slice(0, idx + marker.length);
-          return rootPath + "-verso-data/bp-previews.json";
+          return rootPath + "-verso-data/blueprint-preview-manifest.json";
         }
       }
     } catch (_err) {}
-    return "-verso-data/bp-previews.json";
+    return "-verso-data/blueprint-preview-manifest.json";
   }
 
   function loadSharedPreviewManifest() {
@@ -205,7 +197,6 @@ def previewHoverUtilsJs : String := r##"(function () {
       attempts: attempts,
       url: url,
       lastError: "",
-      version: null,
       entryCount: 0
     });
     let promise = null;
@@ -224,7 +215,6 @@ def previewHoverUtilsJs : String := r##"(function () {
           attempts: attempts,
           url: url,
           lastError: "",
-          version: sharedPreviewManifestVersion(data),
           entryCount: map.size
         });
         return map;
@@ -240,7 +230,6 @@ def previewHoverUtilsJs : String := r##"(function () {
           attempts: attempts,
           url: url,
           lastError: message,
-          version: null,
           entryCount: 0
         });
         previewDebug("sharedManifest.loadFailed", {

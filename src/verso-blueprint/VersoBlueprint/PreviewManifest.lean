@@ -20,6 +20,8 @@ open Lean Elab Command Term Meta
 open Verso Doc
 open Verso.Genre Manual
 
+def manifestFilename : String := "blueprint-preview-manifest.json"
+
 structure Entry where
   /-- Composite preview lookup key, currently `{label}--{facet}`. -/
   key : String
@@ -189,6 +191,9 @@ def schemaJson : Json :=
   | .ok json => json
   | .error err => panic! s!"Invalid generated preview manifest schema: {err}"
 
+private def jsonPretty (json : Json) : String :=
+  json.render.pretty 80
+
 private def outDirForMode (cfg : Verso.Genre.Manual.Config) (mode : Mode) : System.FilePath :=
   cfg.destination / (match mode with | .single => "html-single" | .multi => "html-multi")
 
@@ -270,31 +275,91 @@ private def buildEntries
       entries := entries.push manifestEntry
   pure <| entries.qsort (fun a b => a.key < b.key)
 
+private def buildManifestFile
+    (impls : ExtensionImpls)
+    (logError : String → IO Unit)
+    (state : TraverseState) : IO File := do
+  let previews ← buildEntries impls logError state
+  pure { previews }
+
+private def dumpManifest
+    (text : Part Manual)
+    (options : List String)
+    (extensionImpls : ExtensionImpls)
+    (config : RenderConfig := {}) : IO UInt32 := do
+  let errorCount : IO.Ref Nat ← IO.mkRef 0
+  let logError msg := do
+    errorCount.modify (· + 1)
+    IO.eprintln msg
+  let cfg ← ReaderT.run (Verso.Genre.Manual.parseRenderConfigOptions config options) extensionImpls
+  let (_text, traverseState) ← ReaderT.run (Verso.Genre.Manual.traverseHtmlMulti logError cfg text) extensionImpls
+  let file ← buildManifestFile extensionImpls logError traverseState
+  IO.println <| jsonPretty <| toJson file
+  if (← errorCount.get) == 0 then pure 0 else pure 1
+
 /--
-Emit the canonical `bp-previews.json` manifest.
+Emit the canonical shared blueprint preview manifest file.
 
 Block preview bodies are expected to be consumed from the manifest rather than
 embedded as page-local label preview templates.
 -/
 def emitSharedPreviewManifest : ExtraStep := fun mode logError cfg state _text => do
   let impls ← read
-  let previews ← buildEntries impls logError state
+  let file ← buildManifestFile impls logError state
   let outDir := outDirForMode cfg mode
   let dataDir := outDir / "-verso-data"
   IO.FS.createDirAll dataDir
-  let json := (toJson ({ previews } : File)).compress
-  IO.FS.writeFile (dataDir / "bp-previews.json") json
+  let json := (toJson file).compress
+  IO.FS.writeFile (dataDir / manifestFilename) json
 
 initialize Verso.Genre.Manual.registerExtraStep emitSharedPreviewManifest
 
 def dumpSchemaFlag : String := "--dump-schema"
+def dumpManifestFlag : String := "--dump-manifest"
+def helpFlag : String := "--help"
+
+def helpText : String := String.intercalate "\n" [
+  "Blueprint preview manifest options:",
+  s!"  {dumpSchemaFlag}    Print the preview manifest JSON Schema and exit.",
+  s!"  {dumpManifestFlag}  Print the generated preview manifest JSON and exit.",
+  s!"  {helpFlag}           Show this help text and exit.",
+  "",
+  "Standard manual rendering options:",
+  "  --output <dir>",
+  "  --depth <n>",
+  "  --with-tex | --without-tex",
+  "  --with-html-single | --delay-html-single <file> | --resume-html-single <file> | --without-html-single",
+  "  --with-html-multi | --delay-html-multi <file> | --resume-html-multi <file> | --without-html-multi",
+  "  --with-word-count <file> | --without-word-count",
+  "  --draft",
+  "  --verbose",
+  "  --remote-config <file>"
+]
+
+private def stripFlag (flag : String) (args : List String) : List String :=
+  args.filter (· != flag)
 
 def handleDumpSchemaFlag (args : List String) : IO (Option UInt32 × List String) := do
   if args.contains dumpSchemaFlag then
     IO.println schemaString
-    pure (some 0, args.filter (· != dumpSchemaFlag))
+    pure (some 0, stripFlag dumpSchemaFlag args)
   else
     pure (none, args)
+
+def handleCliFlags
+    (text : Part Manual)
+    (options : List String)
+    (extensionImpls : ExtensionImpls)
+    (config : RenderConfig := {}) : IO (Option UInt32 × List String) := do
+  if options.contains helpFlag then
+    IO.println helpText
+    pure (some 0, stripFlag helpFlag options)
+  else if options.contains dumpManifestFlag then
+    let options := stripFlag dumpManifestFlag options
+    let code ← dumpManifest text options extensionImpls config
+    pure (some code, options)
+  else
+    handleDumpSchemaFlag options
 
 def manualMainWithSharedPreviewManifest
     (text : Part Manual)
@@ -302,7 +367,7 @@ def manualMainWithSharedPreviewManifest
     (extensionImpls : ExtensionImpls)
     (config : RenderConfig := {})
     (extraSteps : List ExtraStep := []) : IO UInt32 := do
-  let (dumped?, options) ← handleDumpSchemaFlag options
+  let (dumped?, options) ← handleCliFlags text options extensionImpls config
   if let some code := dumped? then
     return code
   manualMain text (extensionImpls := extensionImpls) (options := options) (config := config)

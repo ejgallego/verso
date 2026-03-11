@@ -877,6 +877,50 @@ def registeredExtraSteps : IO (List ExtraStep) :=
 
 open Verso.CLI
 
+def parseRenderConfigOptions (config : RenderConfig := {}) :
+    List String → ReaderT ExtensionImpls IO RenderConfig
+  | ("--output"::dir::more) => parseRenderConfigOptions { config with destination := dir } more
+  | ("--depth"::n::more) => parseRenderConfigOptions { config with htmlDepth := n.toNat! } more
+
+  | ("--with-tex"::more) => parseRenderConfigOptions { config with emitTeX := true } more
+  | ("--without-tex"::more) => parseRenderConfigOptions { config with emitTeX := false } more
+
+  | ("--with-html-single"::more) => parseRenderConfigOptions { config with emitHtmlSingle := .immediately } more
+  | ("--delay-html-single"::more) =>
+    match requireFilename "--delay-html-single" more with
+    | .ok f more' _ => parseRenderConfigOptions { config with emitHtmlSingle := .delay f } more'
+    | .error e => throw (↑ e)
+  | ("--resume-html-single"::more) =>
+    match requireFilename "--resume-html-single" more with
+    | .ok f more' _ => parseRenderConfigOptions { config with emitHtmlSingle := .resumeFrom f } more'
+    | .error e => throw (↑ e)
+  | ("--without-html-single"::more) => parseRenderConfigOptions { config with emitHtmlSingle := .no } more
+
+  | ("--with-html-multi"::more) => parseRenderConfigOptions { config with emitHtmlMulti := .immediately } more
+  | ("--delay-html-multi"::more) =>
+    match requireFilename "--delay-html-multi" more with
+    | .ok f more' _ => parseRenderConfigOptions { config with emitHtmlMulti := .delay f } more'
+    | .error e => throw (↑ e)
+  | ("--resume-html-multi"::more) =>
+    match requireFilename "--resume-html-multi" more with
+    | .ok f more' _ => parseRenderConfigOptions { config with emitHtmlMulti := .resumeFrom f } more'
+    | .error e => throw (↑ e)
+  | ("--without-html-multi"::more) => parseRenderConfigOptions { config with emitHtmlMulti := .no } more
+
+  | ("--with-word-count"::more) =>
+    match requireFilename "--with-word-count" more with
+    | .ok file more' _ => parseRenderConfigOptions { config with wordCount := some file } more'
+    | .error e => throw (↑ e)
+  | ("--without-word-count"::more) => parseRenderConfigOptions { config with wordCount := none } more
+  | ("--draft"::more) => parseRenderConfigOptions { config with draft := true } more
+  | ("--verbose"::more) => parseRenderConfigOptions { config with verbose := true } more
+  | ("--remote-config"::more) =>
+    match requireFilename "--remote-config" more with
+    | .ok file more' _ => parseRenderConfigOptions { config with remoteConfigFile := some file } more'
+    | .error e => throw (↑ e)
+  | (other :: _) => throw (↑ s!"Unknown option {other}")
+  | [] => pure config
+
 def manualMain (text : Part Manual)
     (extensionImpls : ExtensionImpls := by exact extension_impls%)
     (options : List String)
@@ -885,58 +929,13 @@ def manualMain (text : Part Manual)
   ReaderT.run go extensionImpls
 
 where
-
-  opts (cfg : RenderConfig) : List String → ReaderT ExtensionImpls IO RenderConfig
-    | ("--output"::dir::more) => opts { cfg with destination := dir } more
-    | ("--depth"::n::more) => opts { cfg with htmlDepth := n.toNat! } more
-
-    | ("--with-tex"::more) => opts { cfg with emitTeX := true } more
-    | ("--without-tex"::more) => opts { cfg with emitTeX := false } more
-
-    | ("--with-html-single"::more) => opts { cfg with emitHtmlSingle := .immediately } more
-    | ("--delay-html-single"::more) =>
-      match requireFilename "--delay-html-single" more with
-      | .ok f more' _ => opts { cfg with emitHtmlSingle := .delay f } more'
-      | .error e => throw (↑ e)
-    | ("--resume-html-single"::more) =>
-      match requireFilename "--resume-html-single" more with
-      | .ok f more' _ => opts { cfg with emitHtmlSingle := .resumeFrom f } more'
-      | .error e => throw (↑ e)
-    | ("--without-html-single"::more) => opts { cfg with emitHtmlSingle := .no } more
-
-    | ("--with-html-multi"::more) => opts { cfg with emitHtmlMulti := .immediately } more
-    | ("--delay-html-multi"::more) =>
-      match requireFilename "--delay-html-multi" more with
-      | .ok f more' _ => opts { cfg with emitHtmlMulti := .delay f } more'
-      | .error e => throw (↑ e)
-    | ("--resume-html-multi"::more) =>
-      match requireFilename "--resume-html-multi" more with
-      | .ok f more' _ => opts { cfg with emitHtmlMulti := .resumeFrom f } more'
-      | .error e => throw (↑ e)
-    | ("--without-html-multi"::more) => opts { cfg with emitHtmlMulti := .no } more
-
-    | ("--with-word-count"::more) =>
-      match requireFilename "--with-word-count" more with
-      | .ok file more' _ => opts { cfg with wordCount := some file } more'
-      | .error e => throw (↑ e)
-    | ("--without-word-count"::more) => opts { cfg with wordCount := none } more
-    | ("--draft"::more) => opts { cfg with draft := true } more
-    | ("--verbose"::more) => opts { cfg with verbose := true } more
-    | ("--remote-config"::more) =>
-      match requireFilename "--remote-config" more with
-      | .ok file more' _ => opts { cfg with remoteConfigFile := some file } more'
-      | .error e => throw (↑ e)
-    | (other :: _) => throw (↑ s!"Unknown option {other}")
-    | [] => pure cfg
-
-
   fixBase (base : String) : String :=
     if base.endsWith "/" then base else base ++ "/"
 
   go : ReaderT ExtensionImpls IO UInt32 := do
     let errorCount : IO.Ref Nat ← IO.mkRef 0
     let logError msg := do errorCount.modify (· + 1); IO.eprintln msg
-    let cfg ← opts config options
+    let cfg ← parseRenderConfigOptions config options
     let allExtraSteps := (← registeredExtraSteps) ++ extraSteps
 
     if cfg.emitTeX then

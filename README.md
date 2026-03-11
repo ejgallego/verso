@@ -110,7 +110,7 @@ To validate the blueprint example projects, run
 `_out/example-blueprints/`.
 
 Each generated blueprint site also emits a shared preview manifest at
-`html-multi/-verso-data/bp-previews.json`. This is the canonical runtime
+`html-multi/-verso-data/blueprint-preview-manifest.json`. This is the canonical runtime
 source for blueprint statement/proof preview bodies, and it is now emitted
 automatically by blueprint builds that import `VersoBlueprint`. The manifest
 also carries structured preview metadata such as label, facet, kind, parent,
@@ -121,6 +121,19 @@ executable with `--dump-schema`, for example:
 
 ```bash
 lake exe noperthedron --dump-schema
+```
+
+To print the generated manifest JSON itself, use:
+
+```bash
+lake exe noperthedron --dump-manifest
+```
+
+To list the preview-manifest-specific CLI options together with the standard
+manual-rendering flags, use:
+
+```bash
+lake exe noperthedron --help
 ```
 
 ### Customization of Manual Genre HTML

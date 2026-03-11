@@ -85,7 +85,7 @@ private def checkSharedPreviewManifestMode : ExtraStep := fun mode logError cfg 
       if !(← htmlRoot.pathExists) then
         logError s!"Shared preview manifest check: output directory not found: {htmlRoot}"
       else
-        let manifestFile := htmlRoot / "-verso-data" / "bp-previews.json"
+        let manifestFile := htmlRoot / "-verso-data" / Informal.PreviewManifest.manifestFilename
         if !(← manifestFile.pathExists) then
           logError s!"Shared preview manifest check: manifest file not found: {manifestFile}"
         let files ← filesBelow htmlRoot
@@ -118,15 +118,12 @@ private def checkInlinePreviewTemplateDedup : ExtraStep := fun mode logError cfg
   | .single => pure ()
 
 def main (args : List String) : IO UInt32 :=
-  do
-    let (dumped?, args) ← Informal.PreviewManifest.handleDumpSchemaFlag args
-    if let some code := dumped? then
-      return code
-    manualMain (%doc Contents)
-      (options := args)
-      (extensionImpls := by exact extension_impls%)
-      (config := renderConfig)
-      (extraSteps := [
-        checkSharedPreviewManifestMode,
-        checkInlinePreviewTemplateDedup
-      ])
+  Informal.PreviewManifest.manualMainWithSharedPreviewManifest
+    (%doc Contents)
+    args
+    (extensionImpls := by exact extension_impls%)
+    (config := renderConfig)
+    (extraSteps := [
+      checkSharedPreviewManifestMode,
+      checkInlinePreviewTemplateDedup
+    ])
