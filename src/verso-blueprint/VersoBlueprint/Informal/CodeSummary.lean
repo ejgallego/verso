@@ -21,7 +21,6 @@ open Lean Elab
 Public API:
 - `ComputedData`: normalized code inputs for one block heading.
 - `RenderParts`: rendered heading fragments consumed by callers.
-- `renderCodeSummaryTooltip`: tooltip body for inline declaration summaries.
 - `renderParts`: main entry point that derives status badge + Lean link node.
 -/
 
@@ -50,80 +49,178 @@ structure RenderParts where
   /-- Optional Lean badge/link node (`L∃∀N`) with tooltip wrapper. -/
   codeEntry : Output.Html := .empty
 
-private def summaryDeclItems (items : Array (String × Option String)) : Output.Html :=
-  open Verso.Output.Html in
-  if items.isEmpty then
-    {{<li class="bp_code_hover_none">"none"</li>}}
-  else
-    .seq <| items.map fun item =>
-      let txtVal := item.1
-      let href := item.2
-      let txt := {{<code>{{.text true txtVal}}</code>}}
-      {{<li>{{if let some href := href then {{<a href={{href}}>{{txt}}</a>}} else txt}}</li>}}
+structure PanelIndicatorParts where
+  /-- Summary text exposed on the enclosing code-panel `<summary>` title. -/
+  summaryTitle : String := ""
+  /-- Top-right indicator node for the code panel summary row. -/
+  indicator : Output.Html := .empty
 
-private def declSummaryItems (decls : Array CodeDeclData) (hrefOf : Name → Option String)
-    : Array (String × Option String) :=
-  decls.map fun decl => (toString decl.name, hrefOf decl.name)
-
-private def sorrySummaryItems (decls : Array CodeDeclData) (hrefOf : Name → Option String)
-    : Array (String × Option String) :=
-  decls.filter (provedStatusHasSorry ∘ (·.provedStatus)) |>.map fun decl =>
-    (s!"{decl.name} [{provedStatusSummaryText decl.provedStatus}]", hrefOf decl.name)
+inductive DeclSummaryKind where
+  | definition
+  | theoremLike
+deriving Inhabited, Repr, BEq
 
 /--
-Tooltip body for the Lean summary badge. It lists definitions, theorems/lemmas, and incomplete declarations.
+Normalized declaration summary row shared by inline and external Lean summary UI.
 
-`hrefOf` is used to attach per-declaration links when targets are known.
+`present = false` is used only for external references that failed to resolve.
 -/
-def renderCodeSummaryTooltip (label : Data.Label)
-    (definedDefs definedTheorems : Array CodeDeclData) (hrefOf : Name → Option String) : Output.Html :=
+structure DeclSummaryItem where
+  name : Name
+  href : Option String := none
+  kind : DeclSummaryKind := .definition
+  status : Data.ProvedStatus := .proved
+  present : Bool := true
+deriving Inhabited, Repr
+
+private structure SummaryTooltipSection where
+  title : String := ""
+  items : Array DeclSummaryItem := #[]
+  emptyText : String := "No associated Lean declarations."
+
+private def declSummaryStatusText (item : DeclSummaryItem) : String :=
+  if !item.present then
+    "missing declaration"
+  else if item.status.isIncomplete then
+    provedStatusSummaryText item.status
+  else
+    "complete"
+
+private def declSummaryStatusClass (item : DeclSummaryItem) : String :=
+  if !item.present || item.status.isMissing then
+    "bp_code_decl_status_missing"
+  else if item.status.isAxiomLike then
+    "bp_code_decl_status_axiom"
+  else if item.status.isIncomplete then
+    "bp_code_decl_status_warning"
+  else
+    "bp_code_decl_status_ok"
+
+private def renderDeclSummaryItems (items : Array DeclSummaryItem) : Output.Html :=
   open Verso.Output.Html in
-  let allDecls := definedDefs ++ definedTheorems
+  if items.isEmpty then
+    .empty
+  else
+    .seq <| items.map fun item =>
+      let nameNode : Output.Html :=
+        let txt := {{<code>{{.text true s!"{item.name}"}}</code>}}
+        match item.href with
+        | some href => {{<a href={{href}}>{{txt}}</a>}}
+        | none => txt
+      {{
+        <li class="bp_code_decl_item">
+          <span class="bp_code_decl_name">{{nameNode}}</span>
+          <span class={{s!"bp_code_decl_status {declSummaryStatusClass item}"}}>
+            {{.text true s!"[{declSummaryStatusText item}]"}}
+          </span>
+        </li>
+      }}
+
+private def summaryTooltipSection (tooltipSection : SummaryTooltipSection) : Output.Html :=
+  open Verso.Output.Html in
   {{
-    <div class="bp_code_hover" role="tooltip">
-      <div class="bp_code_hover_title">{{.text true s!"{label}"}}</div>
-      <div class="bp_code_hover_section">
-        <span class="bp_code_hover_label">"Lean definitions"</span>
-        <ul class="bp_code_hover_list">
-          {{summaryDeclItems (declSummaryItems definedDefs hrefOf)}}
-        </ul>
-      </div>
-      <div class="bp_code_hover_section">
-        <span class="bp_code_hover_label">"Lean theorems/lemmas"</span>
-        <ul class="bp_code_hover_list">
-          {{summaryDeclItems (declSummaryItems definedTheorems hrefOf)}}
-        </ul>
-      </div>
-      <div class="bp_code_hover_section">
-        <span class="bp_code_hover_label">"Sorries"</span>
-        <ul class="bp_code_hover_list">
-          {{summaryDeclItems (sorrySummaryItems allDecls hrefOf)}}
-        </ul>
-      </div>
+    <div class="bp_code_hover_section">
+      <span class="bp_code_hover_label">{{.text true tooltipSection.title}}</span>
+      <ul class="bp_code_hover_list">
+        {{if tooltipSection.items.isEmpty then
+            {{<li class="bp_code_hover_none">{{.text true tooltipSection.emptyText}}</li>}}
+          else
+            renderDeclSummaryItems tooltipSection.items}}
+      </ul>
     </div>
   }}
 
-private def userOkSummaryTooltip : Output.Html :=
+private def renderSummaryTooltip (title : String) (sections : Array SummaryTooltipSection) : Output.Html :=
   open Verso.Output.Html in
   {{
     <div class="bp_code_hover" role="tooltip">
-      <div class="bp_code_hover_title">"Lean status"</div>
-      <div class="bp_code_hover_section">
-        <span class="bp_code_hover_none">"Marked complete via (leanok := true)."</span>
-      </div>
+      <div class="bp_code_hover_title">{{.text true title}}</div>
+      {{.seq (sections.map summaryTooltipSection)}}
     </div>
   }}
 
-private def noLeanSummaryTooltip : Output.Html :=
-  open Verso.Output.Html in
-  {{
-    <div class="bp_code_hover" role="tooltip">
-      <div class="bp_code_hover_title">"Lean status"</div>
-      <div class="bp_code_hover_section">
-        <span class="bp_code_hover_none">"No associated Lean code or declarations."</span>
-      </div>
-    </div>
-  }}
+private def inlineDeclSummaryItems (definedDefs definedTheorems : Array CodeDeclData)
+    (hrefOf : Name → Option String) : Array DeclSummaryItem :=
+  let defs := definedDefs.map fun decl =>
+    {
+      name := decl.name
+      href := hrefOf decl.name
+      kind := .definition
+      status := decl.provedStatus
+    }
+  let theoremLikes := definedTheorems.map fun decl =>
+    {
+      name := decl.name
+      href := hrefOf decl.name
+      kind := .theoremLike
+      status := decl.provedStatus
+    }
+  defs ++ theoremLikes
+
+private def incompleteSummaryItems (items : Array DeclSummaryItem) : Array DeclSummaryItem :=
+  items.filter fun item => !item.present || item.status.isIncomplete
+
+def externalDeclKindText? (decl : Data.ExternalRef) : Option String :=
+  if !decl.present then
+    none
+  else
+    match decl.kind with
+    | .definition => some "definition"
+    | .lemma => some "lemma"
+    | .theorem => some "theorem"
+    | .corollary => some "corollary"
+
+private def externalSummaryKind (decl : Data.ExternalRef) : DeclSummaryKind :=
+  match decl.kind with
+  | .definition => .definition
+  | .lemma | .theorem | .corollary => .theoremLike
+
+private def externalDeclHref (decl : Data.ExternalRef) (hrefOf : Name → Option String) : Option String :=
+  if decl.present then
+    match hrefOf decl.canonical with
+    | some href => some href
+    | none => hrefOf decl.written
+  else
+    hrefOf decl.written
+
+private def externalDeclSummaryItems (decls : Array Data.ExternalRef)
+    (hrefOf : Name → Option String) : Array DeclSummaryItem :=
+  decls.map fun decl =>
+    {
+      name := decl.written
+      href := externalDeclHref decl hrefOf
+      kind := externalSummaryKind decl
+      status := decl.provedStatus
+      present := decl.present
+    }
+
+private def summaryPreviewItems (cdata : ComputedData)
+    (hrefOf : Name → Option String) : Array DeclSummaryItem :=
+  match cdata.source with
+  | some (.inline codeData) =>
+    inlineDeclSummaryItems codeData.definedDefs codeData.definedTheorems hrefOf
+  | some (.external decls) =>
+    externalDeclSummaryItems decls hrefOf
+  | some .userOk | none =>
+    #[]
+
+private def summaryPreviewEmptyText (cdata : ComputedData) : String :=
+  match cdata.source with
+  | some .userOk => "Marked complete via (leanok := true)."
+  | _ => "No associated Lean code or declarations."
+
+private def renderSummaryPreview (label : Data.Label) (cdata : ComputedData)
+    (hrefOf : Name → Option String) : Output.Html :=
+  let items := summaryPreviewItems cdata hrefOf
+  let sectionTitle :=
+    if items.isEmpty then "Lean status" else "Associated Lean declarations"
+  renderSummaryTooltip s!"{label}" #[
+    {
+      title := sectionTitle
+      items
+      emptyText := summaryPreviewEmptyText cdata
+    }
+  ]
 
 private inductive CodeEntryVisual where
   | absent
@@ -231,43 +328,6 @@ private def externalHeadingAggregate (decls : Array Data.ExternalRef) : External
     else
       { acc with missing := acc.missing + 1 }
 
-private def externalDeclStatusText (decl : Data.ExternalRef) : String :=
-  if !decl.present then
-    "missing declaration"
-  else if provedStatusContainsSorry decl.provedStatus then
-    s!"contains sorry {provedStatusLocationText decl.provedStatus}"
-  else if externalDeclHasGap decl then
-    provedStatusLocationText decl.provedStatus
-  else
-    "complete"
-
-private def externalDeclHref (decl : Data.ExternalRef) (hrefOf : Name → Option String) : Option String :=
-  if decl.present then
-    match hrefOf decl.canonical with
-    | some href => some href
-    | none => hrefOf decl.written
-  else
-    hrefOf decl.written
-
-private def externalSummaryItems (decls : Array Data.ExternalRef) (hrefOf : Name → Option String)
-    : Array (String × Option String) :=
-  decls.map fun decl =>
-    (s!"{decl.written} [{externalDeclStatusText decl}]", externalDeclHref decl hrefOf)
-
-private def renderExternalSummaryTooltip (decls : Array Data.ExternalRef)
-    (hrefOf : Name → Option String) : Output.Html :=
-  open Verso.Output.Html in
-  {{
-    <div class="bp_code_hover" role="tooltip">
-      <div class="bp_code_hover_title">"External Lean references"</div>
-      <div class="bp_code_hover_section">
-        <ul class="bp_code_hover_list">
-          {{summaryDeclItems (externalSummaryItems decls hrefOf)}}
-        </ul>
-      </div>
-    </div>
-  }}
-
 private def axisCompletionText : Nat → String
   | 0 => "completed"
   | _ + 1 => "with sorries"
@@ -360,6 +420,173 @@ private def statusMarkFromCodeSource
     (source? : Option BlockCodeData) : BlockStatusMark :=
   source?.map statusMarkFromResolvedCodeSource |>.getD (completionStatusMark 0 0)
 
+private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
+  decls.qsort (fun a b =>
+    a.commandIndex < b.commandIndex ||
+    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
+
+private def progressSegmentClass (missing hasSorry : Bool) : String :=
+  if missing then
+    "bp_code_progress_segment bp_code_progress_segment_missing"
+  else if hasSorry then
+    "bp_code_progress_segment bp_code_progress_segment_sorry"
+  else
+    "bp_code_progress_segment bp_code_progress_segment_ok"
+
+private def codeSummaryText (label : Data.Label)
+    (definedDefs definedTheorems : Array CodeDeclData) : String :=
+  if definedDefs.isEmpty && definedTheorems.isEmpty then
+    s!"{label}"
+  else
+    let definedDefNames := definedDefs.map (·.name)
+    let definedTheoremNames := definedTheorems.map (·.name)
+    let defs :=
+      if definedDefNames.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (definedDefNames.toList.map toString)
+    let thms :=
+      if definedTheoremNames.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (definedTheoremNames.toList.map toString)
+    let summaryItems := inlineDeclSummaryItems definedDefs definedTheorems (fun _ => none)
+    let sorries := incompleteSummaryItems summaryItems
+    let sorriesTxt :=
+      if sorries.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (sorries.toList.map fun item => s!"{item.name} [{declSummaryStatusText item}]")
+    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorriesTxt}"
+
+private def wrapPanelIndicator (node tooltip : Output.Html) : Output.Html :=
+  open Verso.Output.Html in
+  {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{node}}{{tooltip}}</span>}}
+
+private def renderInlinePanelIndicator (label : Data.Label) (codeData : InlineCodeData)
+    (hrefOf : Name → Option String) : PanelIndicatorParts :=
+  open Verso.Output.Html in
+  let orderedDecls := sortDeclsByCommand (codeData.definedDefs ++ codeData.definedTheorems)
+  let tooltip := renderSummaryPreview label { source := some (.inline codeData) } hrefOf
+  let indicator : Output.Html :=
+    if orderedDecls.isEmpty then
+      .empty
+    else
+      let segments := orderedDecls.map fun decl =>
+        let hasSorry := provedStatusHasSorry decl.provedStatus
+        let cls := progressSegmentClass false hasSorry
+        let weight := max decl.weight 1
+        let title :=
+          if hasSorry then
+            if provedStatusContainsSorry decl.provedStatus then
+              s!"{decl.name}: contains sorry {provedStatusLocationText decl.provedStatus}"
+            else
+              s!"{decl.name}: {provedStatusLocationText decl.provedStatus}"
+          else
+            s!"{decl.name}: complete"
+        {{
+          <span class={{cls}} title={{title}} style={{s!"flex: {weight} 1 0%"}}></span>
+        }}
+      let bar := {{<span class="bp_code_progress" aria-label="Lean declaration progress">{{segments}}</span>}}
+      wrapPanelIndicator bar tooltip
+  {
+    summaryTitle := codeSummaryText label codeData.definedDefs codeData.definedTheorems
+    indicator
+  }
+
+private def pluralizeKindText (kind : String) : String :=
+  match kind with
+  | "lemma" => "lemmas"
+  | "theorem" => "theorems"
+  | "definition" => "definitions"
+  | "corollary" => "corollaries"
+  | _ => kind ++ "s"
+
+private def externalIndicatorKindText?
+    (decls : Array Data.ExternalRef) (agg : ExternalHeadingAggregate) : Option String :=
+  if agg.missing > 0 || decls.isEmpty then
+    none
+  else
+    let kinds := decls.filterMap externalDeclKindText?
+    if kinds.size != decls.size || kinds.isEmpty then
+      none
+    else
+      let first := kinds[0]!
+      if kinds.all (· == first) then
+        some first
+      else
+        none
+
+private def externalIndicatorText
+    (decls : Array Data.ExternalRef) (agg : ExternalHeadingAggregate) : String :=
+  let declText :=
+    match externalIndicatorKindText? decls agg with
+    | some kind =>
+      if agg.total == 1 then
+        s!"1 {kind}"
+      else
+        s!"{agg.total} {pluralizeKindText kind}"
+    | none =>
+      if agg.total == 1 then
+        "1 declaration"
+      else
+        s!"{agg.total} declarations"
+  if agg.missing > 0 then
+    s!"{declText}, {agg.missing} missing"
+  else if agg.withSorries > 0 then
+    if agg.total == 1 then
+      s!"{declText}, incomplete"
+    else
+      s!"{declText}, {agg.withSorries} incomplete"
+  else
+    declText
+
+private def externalIndicatorStatus
+    (agg : ExternalHeadingAggregate) : String × String × String :=
+  if agg.missing > 0 then
+    ("bp_external_status_missing", "●", s!"Lean declarations: {agg.found}/{agg.total} present ({agg.missing} missing)")
+  else if agg.withSorries > 0 then
+    ("bp_external_status_sorry", "●", s!"Lean declarations: all present, {agg.withSorries} incomplete")
+  else
+    ("bp_external_status_ok", "●", s!"Lean declarations: all {agg.total} present")
+
+private def renderExternalPanelIndicator (decls : Array Data.ExternalRef)
+    (label : Data.Label) (hrefOf : Name → Option String) : PanelIndicatorParts :=
+  open Verso.Output.Html in
+  let agg := externalHeadingAggregate decls
+  let tooltip := renderSummaryPreview label { source := some (.external decls) } hrefOf
+  let (iconClass, iconText, iconTitle) := externalIndicatorStatus agg
+  let badgeText := externalIndicatorText decls agg
+  let badge : Output.Html := {{
+    <span class={{s!"bp_external_status_badge bp_external_status_badge_summary {iconClass}"}} title={{iconTitle}}>
+      <span class={{s!"bp_external_status_icon {iconClass}"}}>{{.text true iconText}}</span>
+      <span class="bp_external_status_badge_text">{{.text true badgeText}}</span>
+    </span>
+  }}
+  {
+    summaryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withSorries
+    indicator := wrapPanelIndicator badge tooltip
+  }
+
+/--
+Render the top-right code-panel indicator from canonical code-source data.
+
+Inline blocks use the weighted progress bar; external references keep the pill-style
+indicator for now, but both paths share the same normalized declaration summary model
+for hover content.
+-/
+def renderPanelIndicator (label : Data.Label) (cdata : ComputedData)
+    (hrefOf : Name → Option String) : PanelIndicatorParts :=
+  match cdata.source with
+  | some (.inline codeData) =>
+    renderInlinePanelIndicator label codeData hrefOf
+  | some (.external decls) =>
+    renderExternalPanelIndicator decls label hrefOf
+  | some .userOk =>
+    { summaryTitle := "Marked complete via (leanok := true)" }
+  | none =>
+    { summaryTitle := "No associated Lean declarations" }
+
 /--
 Render Lean summary UI for an informal block heading.
 
@@ -379,10 +606,10 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
   | .proof => {}
   | .statement _statementKind =>
     let externalDecls := cdata.source.map BlockCodeData.externalDecls |>.getD #[]
+    let codeEntryTooltip := renderSummaryPreview data.label cdata hrefOf
     if !externalDecls.isEmpty then
       let agg := externalHeadingAggregate externalDecls
       let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withSorries
-      let codeEntryTooltip := renderExternalSummaryTooltip externalDecls hrefOf
       let statusMark := statusMarkFromCodeSource cdata.source
       {
         statusMark := some statusMark
@@ -394,14 +621,6 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
       let userOk := cdata.source.map BlockCodeData.isUserOk |>.getD false
       let hasInline := cdata.codeHref.isSome || inlineData?.isSome
       let hasSource := hasInline || userOk
-      let codeEntryTooltip : Output.Html :=
-        match inlineData? with
-        | some codeData => renderCodeSummaryTooltip data.label codeData.definedDefs codeData.definedTheorems hrefOf
-        | none =>
-          if userOk then
-            userOkSummaryTooltip
-          else
-            noLeanSummaryTooltip
       let codeEntryTitle : String :=
         if hasInline then
           "Lean declarations"

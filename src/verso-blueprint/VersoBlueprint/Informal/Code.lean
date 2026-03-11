@@ -24,44 +24,6 @@ open Lean.Doc.Syntax
 namespace Informal
 open CodeSummary
 
-private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
-  decls.qsort (fun a b =>
-    a.commandIndex < b.commandIndex ||
-    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
-
-private def progressSegmentClass (missing hasSorry : Bool) : String :=
-  if missing then
-    "bp_code_progress_segment bp_code_progress_segment_missing"
-  else if hasSorry then
-    "bp_code_progress_segment bp_code_progress_segment_sorry"
-  else
-    "bp_code_progress_segment bp_code_progress_segment_ok"
-
-private def codeSummaryText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
-  if definedDefs.isEmpty && definedTheorems.isEmpty then
-    s!"{label}"
-  else
-    let definedDefNames := definedDefs.map (·.name)
-    let definedTheoremNames := definedTheorems.map (·.name)
-    let defs :=
-      if definedDefNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedDefNames.toList.map toString)
-    let thms :=
-      if definedTheoremNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedTheoremNames.toList.map toString)
-    let sorryDecls := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus))
-    let sorries :=
-      if sorryDecls.isEmpty then
-        "none"
-      else
-        String.intercalate ", " <| sorryDecls.toList.map fun d =>
-          s!"{d.name} [{provedStatusSummaryText d.provedStatus}]"
-    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
-
 block_extension Block.informalCode (data : InlineCodeData) where
   data := toJson data
   traverse id data _contents := do
@@ -98,34 +60,17 @@ block_extension Block.informalCode (data : InlineCodeData) where
             codePanelHeader b (b.displayNumber s)
           | .error _ => fallbackCodePanelHeader
         | none => fallbackCodePanelHeader
-      let orderedDecls := sortDeclsByCommand (definedDefs ++ definedTheorems)
       let getDeclHref (decl : Name) : Option String :=
         Resolve.resolveInlineLeanDeclHref? s decl
-      let progressSummaryTooltip : Output.Html :=
-        renderCodeSummaryTooltip label definedDefs definedTheorems getDeclHref
-      let progressBar : Output.Html :=
-        if orderedDecls.isEmpty then
-          .empty
-        else
-          let segments := orderedDecls.map fun decl =>
-            let hasSorry := provedStatusHasSorry decl.provedStatus
-            let cls := progressSegmentClass false hasSorry
-            let weight := max decl.weight 1
-            let title :=
-              if hasSorry then
-                if provedStatusContainsSorry decl.provedStatus then
-                  s!"{decl.name}: contains sorry {provedStatusLocationText decl.provedStatus}"
-                else
-                  s!"{decl.name}: {provedStatusLocationText decl.provedStatus}"
-              else
-                s!"{decl.name}: complete"
-            {{<span class={{cls}} title={{title}} style={{s!"flex: {weight} 1 0%"}}></span>}}
-          let bar := {{<span class="bp_code_progress" aria-label="Lean declaration progress">{{segments}}</span>}}
-          {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{bar}}{{progressSummaryTooltip}}</span>}}
-      let summaryTitle := codeSummaryText label definedDefs definedTheorems
+      let panelSummary :=
+        renderPanelIndicator label
+          {
+            source := some (.inline { label, definedDefs, definedTheorems, foldProofs })
+          }
+          getDeclHref
       let panelAttrs := attrs.push ("data-bp-proof-fold", if foldProofs then "on" else "off")
       let panelBody := .seq (← blocks.mapM goB)
-      pure <| mkCodePanel panelHeader summaryTitle progressBar panelBody panelAttrs
+      pure <| mkCodePanel panelHeader panelSummary.summaryTitle panelSummary.indicator panelBody panelAttrs
 
 structure CodeConfig where
   label : Data.Label

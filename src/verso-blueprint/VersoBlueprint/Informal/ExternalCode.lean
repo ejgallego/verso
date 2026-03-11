@@ -130,38 +130,6 @@ private def externalDeclSorryLocation (decl : LinkedExternalDecl) : String :=
   else
     "location unknown"
 
-private def externalDeclRenderError? (decl : LinkedExternalDecl) : Option String :=
-  if decl.decl.present then
-    renderErrorMessage? decl.decl.render
-  else
-    none
-
-private def externalDeclHasRenderError (decl : LinkedExternalDecl) : Bool :=
-  (externalDeclRenderError? decl).isSome
-
-private def externalDeclRenderErrorSummary? (decl : LinkedExternalDecl) : Option String :=
-  (externalDeclRenderError? decl).map fun err => s!"render failed: {err}"
-
-private def externalDeclLookupError? (decl : LinkedExternalDecl) : Option Data.ExternalDeclLookupError :=
-  if decl.decl.present then none else some .notPresentAtRegistration
-
-private structure ExternalDeclAggregate where
-  total : Nat
-  found : Nat
-  missing : Nat
-  renderErrors : Nat
-  withGaps : Nat
-
-private def externalDeclAggregate (decls : Array LinkedExternalDecl) : ExternalDeclAggregate :=
-  decls.foldl
-      (init := { total := decls.size, found := 0, missing := 0, renderErrors := 0, withGaps := 0 })
-      fun acc decl =>
-        let (found, missing) :=
-          if decl.decl.present then (acc.found + 1, acc.missing) else (acc.found, acc.missing + 1)
-        let renderErrors := acc.renderErrors + (if externalDeclHasRenderError decl then 1 else 0)
-        let withGaps := acc.withGaps + (if externalDeclHasGap decl.decl then 1 else 0)
-        { acc with found, missing, renderErrors, withGaps }
-
 private def externalDeclGapStatusText? (item : LinkedExternalDecl) : Option String :=
   if externalDeclHasGap item.decl then
     if provedStatusContainsSorry item.decl.provedStatus then
@@ -171,14 +139,6 @@ private def externalDeclGapStatusText? (item : LinkedExternalDecl) : Option Stri
   else
     none
 
-private def externalPanelStatus (agg : ExternalDeclAggregate) : String × String × String :=
-  if agg.missing > 0 then
-    ("bp_external_status_missing", "●", s!"Lean declarations: {agg.found}/{agg.total} present ({agg.missing} missing)")
-  else if agg.withGaps > 0 then
-    ("bp_external_status_sorry", "●", s!"Lean declarations: all present, {agg.withGaps} incomplete")
-  else
-    ("bp_external_status_ok", "●", s!"Lean declarations: all {agg.total} present")
-
 private def externalDeclStatusClass (item : LinkedExternalDecl) : String :=
   if !item.decl.present then
     "bp_external_decl_missing"
@@ -187,40 +147,11 @@ private def externalDeclStatusClass (item : LinkedExternalDecl) : String :=
   else
     "bp_external_decl_ok"
 
-private def externalDeclSummaryStatusText (item : LinkedExternalDecl) : String :=
-  if !item.decl.present then
-    "(missing Lean declaration)"
-  else
-    let parts :=
-      #[
-        some "has Lean declaration",
-        externalDeclGapStatusText? item,
-        externalDeclRenderErrorSummary? item
-      ].filterMap id
-    s!"({String.intercalate "; " parts.toList})"
-
 private def externalDeclPanelStatusText (item : LinkedExternalDecl) : String :=
   if !item.decl.present then
     "missing declaration"
   else
     (externalDeclGapStatusText? item).getD "complete"
-
-private def externalDeclSorryInfo? (item : LinkedExternalDecl) : Option String :=
-  if !item.decl.present then
-    none
-  else if externalDeclHasGap item.decl then
-    if provedStatusContainsSorry item.decl.provedStatus then
-      some s!"Contains sorry ({externalDeclSorryLocation item})"
-    else
-      some "Axiom-like declaration (no body)"
-  else
-    none
-
-private def sourcePosText (pos : Lean.Position) : String :=
-  s!"{pos.line}:{pos.column}"
-
-private def sourceRangeText (range : Lean.DeclarationRange) : String :=
-  s!"{sourcePosText range.pos}-{sourcePosText range.endPos}"
 
 private def externalDeclNode (item : LinkedExternalDecl) : Output.Html :=
   open Verso.Output.Html in
@@ -230,17 +161,6 @@ private def externalDeclNode (item : LinkedExternalDecl) : Output.Html :=
   else
     declTxt
 
-private def externalDeclSourceInfo? (item : LinkedExternalDecl) : Option String :=
-  if !item.decl.present then
-    none
-  else
-    match Data.ExternalDeclProvenance.moduleName? item.decl.provenance,
-      (item.decl.selectionRange?.map sourceRangeText <|> item.decl.range?.map sourceRangeText) with
-    | some moduleName, some rangeTxt => some s!"{moduleName} @ {rangeTxt}"
-    | some moduleName, none => some s!"{moduleName}"
-    | none, some rangeTxt => some s!"{rangeTxt}"
-    | none, none => none
-
 private def externalDeclSourceRef? (item : LinkedExternalDecl) : Option Output.Html :=
   open Verso.Output.Html in
   if !item.decl.present then
@@ -249,36 +169,21 @@ private def externalDeclSourceRef? (item : LinkedExternalDecl) : Option Output.H
     item.decl.sourceHref?.map fun href =>
       {{<a class="bp_code_link" href={{href}}>"open source"</a>}}
 
-private def externalDeclSourceRefRow? (item : LinkedExternalDecl) : Option Output.Html :=
-  open Verso.Output.Html in
-  (externalDeclSourceRef? item).map fun sourceRef =>
-    {{<div class="bp_external_decl_meta">"source ref: " {{sourceRef}}</div>}}
+private structure ExternalDeclRowData where
+  liAttrs : Array (String × String) := #[]
+  head : Output.Html := .empty
+  body : Output.Html := .empty
+  footer : Output.Html := .empty
 
-private def externalDeclItem (item : LinkedExternalDecl) (statusTxt : String)
-    (body : Output.Html := .empty) (headTail : Output.Html := .empty) : Output.Html :=
+private def externalDeclHead (item : LinkedExternalDecl) (statusTxt : String) : Output.Html :=
   open Verso.Output.Html in
   let statusClass := externalDeclStatusClass item
-  let liAttrs := #[("class", "bp_external_decl_item")] ++ item.anchorAttrs
   {{
-    <li {{liAttrs}}>
-      <div class="bp_external_decl_head">
-        {{externalDeclNode item}}
-        <span class={{statusClass}}>{{.text true statusTxt}}</span>
-        {{headTail}}
-      </div>
-      {{body}}
-    </li>
+    <div class="bp_external_decl_head">
+      {{externalDeclNode item}}
+      <span class={{statusClass}}>{{.text true statusTxt}}</span>
+    </div>
   }}
-
-private def kindTextForDecl? (decl : Data.ExternalRef) : Option String :=
-  if !decl.present then
-    none
-  else
-    match decl.kind with
-    | .definition => some "definition"
-    | .lemma => some "lemma"
-    | .theorem => some "theorem"
-    | .corollary => some "corollary"
 
 /--
 TODO(external-code): revisit footer/status semantics once we surface real
@@ -310,53 +215,6 @@ private def externalDeclRenderedMeta
     </div>
   }}
 
-private def pluralizeKindText (kind : String) : String :=
-  match kind with
-  | "lemma" => "lemmas"
-  | "theorem" => "theorems"
-  | "definition" => "definitions"
-  | "corollary" => "corollaries"
-  | _ => kind ++ "s"
-
-private def externalPanelKindText?
-    (items : Array LinkedExternalDecl) (agg : ExternalDeclAggregate) : Option String :=
-  if agg.missing > 0 || items.isEmpty then
-    none
-  else
-    let kinds := items.filterMap (kindTextForDecl? ·.decl)
-    if kinds.size != items.size || kinds.isEmpty then
-      none
-    else
-      let first := kinds[0]!
-      if kinds.all (· == first) then
-        some first
-      else
-        none
-
-private def externalPanelSummaryText
-    (items : Array LinkedExternalDecl) (agg : ExternalDeclAggregate) : String :=
-  let declText :=
-    match externalPanelKindText? items agg with
-    | some kind =>
-      if agg.total == 1 then
-        s!"1 {kind}"
-      else
-        s!"{agg.total} {pluralizeKindText kind}"
-    | none =>
-      if agg.total == 1 then
-        "1 declaration"
-      else
-        s!"{agg.total} declarations"
-  if agg.missing > 0 then
-    s!"{declText}, {agg.missing} missing"
-  else if agg.withGaps > 0 then
-    if agg.total == 1 then
-      s!"{declText}, incomplete"
-    else
-      s!"{declText}, {agg.withGaps} incomplete"
-  else
-    declText
-
 private def externalDeclRendered (item : LinkedExternalDecl) : Output.Html :=
   open Verso.Output.Html in
   match item.decl.render with
@@ -368,6 +226,39 @@ private def externalDeclRendered (item : LinkedExternalDecl) : Output.Html :=
     {{
       <pre class="bp_external_decl_stmt bp_external_decl_render_error">{{.text true s!"Render failed: {err.message}"}}</pre>
     }}
+
+private def missingExternalDeclBody : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <pre class="bp_external_decl_stmt bp_code_hover_none">
+      {{.text true s!"declaration not found ({Data.ExternalDeclLookupError.message .notPresentAtRegistration})"}}
+    </pre>
+  }}
+
+private def externalDeclRowData (item : LinkedExternalDecl) : ExternalDeclRowData :=
+  let statusTxt := externalDeclPanelStatusText item
+  if !item.decl.present then
+    {
+      liAttrs := #[("class", "bp_external_decl_item")] ++ item.anchorAttrs
+      head := externalDeclHead item statusTxt
+      body := missingExternalDeclBody
+    }
+  else
+    {
+      liAttrs := #[("class", "bp_external_decl_item bp_external_decl_item_rendered")] ++ item.anchorAttrs
+      body := externalDeclRendered item
+      footer := externalDeclRenderedMeta item statusTxt
+    }
+
+private def renderExternalDeclRow (row : ExternalDeclRowData) : Output.Html :=
+  open Verso.Output.Html in
+  {{
+    <li {{row.liAttrs}}>
+      {{row.head}}
+      {{row.body}}
+      {{row.footer}}
+    </li>
+  }}
 
 /--
 Rendered fragments produced by `ExternalCode.renderParts` for external panel content.
@@ -381,6 +272,7 @@ Render external-code UI fragments for an informal block.
 This function only renders optional external code panel body for `(lean := ...)` references.
 -/
 def renderParts (panelHeader : CodePanelHeader)
+    (summaryTitle : String) (indicator : Output.Html)
     (externalDecls : Array Data.ExternalRef) (getDeclHref : Name → Option String)
     (getDeclAnchorAttrs : Data.ExternalRef → Array (String × String) := fun _ => #[]) : RenderParts :=
   open Verso.Output.Html in
@@ -396,73 +288,13 @@ def renderParts (panelHeader : CodePanelHeader)
         else
           getDeclHref decl.written
       { decl, href, anchorAttrs := getDeclAnchorAttrs decl }
-    let externalAgg := externalDeclAggregate linkedDecls
-    let externalSummaryListItems (items : Array LinkedExternalDecl) : Output.Html :=
-      if items.isEmpty then
-        {{<li class="bp_code_hover_none">"none"</li>}}
-      else
-        .seq <| items.map fun item =>
-          let statusTxt := externalDeclSummaryStatusText item
-          let sourcePath? := if item.decl.present then Data.ExternalDeclProvenance.sourcePath? item.decl.provenance else none
-          let sourceInfo? := externalDeclSourceInfo? item
-          let sorryInfo? := externalDeclSorryInfo? item
-          let renderErrorSummary? := externalDeclRenderErrorSummary? item
-          let lookupError? := (externalDeclLookupError? item).map Data.ExternalDeclLookupError.message
-          let body : Output.Html := {{
-            {{if let some kind := kindTextForDecl? item.decl then {{<div class="bp_external_decl_meta">"kind: " <code>{{.text true kind}}</code></div>}} else .empty}}
-            {{if let some sourceInfo := sourceInfo? then {{<div class="bp_external_decl_meta">"source: " <code>{{.text true sourceInfo}}</code></div>}} else .empty}}
-            {{if let some sourcePath := sourcePath? then {{<div class="bp_external_decl_meta">"source path: " <code>{{.text true sourcePath}}</code></div>}} else .empty}}
-            {{if let some sourceRefRow := externalDeclSourceRefRow? item then sourceRefRow else .empty}}
-            {{if let some sorryInfo := sorryInfo? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true sorryInfo}}</div>}} else .empty}}
-            {{if let some renderErrorSummary := renderErrorSummary? then {{<div class="bp_external_decl_meta bp_external_decl_error">{{.text true renderErrorSummary}}</div>}} else .empty}}
-            {{if let some lookupError := lookupError? then {{<div class="bp_external_decl_meta bp_external_decl_missing">{{.text true s!"Lookup error: {lookupError}"}}</div>}} else .empty}}
-          }}
-          externalDeclItem item statusTxt body
     let externalPanelListItems (items : Array LinkedExternalDecl) : Output.Html :=
       if items.isEmpty then
         {{<li class="bp_code_hover_none">"none"</li>}}
       else
-        .seq <| items.map fun item =>
-          let statusTxt := externalDeclPanelStatusText item
-          if !item.decl.present then
-            let body : Output.Html := {{
-              <pre class="bp_external_decl_stmt bp_code_hover_none">{{.text true s!"declaration not found ({Data.ExternalDeclLookupError.message .notPresentAtRegistration})"}}</pre>
-            }}
-            externalDeclItem item statusTxt body
-          else
-            let renderedAttrs :=
-              #[("class", "bp_external_decl_item bp_external_decl_item_rendered")] ++ item.anchorAttrs
-            {{
-              <li {{renderedAttrs}}>
-                {{externalDeclRendered item}}
-                {{externalDeclRenderedMeta item statusTxt}}
-              </li>
-            }}
-    let externalSummaryTooltip : Output.Html :=
-      {{
-        <div class="bp_code_hover" role="tooltip">
-          <div class="bp_code_hover_title">"Lean declarations"</div>
-          <div class="bp_code_hover_section">
-            <ul class="bp_code_hover_list">
-              {{externalSummaryListItems linkedDecls}}
-            </ul>
-          </div>
-        </div>
-      }}
-    let codeEntryTitle :=
-      externalCodeEntryTitle externalAgg.found externalAgg.total externalAgg.missing externalAgg.withGaps
-    let externalStatusIndicator : Output.Html :=
-      let (iconClass, iconText, iconTitle) := externalPanelStatus externalAgg
-      let badgeText := externalPanelSummaryText linkedDecls externalAgg
-      let badge := {{
-        <span class={{s!"bp_external_status_badge bp_external_status_badge_summary {iconClass}"}} title={{iconTitle}}>
-          <span class={{s!"bp_external_status_icon {iconClass}"}}>{{.text true iconText}}</span>
-          <span class="bp_external_status_badge_text">{{.text true badgeText}}</span>
-        </span>
-      }}
-      {{<span class="bp_code_hover_wrap bp_code_summary_indicator">{{badge}}{{externalSummaryTooltip}}</span>}}
+        .seq <| items.map (renderExternalDeclRow ∘ externalDeclRowData)
     let externalCodePanel : Output.Html :=
-      mkCodePanel panelHeader codeEntryTitle externalStatusIndicator
+      mkCodePanel panelHeader summaryTitle indicator
         {{<ul class="bp_code_hover_list bp_external_decl_list">{{externalPanelListItems linkedDecls}}</ul>}}
     { externalCodePanel }
 

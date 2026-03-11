@@ -1784,7 +1784,9 @@ block_extension Block.informal (data : BlockData) where
           | .statement _ => data.codeData
         let codeSource := BlockCodeData.ofHintAndInline codeHint? codeData?
         let getDeclHref (decl : Name) : Option String :=
-          Resolve.resolveInlineLeanDeclHref? s decl
+          match Resolve.resolveRenderedExternalDeclHref? s data.label decl with
+          | some href => some href
+          | none => Resolve.resolveInlineLeanDeclHref? s decl
         let getDeclAnchorAttrs (decl : Data.ExternalRef) : Array (String × String) :=
           let attrsFor (declName : Name) : Array (String × String) :=
             let key := Resolve.externalRenderedDeclTargetKey data.label declName
@@ -1802,6 +1804,7 @@ block_extension Block.informal (data : BlockData) where
           codeHref
           source := codeSource
         }
+        let panelSummary := CodeSummary.renderPanelIndicator data.label cdata getDeclHref
         let headingParts? : Option CodeSummary.RenderParts :=
           match data.kind with
           | .statement _ => some <| CodeSummary.renderParts data cdata getDeclHref
@@ -1813,7 +1816,13 @@ block_extension Block.informal (data : BlockData) where
               none
             else
               let panelHeader := codePanelHeader data (data.displayNumber s)
-              some <| ExternalCode.renderParts panelHeader decls getDeclHref getDeclAnchorAttrs
+              some <| ExternalCode.renderParts
+                panelHeader
+                panelSummary.summaryTitle
+                panelSummary.indicator
+                decls
+                getDeclHref
+                getDeclAnchorAttrs
           | _, _ => none
         let externalPanel := (externalParts?.map (·.externalCodePanel)).getD .empty
         let content := (← blocks.mapM goB)
