@@ -24,6 +24,30 @@ External declaration wiring test.
 {bp_summary}
 :::::::
 
+/--
+warning: Label «def:blocker.missing»: external Lean name 'Nat.nope' could not be resolved in current namespace/open declarations; keeping parsed name
+---
+info: Blueprint summary for 3 entries
+-/
+#guard_msgs in
+#docs (Genre.Manual) summaryBlockersDoc "Summary Blockers" :=
+:::::::
+:::definition "def:blocker.missing" (lean := "Nat.nope")
+Missing external declaration sample.
+:::
+
+:::definition "def:blocker.sorry"
+Inline sorry sample.
+:::
+
+```lean "def:blocker.sorry"
+theorem summaryBlockerSorry : True := by
+  sorry
+```
+
+{bp_summary}
+:::::::
+
 #docs (Genre.Manual) summaryTriageDoc "Summary Triage" :=
 :::::::
 :::author "alice" (name := "Alice Example")
@@ -187,6 +211,20 @@ private def appearsBefore (s lhs rhs : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
+    let blocks := collectBlocks summaryBlockersDoc.toPart
+    let html ← renderManualBlocksHtml blocks
+    let out := html.asString
+    pure (
+      hasSubstr out "Blockers (2)" &&
+      hasSubstr out "Missing external Lean declarations (1)" &&
+      hasSubstr out "Incomplete Lean declarations (1)" &&
+      !hasSubstr out "Incomplete details ("
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
     let blocks := collectBlocks summaryTriageDoc.toPart
     let html ← renderManualBlocksHtml blocks
     let out := html.asString
@@ -201,6 +239,7 @@ private def appearsBefore (s lhs rhs : String) : Bool :=
       hasSubstr out "Most used in proofs (2)" &&
       hasSubstr out "proof uses: 1" &&
       hasSubstr out "Group health (1)" &&
+      hasSubstr out "By parent groups (1)" &&
       hasSubstr out "Metadata" &&
       hasSubstr out "Quick wins (1)" &&
       hasSubstr out "Owner rollups (2)" &&
@@ -218,10 +257,12 @@ private def appearsBefore (s lhs rhs : String) : Bool :=
       hasSubstr out "Heaviest prerequisites (" &&
       hasSubstr out "No prerequisites (" &&
       hasSubstr out "No dependents (" &&
-      hasSubstr out "Proof debt hotspots (0)" &&
+      !hasSubstr out "Proof debt hotspots (0)" &&
       hasSubstr out "Next:" &&
       hasSubstr out "priority: high" &&
       hasSubstr out "priority: low" &&
+      !hasSubstr out "Axiom-like Index (0)" &&
+      !hasSubstr out "Proof debt hotspots (0)" &&
       appearsBefore out "def:triage.12" "def:triage.01" &&
       hasSubstr out "def:triage.01" &&
       hasSubstr out "downstream unlocks: 1"
