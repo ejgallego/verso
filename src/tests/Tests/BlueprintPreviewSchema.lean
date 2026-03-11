@@ -23,16 +23,34 @@ open Informal.PreviewManifest
       let Except.ok fileProps := filePropsJson.getObj? | return false
       let Except.ok entryPropsJson := Json.getObjVal? entrySchema "properties" | return false
       let Except.ok entryProps := entryPropsJson.getObj? | return false
+      let proofDepsDesc? := do
+        let proofDepsJson ← entryProps.get? "proofDeps"
+        proofDepsJson.getObjValAs? String "description" |>.toOption
+      let kindDesc? := do
+        let kindJson ← entryProps.get? "kind"
+        kindJson.getObjValAs? String "description" |>.toOption
       rootRef == "#/$defs/Informal.PreviewManifest.File" &&
-        defs.size == 3 &&
-        fileProps.contains "version" &&
+        defs.size == 4 &&
+        !fileProps.contains "version" &&
         fileProps.contains "previews" &&
         entryProps.contains "key" &&
         entryProps.contains "label" &&
         entryProps.contains "facet" &&
+        entryProps.contains "kind" &&
         entryProps.contains "title" &&
         entryProps.contains "href" &&
+        entryProps.contains "parent" &&
+        entryProps.contains "parentTitle" &&
+        entryProps.contains "statementDeps" &&
+        entryProps.contains "proofDeps" &&
+        entryProps.contains "ownerDisplayName" &&
+        entryProps.contains "tags" &&
+        entryProps.contains "priority" &&
+        entryProps.contains "effort" &&
         entryProps.contains "html" &&
+        proofDepsDesc? == some "Informal nodes used by the proof." &&
+        kindDesc? == some "Kind (definition, lemma, theorem, corollary)." &&
+        defs.contains "Informal.Data.NodeKind" &&
         defs.contains "Informal.PreviewCache.Facet"
 
 end Verso.Tests.BlueprintPreviewSchema

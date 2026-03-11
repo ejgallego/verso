@@ -9,6 +9,7 @@ import Lean.Elab.Command
 import Std.Data.HashSet
 import VersoManual
 import VersoBlueprint.Informal.Block
+import VersoBlueprint.Informal.Group
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.PreviewRender
 import VersoBlueprint.Resolve
@@ -19,19 +20,40 @@ open Lean Elab Command Term Meta
 open Verso Doc
 open Verso.Genre Manual
 
-def manifestVersion : Nat := 1
-
 structure Entry where
+  /-- Composite preview lookup key, currently `{label}--{facet}`. -/
   key : String
+  /-- Canonical informal node label. -/
   label : Name
+  /-- Which preview variant this entry contains: statement or proof. -/
   facet : PreviewCache.Facet
+  /-- Kind (definition, lemma, theorem, corollary). -/
+  kind : Option Informal.Data.NodeKind := none
+  /-- Resolved display title for this preview entry. -/
   title : String
+  /-- Canonical link target for the rendered informal node. -/
   href : Option String := none
+  /-- Parent/group label for this informal node, if any. -/
+  parent : Option Name := none
+  /-- Resolved display title for the parent/group, if any. -/
+  parentTitle : Option String := none
+  /-- Informal nodes used by the statement. -/
+  statementDeps : Array Name := #[]
+  /-- Informal nodes used by the proof. -/
+  proofDeps : Array Name := #[]
+  /-- Resolved display name of the assigned owner, if available. -/
+  ownerDisplayName : Option String := none
+  /-- Normalized tags attached to this informal node. -/
+  tags : Array String := #[]
+  /-- Declared triage priority for this informal node, if any. -/
+  priority : Option String := none
+  /-- Declared effort estimate for this informal node, if any. -/
+  effort : Option String := none
+  /-- Rendered HTML body for this preview. -/
   html : String
 deriving Inhabited, Repr, ToJson, FromJson
 
 structure File where
-  version : Nat := manifestVersion
   previews : Array Entry := #[]
 deriving Inhabited, Repr, ToJson, FromJson
 
@@ -48,6 +70,24 @@ private def fieldKey (name : Name) : String :=
 private def fieldType (fieldName : Name) : MetaM Expr := do
   let info ← getConstInfo fieldName
   Meta.forallTelescopeReducing info.type fun _ body => pure body
+
+private def docSummary (docs : String) : String :=
+  match docs.trimAscii.toString.splitOn "\n\n" with
+  | [] => ""
+  | first :: _ => first.trimAscii.toString
+
+private def schemaWithDescription (schema : Json) (docs : String) : Json :=
+  let docs := docSummary docs
+  if docs.isEmpty then
+    schema
+  else
+    let combined :=
+      match schema.getObjValAs? String "description" with
+      | .ok existing =>
+          let existing := existing.trimAscii.toString
+          if existing.isEmpty then docs else s!"{docs} {existing}"
+      | .error _ => docs
+    schema.setObjVal! "description" (Json.str combined)
 
 private partial def schemaForType (ty : Expr) : StateT SchemaState MetaM Json := do
   let ty ← Meta.whnf ty
@@ -93,6 +133,11 @@ private partial def schemaForType (ty : Expr) : StateT SchemaState MetaM Json :=
         let mut required : Array Json := #[]
         for fieldInfo in info.fieldInfo do
           let schema ← schemaForType (← fieldType fieldInfo.projFn)
+          let docs? ← findDocString? env fieldInfo.projFn
+          let schema :=
+            match docs? with
+            | some docs => schemaWithDescription schema docs
+            | none => schema
           let key := fieldKey fieldInfo.fieldName
           properties := properties.concat (key, schema)
           required := required.push (Json.str key)
@@ -150,16 +195,44 @@ def schemaJson : Json :=
 private def outDirForMode (cfg : Verso.Genre.Manual.Config) (mode : Mode) : System.FilePath :=
   cfg.destination / (match mode with | .single => "html-single" | .multi => "html-multi")
 
-private def blockTitle (state : TraverseState) (label : Name) : String :=
+private def blockInfo? (state : TraverseState) (label : Name) : Option Informal.BlockData :=
   match state.getDomainObject? Resolve.informalDomainName label.toString with
-  | none => label.toString
+  | none => none
   | some obj =>
     match fromJson? (α := Informal.BlockData) obj.data with
-    | .ok blockData => blockData.withResolvedNumbering state |>.displayTitle state
-    | .error _ => label.toString
+    | .ok blockData => some (blockData.withResolvedNumbering state)
+    | .error _ => none
+
+private def blockTitle (state : TraverseState) (label : Name) (blockData? : Option Informal.BlockData := none) : String :=
+  match blockData? <|> blockInfo? state label with
+  | some blockData => blockData.displayTitle state
+  | none => label.toString
 
 private def blockHref (state : TraverseState) (label : Name) : Option String :=
   Resolve.resolveDomainHref? state Resolve.informalDomainName label.toString
+
+private def blockKind? (blockData? : Option Informal.BlockData) : Option Informal.Data.NodeKind :=
+  match blockData? with
+  | some blockData =>
+      match blockData.kind with
+      | Informal.Data.InProgressKind.statement kind => some kind
+      | Informal.Data.InProgressKind.proof => none
+  | none => none
+
+private def groupTitle? (state : TraverseState) (parent : Name) : Option String :=
+  match state.getDomainObject? Resolve.informalGroupDomainName parent.toString with
+  | none => none
+  | some obj =>
+    match fromJson? (α := Informal.GroupBlockData) obj.data with
+    | .ok groupData =>
+        let header := groupData.header.trimAscii.toString
+        if header.isEmpty then none else some header
+    | .error _ => none
+
+private def blockParentTitle? (state : TraverseState) (blockData? : Option Informal.BlockData) : Option String :=
+  blockData?.bind fun blockData =>
+    blockData.parent.map fun parent =>
+      (groupTitle? state parent).getD parent.toString
 
 private def buildEntries
     (impls : ExtensionImpls)
@@ -178,13 +251,23 @@ private def buildEntries
       let html ← Output.Html.asString <$> Informal.renderManualBlocksHtmlWithState entry.blocks impls state
       if html.trimAscii.isEmpty then
         continue
+      let blockData? := blockInfo? state entry.label
       let key := PreviewCache.key entry.label entry.facet
       let manifestEntry : Entry := {
         key
         label := entry.label
         facet := entry.facet
-        title := blockTitle state entry.label
+        kind := blockKind? blockData?
+        title := blockTitle state entry.label blockData?
         href := blockHref state entry.label
+        parent := blockData?.bind (·.parent)
+        parentTitle := blockParentTitle? state blockData?
+        statementDeps := blockData?.map (·.statementDeps) |>.getD #[]
+        proofDeps := blockData?.map (·.proofDeps) |>.getD #[]
+        ownerDisplayName := blockData?.bind (·.ownerDisplayName)
+        tags := blockData?.map (·.tags) |>.getD #[]
+        priority := blockData?.bind (·.priority)
+        effort := blockData?.bind (·.effort)
         html
       }
       entries := entries.push manifestEntry

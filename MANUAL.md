@@ -181,8 +181,10 @@ Blueprint builds that import `VersoBlueprint` emit a shared preview manifest aut
 
 This file is the canonical runtime source for informal statement/proof preview
 bodies. The page HTML no longer embeds a second copy of those block previews.
-It currently includes a top-level manifest `version` plus per-preview `key`,
-`label`, `facet`, `title`, optional `href`, and rendered `html`.
+It currently includes per-preview metadata such as `key`, `label`, `facet`,
+`kind`, `title`, optional `href`, optional `parent` / `parentTitle`, split
+statement/proof dependencies, owner display name, tags, priority, effort, and
+rendered `html`.
 
 To print the current JSON Schema for the manifest, run an example executable
 with `--dump-schema`, for example:
