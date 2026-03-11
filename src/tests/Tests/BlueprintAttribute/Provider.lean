@@ -17,4 +17,7 @@ theorem exportedTheorem : True := by
 @[blueprint "attr.exported.definition"]
 def exportedDefinition : Nat := 7
 
+@[blueprint "attr.exported.undocumented"]
+def exportedUndocumentedDefinition : Nat := 11
+
 end Verso.Tests.BlueprintAttribute.Provider
