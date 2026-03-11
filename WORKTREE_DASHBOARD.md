@@ -93,8 +93,8 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 
 ### `feat/blueview-20260311`
 
-- Status: `active` (owner action: harden duplicate handling next, first within one module and then across imported Blueprint files)
-- Summary: isolated review worktree for an audit of blueprint implementation quality. The review findings are now in hand, the repo-level Blueprint docs have been reshaped into a smaller three-document set under `doc/blueprint/`, and `@[blueprint]` export persistence is fixed. The next scheduled hardening pass is duplicate-identity handling: reject nested/duplicate local blocks earlier and detect imported collisions for labels, groups, and authors with explicit tests.
+- Status: `active` (owner action: polish the summary UI now that status evaluation is centralized)
+- Summary: isolated review worktree for an audit of blueprint implementation quality. The core cleanup passes are now in place: the repo-level docs were consolidated, `@[blueprint]` export persistence was fixed, duplicate identity handling was hardened, preview sources were unified, and status evaluation was centralized. The current phase is summary polish: hide zero-value sections, consolidate blocker reporting, and reduce duplicated theorem/group views.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
 - Branch: `feat/blueview-20260311`
 - Base commit/branch:
@@ -140,7 +140,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - widget preview and imported preview regressions now cover the unified preview path
   - shared status evaluation is now implemented:
   - graph, summary, and local code-summary heading status all consume the same `Graph.CodeHealth` evaluation path
-  - the next implementation target should come from the remaining roadmap items after this cleanup
+  - current implementation target: summary polish on top of the centralized status logic
 
 ### `feat/style-review-20260311`
 
