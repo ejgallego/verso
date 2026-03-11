@@ -106,6 +106,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - `815b6600` test(blueprint): expand attribute persistence coverage
   - `f2f6e2a4` fix(blueprint): harden duplicate identity handling
   - `e3538ae3` refactor(preview): unify preview source path
+  - `d8ffb462` refactor(status): share blueprint status evaluation
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
@@ -116,6 +117,9 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - `./script/lean-low-priority lake build Tests`
   - `./script/lean-low-priority lake build VersoBlueprint.Lib.PreviewSource VersoBlueprint.Widget VersoBlueprint.Informal.Block VersoBlueprint.PreviewRender`
   - `./script/lean-low-priority lake build Tests.BlueprintPreviewSource Tests.BlueprintTexMacros`
+  - `./script/lean-low-priority lake build Tests`
+  - `./script/lean-low-priority lake build VersoBlueprint.Graph VersoBlueprint.Informal.CodeSummary VersoBlueprint.Commands.Summary VersoBlueprint.Informal.Block`
+  - `./script/lean-low-priority lake build Tests.BlueprintGraph Tests.BlueprintSummaryStatus Tests.BlueprintExternalHeadingStatus Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks`
   - `./script/lean-low-priority lake build Tests`
 - Preview link:
   - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/noperthedron/html-multi/`
@@ -134,7 +138,9 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - preview-source duplication cleanup is now implemented:
   - persistent node payloads now store preview blocks, and `PreviewSource` renders from preview blocks first with syntax fallback only when needed
   - widget preview and imported preview regressions now cover the unified preview path
-  - next implementation target should come from the remaining roadmap items after this cleanup
+  - shared status evaluation is now implemented:
+  - graph, summary, and local code-summary heading status all consume the same `Graph.CodeHealth` evaluation path
+  - the next implementation target should come from the remaining roadmap items after this cleanup
 
 ### `feat/style-review-20260311`
 
