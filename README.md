@@ -109,8 +109,11 @@ To validate the blueprint example projects, run
 `spherepackingblueprint` in parallel under
 `_out/example-blueprints/`.
 
-Repository-level Blueprint design notes and implementation reviews now live under
-`doc/blueprint/`.
+Repository-level Blueprint docs now live under `doc/blueprint/`, organized as:
+
+- `doc/blueprint/USER_MANUAL.md`
+- `doc/blueprint/DESIGN_RATIONALE.md`
+- `doc/blueprint/ROADMAP.md`
 
 Each generated blueprint site also emits a shared preview manifest at
 `html-multi/-verso-data/blueprint-preview-manifest.json`. This is the canonical runtime

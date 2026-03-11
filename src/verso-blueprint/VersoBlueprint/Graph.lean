@@ -13,8 +13,8 @@ open Lean
 open Informal Data Environment
 
 /-!
-See `doc/blueprint/GRAPH_STATUS_COMPLETION_AND_COLORING_SPEC.md` for a
-human-readable status/completion and warning/color mapping specification.
+See `doc/blueprint/DESIGN_RATIONALE.md` for the human-readable graph
+status/completion and warning/color mapping rationale.
 -/
 
 /-- Upstream-compatible statement-track status (node border). -/
