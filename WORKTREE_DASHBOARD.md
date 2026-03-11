@@ -124,6 +124,9 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/style-review-20260311`)
   - `./script/lean-low-priority lake build Tests.BlueprintSummaryLinks Tests.BlueprintMetadataPanel Tests.BlueprintPreviewWiring`
   - `./script/lean-low-priority lake build Tests`
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
+  - rebased cleanly onto `bp` at `059bb0dd`
+  - post-rebase validation rerun:
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
 - Preview link:
   - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/noperthedron/html-multi/`
   - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/spherepackingblueprint/html-multi/`
