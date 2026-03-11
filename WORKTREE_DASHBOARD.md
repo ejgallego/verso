@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (created review worktree `feat/blueview-20260311`)
+Last updated: 2026-03-11 (created review worktree `feat/style-review-20260311`)
 
 ## Active Worktrees
 
@@ -108,6 +108,28 @@ Last updated: 2026-03-11 (created review worktree `feat/blueview-20260311`)
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
   - inspect `src/verso-blueprint/VersoBlueprint`, `doc/`, and `test-projects/Noperthedron`
   - focus findings on type design, error propagation, duplicated logic, and mismatches between docs/setup and implementation
+
+### `feat/style-review-20260311`
+
+- Status: `active` (owner action: finish the visual-style audit and report prioritized findings)
+- Summary: isolated review worktree for blueprint styling organization, focused on duplicated CSS/JS handling, weak HTML structure, inconsistent style conventions, and drift from Verso plus leanblueprint heritage.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/style-review-20260311`
+- Branch: `feat/style-review-20260311`
+- Base commit/branch:
+  - branched from `bp` at `14e8157d`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
+  - reused shared `_out` preview server on `http://127.0.0.1:8155`
+- Preview link:
+  - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/noperthedron/html-multi/`
+  - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/spherepackingblueprint/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/style-review-20260311`
+  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/StyleSwitcher.lean`, and `src/verso-blueprint/VersoBlueprint/Commands/{Graph,Summary,Bibliography}.lean`
+  - compare generated HTML against Verso asset conventions and preserve leanblueprint-compatible wrapper/content class heritage where it still provides value
 
 ## Recently Completed
 
