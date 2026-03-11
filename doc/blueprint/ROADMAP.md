@@ -18,9 +18,41 @@ Background and design rationale live in `DESIGN_RATIONALE.md`.
 1. Introduce `buildCodeRenderData` so `Informal/Code.lean` stays pure over
    precomputed facts.
 2. Fix the highest-priority review issues:
-   - `@[blueprint]` export persistence across module boundaries
-   - nested and duplicate block soft-fail behavior
+   - nested and duplicate block soft-fail behavior within one module
+   - imported duplicate-label collision handling across aggregated files
    - duplicated preview-source representations
+
+## Scheduled Hardening Passes
+
+### Duplicate Identity Hardening
+
+Goal: make duplicate Blueprint identities fail clearly instead of being accepted
+locally or silently overwritten during imported-state aggregation.
+
+Implementation scope:
+
+1. Reject invalid nested and duplicate block declarations before they mutate the
+   active environment stack.
+2. Make `Data.register` and the block elaboration path agree on whether a
+   declaration was accepted, ignored, or rejected.
+3. Detect imported collisions in `Informal.Environment.informalExt.addImportedFn`
+   instead of silently letting later inserts overwrite earlier ones.
+4. Apply the same duplicate-collision policy to:
+   - node labels
+   - group labels
+   - author ids
+
+Planned tests:
+
+1. Same-module duplicate label cases in `Tests.BlueprintInformal`.
+2. Nested invalid block cases in `Tests.BlueprintInformal`.
+3. Cross-module duplicate node labels via sibling provider modules plus one
+   importing test module.
+4. Cross-module duplicate groups and duplicate authors via the same pattern.
+5. Transitive-import coverage so a reexport path does not bypass collision
+   detection.
+6. Assertions that failures are reported explicitly rather than resolved by
+   silent overwrite.
 
 ## Planned Work
 
@@ -62,7 +94,9 @@ Background and design rationale live in `DESIGN_RATIONALE.md`.
 
 1. Silent divergence between local and global status rendering.
 2. Preview regressions not caught by compile-only checks.
-3. Drift across long-lived worktrees and branches.
+3. Silent imported duplicate collisions for labels, groups, or authors unless
+   the aggregation pass is hardened.
+4. Drift across long-lived worktrees and branches.
 
 ## Validation Baseline
 
