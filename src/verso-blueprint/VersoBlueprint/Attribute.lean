@@ -177,7 +177,11 @@ private def registerLeanOnlyDecl (decl label : Name) (ref : Syntax) : CoreM Unit
           | _, _ => node
         data.insert label node
       | none => data
-    return { state with data }
+    let localData :=
+      match data.get? label with
+      | some node => state.localData.insert label node
+      | none => state.localData
+    return { state with data, localData }
 
 private def labelFromAttr (stx : Syntax) : CoreM Name := do
   match stx with

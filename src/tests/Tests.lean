@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 import Tests.Basic
+import Tests.BlueprintAttribute
 import Tests.BlueprintInformal
 import Tests.BlueprintNumbering
 import Tests.BlueprintExternalHeadingStatus
