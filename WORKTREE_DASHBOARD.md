@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged and cleaned up `feat/blueview-20260311`; validated `feat/blueprint-tests-consolidation-20260311`)
+Last updated: 2026-03-11 (continued `feat/blueprint-tests-consolidation-20260311` with preview-wiring module split)
 
 ## Active Worktrees
 
@@ -24,8 +24,8 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/blueview-20260311`; valida
 
 ### `feat/blueprint-tests-consolidation-20260311`
 
-- Status: `ready-for-review` (owner action: review the shared blueprint test harness refactor and decide whether to split any remaining large scenario modules further)
-- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The suite now has a single `Tests.Blueprint` umbrella import, a shared `Tests.Blueprint.Support` renderer/assert helper, and less brittle preview assertions around CSS class ordering.
+- Status: `active` (owner action: split `Tests.BlueprintPreviewWiring` into smaller feature-focused modules, then rerun blueprint test and preview validation)
+- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The shared harness and umbrella import refactor is checkpointed, and the current phase is decomposing the still-large preview wiring scenario file into smaller modules without losing coverage.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
 - Branch: `feat/blueprint-tests-consolidation-20260311`
 - Base commit/branch:
@@ -44,7 +44,7 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/blueview-20260311`; valida
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
   - inspect `src/tests/Tests/Blueprint.lean` and `src/tests/Tests/Blueprint/Support.lean` first; that is now the suite entry point and shared renderer harness
-  - spot-check `src/tests/Tests/BlueprintPreviewWiring.lean` if preview assertions need more token-based hardening
+  - split `src/tests/Tests/BlueprintPreviewWiring.lean` by preview feature while keeping a thin compatibility umbrella at `Tests.BlueprintPreviewWiring`
   - `git show --stat 853a52d7`
 
 ### `feat/lean-lean-interactive-latency-20260310`
