@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (validated split `Tests.BlueprintPreviewWiring` modules in `feat/blueprint-tests-consolidation-20260311`)
+Last updated: 2026-03-11 (continued `feat/blueprint-tests-consolidation-20260311` with graph/informal split planning)
 
 ## Active Worktrees
 
@@ -24,8 +24,8 @@ Last updated: 2026-03-11 (validated split `Tests.BlueprintPreviewWiring` modules
 
 ### `feat/blueprint-tests-consolidation-20260311`
 
-- Status: `ready-for-review` (owner action: review the now-split preview-wiring modules and decide whether any other oversized blueprint test files should follow the same pattern)
-- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The suite now has a shared blueprint harness, a `Tests.Blueprint` umbrella import, and a decomposed preview-wiring area with `Shared`, `Summary`, `Graph`, `UsedBy`, and `LeanStatus` modules behind a thin compatibility umbrella.
+- Status: `active` (owner action: split `Tests.BlueprintGraph` and `Tests.BlueprintInformal` into smaller scenario modules, then rerun blueprint validation)
+- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The shared harness, umbrella import, and preview-wiring split are checkpointed; the current phase is applying the same decomposition pattern to the next biggest blueprint test modules.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
 - Branch: `feat/blueprint-tests-consolidation-20260311`
 - Base commit/branch:
@@ -47,7 +47,7 @@ Last updated: 2026-03-11 (validated split `Tests.BlueprintPreviewWiring` modules
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
   - inspect `src/tests/Tests/Blueprint.lean` and `src/tests/Tests/Blueprint/Support.lean` first; that is now the suite entry point and shared renderer harness
-  - `src/tests/Tests/BlueprintPreviewWiring.lean` is now only the umbrella import; inspect `src/tests/Tests/BlueprintPreviewWiring/` for the actual scenarios
+  - `src/tests/Tests/BlueprintPreviewWiring.lean` is now only the umbrella import; use it as the model for splitting `BlueprintGraph` and `BlueprintInformal`
   - `git show --stat 2cc0f73e`
 
 ### `feat/lean-lean-interactive-latency-20260310`
