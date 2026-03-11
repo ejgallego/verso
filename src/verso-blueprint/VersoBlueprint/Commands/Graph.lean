@@ -14,7 +14,6 @@ import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.Resolve
-import VersoBlueprint.StyleSwitcher
 
 namespace Informal.Commands
 
@@ -361,10 +360,6 @@ def loadD3Dot := include_str "graph.js"
 
 def graphTocToggleJs : String := include_str "graph-toc-toggle.js"
 
-def blueprintStyleSwitcherCss : String := Informal.StyleSwitcher.css
-
-def blueprintStyleSwitcherJs : String := Informal.StyleSwitcher.jsBasic
-
 -- block_extension Block.dependency_graph (label : String) where
 open Verso Doc Elab Genre Manual in
 block_extension Block.graph (graphData : GraphBlockData) where
@@ -497,8 +492,8 @@ block_extension Block.graph (graphData : GraphBlockData) where
           {{groupHoverPanel}}
         </div>
       }}
-  extraCss := ([graphCss, blueprintStyleSwitcherCss] : List String)
-  extraJs := ([previewHoverUtilsJs, loadD3Dot, graphTocToggleJs, blueprintStyleSwitcherJs] : List String)
+  extraCss := ([graphCss] : List String)
+  extraJs := ([previewHoverUtilsJs, loadD3Dot, graphTocToggleJs] : List String)
 
 def buildAll : CoreM (Graph × Array (Name × String)) := do
   let env ← getEnv

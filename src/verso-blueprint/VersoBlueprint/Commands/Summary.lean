@@ -1609,8 +1609,6 @@ block_extension Block.summary (summary : Summary) where
             </details>
           }}
       return {{
-        <style>{{.text false summaryCss}}</style>
-        <script>{{.text false openTargetDetailsJs}}</script>
         <div class="bp_summary">
           {{previewUi.store}}
           {{previewUi.panel}}
