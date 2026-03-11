@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged and cleaned up `feat/preview-manifest-hardening-20260311`)
+Last updated: 2026-03-11 (registered and validated `feat/preview-manifest-cli-20260311`)
 
 ## Active Worktrees
 
@@ -69,25 +69,30 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/preview-manifest-hardening
 
 ### `feat/preview-manifest-cli-20260311`
 
-- Status: `active` (owner action: add CLI dump/help support for the preview manifest and rename the emitted manifest file)
+- Status: `ready-for-review` (owner action: review the new preview-manifest CLI and filename rename, then decide whether to merge)
 - Summary: follow-up worktree for the preview manifest CLI, focused on adding `--dump-manifest`, a local `--help`, and renaming the emitted manifest file to a clearer public name that matches its purpose.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-cli-20260311`
 - Branch: `feat/preview-manifest-cli-20260311`
 - Base commit/branch:
   - branched from `bp` at `fcbc6717`
 - Key commits:
-  - none yet
+  - `a218f840` feat(preview): add manifest dump cli
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed
-  - pending: `./script/lean-low-priority lake build VersoBlueprint.PreviewManifest Main SpherePackingBlueprintMain`
-  - pending: `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-manifest-cli-20260311/example-blueprints`
+  - `./script/lean-low-priority lake build VersoBlueprint.PreviewManifest Tests.BlueprintPreviewSchema Main SpherePackingBlueprintMain`
+  - `./script/lean-low-priority lake exe noperthedron --help`
+  - `./script/lean-low-priority lake exe noperthedron --dump-schema`
+  - `./script/lean-low-priority lake exe noperthedron --dump-manifest`
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-manifest-cli-20260311/example-blueprints`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/preview-manifest-cli-20260311/example-blueprints/noperthedron/html-multi`
 - Preview link:
-  - planned root `_out` link via shared server session `33154` on `http://127.0.0.1:8154/preview-manifest-cli-20260311/example-blueprints/noperthedron/html-multi/`
-  - planned root `_out` link via shared server session `33154` on `http://127.0.0.1:8154/preview-manifest-cli-20260311/example-blueprints/spherepackingblueprint/html-multi/`
+  - `http://127.0.0.1:8154/preview-manifest-cli-20260311/example-blueprints/noperthedron/html-multi/`
+  - `http://127.0.0.1:8154/preview-manifest-cli-20260311/example-blueprints/spherepackingblueprint/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/preview-manifest-cli-20260311`
   - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `test-projects/Noperthedron/Main.lean`, `test-projects/Sphere-Packing-Lean/SpherePackingBlueprintMain.lean`
+  - preview manifest is now emitted as `html-multi/-verso-data/blueprint-preview-manifest.json`
+  - `manualMainWithSharedPreviewManifest` now handles `--help`, `--dump-schema`, and `--dump-manifest`
 
 ### `feat/lean-commandm-incremental-20260306`
 
