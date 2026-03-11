@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-12 (continued `feat/blueprint-tests-consolidation-20260311` with summary-links split planning)
+Last updated: 2026-03-12 (validated split `Tests.BlueprintSummaryLinks` modules in `feat/blueprint-tests-consolidation-20260311`)
 
 ## Active Worktrees
 
@@ -24,8 +24,8 @@ Last updated: 2026-03-12 (continued `feat/blueprint-tests-consolidation-20260311
 
 ### `feat/blueprint-tests-consolidation-20260311`
 
-- Status: `active` (owner action: split `Tests.BlueprintSummaryLinks` into smaller scenario modules, then rerun blueprint validation)
-- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The suite already has shared blueprint harness helpers plus umbrella modules for `BlueprintPreviewWiring`, `BlueprintGraph`, and `BlueprintInformal`; the current phase is finishing the same decomposition pattern for the remaining large summary-links scenario file.
+- Status: `ready-for-review` (owner action: review whether this cleanup level is sufficient or whether we want one final conventions/documentation pass before merge prep)
+- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The major blueprint-specific monoliths now all follow the same pattern: shared harness helpers plus thin umbrella modules over smaller scenario-focused files.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
 - Branch: `feat/blueprint-tests-consolidation-20260311`
 - Base commit/branch:
@@ -34,15 +34,18 @@ Last updated: 2026-03-12 (continued `feat/blueprint-tests-consolidation-20260311
   - `853a52d7` refactor(tests): consolidate blueprint test support
   - `2cc0f73e` refactor(tests): split blueprint preview wiring scenarios
   - `862efb1c` refactor(tests): split blueprint graph and informal scenarios
+  - `f4a79495` refactor(tests): split blueprint summary link scenarios
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
   - `script/lean-low-priority lake build Tests.Blueprint.Support Tests.BlueprintLinkHover Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring Tests.BlueprintExternalHeadingStatus Tests.BlueprintTexMacros Tests`
   - `script/lean-low-priority lake build Tests.Blueprint.Support Tests.Blueprint Tests`
   - `script/lean-low-priority lake build Tests.BlueprintPreviewWiring.Shared Tests.BlueprintPreviewWiring.Summary Tests.BlueprintPreviewWiring.Graph Tests.BlueprintPreviewWiring.UsedBy Tests.BlueprintPreviewWiring.LeanStatus Tests.BlueprintPreviewWiring Tests.Blueprint Tests`
   - `script/lean-low-priority lake build Tests.BlueprintInformal.Shared Tests.BlueprintInformal.LeanRefs Tests.BlueprintInformal.Structure Tests.BlueprintInformal Tests.BlueprintGraph.Shared Tests.BlueprintGraph.Basics Tests.BlueprintGraph.NodeStatus Tests.BlueprintGraph.Legend Tests.BlueprintGraph.Groups Tests.BlueprintGraph Tests.Blueprint Tests`
+  - `script/lean-low-priority lake build Tests.BlueprintSummaryLinks.Shared Tests.BlueprintSummaryLinks.External Tests.BlueprintSummaryLinks.Blockers Tests.BlueprintSummaryLinks.Triage Tests.BlueprintSummaryLinks Tests.Blueprint Tests`
   - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints`
   - reran `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints` after the preview-wiring split
   - reran `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints` after the graph/informal split
+  - reran `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints` after the summary-links split
   - started shared `_out` preview server on `http://127.0.0.1:8155`
 - Preview link:
   - `http://127.0.0.1:8155/blueprint-tests-consolidation-20260311/example-blueprints/noperthedron/html-multi/`
@@ -50,8 +53,8 @@ Last updated: 2026-03-12 (continued `feat/blueprint-tests-consolidation-20260311
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
   - inspect `src/tests/Tests/Blueprint.lean` and `src/tests/Tests/Blueprint/Support.lean` first; that is now the suite entry point and shared renderer harness
-  - use `src/tests/Tests/BlueprintPreviewWiring.lean`, `src/tests/Tests/BlueprintGraph.lean`, and `src/tests/Tests/BlueprintInformal.lean` as the model for splitting `BlueprintSummaryLinks`
-  - `git show --stat 862efb1c`
+  - `src/tests/Tests/BlueprintPreviewWiring.lean`, `src/tests/Tests/BlueprintGraph.lean`, `src/tests/Tests/BlueprintInformal.lean`, and `src/tests/Tests/BlueprintSummaryLinks.lean` are now umbrella imports; inspect their sibling directories for the scenario files
+  - `git show --stat f4a79495`
 
 ### `feat/lean-lean-interactive-latency-20260310`
 
