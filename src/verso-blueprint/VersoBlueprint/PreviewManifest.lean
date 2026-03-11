@@ -96,10 +96,7 @@ private partial def schemaForType (ty : Expr) : StateT SchemaState MetaM Json :=
   | .const ``String _ =>
       pure <| Json.mkObj [("type", Json.str "string")]
   | .const ``Name _ =>
-      pure <| Json.mkObj [
-        ("type", Json.str "string"),
-        ("description", Json.str "Lean `Name`, encoded as a JSON string")
-      ]
+      pure <| Json.mkObj [("type", Json.str "string")]
   | .const ``Bool _ =>
       pure <| Json.mkObj [("type", Json.str "boolean")]
   | .const ``Nat _ =>

@@ -23,12 +23,16 @@ open Informal.PreviewManifest
       let Except.ok fileProps := filePropsJson.getObj? | return false
       let Except.ok entryPropsJson := Json.getObjVal? entrySchema "properties" | return false
       let Except.ok entryProps := entryPropsJson.getObj? | return false
+      let schemaText := schema.compress
       let proofDepsDesc? := do
         let proofDepsJson ← entryProps.get? "proofDeps"
         proofDepsJson.getObjValAs? String "description" |>.toOption
       let kindDesc? := do
         let kindJson ← entryProps.get? "kind"
         kindJson.getObjValAs? String "description" |>.toOption
+      let labelDesc? := do
+        let labelJson ← entryProps.get? "label"
+        labelJson.getObjValAs? String "description" |>.toOption
       rootRef == "#/$defs/Informal.PreviewManifest.File" &&
         defs.size == 4 &&
         !fileProps.contains "version" &&
@@ -48,8 +52,10 @@ open Informal.PreviewManifest
         entryProps.contains "priority" &&
         entryProps.contains "effort" &&
         entryProps.contains "html" &&
+        labelDesc? == some "Canonical informal node label." &&
         proofDepsDesc? == some "Informal nodes used by the proof." &&
         kindDesc? == some "Kind (definition, lemma, theorem, corollary)." &&
+        !schemaText.contains "Lean `Name`" &&
         defs.contains "Informal.Data.NodeKind" &&
         defs.contains "Informal.PreviewCache.Facet"
 
