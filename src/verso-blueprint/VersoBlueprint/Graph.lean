@@ -5,6 +5,7 @@ Author: Emilio J. Gallego Arias
 -/
 
 import VersoBlueprint.Environment
+import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.ProvedStatus
 
 namespace Informal.Graph
@@ -243,6 +244,108 @@ structure ExternalCodeStatus where
   isMissing : Name → Bool := fun _ => false
   provedStatus : Name → Data.ProvedStatus := fun _ => .proved
 
+structure CodeHealth where
+  hasAssociatedCode : Bool := false
+  totalDecls : Nat := 0
+  presentDecls : Nat := 0
+  missingDecls : Nat := 0
+  statementAxisCount : Nat := 0
+  proofAxisCount : Nat := 0
+  statementBlockCount : Nat := 0
+  proofBlockCount : Nat := 0
+  anyGapCount : Nat := 0
+  hasAxiomLike : Bool := false
+deriving Inhabited, Repr
+
+private def statusGapIncrements (status : Data.ProvedStatus) : Nat × Nat × Nat :=
+  match status.hasTypeGap, status.hasProofGap with
+  | false, false => (0, 0, 0)
+  | true, false => (1, 0, 1)
+  | false, true => (0, 1, 1)
+  | true, true => (1, 1, 1)
+
+private def CodeHealth.bump (health : CodeHealth) (kind : Data.NodeKind) (status : Data.ProvedStatus) : CodeHealth :=
+  let (statementAxisInc, proofAxisInc, anyInc) := statusGapIncrements status
+  let statementBlockInc := if status.blocksStatementCompletion kind then 1 else 0
+  let proofBlockInc := if status.blocksProofCompletion then 1 else 0
+  {
+    health with
+      statementAxisCount := health.statementAxisCount + statementAxisInc
+      proofAxisCount := health.proofAxisCount + proofAxisInc
+      statementBlockCount := health.statementBlockCount + statementBlockInc
+      proofBlockCount := health.proofBlockCount + proofBlockInc
+      anyGapCount := health.anyGapCount + anyInc
+      hasAxiomLike := health.hasAxiomLike || status.isAxiomLike
+  }
+
+private def codeHealthOfInlineDecls (kind : Data.NodeKind) (statuses : Array Data.ProvedStatus) : CodeHealth :=
+  statuses.foldl
+      (init := { hasAssociatedCode := true, totalDecls := statuses.size, presentDecls := statuses.size })
+      fun health status => health.bump kind status
+
+def codeHealthOfExternalDecls (kind : Data.NodeKind) (external : ExternalCodeStatus) (decls : Array Data.ExternalRef) : CodeHealth :=
+  decls.foldl
+      (init := { hasAssociatedCode := true, totalDecls := decls.size })
+      fun health decl =>
+    let missing := !decl.present || external.isMissing decl.canonical
+    if missing then
+      { health with missingDecls := health.missingDecls + 1 }
+    else
+      let status := Data.ProvedStatus.mergeConservative decl.provedStatus (external.provedStatus decl.canonical)
+      let health := health.bump kind status
+      { health with presentDecls := health.presentDecls + 1 }
+
+def codeHealthOfCodeRef (kind : Data.NodeKind) (external : ExternalCodeStatus)
+    (codeRef? : Option Data.CodeRef) : CodeHealth :=
+  match codeRef? with
+  | none => {}
+  | some .userOk => { hasAssociatedCode := true }
+  | some (.external decls) => codeHealthOfExternalDecls kind external decls
+  | some (.literate code) =>
+    let statuses :=
+      (code.definedDefs.map (·.provedStatus)) ++ (code.definedTheorems.map (·.provedStatus))
+    codeHealthOfInlineDecls kind statuses
+
+def codeHealthOfBlockSource (kind : Data.NodeKind) (external : ExternalCodeStatus)
+    (source? : Option Informal.BlockCodeData) : CodeHealth :=
+  match source? with
+  | none => {}
+  | some .userOk => { hasAssociatedCode := true }
+  | some (.external decls) => codeHealthOfExternalDecls kind external decls
+  | some (.inline codeData) =>
+    let statuses :=
+      (codeData.definedDefs.map (·.provedStatus)) ++ (codeData.definedTheorems.map (·.provedStatus))
+    codeHealthOfInlineDecls kind statuses
+
+def nodeCodeHealth (external : ExternalCodeStatus) (node : Data.Node) : CodeHealth :=
+  codeHealthOfCodeRef node.kind external node.code
+
+def CodeHealth.hasMissingExternalDecls (health : CodeHealth) : Bool :=
+  health.missingDecls > 0
+
+def CodeHealth.hasStatementGaps (health : CodeHealth) : Bool :=
+  health.statementBlockCount > 0
+
+def CodeHealth.hasProofGaps (health : CodeHealth) : Bool :=
+  health.proofBlockCount > 0
+
+def CodeHealth.hasAnyGaps (health : CodeHealth) : Bool :=
+  health.anyGapCount > 0
+
+def CodeHealth.localStatementFormalized (health : CodeHealth) : Bool :=
+  health.hasAssociatedCode && !health.hasMissingExternalDecls && !health.hasStatementGaps
+
+def CodeHealth.localProofFormalized (health : CodeHealth) : Bool :=
+  health.hasAssociatedCode && !health.hasMissingExternalDecls && !health.hasAnyGaps
+
+def CodeHealth.localFormalized (health : CodeHealth) (kind : Data.NodeKind) : Bool :=
+  if kind.isTheoremLike then
+    health.localProofFormalized
+  else if kind == Data.NodeKind.definition then
+    health.localStatementFormalized
+  else
+    false
+
 def nodeExternalDecls (node : Data.Node) : Array Data.ExternalRef :=
   match node.code with
   | some (.external decls) => decls
@@ -258,44 +361,25 @@ def externalDeclProvedStatus (external : ExternalCodeStatus) (decl : Data.Extern
   Data.ProvedStatus.mergeConservative decl.provedStatus (external.provedStatus decl.canonical)
 
 def nodeHasMissingExternalDecls (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  (nodeExternalDecls node).any (externalDeclMissing external)
+  (nodeCodeHealth external node).hasMissingExternalDecls
 
 def nodeHasStatementSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  let localHas :=
-    match node.code with
-    | some (.literate code) =>
-      ProvedStatus.anyBlocksStatementCompletion node.kind code.definedDefs (·.provedStatus) ||
-      ProvedStatus.anyBlocksStatementCompletion node.kind code.definedTheorems (·.provedStatus)
-    | _ => false
-  localHas || (nodeExternalDecls node).any fun decl =>
-    (externalDeclProvedStatus external decl).blocksStatementCompletion node.kind
+  (nodeCodeHealth external node).hasStatementGaps
 
 def nodeHasProofSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  let localHas :=
-    match node.code with
-    | some (.literate code) =>
-      ProvedStatus.anyBlocksProofCompletion code.definedDefs (·.provedStatus) ||
-      ProvedStatus.anyBlocksProofCompletion code.definedTheorems (·.provedStatus)
-    | _ => false
-  localHas || (nodeExternalDecls node).any fun decl =>
-    (externalDeclProvedStatus external decl).blocksProofCompletion
+  (nodeCodeHealth external node).hasProofGaps
 
 def nodeHasSorries (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  nodeHasStatementSorries external node || nodeHasProofSorries external node
+  (nodeCodeHealth external node).hasAnyGaps
 
 def nodeLocalStatementFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  nodeHasAssociatedCode node && !nodeHasMissingExternalDecls external node && !nodeHasStatementSorries external node
+  (nodeCodeHealth external node).localStatementFormalized
 
 def nodeLocalProofFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  nodeHasAssociatedCode node && !nodeHasMissingExternalDecls external node && !nodeHasSorries external node
+  (nodeCodeHealth external node).localProofFormalized
 
 def nodeLocalFormalized (external : ExternalCodeStatus) (node : Data.Node) : Bool :=
-  if node.kind.isTheoremLike then
-    nodeLocalProofFormalized external node
-  else if node.kind == Data.NodeKind.definition then
-    nodeLocalStatementFormalized external node
-  else
-    false
+  (nodeCodeHealth external node).localFormalized node.kind
 
 def eraseDups (xs : Array Name) : Array Name :=
   xs.foldl (init := #[]) fun acc x => if acc.contains x then acc else acc.push x
@@ -363,14 +447,14 @@ def proofStatus (external : ExternalCodeStatus) (state : Environment.State) (_la
 
 def nodeWarnings (external : ExternalCodeStatus) (state : Environment.State) (_label : Name)
     (node : Data.Node) : WarningFlags :=
-  let localProofDone := nodeLocalProofFormalized external node
+  let health := nodeCodeHealth external node
+  let localProofDone := health.localProofFormalized
   let ancestorDepsDone := nodeAncestorsFormalized external state node
-  let missingExternal := nodeHasMissingExternalDecls external node
   {
     unknownRef := false
-    leanOnlyNoStatement := nodeHasAssociatedCode node && node.statement.isNone
-    missingExternalDecl := nodeHasAssociatedCode node && missingExternal
-    localSorries := nodeHasAssociatedCode node && node.statement.isSome && nodeHasSorries external node
+    leanOnlyNoStatement := health.hasAssociatedCode && node.statement.isNone
+    missingExternalDecl := health.hasAssociatedCode && health.hasMissingExternalDecls
+    localSorries := health.hasAssociatedCode && node.statement.isSome && health.hasAnyGaps
     depsWithSorries := node.kind.isTheoremLike && localProofDone && !ancestorDepsDone
   }
 

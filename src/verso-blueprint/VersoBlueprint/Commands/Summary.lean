@@ -558,31 +558,19 @@ private def bumpEntryStatus (acc : EntryStatusCounts) (flags : EntryStatusFlags)
     noProof := acc.noProof + (if flags.noProof then 1 else 0)
   }
 
-private def codeRefHasAxiomLikeDecl : Data.CodeRef → Bool
-  | .userOk => false
-  | .external decls =>
-    decls.any (fun decl => decl.provedStatus.isAxiomLike)
-  | .literate code =>
-    code.definedDefs.any (fun decl => decl.provedStatus.isAxiomLike) ||
-    code.definedTheorems.any (fun decl => decl.provedStatus.isAxiomLike)
-
 private def entryStatusFlags (state : Environment.State)
     (external : Informal.Graph.ExternalCodeStatus) (node : Data.Node) : EntryStatusFlags :=
-  let hasCode := Informal.Graph.nodeHasAssociatedCode node
-  let localFormalized := Informal.Graph.nodeLocalFormalized external node
+  let health := Informal.Graph.nodeCodeHealth external node
+  let localFormalized := health.localFormalized node.kind
   let ancestorsFormalized := Informal.Graph.nodeAncestorsFormalized external state node
-  let withSorries := hasCode && Informal.Graph.nodeHasSorries external node
-  let noProof := node.kind.isTheoremLike && !hasCode
-  let hasAxiomLike :=
-    match node.code with
-    | some codeRef => codeRefHasAxiomLikeDecl codeRef
-    | none => false
+  let withSorries := health.hasAssociatedCode && health.hasAnyGaps
+  let noProof := node.kind.isTheoremLike && !health.hasAssociatedCode
   {
     completed := localFormalized && ancestorsFormalized
     completedDepsNo := localFormalized && !ancestorsFormalized
     withSorries
     noProof
-    hasAxiomLike
+    hasAxiomLike := health.hasAxiomLike
   }
 
 private def statusCountsText (counts : EntryStatusCounts) : String :=

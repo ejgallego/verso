@@ -7,6 +7,7 @@ Author: Emilio J. Gallego Arias
 import Lean
 import Verso
 import VersoManual
+import VersoBlueprint.Graph
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Informal.LeanCodeLink
 
@@ -289,56 +290,6 @@ private def renderCodeEntryWrap (href : Option String) (title : String)
     </span>
   }}
 
-/--
-Aggregate counts used to compute the external-heading status mark and tooltip text.
-
-The counters track statement-side and proof-side incompleteness independently.
--/
-private structure ExternalHeadingAggregate where
-  /-- Total number of external declaration references attached to the block. -/
-  total : Nat
-  /-- Number of references resolved/present in the snapshot. -/
-  found : Nat
-  /-- Number of references missing from the snapshot/environment. -/
-  missing : Nat
-  /-- Present declarations with statement-side (`type`) sorries. -/
-  withStatementSorries : Nat
-  /-- Present declarations with proof/body-side sorries. -/
-  withProofSorries : Nat
-  /-- Present declarations with any sorry-side incompleteness. -/
-  withSorries : Nat
-
-/-- Per-status increments: `(statementAxis, proofAxis, anyAxis)`. -/
-private def statusGapIncrements (status : Data.ProvedStatus) : Nat × Nat × Nat :=
-  match status.hasTypeGap, status.hasProofGap with
-  | false, false => (0, 0, 0)
-  | true, false => (1, 0, 1)
-  | false, true => (0, 1, 1)
-  | true, true => (1, 1, 1)
-
-private def externalHeadingAggregate (decls : Array Data.ExternalRef) : ExternalHeadingAggregate :=
-  decls.foldl
-      (init := {
-        total := decls.size
-        found := 0
-        missing := 0
-        withStatementSorries := 0
-        withProofSorries := 0
-        withSorries := 0
-      })
-      fun acc decl =>
-    if decl.present then
-      let (statementInc, proofInc, anyInc) := statusGapIncrements decl.provedStatus
-      {
-        acc with
-          found := acc.found + 1
-          withStatementSorries := acc.withStatementSorries + statementInc
-          withProofSorries := acc.withProofSorries + proofInc
-          withSorries := acc.withSorries + anyInc
-      }
-    else
-      { acc with missing := acc.missing + 1 }
-
 private def axisCompletionText : Nat → String
   | 0 => "completed"
   | _ + 1 => "with sorries"
@@ -369,36 +320,30 @@ private def completionStatusMark (statementSorryCount proofSorryCount : Nat) : B
       symbolOverride? := some "⚠"
     }
 
-private def externalStatusMark (agg : ExternalHeadingAggregate) : BlockStatusMark :=
-  if agg.missing > 0 then
+private def statusMarkFromHealth (health : Informal.Graph.CodeHealth) : BlockStatusMark :=
+  if health.hasMissingExternalDecls then
     {
       status := .missing
-      title := s!"External Lean names: {agg.found} present, {agg.missing} missing (statement/proof completion unknown)"
+      title := s!"External Lean names: {health.presentDecls} present, {health.missingDecls} missing (statement/proof completion unknown)"
     }
   else
-    completionStatusMark agg.withStatementSorries agg.withProofSorries
-
-private def inlineCompletionCounts (codeData : InlineCodeData) : Nat × Nat :=
-  let decls := codeData.definedDefs ++ codeData.definedTheorems
-  decls.foldl
-      (init := (0, 0))
-      fun (statementSorryCount, proofSorryCount) decl =>
-    let (statementInc, proofInc, _) := statusGapIncrements decl.provedStatus
-    (statementSorryCount + statementInc, proofSorryCount + proofInc)
-
-private def inlineHasAxiomLike (codeData : InlineCodeData) : Bool :=
-  let decls := codeData.definedDefs ++ codeData.definedTheorems
-  decls.any (fun decl => decl.provedStatus.isAxiomLike)
+    if health.hasAxiomLike then
+      {
+        status := .axiomLike
+        title := "Lean declarations include at least one axiom-like constant (no body)"
+      }
+    else
+      completionStatusMark health.statementAxisCount health.proofAxisCount
 
 private def inlineStatusMark (codeData : InlineCodeData) : BlockStatusMark :=
-  if inlineHasAxiomLike codeData then
+  let health := Informal.Graph.codeHealthOfBlockSource .definition {} (some (.inline codeData))
+  if health.hasAxiomLike then
     {
       status := .axiomLike
       title := "Lean declarations include at least one axiom-like constant (no body)"
     }
   else
-    let (statementSorryCount, proofSorryCount) := inlineCompletionCounts codeData
-    completionStatusMark statementSorryCount proofSorryCount
+    statusMarkFromHealth health
 
 /--
 Compute heading status semantics from canonical block code source using explicit
@@ -423,7 +368,7 @@ private def statusMarkFromResolvedCodeSource : BlockCodeData → BlockStatusMark
       symbolOverride? := some "✓ (manually set)"
     }
   | .external decls =>
-    externalStatusMark (externalHeadingAggregate decls)
+    statusMarkFromHealth (Informal.Graph.codeHealthOfBlockSource .definition {} (some (.external decls)))
   | .inline codeData =>
     inlineStatusMark codeData
 
@@ -514,8 +459,8 @@ private def pluralizeKindText (kind : String) : String :=
   | _ => kind ++ "s"
 
 private def externalIndicatorKindText?
-    (decls : Array Data.ExternalRef) (agg : ExternalHeadingAggregate) : Option String :=
-  if agg.missing > 0 || decls.isEmpty then
+    (decls : Array Data.ExternalRef) (health : Informal.Graph.CodeHealth) : Option String :=
+  if health.missingDecls > 0 || decls.isEmpty then
     none
   else
     let kinds := decls.filterMap externalDeclKindText?
@@ -529,45 +474,45 @@ private def externalIndicatorKindText?
         none
 
 private def externalIndicatorText
-    (decls : Array Data.ExternalRef) (agg : ExternalHeadingAggregate) : String :=
+    (decls : Array Data.ExternalRef) (health : Informal.Graph.CodeHealth) : String :=
   let declText :=
-    match externalIndicatorKindText? decls agg with
+    match externalIndicatorKindText? decls health with
     | some kind =>
-      if agg.total == 1 then
+      if health.totalDecls == 1 then
         s!"1 {kind}"
       else
-        s!"{agg.total} {pluralizeKindText kind}"
+        s!"{health.totalDecls} {pluralizeKindText kind}"
     | none =>
-      if agg.total == 1 then
+      if health.totalDecls == 1 then
         "1 declaration"
       else
-        s!"{agg.total} declarations"
-  if agg.missing > 0 then
-    s!"{declText}, {agg.missing} missing"
-  else if agg.withSorries > 0 then
-    if agg.total == 1 then
+        s!"{health.totalDecls} declarations"
+  if health.missingDecls > 0 then
+    s!"{declText}, {health.missingDecls} missing"
+  else if health.anyGapCount > 0 then
+    if health.totalDecls == 1 then
       s!"{declText}, incomplete"
     else
-      s!"{declText}, {agg.withSorries} incomplete"
+      s!"{declText}, {health.anyGapCount} incomplete"
   else
     declText
 
 private def externalIndicatorStatus
-    (agg : ExternalHeadingAggregate) : String × String × String :=
-  if agg.missing > 0 then
-    ("bp_external_status_missing", "●", s!"Lean declarations: {agg.found}/{agg.total} present ({agg.missing} missing)")
-  else if agg.withSorries > 0 then
-    ("bp_external_status_sorry", "●", s!"Lean declarations: all present, {agg.withSorries} incomplete")
+    (health : Informal.Graph.CodeHealth) : String × String × String :=
+  if health.missingDecls > 0 then
+    ("bp_external_status_missing", "●", s!"Lean declarations: {health.presentDecls}/{health.totalDecls} present ({health.missingDecls} missing)")
+  else if health.anyGapCount > 0 then
+    ("bp_external_status_sorry", "●", s!"Lean declarations: all present, {health.anyGapCount} incomplete")
   else
-    ("bp_external_status_ok", "●", s!"Lean declarations: all {agg.total} present")
+    ("bp_external_status_ok", "●", s!"Lean declarations: all {health.totalDecls} present")
 
 private def renderExternalPanelIndicator (decls : Array Data.ExternalRef)
     (label : Data.Label) (hrefOf : Name → Option String) : PanelIndicatorParts :=
   open Verso.Output.Html in
-  let agg := externalHeadingAggregate decls
+  let health := Informal.Graph.codeHealthOfBlockSource .definition {} (some (.external decls))
   let tooltip := renderSummaryPreview label { source := some (.external decls) } hrefOf
-  let (iconClass, iconText, iconTitle) := externalIndicatorStatus agg
-  let badgeText := externalIndicatorText decls agg
+  let (iconClass, iconText, iconTitle) := externalIndicatorStatus health
+  let badgeText := externalIndicatorText decls health
   let badge : Output.Html := {{
     <span class={{s!"bp_external_status_badge bp_external_status_badge_summary {iconClass}"}} title={{iconTitle}}>
       <span class={{s!"bp_external_status_icon {iconClass}"}}>{{.text true iconText}}</span>
@@ -575,7 +520,7 @@ private def renderExternalPanelIndicator (decls : Array Data.ExternalRef)
     </span>
   }}
   {
-    summaryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withSorries
+    summaryTitle := externalCodeEntryTitle health.presentDecls health.totalDecls health.missingDecls health.anyGapCount
     indicator := wrapPanelIndicator badge tooltip
   }
 
@@ -615,12 +560,12 @@ def renderParts (data : BlockData) (cdata : ComputedData) (hrefOf : Name → Opt
   open Verso.Output.Html in
   match data.kind with
   | .proof => {}
-  | .statement _statementKind =>
+  | .statement statementKind =>
     let externalDecls := cdata.source.map BlockCodeData.externalDecls |>.getD #[]
     let codeEntryTooltip := renderSummaryPreview data.label cdata hrefOf
     if !externalDecls.isEmpty then
-      let agg := externalHeadingAggregate externalDecls
-      let codeEntryTitle := externalCodeEntryTitle agg.found agg.total agg.missing agg.withSorries
+      let health := Informal.Graph.codeHealthOfBlockSource statementKind {} cdata.source
+      let codeEntryTitle := externalCodeEntryTitle health.presentDecls health.totalDecls health.missingDecls health.anyGapCount
       let statusMark := statusMarkFromCodeSource cdata.source
       {
         statusMark := some statusMark
