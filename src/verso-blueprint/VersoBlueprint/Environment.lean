@@ -27,6 +27,17 @@ structure InProgress where
   elabStx : Array Syntax := #[]
 deriving Inhabited, Repr
 
+inductive ImportedConflictKind where
+  | node
+  | group
+  | author
+deriving Inhabited, Repr, DecidableEq
+
+structure ImportedConflict where
+  kind : ImportedConflictKind
+  label : Name
+deriving Inhabited, Repr, DecidableEq
+
 structure State where
   data : Data := Data.empty
   localData : NameMap Node := {}
@@ -34,8 +45,32 @@ structure State where
   localGroups : NameMap String := {}
   authors : NameMap AuthorInfo := {}
   localAuthors : NameMap AuthorInfo := {}
+  importedConflicts : Array ImportedConflict := #[]
+  importedConflictsReported : Bool := false
   stack : List InProgress := []
 deriving Inhabited, Repr
+
+private def ImportedConflictKind.rank : ImportedConflictKind → Nat
+  | .node => 0
+  | .group => 1
+  | .author => 2
+
+def ImportedConflict.message (conflict : ImportedConflict) : String :=
+  match conflict.kind with
+  | .node => s!"Duplicate imported blueprint node label '{conflict.label}'"
+  | .group => s!"Duplicate imported blueprint group label '{conflict.label}'"
+  | .author => s!"Duplicate imported blueprint author id '{conflict.label}'"
+
+private def pushImportedConflict (conflicts : Array ImportedConflict)
+    (kind : ImportedConflictKind) (label : Name) : Array ImportedConflict :=
+  let conflict : ImportedConflict := { kind, label }
+  if conflicts.contains conflict then conflicts else conflicts.push conflict
+
+private def sortImportedConflicts (conflicts : Array ImportedConflict) : Array ImportedConflict :=
+  conflicts.qsort fun a b =>
+    ImportedConflictKind.rank a.kind < ImportedConflictKind.rank b.kind ||
+      (ImportedConflictKind.rank a.kind == ImportedConflictKind.rank b.kind &&
+        a.label.toString < b.label.toString)
 
 inductive Entry where
   | node (label : Name) (node : Node)
@@ -63,14 +98,26 @@ initialize informalExt : PersistentEnvExtension Entry Entry State ←
           localAuthors := state.localAuthors.insert label info
         }
     addImportedFn entries := do
-      let (data, groups, authors) := entries.foldl
-          (init := (({} : NameMap Node), ({} : NameMap String), ({} : NameMap AuthorInfo))) fun acc entry =>
-        entry.foldl (init := acc) fun (dataAcc, groupAcc, authorAcc) item =>
+      let (data, groups, authors, importedConflicts) := entries.foldl
+          (init := (({} : NameMap Node), ({} : NameMap String), ({} : NameMap AuthorInfo), (#[] : Array ImportedConflict))) fun acc entry =>
+        entry.foldl (init := acc) fun (dataAcc, groupAcc, authorAcc, conflictsAcc) item =>
           match item with
-          | .node label node => (dataAcc.insert label node, groupAcc, authorAcc)
-          | .group label header => (dataAcc, groupAcc.insert label header, authorAcc)
-          | .author label info => (dataAcc, groupAcc, authorAcc.insert label info)
-      pure { data, groups, authors }
+          | .node label node =>
+            if dataAcc.contains label then
+              (dataAcc, groupAcc, authorAcc, pushImportedConflict conflictsAcc .node label)
+            else
+              (dataAcc.insert label node, groupAcc, authorAcc, conflictsAcc)
+          | .group label header =>
+            if groupAcc.contains label then
+              (dataAcc, groupAcc, authorAcc, pushImportedConflict conflictsAcc .group label)
+            else
+              (dataAcc, groupAcc.insert label header, authorAcc, conflictsAcc)
+          | .author label info =>
+            if authorAcc.contains label then
+              (dataAcc, groupAcc, authorAcc, pushImportedConflict conflictsAcc .author label)
+            else
+              (dataAcc, groupAcc, authorAcc.insert label info, conflictsAcc)
+      pure { data, groups, authors, importedConflicts := sortImportedConflicts importedConflicts }
     -- Strip transient elaboration cache before exporting nodes to the environment.
     exportEntriesFnEx env := fun state _level =>
       let nodeEntries := state.localData.toArray.map fun (name, node) =>
@@ -96,34 +143,57 @@ def modifyM (f : State -> m State) : m Unit := do
   let st ← f st
   modifyEnv (informalExt.setState · st)
 
+def importedConflicts : m (Array ImportedConflict) := do
+  return (informalExt.getState (← getEnv)).importedConflicts
+
+def reportImportedConflicts : m Unit := do
+  modifyM fun state => do
+    if state.importedConflictsReported || state.importedConflicts.isEmpty then
+      return state
+    for conflict in state.importedConflicts do
+      logError conflict.message
+    return { state with importedConflictsReported := true }
+
 -- XXX: needs: test
-def checkLabelAndNesting (label : Label) (kind : Data.InProgressKind) : m Unit := do
+def checkLabelAndNesting (label : Label) (kind : Data.InProgressKind) : m Bool := do
   let { data, stack, .. } := informalExt.getState (← getEnv)
   match (kind, data.get? label, stack.isEmpty) with
-  | (.statement _, none, true) => return ()
+  | (.statement _, none, true) => return true
   | (.statement _, some node, true) =>
     if node.statement.isNone then
-      return ()
-    else
+      return true
+    else do
       logError m!"Label {label} already defined"
+      return false
   | (.proof, some node, true) =>
     if node.proof.isSome then
       logError m!"Label {label} already has a proof"
+      return false
     else if node.statement.isNone then
       logError m!"Cannot add proof for {label}: statement/dependencies are missing"
-    else return ()
-  | (.proof, none, true) => logError m!"Cannot find proof for label {label}"
-  | (_, _, false) => logError m!"Cannot declare nested definitions"
+      return false
+    else
+      return true
+  | (.proof, none, true) =>
+    logError m!"Cannot find proof for label {label}"
+    return false
+  | (_, _, false) =>
+    logError m!"Cannot declare nested definitions"
+    return false
 
 -- stack operators, to associate {uses} role to the currently opened label
 def push (label : Label) (kind : Data.InProgressKind)
     (codeHint : Option CodeRef := none) (parent : Option Parent := none) (priority : Option String := none)
     (owner : Option AuthorId := none) (tags : Array String := #[]) (effort : Option String := none)
-    (prUrl : Option String := none) : m Unit := do
-  checkLabelAndNesting label kind
+    (prUrl : Option String := none) : m Bool := do
+  reportImportedConflicts
+  let ok ← checkLabelAndNesting label kind
+  if !ok then
+    return false
   modify fun data =>
     let pdata := { label, kind, codeHint, parent, priority, owner, tags, effort, prUrl }
     { data with stack := pdata :: data.stack }
+  return true
 
 def getCount : m Nat := do
   return (informalExt.getState (← getEnv)).data.size
@@ -202,6 +272,7 @@ def getNode? (label : Label) : m (Option Node) := do
   return (informalExt.getState (← getEnv)).data.get? label
 
 def registerGroup (label : Label) (header : String) : m Unit := do
+  reportImportedConflicts
   let header := header.trimAscii.toString
   modifyM fun state => do
     match state.groups.get? label with
@@ -222,6 +293,7 @@ def getAuthor? (label : AuthorId) : m (Option AuthorInfo) := do
   return (informalExt.getState (← getEnv)).authors.get? label
 
 def registerAuthor (label : AuthorId) (info : AuthorInfo) : m Unit := do
+  reportImportedConflicts
   let info := {
     info with
       displayName := info.displayName.trimAscii.toString

@@ -693,6 +693,7 @@ private def addParentTheoremLikeItem (groups : NameMap (List IndexItem)) (parent
   groups.insert parent (item :: groups.getD parent [])
 
 def buildSummary : CoreM Summary := do
+  reportImportedConflicts
   let env ← getEnv
   let state := informalExt.getState env
   let entries := state.data.toArray

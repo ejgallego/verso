@@ -1954,8 +1954,10 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         some .userOk
       else
         none
-    Environment.push label envKind codeHint cfg.parent priority owner tags effort prUrl
+    let accepted ← Environment.push label envKind codeHint cfg.parent priority owner tags effort prUrl
     let contents ← contents.mapM elabBlock
+    if !accepted then
+      return ← ``(Block.concat #[$contents,*])
     if !isProof then
       -- TODO: consolidate this widget-oriented elaboration cache with the traversal preview cache
       -- once we have a phase-safe representation that can serve both pipelines.

@@ -503,6 +503,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
   extraJs := withPreviewRuntimeJsAssets [] [loadD3Dot, graphTocToggleJs]
 
 def buildAll : CoreM (Graph × Array (Name × String)) := do
+  reportImportedConflicts
   let env ← getEnv
   let state := informalExt.getState env
   let roots : Array Name := state.data.toArray.map (·.1)
