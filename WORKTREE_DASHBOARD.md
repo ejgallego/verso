@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged and cleaned up `feat/blueview-20260311`; created `feat/blueprint-tests-consolidation-20260311`)
+Last updated: 2026-03-11 (merged and cleaned up `feat/blueview-20260311`; validated `feat/blueprint-tests-consolidation-20260311`)
 
 ## Active Worktrees
 
@@ -24,20 +24,28 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/blueview-20260311`; create
 
 ### `feat/blueprint-tests-consolidation-20260311`
 
-- Status: `active` (owner action: audit and consolidate the blueprint test suite, then validate the refactor against targeted test builds and example blueprint generation)
-- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The goal is to reduce duplication, normalize test structure and naming, centralize common helpers, and make it easier to understand what behavior each test module owns.
+- Status: `ready-for-review` (owner action: review the shared blueprint test harness refactor and decide whether to split any remaining large scenario modules further)
+- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The suite now has a single `Tests.Blueprint` umbrella import, a shared `Tests.Blueprint.Support` renderer/assert helper, and less brittle preview assertions around CSS class ordering.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
 - Branch: `feat/blueprint-tests-consolidation-20260311`
 - Base commit/branch:
   - branched from `bp` at `951d8fae`
 - Key commits:
-  - `951d8fae` feat(summary): streamline zero-state sections
+  - `853a52d7` refactor(tests): consolidate blueprint test support
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
+  - `script/lean-low-priority lake build Tests.Blueprint.Support Tests.BlueprintLinkHover Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring Tests.BlueprintExternalHeadingStatus Tests.BlueprintTexMacros Tests`
+  - `script/lean-low-priority lake build Tests.Blueprint.Support Tests.Blueprint Tests`
+  - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints`
+  - started shared `_out` preview server on `http://127.0.0.1:8155`
+- Preview link:
+  - `http://127.0.0.1:8155/blueprint-tests-consolidation-20260311/example-blueprints/noperthedron/html-multi/`
+  - `http://127.0.0.1:8155/blueprint-tests-consolidation-20260311/example-blueprints/spherepackingblueprint/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
-  - inspect `src/tests/Tests` for suite structure, duplication, and helper opportunities
-  - validate with targeted `lake build Tests...` commands before rerunning `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints`
+  - inspect `src/tests/Tests/Blueprint.lean` and `src/tests/Tests/Blueprint/Support.lean` first; that is now the suite entry point and shared renderer harness
+  - spot-check `src/tests/Tests/BlueprintPreviewWiring.lean` if preview assertions need more token-based hardening
+  - `git show --stat 853a52d7`
 
 ### `feat/lean-lean-interactive-latency-20260310`
 
