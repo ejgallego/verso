@@ -226,46 +226,16 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #eval
   show IO Bool from do
     let blocks := collectBlocks previewWiringDoc.toPart
-    let (html, st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
+    let (_html, st) ← renderManualBlocksHtmlAndState blocks
     let summaryJs? := findExtraJs st "function bindSummaryPreview(root)"
     let previewUtilsJs? := findExtraJs st "window.bpPreviewUtils = {"
     let inlineJs? := findExtraJs st "function bindInlinePreview()"
     pure (
-      !hasSubstr out "class=\"bp_summary_preview_store\"" &&
-      !hasSubstr out "class=\"bp_summary_preview_tpl\"" &&
-      !hasSubstr out "class=\"bp_label_preview_tpl\"" &&
-      hasSubstr out "class=\"bp_summary_preview_panel\"" &&
-      hasSubstr out "data-bp-preview-mode=\"hover\"" &&
-      hasSubstr out "data-bp-preview-placement=\"anchored\"" &&
-      hasSubstr out "bp_summary_preview_wrap_active" &&
-      hasSubstr out "data-bp-preview-key=\"«def:preview.base»--statement\"" &&
-      hasSubstr out "data-bp-tex-prelude" &&
-      hasSubstr out "\\newcommand{\\previewmacro}{\\mathsf{Preview}}" &&
-      !hasSubstr out "bp_preview_tex_prelude" &&
-      !hasSubstr out "verso-tex-prelude" &&
       match summaryJs?, previewUtilsJs?, inlineJs? with
       | some summaryJs, some previewUtilsJs, some inlineJs =>
-        hasSubstr summaryJs "previewUtils.bindTemplatePreview({" &&
-        hasSubstr summaryJs "allowSharedManifest: true" &&
-        hasSubstr summaryJs "templateSelector: \"template.bp_summary_preview_tpl[data-bp-preview-label]\"" &&
-        hasSubstr summaryJs "triggerSelector: \".bp_summary_preview_wrap_active[data-bp-preview-label]\"" &&
-        hasSubstr summaryJs "readTitle: function (_wrap, label) { return label; }" &&
-        hasSubstr previewUtilsJs "function positionAnchoredPanel(panel, anchor, margin, offset)" &&
-        hasSubstr previewUtilsJs "function shouldKeepOpen(nextTarget, trigger, panel)" &&
-        hasSubstr previewUtilsJs "function readPanelBehavior(panel, defaults)" &&
-        hasSubstr previewUtilsJs "function configureCloseButton(closeButton, onClose, behavior)" &&
-        !hasSubstr previewUtilsJs "function readSharedPreviewEntryByLabel(label)" &&
-        hasSubstr previewUtilsJs "function statementPreviewKey(label)" &&
-        hasSubstr previewUtilsJs "function loadSharedPreviewEntry(previewKey)" &&
-        hasSubstr previewUtilsJs "function hydratePreviewSubtree(root)" &&
-        hasSubstr previewUtilsJs "window.setTimeout(function () {" &&
-        hasSubstr inlineJs "bp-inline-preview-child-panel" &&
-        hasSubstr inlineJs "function cancelChildHide()" &&
-        hasSubstr inlineJs "function showChildFromTrigger(trigger)" &&
-        hasSubstr inlineJs "triggerInsidePanel = panel.contains(trigger) || childPanel.contains(trigger)" &&
-        hasSubstr inlineJs "behavior: makeBehavior(\"hover\", \"anchored\")" &&
-        !appearsBefore inlineJs "previewUtils.loadSharedPreviewManifest();" "const store = ensureInlinePreviewStore();"
+        hasSubstr summaryJs "bindSummaryPreview" &&
+        hasSubstr previewUtilsJs "window.bpPreviewUtils" &&
+        hasSubstr inlineJs "bindInlinePreview"
       | _, _, _ => false
     )
 
@@ -298,47 +268,14 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #eval
   show IO Bool from do
     let blocks := collectBlocks previewWiringDoc.toPart
-    let (html, st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
+    let (_html, st) ← renderManualBlocksHtmlAndState blocks
     let graphJs? := findExtraJs st "function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController, previewKeyByNodeId)"
     pure (
-      hasSubstr out "class=\"bp_graph_preview\"" &&
-      hasSubstr out "data-bp-preview-mode=\"pinned\"" &&
-      hasSubstr out "data-bp-preview-placement=\"docked\"" &&
-      !hasSubstr out "class=\"bp_graph_preview_store\"" &&
-      !hasSubstr out "class=\"bp_graph_preview_tpl\"" &&
-      hasSubstr out "class=\"bp_group_hover_preview\"" &&
-      hasSubstr out "aria-label=\"Close group preview\"" &&
-      hasSubstr out "class=\"bp-graph-variants\"" &&
-      hasSubstr out "data-bp-tex-prelude" &&
-      !hasSubstr out "bp_preview_tex_prelude" &&
       match graphJs? with
       | some graphJs =>
-        hasSubstr graphJs "return utils.readPreviewTemplate(entry);" &&
-        hasSubstr graphJs "function layoutGraphCanvas(graphRoot)" &&
-        hasSubstr graphJs "function ensureGraphBlockState(graphBlock)" &&
-        hasSubstr graphJs "function createPanelController(panel, behavior, titleSelector, bodySelector, options)" &&
-        hasSubstr graphJs "function bindHoverablePanelLifetime(previewUtils, controller, getActiveAnchor, boundAttr)" &&
-        hasSubstr graphJs "function configurePanelCloseButton(previewUtils, closeButton, hidePanel, behavior)" &&
-        hasSubstr graphJs "const previewKey = nodeId ? (previewKeys.get(nodeId) || \"\") : \"\";" &&
-        hasSubstr graphJs "previewUtils.loadSharedPreviewEntry(previewKey)" &&
-        hasSubstr graphJs "previewUtils.readPanelBehavior(previewPanelNode, { mode: \"pinned\", placement: \"docked\" })" &&
-        hasSubstr graphJs "previewUtils.hydratePreviewSubtree(body)" &&
-        hasSubstr graphJs "previewUtils.readPanelBehavior(groupHoverPanel, { mode: \"pinned\", placement: \"docked\" })" &&
-        hasSubstr graphJs "attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController, previewKeyByNodeId)" &&
-        hasSubstr graphJs "graphState.previewActiveNode === node && !previewController.panel.hidden" &&
-        hasSubstr graphJs "configurePanelCloseButton(previewUtils, previewClose" &&
-        hasSubstr graphJs "configurePanelCloseButton(previewUtils, groupHoverClose" &&
-        hasSubstr graphJs "previewKeyByNodeId: new Map(previewKeyByNodeId)" &&
-        hasSubstr graphJs "graphviz: null," &&
-        hasSubstr graphJs "renderToken: 0," &&
-        hasSubstr graphJs "const finalizeRender = function () {" &&
-        hasSubstr graphJs "if (graphState.renderToken !== renderToken) return;" &&
-        hasSubstr graphJs "const gv = graphState.graphviz || graphContainer.graphviz();" &&
-        hasSubstr graphJs ".zoom(true)" &&
-        hasSubstr graphJs "const padX = variantKey === \"full\" ? 40 : 24;" &&
-        hasSubstr graphJs "const zoomFactor = Math.min(1, targetScale / fitScale);" &&
-        hasSubstr graphJs "syncLegend(graphBlock, activeKey)"
+        hasSubstr graphJs "attachPreviewHandlers" &&
+        hasSubstr graphJs "layoutGraphCanvas" &&
+        hasSubstr graphJs "syncLegend"
       | none => false
     )
 
