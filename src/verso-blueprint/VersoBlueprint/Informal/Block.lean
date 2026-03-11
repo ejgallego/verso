@@ -223,9 +223,9 @@ span[class$="_thmlabel"]::after {
   align-items: center;
   margin: 0.45rem 0 0.7rem;
   padding: 0.45rem 0.55rem;
-  border: 1px solid #dbe4ee;
-  border-radius: 0.55rem;
-  background: #f8fafc;
+  border: 1px solid var(--bp-color-border-panel);
+  border-radius: var(--bp-radius-xl);
+  background: var(--bp-color-surface-muted);
   font-size: 0.78rem;
   font-style: normal;
   font-weight: 400;
@@ -245,11 +245,11 @@ span[class$="_thmlabel"]::after {
 
 .bp_metadata_key {
   font-weight: 700;
-  color: #475569;
+  color: var(--bp-color-text-subtle);
 }
 
 .bp_metadata_value {
-  color: #0f172a;
+  color: var(--bp-color-text-strong);
 }
 
 .bp_metadata_tags {
@@ -261,10 +261,10 @@ span[class$="_thmlabel"]::after {
 .bp_metadata_tag {
   display: inline-flex;
   align-items: center;
-  border: 1px solid #cbd5e1;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-pill);
+  background: var(--bp-color-surface);
+  color: var(--bp-color-text-muted);
   padding: 0.06rem 0.38rem;
   font-size: 0.72rem;
   font-weight: 600;
@@ -285,8 +285,8 @@ span[class$="_thmlabel"]::after {
   height: 1.6rem;
   border-radius: 999px;
   object-fit: cover;
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
+  border: 1px solid var(--bp-color-border);
+  background: var(--bp-color-surface);
 }
 
 .bp_code_link {
@@ -318,12 +318,12 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_code_link_status_warning .bp_code_status_symbol {
-  color: #ca8a04;
+  color: var(--bp-color-accent-warning);
 }
 
 .bp_code_link_status_missing .bp_code_status_symbol,
 .bp_code_link_status_axiom .bp_code_status_symbol {
-  color: #dc2626;
+  color: var(--bp-color-accent-danger);
 }
 
 .bp_code_link_status_absent .bp_code_status_symbol {
@@ -357,10 +357,10 @@ span[class$="_thmlabel"]::after {
   min-width: 20rem;
   max-width: min(34rem, 75vw);
   z-index: 20;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.45rem;
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-md);
   padding: 0.45rem 0.55rem;
-  background: #ffffff;
+  background: var(--bp-color-surface);
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
   display: none;
   font-size: 0.78rem;
@@ -402,8 +402,8 @@ span[class$="_thmlabel"]::after {
   height: 0.64rem;
   border-radius: 999px;
   overflow: hidden;
-  border: 1px solid #94a3b8;
-  background: linear-gradient(180deg, #f8fafc, #e2e8f0);
+  border: 1px solid var(--bp-color-border-strong);
+  background: linear-gradient(180deg, var(--bp-color-surface-muted), var(--bp-color-border-soft));
   box-shadow: inset 0 1px 1px rgba(15, 23, 42, 0.08);
 }
 
@@ -416,7 +416,7 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_code_progress_segment_ok {
-  background: #16a34a;
+  background: var(--bp-color-accent-success);
 }
 
 .bp_code_progress_segment_sorry {
@@ -424,7 +424,7 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_code_progress_segment_missing {
-  background: #dc2626;
+  background: var(--bp-color-accent-danger);
 }
 
 .bp_external_status_icon {
@@ -436,25 +436,25 @@ span[class$="_thmlabel"]::after {
   border-radius: 999px;
   font-size: 0.74rem;
   line-height: 1;
-  color: #ffffff;
+  color: var(--bp-color-surface);
   border: 1px solid rgba(15, 23, 42, 0.14);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
 }
 
 .bp_external_status_ok {
-  background: #16a34a;
+  background: var(--bp-color-accent-success);
 }
 
 .bp_external_status_sorry {
-  background: #ca8a04;
+  background: var(--bp-color-accent-warning);
 }
 
 .bp_external_status_missing {
-  background: #dc2626;
+  background: var(--bp-color-accent-danger);
 }
 
 .bp_external_status_error {
-  background: #7c3aed;
+  background: var(--bp-color-accent-info);
 }
 
 .bp_code_panel {
@@ -543,13 +543,13 @@ span[class$="_thmlabel"]::after {
   text-align: left;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--bp-color-text-muted);
   white-space: nowrap;
   cursor: default;
 }
 
 .bp_used_by_chip_empty {
-  color: #64748b;
+  color: var(--bp-color-text-faint);
   font-weight: 500;
 }
 
@@ -564,10 +564,10 @@ span[class$="_thmlabel"]::after {
   min-width: 26rem;
   width: min(50rem, 92vw);
   z-index: 26;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.55rem;
-  background: #ffffff;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-xl);
+  background: var(--bp-color-surface);
+  box-shadow: var(--bp-shadow-lg);
   display: none;
   font-style: normal;
   font-weight: 400;
@@ -587,19 +587,19 @@ span[class$="_thmlabel"]::after {
   justify-content: space-between;
   gap: 0.55rem;
   padding: 0.55rem 0.7rem 0.45rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, #f8fafc, #ffffff);
+  border-bottom: 1px solid var(--bp-color-border-soft);
+  background: linear-gradient(180deg, var(--bp-color-surface-muted), var(--bp-color-surface));
 }
 
 .bp_used_by_panel_title {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--bp-color-text-strong);
 }
 
 .bp_used_by_panel_meta {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--bp-color-text-faint);
 }
 
 .bp_used_by_panel_body {
@@ -622,9 +622,9 @@ span[class$="_thmlabel"]::after {
 }
 
 .bp_used_by_item {
-  border: 1px solid #dbe4ee;
-  border-radius: 0.45rem;
-  background: #f8fafc;
+  border: 1px solid var(--bp-color-border-panel);
+  border-radius: var(--bp-radius-md);
+  background: var(--bp-color-surface-muted);
   transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 
@@ -651,7 +651,7 @@ span[class$="_thmlabel"]::after {
   display: block;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--bp-color-text-strong);
 }
 
 .bp_used_by_target_meta {
@@ -660,7 +660,7 @@ span[class$="_thmlabel"]::after {
   gap: 0.35rem;
   flex-wrap: wrap;
   margin-top: 0.26rem;
-  color: #475569;
+  color: var(--bp-color-text-subtle);
   font-size: 0.72rem;
 }
 
@@ -671,10 +671,10 @@ span[class$="_thmlabel"]::after {
 .bp_used_by_axis_badge {
   display: inline-flex;
   align-items: center;
-  border: 1px solid #cbd5e1;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #334155;
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-pill);
+  background: var(--bp-color-surface);
+  color: var(--bp-color-text-muted);
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.03em;
@@ -684,16 +684,16 @@ span[class$="_thmlabel"]::after {
 
 .bp_used_by_preview_surface {
   min-height: 14rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  background: #f8fafc;
+  border: 1px solid var(--bp-color-border-soft);
+  border-radius: var(--bp-radius-lg);
+  background: var(--bp-color-surface-muted);
   overflow: hidden;
 }
 
 .bp_used_by_preview_header {
   padding: 0.5rem 0.62rem 0.44rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, #f8fafc, #ffffff);
+  border-bottom: 1px solid var(--bp-color-border-soft);
+  background: linear-gradient(180deg, var(--bp-color-surface-muted), var(--bp-color-surface));
 }
 
 .bp_used_by_preview_label {
@@ -701,25 +701,25 @@ span[class$="_thmlabel"]::after {
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--bp-color-text-faint);
 }
 
 .bp_used_by_preview_title {
   margin-top: 0.16rem;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--bp-color-text-strong);
 }
 
 .bp_used_by_preview_body {
   max-height: min(20rem, 62vh);
   overflow: auto;
   padding: 0.62rem 0.68rem 0.72rem;
-  background: #ffffff;
+  background: var(--bp-color-surface);
 }
 
 .bp_used_by_preview_empty {
-  color: #64748b;
+  color: var(--bp-color-text-faint);
   font-size: 0.76rem;
   font-style: italic;
 }
@@ -763,11 +763,11 @@ span[class$="_thmlabel"]::after {
 .bp_external_badge {
   font-size: 0.74rem;
   font-weight: 600;
-  color: #334155;
-  border: 1px solid #d7dee7;
-  border-radius: 999px;
+  color: var(--bp-color-text-muted);
+  border: 1px solid var(--bp-color-border-panel);
+  border-radius: var(--bp-radius-pill);
   padding: 0.12rem 0.45rem;
-  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  background: linear-gradient(180deg, var(--bp-color-surface), var(--bp-color-surface-muted));
 }
 
 .bp_external_badge_kind {
@@ -873,7 +873,7 @@ span[class$="_thmlabel"]::after {
 .bp_external_decl_list > .bp_external_decl_item + .bp_external_decl_item {
   margin-top: 0.85rem;
   padding-top: 0.85rem;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--bp-color-border-soft);
 }
 
 .bp_external_decl_head {
@@ -900,12 +900,12 @@ span[class$="_thmlabel"]::after {
 .bp_external_decl_details summary {
   cursor: pointer;
   font-size: 0.72rem;
-  color: #334155;
+  color: var(--bp-color-text-muted);
 }
 
 .bp_external_decl_preview {
   margin-top: 0.2rem;
-  border-left: 2px solid #e2e8f0;
+  border-left: 2px solid var(--bp-color-border-soft);
   padding-left: 0.45rem;
 }
 
@@ -928,13 +928,13 @@ span[class$="_thmlabel"]::after {
   margin: 0.32rem 0 0;
   padding: 0.1rem 0 0.1rem 0.7rem;
   border: 0;
-  border-left: 0.18rem solid #94a3b8;
+  border-left: 0.18rem solid var(--bp-color-border-strong);
   border-radius: 0;
   background: transparent;
   white-space: pre-wrap;
   font-size: 0.8rem;
   line-height: 1.5;
-  color: #0f172a;
+  color: var(--bp-color-text-strong);
 }
 
 .bp_external_decl_rendered {
@@ -1777,7 +1777,7 @@ block_extension Block.informal (data : BlockData) where
             |> (·.saveDomainObjectData informalDomain label.toString (toJson blockData))
         return none
   toTeX := none
-  extraCss := ([blueprintCss, Informal.Commands.inlinePreviewCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
+  extraCss := ([Informal.Commands.blueprintTokensCss, blueprintCss, Informal.Commands.inlinePreviewCss, blueprintStyleSwitcherCss, Verso.Genre.Manual.docstringStyle] : List String)
   extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs, Informal.Commands.usedByPanelJs, blueprintStyleSwitcherJs] : List String)
   toHtml :=
     open Verso.Doc.Html in

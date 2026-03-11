@@ -1806,7 +1806,7 @@ block_extension Block.summary (summary : Summary) where
           </details>
         </div>
       }}
-  extraCss := ([previewPanelCss, summaryCss, inlinePreviewCss] : List String)
+  extraCss := ([blueprintTokensCss, previewPanelCss, summaryCss, inlinePreviewCss] : List String)
   extraJs := ([openTargetDetailsJs, previewHoverUtilsJs, inlineLinkPreviewJs, summaryPreviewJs] : List String)
 
 open Verso Doc Elab Syntax in

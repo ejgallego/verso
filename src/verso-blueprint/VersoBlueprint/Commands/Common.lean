@@ -6,12 +6,63 @@ Author: Emilio J. Gallego Arias
 
 namespace Informal.Commands
 
+def blueprintTokensCss : String := r##"
+:root {
+  --bp-color-surface: #ffffff;
+  --bp-color-surface-muted: #f8fafc;
+  --bp-color-surface-subtle: #f9fafb;
+  --bp-color-surface-modern: #f8fbff;
+  --bp-color-surface-warn: #fff7ed;
+  --bp-color-surface-warn-soft: #ffedd5;
+  --bp-color-surface-note: #fffbeb;
+  --bp-color-border: #cbd5e1;
+  --bp-color-border-soft: #e2e8f0;
+  --bp-color-border-muted: #d1d5db;
+  --bp-color-border-panel: #dbe4ee;
+  --bp-color-border-strong: #94a3b8;
+  --bp-color-text-strong: #0f172a;
+  --bp-color-text: #111827;
+  --bp-color-text-muted: #334155;
+  --bp-color-text-subtle: #475569;
+  --bp-color-text-faint: #64748b;
+  --bp-color-accent-success: #16a34a;
+  --bp-color-accent-warning: #ca8a04;
+  --bp-color-accent-danger: #dc2626;
+  --bp-color-accent-info: #7c3aed;
+  --bp-color-modern-border: #d6deea;
+  --bp-color-modern-surface-alt: #f5f9ff;
+  --bp-color-modern-caption: #e0ecff;
+  --bp-color-bold-surface-glow-1: rgba(251, 191, 36, 0.2);
+  --bp-color-bold-surface-glow-2: rgba(16, 185, 129, 0.2);
+  --bp-color-bold-link: #7c2d12;
+  --bp-color-bold-label: #f59e0b;
+  --bp-color-biblio-border: #d6ccff;
+  --bp-color-biblio-surface: #faf7ff;
+  --bp-color-biblio-border-soft: #e9ddff;
+  --bp-color-biblio-surface-soft: #fdfbff;
+  --bp-color-biblio-link: #4c1d95;
+  --bp-radius-sm: 0.35rem;
+  --bp-radius-md: 0.45rem;
+  --bp-radius-lg: 0.5rem;
+  --bp-radius-xl: 0.55rem;
+  --bp-radius-2xl: 0.7rem;
+  --bp-radius-3xl: 0.85rem;
+  --bp-radius-pill: 999px;
+  --bp-shadow-sm: 0 4px 14px rgba(15, 23, 42, 0.1);
+  --bp-shadow-md: 0 10px 24px rgba(15, 23, 42, 0.16);
+  --bp-shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.18);
+  --bp-shadow-modern: 0 6px 18px rgba(15, 23, 42, 0.08);
+  --bp-shadow-bold: 0 7px 0 var(--bp-color-text-strong);
+  --bp-shadow-bold-lg: 0 9px 0 var(--bp-color-text-strong);
+}
+"##
+
 def previewPanelCss : String := r##"
 .bp_preview_panel {
-  border: 1px solid #cbd5e1;
-  border-radius: 0.5rem;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-lg);
+  background: var(--bp-color-surface);
+  box-shadow: var(--bp-shadow-md);
   padding: 0.65rem 0.75rem;
 }
 
@@ -43,7 +94,7 @@ def previewPanelCss : String := r##"
 
 .bp_preview_panel_title {
   font-weight: 700;
-  color: #111827;
+  color: var(--bp-color-text);
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -51,10 +102,10 @@ def previewPanelCss : String := r##"
 }
 
 .bp_preview_panel_close {
-  border: 1px solid #cbd5e1;
-  border-radius: 0.35rem;
-  background: #ffffff;
-  color: #0f172a;
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-sm);
+  background: var(--bp-color-surface);
+  color: var(--bp-color-text-strong);
   font-size: 0.72rem;
   font-weight: 600;
   line-height: 1;
@@ -67,7 +118,7 @@ def previewPanelCss : String := r##"
 }
 
 .bp_preview_panel_body {
-  border-left: 2px solid #e5e7eb;
+  border-left: 2px solid var(--bp-color-border-soft);
   overflow: auto;
 }
 "##
@@ -807,10 +858,10 @@ def inlinePreviewCss : String := r##"
   max-width: min(34rem, 86vw);
   max-height: min(26rem, 80vh);
   overflow: hidden;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.45rem;
-  background: #ffffff;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2);
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-md);
+  background: var(--bp-color-surface);
+  box-shadow: var(--bp-shadow-lg);
 }
 
 .bp_inline_preview_panel_child {
@@ -838,21 +889,21 @@ def inlinePreviewCss : String := r##"
   justify-content: space-between;
   gap: 0.6rem;
   padding: 0.4rem 0.55rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border-bottom: 1px solid var(--bp-color-border-soft);
+  background: var(--bp-color-surface-muted);
 }
 
 .bp_inline_preview_panel_title {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--bp-color-text-strong);
 }
 
 .bp_inline_preview_panel_close {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--bp-color-border);
   border-radius: 0.3rem;
-  background: #ffffff;
-  color: #334155;
+  background: var(--bp-color-surface);
+  color: var(--bp-color-text-muted);
   font-size: 0.72rem;
   line-height: 1;
   padding: 0.2rem 0.35rem;
@@ -867,10 +918,10 @@ def inlinePreviewCss : String := r##"
 }
 
 .bp_bibliography_hover_entry {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bp-color-border-soft);
   border-radius: 0.4rem;
   padding: 0.35rem 0.45rem;
-  background: #f8fafc;
+  background: var(--bp-color-surface-muted);
 }
 
 .bp_bibliography_hover_entry .citation {
@@ -891,13 +942,13 @@ def inlinePreviewCss : String := r##"
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #64748b;
+  color: var(--bp-color-text-faint);
 }
 
 .bp_bibliography_hover_meta_value {
   font-size: 0.76rem;
   font-weight: 600;
-  color: #0f172a;
+  color: var(--bp-color-text-strong);
 }
 
 .bp_code_hover_section {
@@ -906,7 +957,7 @@ def inlinePreviewCss : String := r##"
 
 .bp_code_hover_label {
   font-weight: 600;
-  color: #334155;
+  color: var(--bp-color-text-muted);
 }
 
 .bp_code_hover_list {
@@ -919,7 +970,7 @@ def inlinePreviewCss : String := r##"
 }
 
 .bp_code_hover_none {
-  color: #64748b;
+  color: var(--bp-color-text-faint);
   font-style: italic;
 }
 

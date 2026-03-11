@@ -9,10 +9,10 @@
   left: 1rem;
   bottom: 1rem;
   z-index: 1000;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.45rem;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1);
+  background: var(--bp-color-surface);
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-md);
+  box-shadow: var(--bp-shadow-sm);
   padding: 0.4rem 0.55rem;
   font-size: 0.82rem;
   font-weight: 600;
@@ -41,8 +41,8 @@ html.bp-graph-toc-hidden .with-toc > main {
   z-index: 25;
   width: min(34rem, calc(100% - 1.8rem));
   max-height: min(65vh, 36rem);
-  border-color: #d1d5db;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14);
+  border-color: var(--bp-color-border-muted);
+  box-shadow: var(--bp-shadow-md);
   overflow: visible;
 }
 
@@ -74,10 +74,10 @@ html.bp-graph-toc-hidden .with-toc > main {
   z-index: 24;
   width: min(32rem, calc(100% - 1.8rem));
   height: min(42vh, 24rem);
-  border: 1px solid #cbd5e1;
-  border-radius: 0.55rem;
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-xl);
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+  box-shadow: var(--bp-shadow-lg);
   padding: 0.55rem 0.65rem;
   pointer-events: auto;
   backdrop-filter: blur(1px);
@@ -118,7 +118,7 @@ html.bp-graph-toc-hidden .with-toc > main {
 .bp_group_hover_preview_title {
   font-size: 0.82rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--bp-color-text-strong);
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -126,10 +126,10 @@ html.bp-graph-toc-hidden .with-toc > main {
 }
 
 .bp_group_hover_preview_close {
-  border: 1px solid #cbd5e1;
-  border-radius: 0.35rem;
-  background: #ffffff;
-  color: #0f172a;
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-sm);
+  background: var(--bp-color-surface);
+  color: var(--bp-color-text-strong);
   font-size: 0.72rem;
   font-weight: 600;
   line-height: 1;
@@ -145,9 +145,9 @@ html.bp-graph-toc-hidden .with-toc > main {
   width: 100%;
   height: calc(100% - 1.6rem);
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bp-color-border-soft);
   border-radius: 0.4rem;
-  background: #ffffff;
+  background: var(--bp-color-surface);
 }
 
 .bp_graph_legend {
@@ -160,7 +160,7 @@ html.bp-graph-toc-hidden .with-toc > main {
 .bp_graph_legend_note {
   margin: 0;
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--bp-color-text-subtle);
 }
 
 .bp_graph_controls {
@@ -173,16 +173,16 @@ html.bp-graph-toc-hidden .with-toc > main {
 .bp_graph_controls_label {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #334155;
+  color: var(--bp-color-text-muted);
 }
 
 .bp_graph_controls_select {
   min-width: min(28rem, 88vw);
   max-width: 100%;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.45rem;
-  background: #ffffff;
-  color: #0f172a;
+  border: 1px solid var(--bp-color-border);
+  border-radius: var(--bp-radius-md);
+  background: var(--bp-color-surface);
+  color: var(--bp-color-text-strong);
   padding: 0.35rem 0.55rem;
   font-size: 0.87rem;
   line-height: 1.2;
@@ -200,7 +200,7 @@ html.bp-graph-toc-hidden .with-toc > main {
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #334155;
+  color: var(--bp-color-text-muted);
   margin-right: 0.25rem;
 }
 
@@ -215,8 +215,8 @@ html.bp-graph-toc-hidden .with-toc > main {
   width: 0.9rem;
   height: 0.9rem;
   border-radius: 0.2rem;
-  border: 1px solid #6b7280;
-  background: #ffffff;
+  border: 1px solid var(--bp-color-text-faint);
+  background: var(--bp-color-surface);
 }
 
 html[data-bp-style="blueprint"] .bp_graph_legend_item {
@@ -224,20 +224,20 @@ html[data-bp-style="blueprint"] .bp_graph_legend_item {
 }
 
 html[data-bp-style="modern"] .bp_graph_legend {
-  background: #f8fbff;
-  border: 1px solid #d6deea;
-  border-radius: 0.7rem;
+  background: var(--bp-color-surface-modern);
+  border: 1px solid var(--bp-color-modern-border);
+  border-radius: var(--bp-radius-2xl);
   padding: 0.6rem 0.75rem;
 }
 
 html[data-bp-style="bold"] .bp_graph_legend {
   background:
-    radial-gradient(circle at 100% 0%, rgba(251, 191, 36, 0.2), transparent 36%),
-    radial-gradient(circle at 0% 100%, rgba(16, 185, 129, 0.2), transparent 32%),
-    #ffffff;
-  border: 2px solid #0f172a;
-  border-radius: 0.85rem;
-  box-shadow: 0 8px 0 #0f172a;
+    radial-gradient(circle at 100% 0%, var(--bp-color-bold-surface-glow-1), transparent 36%),
+    radial-gradient(circle at 0% 100%, var(--bp-color-bold-surface-glow-2), transparent 32%),
+    var(--bp-color-surface);
+  border: 2px solid var(--bp-color-text-strong);
+  border-radius: var(--bp-radius-3xl);
+  box-shadow: var(--bp-shadow-bold);
   padding: 0.65rem 0.8rem;
 }
 

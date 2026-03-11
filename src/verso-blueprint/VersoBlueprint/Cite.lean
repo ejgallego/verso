@@ -478,7 +478,7 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
             })
         | Option.none => st
     pure none
-  extraCss := ([Informal.Commands.inlinePreviewCss] : List String)
+  extraCss := ([Informal.Commands.blueprintTokensCss, Informal.Commands.inlinePreviewCss] : List String)
   extraJs := ([Informal.Commands.previewHoverUtilsJs, Informal.Commands.inlineLinkPreviewJs] : List String)
   toTeX :=
     open Verso.Output.TeX in
