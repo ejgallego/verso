@@ -100,10 +100,13 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Key commits:
   - `bfa10976` docs(blueprint): centralize blueprint docs
   - `af681591` docs(blueprint): condense overlapping notes
+  - `6349d4d6` fix(blueprint): persist attribute-registered nodes
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
   - started shared `_out` preview server on `http://127.0.0.1:8155`
+  - `./script/lean-low-priority lake build Tests.BlueprintAttribute`
+  - `./script/lean-low-priority lake build Tests`
 - Preview link:
   - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/noperthedron/html-multi/`
   - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/spherepackingblueprint/html-multi/`
@@ -112,7 +115,8 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - inspect `src/verso-blueprint/VersoBlueprint`, `doc/`, and `test-projects/Noperthedron`
   - review findings already captured in chat; `doc/blueprint/` now contains `USER_MANUAL.md`, `DESIGN_RATIONALE.md`, and `ROADMAP.md`
   - `USER_MANUAL.md` is the operational entry point; `DESIGN_RATIONALE.md` absorbs the old preview/graph rationale docs; `ROADMAP.md` holds live cleanup sequencing
-  - then follow up on the highest-priority implementation issues: `@[blueprint]` export persistence, nested/duplicate block soft-fail paths, and preview-source duplication
+  - `@[blueprint]` export persistence is fixed and covered by `Tests.BlueprintAttribute`
+  - next implementation targets remain: nested/duplicate block soft-fail paths, then preview-source duplication
 
 ### `feat/style-review-20260311`
 
