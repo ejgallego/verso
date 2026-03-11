@@ -12,6 +12,7 @@ import Tests.BlueprintInlinePrecision
 import Tests.BlueprintMathLint
 import Tests.BlueprintSummaryStatus
 import Tests.BlueprintLinkHover
+import Tests.BlueprintPreviewSchema
 import Tests.BlueprintPreviewWiring
 import Tests.BlueprintSummaryLinks
 import Tests.BlueprintMetadataPanel

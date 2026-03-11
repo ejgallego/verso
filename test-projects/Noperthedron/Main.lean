@@ -114,10 +114,13 @@ private def checkInlinePreviewTemplateDedup : ExtraStep := fun mode logError cfg
             logError s!"Inline preview template duplicates found in {rel}: {sample}"
   | .single => pure ()
 
-def main := manualMain (%doc Contents)
-  (config := renderConfig)
-  (extraSteps := [
-    Informal.PreviewManifest.emitSharedPreviewManifest,
-    checkSharedPreviewManifestMode,
-    checkInlinePreviewTemplateDedup
-  ])
+def main (args : List String) : IO UInt32 :=
+  Informal.PreviewManifest.manualMainWithSharedPreviewManifest
+    (%doc Contents)
+    args
+    (extensionImpls := by exact extension_impls%)
+    (config := renderConfig)
+    (extraSteps := [
+      checkSharedPreviewManifestMode,
+      checkInlinePreviewTemplateDedup
+    ])

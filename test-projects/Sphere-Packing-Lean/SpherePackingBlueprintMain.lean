@@ -31,6 +31,9 @@ def config : Config where
 def renderConfig : RenderConfig where
   toConfig := config
 
-def main := manualMain (%doc SpherePackingBlueprint.Contents)
-  (config := renderConfig)
-  (extraSteps := [Informal.PreviewManifest.emitSharedPreviewManifest])
+def main (args : List String) : IO UInt32 :=
+  Informal.PreviewManifest.manualMainWithSharedPreviewManifest
+    (%doc SpherePackingBlueprint.Contents)
+    args
+    (extensionImpls := by exact extension_impls%)
+    (config := renderConfig)
