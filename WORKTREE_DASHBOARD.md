@@ -96,7 +96,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Base commit/branch:
   - branched from `bp` at `57ebc3a7`
 - Key commits:
-  - none yet
+  - `bfa10976` docs(blueprint): centralize blueprint docs
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
@@ -107,7 +107,8 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
   - inspect `src/verso-blueprint/VersoBlueprint`, `doc/`, and `test-projects/Noperthedron`
-  - review findings already captured in chat; start by moving blueprint-specific docs into `doc/blueprint/` and updating references
+  - review findings already captured in chat; `doc/blueprint/` now exists and holds the repo-level Blueprint docs
+  - next doc step: merge overlapping architecture/refactor/review notes into a smaller set of canonical docs
   - then follow up on the highest-priority implementation issues: `@[blueprint]` export persistence, nested/duplicate block soft-fail paths, and preview-source duplication
 
 ### `feat/style-review-20260311`
