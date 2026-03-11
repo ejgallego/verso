@@ -6,6 +6,72 @@ Author: Emilio J. Gallego Arias
 
 namespace Informal.Commands
 
+def previewPanelCss : String := r##"
+.bp_preview_panel {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.16);
+  padding: 0.65rem 0.75rem;
+}
+
+.bp_preview_panel[data-bp-preview-placement="anchored"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -0.85rem;
+  height: 0.85rem;
+}
+
+.bp_preview_panel[data-bp-preview-placement="anchored"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.85rem;
+  height: 0.85rem;
+}
+
+.bp_preview_panel_header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.bp_preview_panel_title {
+  font-weight: 700;
+  color: #111827;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bp_preview_panel_close {
+  border: 1px solid #cbd5e1;
+  border-radius: 0.35rem;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25rem 0.45rem;
+  cursor: pointer;
+}
+
+.bp_preview_panel[data-bp-preview-mode="hover"] .bp_preview_panel_close {
+  display: none;
+}
+
+.bp_preview_panel_body {
+  border-left: 2px solid #e5e7eb;
+  overflow: auto;
+}
+"##
+
 def previewHoverUtilsJs : String := r##"(function () {
   if (window.bpPreviewUtils) return;
 

@@ -499,7 +499,7 @@ block_extension Block.graph (graphData : GraphBlockData) where
           {{groupHoverPanel}}
         </div>
       }}
-  extraCss := ([graphCss] : List String)
+  extraCss := ([previewPanelCss, graphCss] : List String)
   extraJs := ([previewHoverUtilsJs, loadD3Dot, graphTocToggleJs] : List String)
 
 def buildAll : CoreM (Graph × Array (Name × String)) := do

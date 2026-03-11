@@ -130,40 +130,47 @@ def isInlinePreviewOwner (state : Verso.Genre.Manual.TraverseState)
   | some owner => owner == id
   | Option.none => true
 
+private def previewPanel
+    (rootClass headerClass titleClass closeClass bodyClass closeLabel : String)
+    (mode : PreviewMode) (placement : PreviewPlacement) : Verso.Output.Html := {{
+  <aside class={{rootClass}}
+      "data-bp-preview-mode"={{mode.dataValue}}
+      "data-bp-preview-placement"={{placement.dataValue}}
+      hidden>
+    <div class={{headerClass}}>
+      <div class={{titleClass}}></div>
+      <button type="button" class={{closeClass}} aria-label={{closeLabel}}>"Close"</button>
+    </div>
+    <div class={{bodyClass}}></div>
+  </aside>
+}}
+
 def graphPreviewUi
     (mode : PreviewMode := .pinned) (placement : PreviewPlacement := .docked) : GraphPreviewUi :=
   {
     store := .empty
-    panel := {{
-      <aside class="bp_graph_preview"
-          "data-bp-preview-mode"={{mode.dataValue}}
-          "data-bp-preview-placement"={{placement.dataValue}}
-          hidden>
-        <div class="bp_graph_preview_header">
-          <div class="bp_graph_preview_title"></div>
-          <button type="button" class="bp_graph_preview_close" aria-label="Close informal preview">"Close"</button>
-        </div>
-        <div class="bp_graph_preview_body"></div>
-      </aside>
-    }}
+    panel := previewPanel
+      "bp_graph_preview bp_preview_panel"
+      "bp_graph_preview_header bp_preview_panel_header"
+      "bp_graph_preview_title bp_preview_panel_title"
+      "bp_graph_preview_close bp_preview_panel_close"
+      "bp_graph_preview_body bp_preview_panel_body"
+      "Close informal preview"
+      mode placement
   }
 
 def summaryPreviewUi
     (mode : PreviewMode := .hover) (placement : PreviewPlacement := .anchored) : SummaryPreviewUi :=
   {
     store := .empty
-    panel := {{
-      <aside class="bp_summary_preview_panel"
-          "data-bp-preview-mode"={{mode.dataValue}}
-          "data-bp-preview-placement"={{placement.dataValue}}
-          hidden>
-        <div class="bp_summary_preview_panel_header">
-          <div class="bp_summary_preview_panel_title"></div>
-          <button type="button" class="bp_summary_preview_panel_close" aria-label="Close summary preview">"Close"</button>
-        </div>
-        <div class="bp_summary_preview_panel_body"></div>
-      </aside>
-    }}
+    panel := previewPanel
+      "bp_summary_preview_panel bp_preview_panel"
+      "bp_summary_preview_panel_header bp_preview_panel_header"
+      "bp_summary_preview_panel_title bp_preview_panel_title"
+      "bp_summary_preview_panel_close bp_preview_panel_close"
+      "bp_summary_preview_panel_body bp_preview_panel_body"
+      "Close summary preview"
+      mode placement
   }
 
 def summaryPreviewWrap
