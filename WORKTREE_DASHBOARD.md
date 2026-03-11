@@ -104,11 +104,14 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - `af681591` docs(blueprint): condense overlapping notes
   - `6349d4d6` fix(blueprint): persist attribute-registered nodes
   - `815b6600` test(blueprint): expand attribute persistence coverage
+  - `f2f6e2a4` fix(blueprint): harden duplicate identity handling
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
   - started shared `_out` preview server on `http://127.0.0.1:8155`
   - `./script/lean-low-priority lake build Tests.BlueprintAttribute`
+  - `./script/lean-low-priority lake build Tests`
+  - `./script/lean-low-priority lake build Tests.BlueprintInformal Tests.BlueprintImportedDuplicates.Direct Tests.BlueprintImportedDuplicates.Transitive`
   - `./script/lean-low-priority lake build Tests`
 - Preview link:
   - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/noperthedron/html-multi/`
@@ -120,10 +123,11 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - `USER_MANUAL.md` is the operational entry point; `DESIGN_RATIONALE.md` absorbs the old preview/graph rationale docs; `ROADMAP.md` holds live cleanup sequencing
   - `@[blueprint]` export persistence is fixed and now covered by a broader `Tests.BlueprintAttribute` matrix:
   - direct + transitive import path, imported `data` vs `localData`, code origin/kind, and documented vs undocumented declarations
-  - next implementation target: duplicate-identity hardening
-  - local scope: nested/duplicate block rejection without stack mutation
-  - imported scope: cross-module collision detection for nodes, groups, and authors
-  - test plan is now recorded in `doc/blueprint/ROADMAP.md`
+  - duplicate-identity hardening is now implemented:
+  - local scope: nested/duplicate block rejection now happens before stack mutation
+  - imported scope: cross-module collision detection now records and reports duplicate nodes, groups, and authors
+  - regression coverage includes direct + transitive imported collisions plus local duplicate/nesting checks
+  - next implementation target remains preview-source duplication cleanup
 
 ### `feat/style-review-20260311`
 
