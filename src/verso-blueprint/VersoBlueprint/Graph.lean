@@ -13,7 +13,7 @@ open Lean
 open Informal Data Environment
 
 /-!
-See `GRAPH_STATUS_COMPLETION_AND_COLORING_SPEC.md` in this directory for a
+See `doc/blueprint/GRAPH_STATUS_COMPLETION_AND_COLORING_SPEC.md` for a
 human-readable status/completion and warning/color mapping specification.
 -/
 

@@ -109,6 +109,9 @@ To validate the blueprint example projects, run
 `spherepackingblueprint` in parallel under
 `_out/example-blueprints/`.
 
+Repository-level Blueprint design notes and implementation reviews now live under
+`doc/blueprint/`.
+
 Each generated blueprint site also emits a shared preview manifest at
 `html-multi/-verso-data/blueprint-preview-manifest.json`. This is the canonical runtime
 source for blueprint statement/proof preview bodies, and it is now emitted

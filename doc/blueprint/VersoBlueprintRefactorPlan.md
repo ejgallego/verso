@@ -14,7 +14,7 @@ Completed in this worktree:
 3. Mechanical extraction of code-render data/view layer from `VersoBlueprint.lean` to:
    - `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`
 4. Refactor notes update with `Data.CodeRef` consumer map and redundancy list:
-   - `doc/CommandsPathRefactorNotes.md`
+   - `doc/blueprint/CommandsPathRefactorNotes.md`
 
 Validation snapshot:
 
