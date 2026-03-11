@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (refreshed `feat/preview-manifest-hardening-20260311` with docstring-driven schema descriptions)
+Last updated: 2026-03-11 (refreshed `feat/preview-manifest-hardening-20260311` to remove implementation-detail label wording from the schema)
 
 ## Active Worktrees
 
@@ -76,6 +76,7 @@ Last updated: 2026-03-11 (refreshed `feat/preview-manifest-hardening-20260311` w
 - Base commit/branch:
   - branched from `bp` at `ce06d72a`
 - Key commits:
+  - `f88d176e` docs(preview): remove implementation-detail label wording
   - `cedcc727` feat(preview): enrich manifest metadata schema
   - `fee8c80f` fix(preview): auto-emit and harden shared manifest
 - Validation status:
@@ -84,6 +85,9 @@ Last updated: 2026-03-11 (refreshed `feat/preview-manifest-hardening-20260311` w
   - `./script/lean-low-priority lake env lean src/tests/Tests/BlueprintPreviewSchema.lean`
   - rerun after docstring/schema follow-up: `./script/lean-low-priority lake build VersoBlueprint.PreviewManifest Tests.BlueprintPreviewSchema`
   - rerun after docstring/schema follow-up: `./script/lean-low-priority lake exe noperthedron --dump-schema`
+  - rerun after label-wording cleanup: `./script/lean-low-priority lake build VersoBlueprint.PreviewManifest Tests.BlueprintPreviewSchema`
+  - rerun after label-wording cleanup: `./script/lean-low-priority lake env lean src/tests/Tests/BlueprintPreviewSchema.lean`
+  - rerun after label-wording cleanup: `./script/lean-low-priority lake exe noperthedron --dump-schema`
   - `./script/lean-low-priority lake env lean src/tests/Tests/BlueprintPreviewWiring.lean`
   - `./script/lean-low-priority lake exe noperthedron --dump-schema`
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/preview-manifest-hardening-20260311/example-blueprints`
@@ -97,6 +101,7 @@ Last updated: 2026-03-11 (refreshed `feat/preview-manifest-hardening-20260311` w
   - manifest now auto-registers through `Verso.Genre.Manual.registerExtraStep`; plain blueprint `manualMain` calls still emit `bp-previews.json`
   - runtime retries failed manifest fetches and surfaces an explicit diagnostic instead of silently caching an empty manifest
   - manifest schema now reads field descriptions from field docstrings, and the top-level `version` field was removed
+  - public schema wording now talks about blueprint labels rather than the internal Lean `Name` representation
 
 ### `feat/lean-commandm-incremental-20260306`
 
