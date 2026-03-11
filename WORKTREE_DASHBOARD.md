@@ -31,6 +31,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Base commit/branch:
   - branched from `bp` at `2a11a8f9`
 - Key commits:
+  - `6ddaf4ae` refactor(style): promote bp selector surface
   - `698ceb47` refactor(style): unify blueprint asset registration
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` completed successfully
@@ -129,6 +130,9 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - asset-registration checkpoint validated after `698ceb47`:
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
   - emitted HTML now carries one copy of the style-switcher JS; summary/bibliography assets now load through the regular page asset block instead of inline block HTML
+  - selector-boundary checkpoint validated after `6ddaf4ae`:
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
+  - emitted HTML now carries `bp_style_*` / `bp_kind_*_*` selectors while preserving the legacy leanblueprint-compatible theorem/proof classes in parallel
 - Planned commit slices:
   - `1.` unify asset registration so each CSS/JS payload is added through one path only
   - `2.` preserve leanblueprint compatibility classes, but retarget blueprint-owned styling to primary `bp_*` selectors
