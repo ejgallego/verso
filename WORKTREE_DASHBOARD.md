@@ -145,6 +145,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Base commit/branch:
   - branched from `bp` at `14e8157d`
 - Key commits:
+  - `2b634f79` refactor(style): share asset bundles and semantic tokens
   - `6c9199ed` refactor(style): add blueprint design tokens
   - `b2979b45` refactor(preview): share panel chrome
   - `376b20bc` chore(style): remove dead blueprint placeholders
@@ -174,6 +175,9 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - token-layer checkpoint validated after `6c9199ed`:
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
   - emitted HTML now carries a shared `:root` blueprint token block, and the common blueprint surfaces reference `var(--bp-...)` tokens instead of duplicating the same palette/shadow literals across files
+  - polish checkpoint validated after `2b634f79`:
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
+  - common blueprint asset bundles now flow through helper combinators in `Commands.Common`, and the warning/error/focus colors touched during the cleanup now route through named semantic tokens instead of ad hoc literals
 - Preview link:
   - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/noperthedron/html-multi/`
   - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/spherepackingblueprint/html-multi/`
@@ -181,7 +185,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/style-review-20260311`
   - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/StyleSwitcher.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, and `src/verso-blueprint/VersoBlueprint/Commands/{Graph,Summary,Bibliography}.lean`
   - compare generated HTML against Verso asset conventions and preserve leanblueprint-compatible wrapper/content class heritage where it still provides value
-  - current staged series head: `6c9199ed`
+  - current staged series head: `2b634f79`
   - rerun validation as needed with `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints` and compare:
   - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/noperthedron/html-multi/`
   - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/spherepackingblueprint/html-multi/`
