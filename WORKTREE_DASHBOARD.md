@@ -92,9 +92,8 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 
 ### `feat/blueview-20260311`
 
-- Status: `active` (owner action: consolidate blueprint docs first, then apply the prioritized review fixes)
-- Summary: isolated review worktree for an audit of blueprint implementation quality. The review findings are now in hand; the next step is to consolidate scattered blueprint-specific docs under `doc/blueprint/` before landing code/doc follow-ups on duplication, weak datatypes, and soft-fail behavior.
-- Summary: isolated review worktree for an audit of blueprint implementation quality. The review findings are now in hand, and the repo-level Blueprint docs have been reshaped into a smaller three-document set under `doc/blueprint/`: `USER_MANUAL.md`, `DESIGN_RATIONALE.md`, and `ROADMAP.md`.
+- Status: `active` (owner action: harden duplicate handling next, first within one module and then across imported Blueprint files)
+- Summary: isolated review worktree for an audit of blueprint implementation quality. The review findings are now in hand, the repo-level Blueprint docs have been reshaped into a smaller three-document set under `doc/blueprint/`, and `@[blueprint]` export persistence is fixed. The next scheduled hardening pass is duplicate-identity handling: reject nested/duplicate local blocks earlier and detect imported collisions for labels, groups, and authors with explicit tests.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
 - Branch: `feat/blueview-20260311`
 - Base commit/branch:
@@ -120,7 +119,10 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - `USER_MANUAL.md` is the operational entry point; `DESIGN_RATIONALE.md` absorbs the old preview/graph rationale docs; `ROADMAP.md` holds live cleanup sequencing
   - `@[blueprint]` export persistence is fixed and now covered by a broader `Tests.BlueprintAttribute` matrix:
   - direct + transitive import path, imported `data` vs `localData`, code origin/kind, and documented vs undocumented declarations
-  - next implementation targets remain: nested/duplicate block soft-fail paths, then preview-source duplication
+  - next implementation target: duplicate-identity hardening
+  - local scope: nested/duplicate block rejection without stack mutation
+  - imported scope: cross-module collision detection for nodes, groups, and authors
+  - test plan is now recorded in `doc/blueprint/ROADMAP.md`
 
 ### `feat/style-review-20260311`
 
