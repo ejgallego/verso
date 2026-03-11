@@ -107,6 +107,7 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/style-review-20260311`)
   - `f2f6e2a4` fix(blueprint): harden duplicate identity handling
   - `e3538ae3` refactor(preview): unify preview source path
   - `d8ffb462` refactor(status): share blueprint status evaluation
+  - `0a22802e` feat(summary): streamline zero-state sections
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
@@ -121,6 +122,9 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/style-review-20260311`)
   - `./script/lean-low-priority lake build VersoBlueprint.Graph VersoBlueprint.Informal.CodeSummary VersoBlueprint.Commands.Summary VersoBlueprint.Informal.Block`
   - `./script/lean-low-priority lake build Tests.BlueprintGraph Tests.BlueprintSummaryStatus Tests.BlueprintExternalHeadingStatus Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks`
   - `./script/lean-low-priority lake build Tests`
+  - `./script/lean-low-priority lake build Tests.BlueprintSummaryLinks Tests.BlueprintMetadataPanel Tests.BlueprintPreviewWiring`
+  - `./script/lean-low-priority lake build Tests`
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
 - Preview link:
   - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/noperthedron/html-multi/`
   - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/spherepackingblueprint/html-multi/`
@@ -140,7 +144,11 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/style-review-20260311`)
   - widget preview and imported preview regressions now cover the unified preview path
   - shared status evaluation is now implemented:
   - graph, summary, and local code-summary heading status all consume the same `Graph.CodeHealth` evaluation path
-  - current implementation target: summary polish on top of the centralized status logic
+  - summary polish is now implemented on top of the centralized status logic:
+  - zero-value warning/secondary cards are hidden by default
+  - Lean blockers are consolidated under one blockers section with nested detail filters
+  - theorem-by-parent is now a secondary nested view under the main theorem index
+  - the next implementation target should come from the remaining roadmap items after this pass
 
 ## Recently Completed
 
