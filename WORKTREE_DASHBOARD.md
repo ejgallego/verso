@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-review-20260311`)
+Last updated: 2026-03-11 (merged and cleaned up `feat/style-review-20260311`)
 
 ## Active Worktrees
 
@@ -142,64 +142,24 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - graph, summary, and local code-summary heading status all consume the same `Graph.CodeHealth` evaluation path
   - current implementation target: summary polish on top of the centralized status logic
 
-### `feat/style-review-20260311`
-
-- Status: `ready-for-review` (owner action: review the staged cleanup series and authorize merge if satisfied)
-- Summary: isolated review worktree for blueprint styling organization. The staged cleanup and polish series is complete: asset registration is unified, blueprint-owned selectors now lead over legacy leanblueprint compatibility classes, interactive controls use native HTML, dead placeholders are gone, preview chrome is shared, and both structural plus semantic blueprint styling now flow through shared helper/token layers.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/style-review-20260311`
-- Branch: `feat/style-review-20260311`
-- Base commit/branch:
-  - rebased onto `bp` at `b4b5b84d` and validated (`0` behind / `7` ahead before the dashboard checkpoint commit on `bp`)
-- Key commits:
-  - `refactor(style): unify blueprint asset registration`
-  - `refactor(style): promote bp selector surface`
-  - `fix(html): use native blueprint controls`
-  - `chore(style): remove dead blueprint placeholders`
-  - `refactor(preview): share panel chrome`
-  - `refactor(style): add blueprint design tokens`
-  - `refactor(style): share asset bundles and semantic tokens`
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - reused shared `_out` preview server on `http://127.0.0.1:8155`
-  - review checkpoint: generated outputs inspected at the HTML level; duplicated inline asset injection, legacy-selector drift, weak interactive semantics, and dead selectors confirmed in the emitted site
-  - asset-registration checkpoint validated after `698ceb47`:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - emitted HTML now carries one copy of the style-switcher JS; summary/bibliography assets now load through the regular page asset block instead of inline block HTML
-  - selector-boundary checkpoint validated after `6ddaf4ae`:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - emitted HTML now carries `bp_style_*` / `bp_kind_*_*` selectors while preserving the legacy leanblueprint-compatible theorem/proof classes in parallel
-  - semantic-controls checkpoint validated after `68073da2`:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - emitted HTML now uses native `button` controls for multi-entry used-by/group panels and wires the graph “View” label to a real select id
-  - dead-code checkpoint validated after `376b20bc`:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - emitted HTML no longer contains the empty `bp_hiddenextras` placeholder or the dead `.bp_summary_preview` mobile rule; `Summary.lean` now carries a short note to force future `summary.css` edits through a module rebuild
-  - shared-preview checkpoint validated after `b2979b45`:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - graph and summary previews now share a common `bp_preview_panel*` chrome layer in both markup and CSS, while their existing graph/summary-specific hook classes remain in place for behavior and local sizing overrides
-  - token-layer checkpoint validated after `6c9199ed`:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - emitted HTML now carries a shared `:root` blueprint token block, and the common blueprint surfaces reference `var(--bp-...)` tokens instead of duplicating the same palette/shadow literals across files
-  - polish checkpoint validated after `2b634f79`:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - common blueprint asset bundles now flow through helper combinators in `Commands.Common`, and the warning/error/focus colors touched during the cleanup now route through named semantic tokens instead of ad hoc literals
-  - final review-prep validation on the rebased branch:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
-  - preview artifacts on the rebased head still match the cleaned styling series for both `noperthedron` and `spherepackingblueprint`
-- Preview link:
-  - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/noperthedron/html-multi/`
-  - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/spherepackingblueprint/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/style-review-20260311`
-  - inspect `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`, `src/verso-blueprint/VersoBlueprint/StyleSwitcher.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, and `src/verso-blueprint/VersoBlueprint/Commands/{Graph,Summary,Bibliography}.lean`
-  - compare generated HTML against Verso asset conventions and preserve leanblueprint-compatible wrapper/content class heritage where it still provides value
-  - current staged series head: `refactor(style): share asset bundles and semantic tokens`
-  - rerun validation as needed with `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints` and compare:
-  - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/noperthedron/html-multi/`
-  - `http://127.0.0.1:8155/style-review-20260311/example-blueprints/spherepackingblueprint/html-multi/`
-
 ## Recently Completed
+
+- Merged `feat/style-review-20260311` into `bp` (`e3468db1 -> 21374533`, fast-forward).
+- Feature branch key commits:
+  - `4673b384` refactor(style): unify blueprint asset registration
+  - `719713d9` refactor(style): promote bp selector surface
+  - `5607dd0a` fix(html): use native blueprint controls
+  - `fd04c5da` chore(style): remove dead blueprint placeholders
+  - `96a5bcca` refactor(preview): share panel chrome
+  - `aad8b535` refactor(style): add blueprint design tokens
+  - `21374533` refactor(style): share asset bundles and semantic tokens
+- Validation on merged feature head:
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
+- Cleanup authorized and completed:
+  - remove worktree `/home/egallego/lean/verso-blueprint/.worktrees/style-review-20260311`
+  - delete branch `feat/style-review-20260311`
+  - remove preview artifacts `/home/egallego/lean/verso-blueprint/_out/style-review-20260311`
+  - shared `_out` server was already not running; no stop action needed
 
 - Merged `feat/lean-code-link-preview-api-20260311` into `bp` (`4f0d4bb0 -> 6e7eabc3`, fast-forward).
 - Feature branch key commits:
