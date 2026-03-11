@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (tightened `feat/blueprint-metadata-json-review-bp-20260311` to manifest-only block previews with exact-key runtime lookups)
+Last updated: 2026-03-11 (retired the old `feat/code-summary-badge-unification-20260310` checkout while preserving its unmerged branch)
 
 ## Active Worktrees
 
@@ -94,29 +94,6 @@ Last updated: 2026-03-11 (tightened `feat/blueprint-metadata-json-review-bp-2026
   - inspect metadata JSON producers and consumers under `src/verso-blueprint`
   - source worktree `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310` was dirty at fork time; this review branch intentionally starts from committed head `a2a6c290`
 
-### `feat/code-summary-badge-unification-20260310`
-
-- Status: `ready-for-review` (owner action: inspect the validated renderer refactor and decide whether to polish further or prepare it for merge)
-- Summary: squashed review branch that unifies code-summary rendering in `Informal.CodeSummary`, keeps the pill and `L∃∀N` trigger skins, and routes both through one canonical hover-preview body listing associated constants plus status.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
-- Branch: `feat/code-summary-badge-unification-20260310`
-- Base commit/branch:
-  - rebased on current `bp`
-- Key commits:
-  - `b2fe2c20` refactor(blueprint): unify code summary surfaces
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `lake build Tests.BlueprintExternalHeadingStatus Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks`
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310/example-blueprints`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310/noperthedron`
-- Preview link:
-  - `http://127.0.0.1:8156/code-summary-badge-unification-20260310/noperthedron/html-multi/`
-  - `http://127.0.0.1:8156/code-summary-badge-unification-20260310/example-blueprints/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
-  - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Informal/CodeSummary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/ExternalCode.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`
-
 ### `feat/lean-code-link-preview-api-20260311`
 
 - Status: `active` (owner action: introduce a canonical Lean-code link API, switch existing Lean-link call sites onto it, then add hover preview through that single path)
@@ -182,6 +159,16 @@ Last updated: 2026-03-11 (tightened `feat/blueprint-metadata-json-review-bp-2026
   - `git rebase bp`
 
 ## Recently Completed
+
+- Retired the old checkout for `feat/code-summary-badge-unification-20260310` after starting `feat/lean-code-link-preview-api-20260311`.
+- Preserved branch:
+  - `feat/code-summary-badge-unification-20260310` at `b2fe2c20`
+- Reason:
+  - branch was not merged and is not contained in `feat/lean-code-link-preview-api-20260311`, so only the worktree checkout and preview artifacts were cleaned up
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/code-summary-badge-unification-20260310`
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/code-summary-badge-unification-20260310`
 
 - Merged `feat/agents-followup-policy-20260311` into `bp` (`4833ce78 -> cb10d3e7`, fast-forward).
 - Feature branch key commit:
