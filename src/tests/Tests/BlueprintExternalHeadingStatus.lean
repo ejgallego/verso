@@ -4,16 +4,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: OpenAI Codex
 -/
 
-import VersoBlueprint
+import Tests.Blueprint.Support
 
 namespace Verso.Tests.BlueprintExternalHeadingStatus
 
 open Lean
 open Informal
 open Informal.Data
-
-private def hasSubstr (s needle : String) : Bool :=
-  (s.splitOn needle).length > 1
+open Verso.Tests.Blueprint.Support
 
 private def inlineProofGapStatus : Data.ProvedStatus :=
   .containsSorry #[{ location := .proof, refs? := some 1 }]

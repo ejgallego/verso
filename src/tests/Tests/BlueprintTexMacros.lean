@@ -5,8 +5,7 @@ Author: OpenAI Codex
 -/
 
 import Tests.BlueprintTexMacros.Root
-import VersoBlueprint
-import VersoManual
+import Tests.Blueprint.Support
 
 namespace Verso.Tests.BlueprintTexMacros
 
@@ -14,11 +13,9 @@ open Lean
 open Verso
 open Verso.Genre.Manual
 open Informal
+open Verso.Tests.Blueprint.Support
 
 set_option doc.verso true
-
-private def hasSubstr (s needle : String) : Bool :=
-  (s.splitOn needle).length > 1
 
 /-- info: true -/
 #guard_msgs in

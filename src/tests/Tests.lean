@@ -4,25 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 import Tests.Basic
-import Tests.BlueprintAttribute
-import Tests.BlueprintAttribute.Reexport
-import Tests.BlueprintImportedDuplicates.Direct
-import Tests.BlueprintImportedDuplicates.Transitive
-import Tests.BlueprintInformal
-import Tests.BlueprintNumbering
-import Tests.BlueprintExternalHeadingStatus
-import Tests.BlueprintGraph
-import Tests.BlueprintInlinePrecision
-import Tests.BlueprintMathLint
-import Tests.BlueprintPreviewSource
-import Tests.BlueprintSummaryStatus
-import Tests.BlueprintLinkHover
-import Tests.BlueprintPreviewSchema
-import Tests.BlueprintPreviewWiring
-import Tests.BlueprintSummaryLinks
-import Tests.BlueprintMetadataPanel
+import Tests.Blueprint
 import Tests.Elab
-import Tests.BlueprintTexMacros
 import Tests.GenericCode
 import Tests.Golden
 import Tests.CommentSkipping

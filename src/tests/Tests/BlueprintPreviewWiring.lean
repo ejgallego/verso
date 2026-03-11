@@ -4,16 +4,18 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: OpenAI Codex
 -/
 
-import VersoBlueprint
-import VersoManual
+import Tests.Blueprint.Support
 
 namespace Verso.Tests.BlueprintPreviewWiring
 
 open Verso
 open Verso.Genre.Manual
 open Informal
+open Verso.Tests.Blueprint.Support
 
 set_option doc.verso true
+
+private def manualImpls : ExtensionImpls := extension_impls%
 
 tex_prelude r#"
 \newcommand{\previewmacro}{\mathsf{Preview}}
@@ -154,83 +156,27 @@ Only entry in its declared group.
 :::
 :::::::
 
-private partial def collectBlocks (part : Doc.Part Genre.Manual) : Array (Doc.Block Genre.Manual) :=
-  let childBlocks := part.subParts.foldl (init := #[]) fun acc child =>
-    acc ++ collectBlocks child
-  part.content ++ childBlocks
-
-private def initTraverseState (impls : ExtensionImpls) : TraverseState :=
-  Id.run do
-    let mut st : TraverseState := TraverseState.initialize {}
-    for ⟨_, b⟩ in impls.blockDescrs do
-      if let some descr := b.get? BlockDescr then
-        st := descr.init st
-    for ⟨_, i⟩ in impls.inlineDescrs do
-      if let some descr := i.get? InlineDescr then
-        st := descr.init st
-    return st
-
-private def traverseManualBlocks
-    (blocks : Array (Doc.Block Genre.Manual))
-    (impls : ExtensionImpls) :
-    IO (Array (Doc.Block Genre.Manual) × TraverseState) := do
-  let ctxt : TraverseContext := { logError := fun _ => pure () }
-  let mut st := initTraverseState impls
-  let mut cur := blocks
-  for _ in [0:4] do
-    let (next, st') ← TraverseM.run impls ctxt st <| cur.mapM Verso.Genre.Manual.traverseBlock
-    if next == cur && st' == st then
-      return (next, st')
-    cur := next
-    st := st'
-  return (cur, st)
-
-private def renderManualBlocksHtmlAndState
-    (blocks : Array (Doc.Block Genre.Manual)) : IO (Output.Html × TraverseState) := do
-  let impls : ExtensionImpls := extension_impls%
-  let opts : Doc.Html.Options (ReaderT Multi.AllRemotes (ReaderT ExtensionImpls IO)) := {
-    headerLevel := 1
-    logError := fun _ => pure ()
-  }
-  let (blocks, st) ← traverseManualBlocks blocks impls
-  let ctxt : TraverseContext := { logError := fun _ => pure () }
-  let definitionIds : Lean.NameMap String := {}
-  let linkTargets : Code.LinkTargets TraverseContext := {}
-  let codeOptions : Code.HighlightHtmlM.Options := {}
-  let remotes : Multi.AllRemotes := {}
-  let block := Doc.Block.concat blocks
-  let htmlState := Verso.Genre.Manual.toHtml opts ctxt st definitionIds linkTargets codeOptions block
-  let (html, _hover) ← ((htmlState.run {}).run remotes).run impls
-  pure (html, st)
-
-private def hasSubstr (s needle : String) : Bool :=
-  (s.splitOn needle).length > 1
-
-private def countSubstr (s needle : String) : Nat :=
-  (s.splitOn needle).length.pred
-
-private def appearsBefore (s lhs rhs : String) : Bool :=
-  match s.splitOn lhs with
-  | _ :: tail => hasSubstr (String.intercalate lhs tail) rhs
-  | [] => false
-
-private def findExtraJs (st : TraverseState) (needle : String) : Option String :=
-  st.toHtmlAssets.extraJs.toArray.findSome? fun js =>
-    if hasSubstr js.js needle then some js.js else none
-
-private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
-  st.toHtmlAssets.extraCss.toArray.any fun css => hasSubstr css.css needle
-
 /-- info: true -/
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks previewWiringDoc.toPart
-    let (_html, st) ← renderManualBlocksHtmlAndState blocks
-    let summaryJs? := findExtraJs st "function bindSummaryPreview(root)"
-    let previewUtilsJs? := findExtraJs st "window.bpPreviewUtils = {"
-    let inlineJs? := findExtraJs st "function bindInlinePreview()"
+    let (out, st) ← renderManualDocHtmlStringAndState manualImpls previewWiringDoc
+    let summaryJs? := findExtraJsContaining? st "function bindSummaryPreview(root)"
+    let previewUtilsJs? := findExtraJsContaining? st "window.bpPreviewUtils = {"
+    let inlineJs? := findExtraJsContaining? st "function bindInlinePreview()"
     pure (
+      !hasSubstr out "class=\"bp_summary_preview_store\"" &&
+      !hasSubstr out "class=\"bp_summary_preview_tpl\"" &&
+      !hasSubstr out "class=\"bp_label_preview_tpl\"" &&
+      hasSubstr out "bp_summary_preview_panel" &&
+      hasSubstr out "data-bp-preview-mode=\"hover\"" &&
+      hasSubstr out "data-bp-preview-placement=\"anchored\"" &&
+      hasSubstr out "bp_summary_preview_wrap_active" &&
+      hasSubstr out "data-bp-preview-key=\"«def:preview.base»--statement\"" &&
+      hasSubstr out "data-bp-tex-prelude" &&
+      hasSubstr out "\\newcommand{\\previewmacro}{\\mathsf{Preview}}" &&
+      !hasSubstr out "bp_preview_tex_prelude" &&
+      !hasSubstr out "verso-tex-prelude" &&
       match summaryJs?, previewUtilsJs?, inlineJs? with
       | some summaryJs, some previewUtilsJs, some inlineJs =>
         hasSubstr summaryJs "bindSummaryPreview" &&
@@ -243,10 +189,8 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks leanCodeLinkPreviewDoc.toPart
-    let (html, st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
-    let inlineJs? := findExtraJs st "function bindInlinePreview()"
+    let (out, st) ← renderManualDocHtmlStringAndState manualImpls leanCodeLinkPreviewDoc
+    let inlineJs? := findExtraJsContaining? st "function bindInlinePreview()"
     let previewKey := Informal.LeanCodePreview.lookupKey `Nat.add
     pure (
       countSubstr out s!"data-bp-preview-key=\"{previewKey}\"" >= 1 &&
@@ -267,10 +211,21 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks previewWiringDoc.toPart
-    let (_html, st) ← renderManualBlocksHtmlAndState blocks
-    let graphJs? := findExtraJs st "function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController, previewKeyByNodeId)"
+    let (out, st) ← renderManualDocHtmlStringAndState manualImpls previewWiringDoc
+    let graphJs? :=
+      findExtraJsContaining? st
+        "function attachPreviewHandlers(graphBlock, graphContainer, previewMap, previewController, previewKeyByNodeId)"
     pure (
+      hasSubstr out "bp_graph_preview" &&
+      hasSubstr out "data-bp-preview-mode=\"pinned\"" &&
+      hasSubstr out "data-bp-preview-placement=\"docked\"" &&
+      !hasSubstr out "class=\"bp_graph_preview_store\"" &&
+      !hasSubstr out "class=\"bp_graph_preview_tpl\"" &&
+      hasSubstr out "class=\"bp_group_hover_preview\"" &&
+      hasSubstr out "aria-label=\"Close group preview\"" &&
+      hasSubstr out "class=\"bp-graph-variants\"" &&
+      hasSubstr out "data-bp-tex-prelude" &&
+      !hasSubstr out "bp_preview_tex_prelude" &&
       match graphJs? with
       | some graphJs =>
         hasSubstr graphJs "attachPreviewHandlers" &&
@@ -283,10 +238,8 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks usedByPreviewDoc.toPart
-    let (html, st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
-    let usedByJs? := findExtraJs st "function bindUsedByPanel(panel)"
+    let (out, st) ← renderManualDocHtmlStringAndState manualImpls usedByPreviewDoc
+    let usedByJs? := findExtraJsContaining? st "function bindUsedByPanel(panel)"
     pure (
       hasSubstr out "used by 2" &&
       !hasSubstr out "class=\"bp_extra_slot bp_extra_slot_group\"" &&
@@ -314,9 +267,7 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks usedBySinglePreviewDoc.toPart
-    let (html, _st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
+    let out ← renderManualDocHtmlString manualImpls usedBySinglePreviewDoc
     pure (
       hasSubstr out "used by 1" &&
       hasSubstr out "used by 0" &&
@@ -336,10 +287,8 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks groupPreviewDoc.toPart
-    let (html, st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
-    let usedByJs? := findExtraJs st "function bindUsedByPanel(panel)"
+    let (out, st) ← renderManualDocHtmlStringAndState manualImpls groupPreviewDoc
+    let usedByJs? := findExtraJsContaining? st "function bindUsedByPanel(panel)"
     pure (
       hasSubstr out "class=\"bp_extra_slot bp_extra_slot_group\"" &&
       hasSubstr out "class=\"bp_extra_slot bp_extra_slot_used_by\"" &&
@@ -360,9 +309,7 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks missingGroupPreviewDoc.toPart
-    let (html, _st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
+    let out ← renderManualDocHtmlString manualImpls missingGroupPreviewDoc
     pure (
       hasSubstr out "bp_used_by_chip_warn" &&
       hasSubstr out "data-bp-preview-id=\"bp-group-" &&
@@ -374,9 +321,7 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks singleDeclaredGroupDoc.toPart
-    let (html, _st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
+    let out ← renderManualDocHtmlString manualImpls singleDeclaredGroupDoc
     pure (
       !hasSubstr out "class=\"bp_extra_slot bp_extra_slot_group\"" &&
       !hasSubstr out "bp_used_by_chip_warn" &&
@@ -387,9 +332,7 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
 #guard_msgs in
 #eval
   show IO Bool from do
-    let blocks := collectBlocks leanStatusChipDoc.toPart
-    let (html, _st) ← renderManualBlocksHtmlAndState blocks
-    let out := html.asString
+    let out ← renderManualDocHtmlString manualImpls leanStatusChipDoc
     pure (
       hasSubstr out "bp_code_link_status_proved" &&
       hasSubstr out "bp_code_link_status_warning" &&
