@@ -54,7 +54,7 @@ Last updated: 2026-03-11 (tightened `feat/blueprint-metadata-json-review-bp-2026
 - Base commit/branch:
   - branched from `bp` at `6501559a`
 - Key commits:
-  - none yet
+  - `ad71eb86` refactor(preview): canonicalize manifest-only block previews
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
   - `script/lean-low-priority lake build VersoBlueprint Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
