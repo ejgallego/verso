@@ -110,7 +110,7 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/blueview-20260311`; create
 
 ## Recently Completed
 
-- Merged `feat/blueview-20260311` into `bp` (`7eb36503 -> 951d8fae`, fast-forward).
+- Merged `feat/blueview-20260311` into `bp` (`7eb36503 -> 8226ab97`, fast-forward).
 - Feature branch key commits:
   - `45fb17bc` docs(blueprint): adopt manual rationale roadmap layout
   - `9e3017b3` fix(blueprint): persist attribute-registered nodes
