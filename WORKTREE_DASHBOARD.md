@@ -92,13 +92,14 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 
 - Status: `active` (owner action: consolidate blueprint docs first, then apply the prioritized review fixes)
 - Summary: isolated review worktree for an audit of blueprint implementation quality. The review findings are now in hand; the next step is to consolidate scattered blueprint-specific docs under `doc/blueprint/` before landing code/doc follow-ups on duplication, weak datatypes, and soft-fail behavior.
-- Summary: isolated review worktree for an audit of blueprint implementation quality. The review findings are now in hand, the repo-level Blueprint docs have been centralized under `doc/blueprint/`, and the current follow-up is to reshape that directory into a cleaner three-document set: user manual, design rationale, and roadmap.
+- Summary: isolated review worktree for an audit of blueprint implementation quality. The review findings are now in hand, and the repo-level Blueprint docs have been reshaped into a smaller three-document set under `doc/blueprint/`: `USER_MANUAL.md`, `DESIGN_RATIONALE.md`, and `ROADMAP.md`.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
 - Branch: `feat/blueview-20260311`
 - Base commit/branch:
   - branched from `bp` at `57ebc3a7`
 - Key commits:
   - `bfa10976` docs(blueprint): centralize blueprint docs
+  - `af681591` docs(blueprint): condense overlapping notes
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
@@ -109,9 +110,8 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
   - inspect `src/verso-blueprint/VersoBlueprint`, `doc/`, and `test-projects/Noperthedron`
-  - review findings already captured in chat; `doc/blueprint/` now exists and holds the repo-level Blueprint docs
-  - latest local checkpoint condenses the overlapping planning/review notes into `doc/blueprint/ArchitectureAndRefactor.md`
-  - next doc step: rename/restructure the Blueprint docs into `USER_MANUAL.md`, `DESIGN_RATIONALE.md`, and `ROADMAP.md`
+  - review findings already captured in chat; `doc/blueprint/` now contains `USER_MANUAL.md`, `DESIGN_RATIONALE.md`, and `ROADMAP.md`
+  - `USER_MANUAL.md` is the operational entry point; `DESIGN_RATIONALE.md` absorbs the old preview/graph rationale docs; `ROADMAP.md` holds live cleanup sequencing
   - then follow up on the highest-priority implementation issues: `@[blueprint]` export persistence, nested/duplicate block soft-fail paths, and preview-source duplication
 
 ### `feat/style-review-20260311`
