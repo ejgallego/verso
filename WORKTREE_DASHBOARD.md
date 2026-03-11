@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged and cleaned up `feat/blueprint-metadata-json-review-bp-20260311`)
+Last updated: 2026-03-11 (cleaned up the superseded `feat/blueprint-metadata-json-review-20260310` worktree and artifacts)
 
 ## Active Worktrees
 
@@ -44,29 +44,6 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/blueprint-metadata-json-re
   - inspect `src/verso-blueprint/VersoBlueprint/Lean.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`, `src/verso/Verso/Doc/Lsp.lean`, and `doc/UsersGuide/Elab.lean`
   - likely change shape: thread an explicit interactive flag from outer `Command.Context.snap?` into `DocElabContext`, then gate highlight generation and declaration analysis in blueprint Lean blocks
   - manual target: record that interactive Lean editing uses a latency-oriented fast path while batch builds still run full highlighting and blueprint analysis
-
-### `feat/blueprint-metadata-json-review-20260310`
-
-- Status: `superseded` (owner action: ignore for current metadata review; fresh work now continues on `feat/blueprint-metadata-json-review-bp-20260311`)
-- Summary: earlier review worktree based on a pre-merge preview branch head; kept only as historical context until explicit cleanup is authorized.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-20260310`
-- Branch: `feat/blueprint-metadata-json-review-20260310`
-- Base commit/branch:
-  - branched from `feat/preview-template-removal-20260310` at `a2a6c290`
-- Key commits:
-  - none yet
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` completed successfully
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310/example-blueprints`
-  - emitted shared preview manifests:
-  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310/example-blueprints/noperthedron/html-multi/-verso-data/bp-previews.json` (`134` entries, `399424` bytes)
-  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310/example-blueprints/spherepackingblueprint/html-multi/-verso-data/bp-previews.json` (`222` entries, `212375` bytes)
-- Preview link:
-  - `http://127.0.0.1:8154/blueprint-metadata-json-review-20260310/example-blueprints/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-20260310`
-  - inspect metadata JSON producers and consumers under `src/verso-blueprint`
-  - source worktree `/home/egallego/lean/verso-blueprint/.worktrees/preview-template-removal-20260310` was dirty at fork time; this review branch intentionally starts from committed head `a2a6c290`
 
 ### `feat/lean-code-link-preview-api-20260311`
 
@@ -133,6 +110,16 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/blueprint-metadata-json-re
   - `git rebase bp`
 
 ## Recently Completed
+
+- Retired the superseded `feat/blueprint-metadata-json-review-20260310` review checkout after the `bp`-based metadata/manifest work landed.
+- Reason:
+  - this branch had no additional commits and only preserved an obsolete pre-merge review checkpoint
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-20260310`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-20260310`
+- Deleted branch:
+  - `feat/blueprint-metadata-json-review-20260310`
 
 - Merged `feat/blueprint-metadata-json-review-bp-20260311` into `bp` (`129909cd -> 06f71a3f`, fast-forward).
 - Feature branch key commits:
