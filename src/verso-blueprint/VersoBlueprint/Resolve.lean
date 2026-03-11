@@ -61,6 +61,9 @@ def resolveDomainHrefs (s : Verso.Genre.Manual.TraverseState) (domain : Name) (l
       (s.externalTags[id]?).map (·.relativeLink)
     hrefs.qsort (fun a b => a < b)
 
+def resolveInformalCodeHref? (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option String :=
+  resolveDomainHref? s informalCodeDomainName label.toString
+
 def resolveInlineLeanDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : Name) : Option String :=
   match resolveDomainHref? s inlineLeanDeclDomainName decl.toString with
   | some href => some href

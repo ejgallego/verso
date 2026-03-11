@@ -24,6 +24,60 @@ open Lean.Doc.Syntax
 namespace Informal
 open CodeSummary
 
+private partial def previewCodeBlocks
+    (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) :
+    Array (Verso.Doc.Block Verso.Genre.Manual) :=
+  blocks.foldl (init := #[]) fun acc block =>
+    acc ++
+      match block with
+      | .concat contents =>
+        previewCodeBlocks contents
+      | .other _ contents =>
+        if contents.isEmpty then
+          #[block]
+        else
+          previewCodeBlocks contents
+      | _ =>
+        #[block]
+
+private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
+  decls.qsort (fun a b =>
+    a.commandIndex < b.commandIndex ||
+    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
+
+private def progressSegmentClass (missing hasSorry : Bool) : String :=
+  if missing then
+    "bp_code_progress_segment bp_code_progress_segment_missing"
+  else if hasSorry then
+    "bp_code_progress_segment bp_code_progress_segment_sorry"
+  else
+    "bp_code_progress_segment bp_code_progress_segment_ok"
+
+private def codeSummaryText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
+  if definedDefs.isEmpty && definedTheorems.isEmpty then
+    s!"{label}"
+  else
+    let definedDefNames := definedDefs.map (·.name)
+    let definedTheoremNames := definedTheorems.map (·.name)
+    let defs :=
+      if definedDefNames.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (definedDefNames.toList.map toString)
+    let thms :=
+      if definedTheoremNames.isEmpty then
+        "none"
+      else
+        String.intercalate ", " (definedTheoremNames.toList.map toString)
+    let sorryDecls := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus))
+    let sorries :=
+      if sorryDecls.isEmpty then
+        "none"
+      else
+        String.intercalate ", " <| sorryDecls.toList.map fun d =>
+          s!"{d.name} [{provedStatusSummaryText d.provedStatus}]"
+    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
+
 block_extension Block.informalCode (data : InlineCodeData) where
   data := toJson data
   traverse id data _contents := do
@@ -33,6 +87,14 @@ block_extension Block.informalCode (data : InlineCodeData) where
     if let .some _d := (← get).getDomainObject? informalCodeDomain label.toString then
       pure none
     else
+      let previewKey := PreviewCache.key label .code
+      let previewData := toJson (PreviewCache.Entry.ofBlocks label .code (previewCodeBlocks _contents))
+      let existingPreview? := (← get).getDomainObject? informalPreviewDomain previewKey
+      modify fun s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
+      if existingPreview?.isNone then
+        let path ← (·.path) <$> read
+        let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
+        modify fun s => s.saveDomainObject informalPreviewDomain previewKey id
       let path ← (·.path) <$> read
       let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-code-{label}"
       modify λ s => s.saveDomainObject informalCodeDomain label.toString id

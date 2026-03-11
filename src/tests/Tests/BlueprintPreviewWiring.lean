@@ -100,6 +100,19 @@ Statement without Lean code.
 :::
 :::::::
 
+#docs (Genre.Manual) leanCodeLinkPreviewDoc "Blueprint Lean Code Link Preview Wiring" :=
+:::::::
+:::definition "def:code.preview"
+Statement with associated Lean code and summary actions.
+:::
+
+```lean "def:code.preview"
+def previewCodeLinkTarget : Nat := 0
+```
+
+{bp_summary}
+:::::::
+
 #docs (Genre.Manual) groupPreviewDoc "Blueprint Group Preview Wiring" :=
 :::::::
 :::group "grp:preview"
@@ -197,6 +210,9 @@ private def renderManualBlocksHtmlAndState
 private def hasSubstr (s needle : String) : Bool :=
   (s.splitOn needle).length > 1
 
+private def countSubstr (s needle : String) : Nat :=
+  (s.splitOn needle).length.pred
+
 private def appearsBefore (s lhs rhs : String) : Bool :=
   match s.splitOn lhs with
   | _ :: tail => hasSubstr (String.intercalate lhs tail) rhs
@@ -205,6 +221,9 @@ private def appearsBefore (s lhs rhs : String) : Bool :=
 private def findExtraJs (st : TraverseState) (needle : String) : Option String :=
   st.toHtmlAssets.extraJs.toArray.findSome? fun js =>
     if hasSubstr js.js needle then some js.js else none
+
+private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
+  st.toHtmlAssets.extraCss.toArray.any fun css => hasSubstr css.css needle
 
 /-- info: true -/
 #guard_msgs in
@@ -252,6 +271,28 @@ private def findExtraJs (st : TraverseState) (needle : String) : Option String :
         hasSubstr inlineJs "behavior: makeBehavior(\"hover\", \"anchored\")" &&
         !appearsBefore inlineJs "previewUtils.loadSharedPreviewManifest();" "const store = ensureInlinePreviewStore();"
       | _, _, _ => false
+    )
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show IO Bool from do
+    let blocks := collectBlocks leanCodeLinkPreviewDoc.toPart
+    let (html, st) ← renderManualBlocksHtmlAndState blocks
+    let out := html.asString
+    let inlineJs? := findExtraJs st "function bindInlinePreview()"
+    pure (
+      countSubstr out "data-bp-preview-key=\"«def:code.preview»--code\"" >= 1 &&
+      !hasSubstr out "data-bp-preview-key=\"«def:code.preview»--code\" data-bp-preview-fallback-label=" &&
+      hasSubstr out ">L∃∀N</span>" &&
+      hasSubstr out ">code</a>" &&
+      hasSubstr out "class=\"bp_code_link_wrap\"" &&
+      hasExtraCss st ".bp_inline_preview_panel" &&
+      match inlineJs? with
+      | some inlineJs =>
+        hasSubstr inlineJs "const triggerSelector = \".bp_inline_preview_ref[data-bp-preview-id]\"" &&
+        hasSubstr inlineJs "function fallbackInlinePreviewHtml(trigger, key)"
+      | none => false
     )
 
 /-- info: true -/
