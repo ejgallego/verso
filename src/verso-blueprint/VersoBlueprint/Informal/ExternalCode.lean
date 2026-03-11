@@ -9,6 +9,7 @@ import Verso
 import VersoManual
 import VersoBlueprint.ExternalRefSnapshot
 import VersoBlueprint.Informal.CodeCommon
+import VersoBlueprint.Informal.LeanCodeLink
 import VersoBlueprint.LeanNameParsing
 
 namespace Informal
@@ -157,7 +158,9 @@ private def externalDeclNode (item : LinkedExternalDecl) : Output.Html :=
   open Verso.Output.Html in
   let declTxt := {{<code>{{.text true s!"{item.decl.written}"}}</code>}}
   if let some href := item.href then
-    {{<a href={{href}}>{{declTxt}}</a>}}
+    Informal.LeanCodeLink.renderResolved
+      item.decl.canonical declTxt "" (some href)
+      (previewTitle := s!"{item.decl.canonical}")
   else
     declTxt
 
@@ -267,6 +270,34 @@ structure RenderParts where
   externalCodePanel : Output.Html := .empty
 
 /--
+Render the canonical hover-preview body for external Lean code references.
+
+This is shared by the external code panel and the manifest-backed code-preview
+path used by explicit Lean-code links.
+-/
+def renderPreviewHtml
+    (externalDecls : Array Data.ExternalRef)
+    (getDeclHref : Name → Option String := fun _ => none) : Output.Html :=
+  open Verso.Output.Html in
+  if externalDecls.isEmpty then
+    .empty
+  else
+    let linkedDecls := externalDecls.map fun decl =>
+      let href :=
+        if decl.present then
+          match getDeclHref decl.canonical with
+          | some href => some href
+          | none => getDeclHref decl.written
+        else
+          getDeclHref decl.written
+      { decl, href }
+    {{
+      <ul class="bp_code_hover_list bp_external_decl_list">
+        {{.seq <| linkedDecls.map (renderExternalDeclRow ∘ externalDeclRowData)}}
+      </ul>
+    }}
+
+/--
 Render external-code UI fragments for an informal block.
 
 This function only renders optional external code panel body for `(lean := ...)` references.
@@ -288,14 +319,11 @@ def renderParts (panelHeader : CodePanelHeader)
         else
           getDeclHref decl.written
       { decl, href, anchorAttrs := getDeclAnchorAttrs decl }
-    let externalPanelListItems (items : Array LinkedExternalDecl) : Output.Html :=
-      if items.isEmpty then
-        {{<li class="bp_code_hover_none">"none"</li>}}
-      else
-        .seq <| items.map (renderExternalDeclRow ∘ externalDeclRowData)
     let externalCodePanel : Output.Html :=
       mkCodePanel panelHeader summaryTitle indicator
-        {{<ul class="bp_code_hover_list bp_external_decl_list">{{externalPanelListItems linkedDecls}}</ul>}}
+        {{<ul class="bp_code_hover_list bp_external_decl_list">
+            {{.seq <| linkedDecls.map (renderExternalDeclRow ∘ externalDeclRowData)}}
+          </ul>}}
     { externalCodePanel }
 
 end ExternalCode

@@ -15,6 +15,7 @@ import VersoBlueprint.Environment
 import VersoBlueprint.Graph
 import VersoBlueprint.Informal.CodeCommon
 import VersoBlueprint.Informal.LeanCodeLink
+import VersoBlueprint.Informal.LeanCodePreview
 import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.Lib.PreviewSource
 import VersoBlueprint.PreviewCache
@@ -1162,23 +1163,18 @@ block_extension Block.summary (summary : Summary) where
       let s ← HtmlT.state
       let getEntryHref (label : Name) : Option String :=
         Resolve.resolveDomainHref? s Resolve.informalDomainName label.toString
-      let getCodeHref (label : Name) : Option String :=
-        Resolve.resolveInformalCodeHref? s label
       let getDeclHref (label : Name) (decl : Name) : Option String :=
         match Resolve.resolveRenderedExternalDeclHref? s label decl with
         | Option.some href => Option.some href
         | Option.none => Resolve.resolveInlineLeanDeclHref? s decl
-      let codePreviewTitle (label : Name) : String :=
-        s!"Lean code for {label}"
-      let mkLeanCodeLink? (label : Name) (text : String)
-          (linkTitle? : Option String := Option.none) (previewDetail? : Option String := Option.none) :
-          Option Output.Html :=
-        match getCodeHref label with
+      let renderLeanDeclLink (target : Name) (node : Output.Html)
+          (href? : Option String) (linkTitle? : Option String := Option.none) : Output.Html :=
+        match href? with
         | some href =>
-          some <|
-            Informal.LeanCodeLink.renderResolvedText
-              label text "bp_code_link" (some href) linkTitle? (codePreviewTitle label) previewDetail?
-        | Option.none => Option.none
+          Informal.LeanCodeLink.renderResolved
+            target node "" (some href) linkTitle?
+            (previewTitle := Informal.LeanCodePreview.title target)
+        | Option.none => node
       let previewLabels := (data.previewLabels).foldl (init := ({} : NameSet)) fun labels label =>
         if (Informal.PreviewSource.traversalPreview? s label).isSome then
           labels.insert label
@@ -1198,9 +1194,8 @@ block_extension Block.summary (summary : Summary) where
         pure (Informal.HoverRender.summaryPreviewWrap labelNode previewLabel? previewLookupKey?)
       let mkDeclItems (label : Name) (decls : List Name) :=
         decls.toArray.map fun decl =>
-          match getDeclHref label decl with
-          | Option.some href => {{ <li><a href={{href}}> <code>s!"{decl}"</code> </a></li> }}
-          | Option.none => {{ <li><code>s!"{decl}"</code></li> }}
+          let declNode := renderLeanDeclLink decl {{<code>s!"{decl}"</code>}} (getDeclHref label decl)
+          {{ <li>{{declNode}}</li> }}
       let mkBadge (text : String) (className : String := "bp_summary_badge") : Output.Html :=
         {{ <span class={{className}}>s!"{text}"</span> }}
       let mkBadgeRow (badges : Array Output.Html) : Output.Html :=
@@ -1236,10 +1231,6 @@ block_extension Block.summary (summary : Summary) where
                      {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems label leanObjects}}</ul></details>}}
                     else
                      .empty}}
-                  {{if let some codeLink := mkLeanCodeLink? label "code" (previewDetail? := some "Lean code") then
-                     {{<div class="bp_summary_item_actions">"Lean code: " {{codeLink}}</div>}}
-                    else
-                     .empty}}
                 </li> }}
       let pendingInformalRows ←
         data.pendingInformalEntries.toArray.mapM fun item =>
@@ -1248,65 +1239,25 @@ block_extension Block.summary (summary : Summary) where
         data.sorryDetails.toArray.mapM fun item => do
           let entryRef ← mkEntryRef item.label
           let declLink :=
-            match getDeclHref item.label item.decl with
-            | Option.some href => {{ <a href={{href}}> <code>s!"{item.decl}"</code> </a> }}
-            | Option.none => {{ <code>s!"{item.decl}"</code> }}
+            renderLeanDeclLink item.decl {{<code>s!"{item.decl}"</code>}} (getDeclHref item.label item.decl)
           let statusInfo ←
             match item.status with
             | .missing =>
               pure ("missing", "Missing declaration: ", "bp_summary_badge bp_summary_badge_error",
-                item.status.sorryLocationText, "n/a", 0, 0, 0)
+                item.status.sorryLocationText, "n/a")
             | .axiomLike =>
               pure ("axiom-like", "Axiom-like declaration: ", "bp_summary_badge bp_summary_badge_warn",
-                item.status.sorryLocationText, "n/a", 0, 0, 0)
+                item.status.sorryLocationText, "n/a")
             | .containsSorry _ =>
               let (typeSorryRefs, proofSorryRefs) := item.status.sorryRefCounts
               let sorryRefs := typeSorryRefs + proofSorryRefs
               let refsTxt := if sorryRefs > 0 then toString sorryRefs else "unknown"
               pure ("contains sorry", "Declaration with sorry: ", "bp_summary_badge bp_summary_badge_warn",
-                item.status.sorryLocationText, refsTxt, typeSorryRefs, proofSorryRefs, sorryRefs)
+                item.status.sorryLocationText, refsTxt)
             | .proved =>
               HtmlT.logError s!"Unexpected proved status in summary sorry details for {item.decl}"
-              pure ("proved", "Declaration: ", "bp_summary_badge", "proved", "0", 0, 0, 0)
-          let (statusLabel, declPrefix, badgeClass, whereTxt, refsTxt, typeSorryRefs, proofSorryRefs, sorryRefs) := statusInfo
-          let sorryLinks : Array Output.Html :=
-            let stmtLinks :=
-              if typeSorryRefs > 0 then
-                match mkLeanCodeLink? item.label s!"in statement ({typeSorryRefs})"
-                    (some "Go to Lean code with statement gap")
-                    (some s!"statement gap: {typeSorryRefs}") with
-                | some link => #[link]
-                | Option.none => #[]
-              else
-                #[]
-            let proofLinks :=
-              if proofSorryRefs > 0 then
-                match mkLeanCodeLink? item.label s!"in proof ({proofSorryRefs})"
-                    (some "Go to Lean code with proof gap")
-                    (some s!"proof gap: {proofSorryRefs}") with
-                | some link => #[link]
-                | Option.none => #[]
-              else
-                #[]
-            let links := stmtLinks ++ proofLinks
-            if links.isEmpty then
-              match item.status with
-              | .missing =>
-                match mkLeanCodeLink? item.label "in code" (some "Go to Lean code") (some "Lean code") with
-                | some link => #[link]
-                | Option.none => #[]
-              | .axiomLike =>
-                match mkLeanCodeLink? item.label "declaration" (some "Go to Lean declaration") (some "Lean declaration") with
-                | some link => #[link]
-                | Option.none => #[]
-              | .containsSorry _ =>
-                let txt := if sorryRefs > 0 then s!"in code ({sorryRefs})" else "in code"
-                match mkLeanCodeLink? item.label txt (previewDetail? := some txt) with
-                | some link => #[link]
-                | Option.none => #[]
-              | .proved => #[]
-            else
-              links
+              pure ("proved", "Declaration: ", "bp_summary_badge", "proved", "0")
+          let (statusLabel, declPrefix, badgeClass, whereTxt, refsTxt) := statusInfo
           pure {{ <li class="bp_summary_item">
                     <div class="bp_summary_item_top">
                       <span class="bp_summary_item_head">{{entryRef}}</span>
@@ -1318,18 +1269,15 @@ block_extension Block.summary (summary : Summary) where
                         s!"[{if item.isTheorem then "theorem/lemma" else "definition"}; {statusLabel}; {whereTxt}; refs: {refsTxt}]"
                       </span>
                     </div>
-                    {{if Array.isEmpty sorryLinks then
-                       .empty
-                      else
-                       {{<div class="bp_summary_item_actions">"Jump: " {{(sorryLinks.toList.intersperse {{<span class="bp_summary_sep">" | "</span>}}).toArray}}</div>}}}}
                   </li> }}
       let missingRows ←
         data.missingLeanDecls.toArray.mapM fun item => do
           let entryRef ← mkEntryRef item.label
           let canonicalNode : Output.Html :=
-            match getDeclHref item.label item.canonical with
-            | Option.some href => {{ <a href={{href}}> <code>s!"{item.canonical}"</code> </a> }}
-            | Option.none => {{ <code>s!"{item.canonical}"</code> }}
+            renderLeanDeclLink
+              item.canonical
+              {{<code>s!"{item.canonical}"</code>}}
+              (getDeclHref item.label item.canonical)
           let declNode : Output.Html :=
             if item.written == item.canonical then
               canonicalNode
@@ -1344,10 +1292,6 @@ block_extension Block.summary (summary : Summary) where
                       "Missing external Lean declaration: " {{declNode}} " "
                       <span class="bp_summary_badge bp_summary_badge_error">"[missing declaration]"</span>
                     </div>
-                    {{if let some codeLink := mkLeanCodeLink? item.label "code" (previewDetail? := some "Lean code") then
-                       {{<div class="bp_summary_item_actions">"Jump: " {{codeLink}}</div>}}
-                      else
-                       .empty}}
                   </li> }}
       let mkPriorityRow (item : PriorityItem) := do
         let entryRef ← mkEntryRef item.label
@@ -1372,15 +1316,11 @@ block_extension Block.summary (summary : Summary) where
         let tagBadges : Array Output.Html :=
           item.tags.toArray.map fun tag => mkBadge s!"tag: {tag}"
         let actionLinks : Array Output.Html :=
-          let codeLinks :=
-            match mkLeanCodeLink? item.label "code" (previewDetail? := some "Lean code") with
-            | some link => #[link]
-            | Option.none => #[]
           let prLinks :=
             match item.prUrl with
             | Option.some href => #[{{ <a class="bp_code_link" href={{href}}>"PR"</a> }}]
             | Option.none => #[]
-          codeLinks ++ prLinks
+          prLinks
         let badges :=
           priorityBadges ++ ownerBadges ++ effortBadges ++ #[
             mkBadge s!"stage: {item.stage}",
@@ -1441,10 +1381,6 @@ block_extension Block.summary (summary : Summary) where
                  {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.label item.leanObjects}}</ul></details>}}
                 else
                  .empty}}
-              {{if let some codeLink := mkLeanCodeLink? item.label "code" (previewDetail? := some "Lean code") then
-                 {{<div class="bp_summary_item_actions">"Jump: " {{codeLink}}</div>}}
-                else
-                 .empty}}
             </li>
           }}
       let statementUsedRows ←
@@ -1485,10 +1421,6 @@ block_extension Block.summary (summary : Summary) where
               {{mkBadgeRow badges}}
               {{if associatedDecls then
                  {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({item.leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{mkDeclItems item.label item.leanObjects}}</ul></details>}}
-                else
-                 .empty}}
-              {{if let some codeLink := mkLeanCodeLink? item.label "code" (previewDetail? := some "Lean code") then
-                 {{<div class="bp_summary_item_actions">"Jump: " {{codeLink}}</div>}}
                 else
                  .empty}}
             </li>
@@ -1571,15 +1503,11 @@ block_extension Block.summary (summary : Summary) where
         let tagBadges : Array Output.Html :=
           item.tags.toArray.map fun tag => mkBadge s!"tag: {tag}"
         let actionLinks : Array Output.Html :=
-          let codeLinks :=
-            match mkLeanCodeLink? item.label "code" (previewDetail? := some "Lean code") with
-            | some link => #[link]
-            | Option.none => #[]
           let prLinks :=
             match item.prUrl with
             | Option.some href => #[{{ <a class="bp_code_link" href={{href}}>"PR"</a> }}]
             | Option.none => #[]
-          codeLinks ++ prLinks
+          prLinks
         let badges := ownerBadges ++ effortBadges ++ priorityBadges ++ tagBadges
         pure {{
           <li class="bp_summary_item">

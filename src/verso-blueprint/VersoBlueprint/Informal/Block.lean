@@ -17,6 +17,7 @@ import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
 import VersoBlueprint.Informal.CodeCommon
+import VersoBlueprint.Informal.LeanCodePreview
 import VersoBlueprint.Informal.CodeSummary
 import VersoBlueprint.Informal.ExternalCode
 import VersoBlueprint.Informal.Group
@@ -1723,6 +1724,17 @@ block_extension Block.informal (data : BlockData) where
         match blockData.kind, blockData.codeData with
         | .statement _, some codeData => codeData.externalDecls
         | _, _ => #[]
+      if !externalDecls.isEmpty then
+        for decl in externalDecls do
+          let codePreviewKey := LeanCodePreview.lookupKey decl.canonical
+          let codePreviewData := toJson (LeanCodePreview.Entry.ofExternalDecl decl.canonical decl)
+          let existingCodePreview? := (← get).getDomainObject? LeanCodePreview.domainName codePreviewKey
+          if shouldWritePreviewData existingCodePreview? id then
+            modify λ s => s.saveDomainObjectData LeanCodePreview.domainName codePreviewKey codePreviewData
+          if existingCodePreview?.isNone then
+            let path ← (·.path) <$> read
+            let _ ← Verso.Genre.Manual.externalTag id path s!"--lean-code-preview-{codePreviewKey}"
+            modify λ s => s.saveDomainObject LeanCodePreview.domainName codePreviewKey id
       for decl in externalDecls do
         let key := Resolve.externalRenderedDeclTargetKey label decl.canonical
         if ((← get).getDomainObject? informalExternalDeclDomain key).isNone then

@@ -1,3 +1,5 @@
+import re
+
 from playwright.sync_api import expect, Page
 
 
@@ -25,6 +27,51 @@ def assert_no_runtime_errors(errors: list[str]):
 
 
 class TestPreviewRuntimeRegressions:
+    def test_blueprint_summary_decl_link_hover_loads_manifest_backed_code_preview(
+        self, server: str, page: Page
+    ):
+        errors = record_runtime_errors(page)
+        page.goto(f"{server}/Blueprint-Summary/")
+
+        page.locator("body[data-bp-inline-preview-bound='1']").wait_for()
+        page.locator("details").evaluate_all("els => els.forEach(el => { el.open = true; })")
+
+        trigger = page.locator(
+            '.bp_summary_decl_list .bp_inline_preview_ref[data-bp-preview-key^="Informal.LeanCodePreview"]'
+        ).first
+        expect(trigger).to_have_count(1)
+        trigger.scroll_into_view_if_needed()
+        trigger.hover()
+
+        panel = page.locator("#bp-inline-preview-panel")
+        body = panel.locator(".bp_inline_preview_panel_body")
+
+        expect(panel).to_be_visible()
+        expect(panel.locator(".bp_inline_preview_panel_title")).to_have_text(re.compile(r"^Lean declaration "))
+
+        page.wait_for_function(
+            """
+            () => {
+              const body = document.querySelector("#bp-inline-preview-panel .bp_inline_preview_panel_body");
+              if (!body || !body.textContent || body.textContent.trim().length === 0) {
+                return false;
+              }
+              return !!body.querySelector(".bp_code_block, .bp_external_decl_list");
+            }
+            """
+        )
+
+        assert body.inner_text().strip()
+        assert (
+            page.locator(
+                "#bp-inline-preview-panel .bp_code_block, "
+                "#bp-inline-preview-panel .bp_external_decl_list"
+            ).count()
+            > 0
+        )
+
+        assert_no_runtime_errors(errors)
+
     def test_exact_manifest_keys_keep_statement_and_proof_previews_distinct(self, server: str, page: Page):
         errors = record_runtime_errors(page)
         page.goto(f"{server}/The-Noperthedron/")

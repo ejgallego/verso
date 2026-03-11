@@ -10,6 +10,7 @@ import Std.Data.HashSet
 import VersoManual
 import VersoBlueprint.Informal.Block
 import VersoBlueprint.Informal.Group
+import VersoBlueprint.Informal.LeanCodePreview
 import VersoBlueprint.PreviewCache
 import VersoBlueprint.PreviewRender
 import VersoBlueprint.Resolve
@@ -236,7 +237,7 @@ private def blockParentTitle? (state : TraverseState) (blockData? : Option Infor
     blockData.parent.map fun parent =>
       (groupTitle? state parent).getD parent.toString
 
-private def buildEntries
+private def buildTraversalEntries
     (impls : ExtensionImpls)
     (logError : String → IO Unit)
     (state : TraverseState) : IO (Array Entry) := do
@@ -273,13 +274,38 @@ private def buildEntries
         html
       }
       entries := entries.push manifestEntry
-  pure <| entries.qsort (fun a b => a.key < b.key)
+  pure entries
+
+private def buildLeanCodeEntries
+    (impls : ExtensionImpls)
+    (logError : String → IO Unit)
+    (state : TraverseState) : IO (Array Entry) := do
+  let some domain := state.domains.get? Informal.LeanCodePreview.domainName
+    | return #[]
+  let mut entries := #[]
+  for (_key, obj) in domain.objects.toArray do
+    match fromJson? (α := Informal.LeanCodePreview.Entry) obj.data with
+    | .error err =>
+      logError s!"Preview manifest: malformed Lean-code preview entry {obj.canonicalName}: {err}"
+    | .ok entry =>
+      let html ← Output.Html.asString <$> Informal.LeanCodePreview.renderHtmlWithState entry impls state
+      if html.trimAscii.isEmpty then
+        continue
+      let manifestEntry : Entry := {
+        key := Informal.LeanCodePreview.lookupKey entry.target
+        title := Informal.LeanCodePreview.title entry.target
+        html
+      }
+      entries := entries.push manifestEntry
+  pure entries
 
 private def buildManifestFile
     (impls : ExtensionImpls)
     (logError : String → IO Unit)
     (state : TraverseState) : IO File := do
-  let previews ← buildEntries impls logError state
+  let traversalPreviews ← buildTraversalEntries impls logError state
+  let leanCodePreviews ← buildLeanCodeEntries impls logError state
+  let previews := (traversalPreviews ++ leanCodePreviews).qsort (fun a b => a.key < b.key)
   pure { previews }
 
 private def dumpManifest
@@ -300,8 +326,9 @@ private def dumpManifest
 /--
 Emit the canonical shared blueprint preview manifest file.
 
-Block preview bodies are expected to be consumed from the manifest rather than
-embedded as page-local label preview templates.
+The shared manifest contains both:
+- traversal-cached statement/proof previews keyed by `PreviewCache`,
+- dedicated Lean-code previews keyed by `Informal.LeanCodePreview`.
 -/
 def emitSharedPreviewManifest : ExtraStep := fun mode logError cfg state _text => do
   let impls ← read

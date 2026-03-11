@@ -102,13 +102,9 @@ Statement without Lean code.
 
 #docs (Genre.Manual) leanCodeLinkPreviewDoc "Blueprint Lean Code Link Preview Wiring" :=
 :::::::
-:::definition "def:code.preview"
-Statement with associated Lean code and summary actions.
+:::definition "def:code.preview" (lean := "Nat.add")
+Statement with an associated Lean declaration link in the summary.
 :::
-
-```lean "def:code.preview"
-def previewCodeLinkTarget : Nat := 0
-```
 
 {bp_summary}
 :::::::
@@ -281,12 +277,14 @@ private def hasExtraCss (st : TraverseState) (needle : String) : Bool :=
     let (html, st) ← renderManualBlocksHtmlAndState blocks
     let out := html.asString
     let inlineJs? := findExtraJs st "function bindInlinePreview()"
+    let previewKey := Informal.LeanCodePreview.lookupKey `Nat.add
     pure (
-      countSubstr out "data-bp-preview-key=\"«def:code.preview»--code\"" >= 1 &&
-      !hasSubstr out "data-bp-preview-key=\"«def:code.preview»--code\" data-bp-preview-fallback-label=" &&
-      hasSubstr out ">L∃∀N</span>" &&
-      hasSubstr out ">code</a>" &&
-      hasSubstr out "class=\"bp_code_link_wrap\"" &&
+      countSubstr out s!"data-bp-preview-key=\"{previewKey}\"" >= 1 &&
+      !hasSubstr out s!"data-bp-preview-key=\"{previewKey}\" data-bp-preview-fallback-label=" &&
+      hasSubstr out "class=\"bp_summary_decl_list\"" &&
+      hasSubstr out "class=\"bp_inline_preview_ref\"" &&
+      hasSubstr out "Nat.add</code>" &&
+      !hasSubstr out "Lean code:" &&
       hasExtraCss st ".bp_inline_preview_panel" &&
       match inlineJs? with
       | some inlineJs =>

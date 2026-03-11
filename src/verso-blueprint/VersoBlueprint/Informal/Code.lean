@@ -8,6 +8,7 @@ import VersoManual
 import VersoBlueprint.Environment
 import VersoBlueprint.Informal.Block
 import VersoBlueprint.Informal.CodeCommon
+import VersoBlueprint.Informal.LeanCodePreview
 import VersoBlueprint.Informal.CodeSummary
 import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.Lean
@@ -40,44 +41,6 @@ private partial def previewCodeBlocks
       | _ =>
         #[block]
 
-private def sortDeclsByCommand (decls : Array CodeDeclData) : Array CodeDeclData :=
-  decls.qsort (fun a b =>
-    a.commandIndex < b.commandIndex ||
-    (a.commandIndex == b.commandIndex && a.name.toString < b.name.toString))
-
-private def progressSegmentClass (missing hasSorry : Bool) : String :=
-  if missing then
-    "bp_code_progress_segment bp_code_progress_segment_missing"
-  else if hasSorry then
-    "bp_code_progress_segment bp_code_progress_segment_sorry"
-  else
-    "bp_code_progress_segment bp_code_progress_segment_ok"
-
-private def codeSummaryText (label : Data.Label) (definedDefs definedTheorems : Array CodeDeclData) : String :=
-  if definedDefs.isEmpty && definedTheorems.isEmpty then
-    s!"{label}"
-  else
-    let definedDefNames := definedDefs.map (·.name)
-    let definedTheoremNames := definedTheorems.map (·.name)
-    let defs :=
-      if definedDefNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedDefNames.toList.map toString)
-    let thms :=
-      if definedTheoremNames.isEmpty then
-        "none"
-      else
-        String.intercalate ", " (definedTheoremNames.toList.map toString)
-    let sorryDecls := (definedDefs ++ definedTheorems).filter (provedStatusHasSorry ∘ (·.provedStatus))
-    let sorries :=
-      if sorryDecls.isEmpty then
-        "none"
-      else
-        String.intercalate ", " <| sorryDecls.toList.map fun d =>
-          s!"{d.name} [{provedStatusSummaryText d.provedStatus}]"
-    s!"{label}\nLean definitions: {defs}\nLean theorems/lemmas: {thms}\nSorries: {sorries}"
-
 block_extension Block.informalCode (data : InlineCodeData) where
   data := toJson data
   traverse id data _contents := do
@@ -87,14 +50,18 @@ block_extension Block.informalCode (data : InlineCodeData) where
     if let .some _d := (← get).getDomainObject? informalCodeDomain label.toString then
       pure none
     else
-      let previewKey := PreviewCache.key label .code
-      let previewData := toJson (PreviewCache.Entry.ofBlocks label .code (previewCodeBlocks _contents))
-      let existingPreview? := (← get).getDomainObject? informalPreviewDomain previewKey
-      modify fun s => s.saveDomainObjectData informalPreviewDomain previewKey previewData
-      if existingPreview?.isNone then
-        let path ← (·.path) <$> read
-        let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-preview-{previewKey}"
-        modify fun s => s.saveDomainObject informalPreviewDomain previewKey id
+      let previewBlocks := previewCodeBlocks _contents
+      let previewTargets :=
+        (cdata.definedDefs.map (·.name)) ++ (cdata.definedTheorems.map (·.name))
+      for target in previewTargets do
+        let previewKey := LeanCodePreview.lookupKey target
+        let previewData := toJson (LeanCodePreview.Entry.ofInlineBlocks target previewBlocks)
+        let existingPreview? := (← get).getDomainObject? LeanCodePreview.domainName previewKey
+        modify fun s => s.saveDomainObjectData LeanCodePreview.domainName previewKey previewData
+        if existingPreview?.isNone then
+          let path ← (·.path) <$> read
+          let _ ← Verso.Genre.Manual.externalTag id path s!"--lean-code-preview-{previewKey}"
+          modify fun s => s.saveDomainObject LeanCodePreview.domainName previewKey id
       let path ← (·.path) <$> read
       let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-code-{label}"
       modify λ s => s.saveDomainObject informalCodeDomain label.toString id

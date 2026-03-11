@@ -8,6 +8,7 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Informal.CodeCommon
+import VersoBlueprint.Informal.LeanCodeLink
 
 namespace Informal
 namespace CodeSummary
@@ -16,7 +17,14 @@ open Verso Doc Elab
 open Lean Elab
 
 /-!
-`CodeSummary` computes the heading-level Lean badge fragments for informal blocks.
+`CodeSummary` computes the heading-level Lean status/summary fragments for informal blocks.
+
+This module intentionally owns the high-level overview for one informal node:
+status marks, declaration-summary tooltips, and code-panel indicators.
+
+It does not own manifest-backed code-preview hovers for explicit links to code;
+that narrower responsibility lives in `Informal.LeanCodeLink` /
+`Informal.LeanCodePreview`.
 
 Public API:
 - `ComputedData`: normalized code inputs for one block heading.
@@ -105,7 +113,10 @@ private def renderDeclSummaryItems (items : Array DeclSummaryItem) : Output.Html
       let nameNode : Output.Html :=
         let txt := {{<code>{{.text true s!"{item.name}"}}</code>}}
         match item.href with
-        | some href => {{<a href={{href}}>{{txt}}</a>}}
+        | some href =>
+          Informal.LeanCodeLink.renderResolved
+            item.name txt "" (some href)
+            (previewTitle := s!"{item.name}")
         | none => txt
       {{
         <li class="bp_code_decl_item">

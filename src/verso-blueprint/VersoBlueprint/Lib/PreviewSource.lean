@@ -76,7 +76,6 @@ private def envFacetStxs? (node : Data.Node) (facet : PreviewCache.Facet) : Opti
   match facet with
   | .statement => node.statement.bind (nonEmptyOrNone ·.elabStx)
   | .proof => node.proof.bind (nonEmptyOrNone ·.elabStx)
-  | .code => none
 
 def fromEnvironment? (env : Environment) (label : Name) : Option (Array Syntax) := do
   let state := informalExt.getState env

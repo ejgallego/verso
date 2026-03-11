@@ -9,19 +9,33 @@ import Verso
 import VersoManual
 import VersoBlueprint.Data
 import VersoBlueprint.Lib.HoverRender
-import VersoBlueprint.PreviewCache
-import VersoBlueprint.Resolve
 
 namespace Informal.LeanCodeLink
 
 open Lean
 open Verso.Output.Html
 
-def previewId (label : Informal.Data.Label) : String :=
-  s!"bp-lean-code-{Informal.HoverRender.previewKey (toString label)}"
+/--
+`LeanCodeLink` is the narrow HTML helper for links that target Lean
+declarations/definitions and should carry a manifest-backed hover preview.
 
-def previewLookupKey (label : Informal.Data.Label) : String :=
-  PreviewCache.key label .code
+It intentionally does not compute blueprint/code-status summaries; that remains
+the responsibility of `Informal.CodeSummary`.
+-/
+private def namespaceRoot : Name :=
+  Name.str (Name.str .anonymous "Informal") "LeanCodePreview"
+
+private partial def appendName (rootName : Name) (suffixName : Name) : Name :=
+  match suffixName with
+  | .anonymous => rootName
+  | .str parent component => .str (appendName rootName parent) component
+  | .num parent component => .num (appendName rootName parent) component
+
+def previewLookupKey (decl : Name) : String :=
+  (appendName namespaceRoot decl.eraseMacroScopes).toString
+
+def previewId (decl : Name) : String :=
+  s!"bp-lean-code-{Informal.HoverRender.previewKey (previewLookupKey decl)}"
 
 private def renderLinkNode
     (node : Verso.Output.Html) (href? : Option String)
@@ -40,52 +54,39 @@ private def renderLinkNode
   | none => .tag "span" attrs node
 
 def renderResolved
-    (label : Informal.Data.Label)
+    (decl : Name)
     (node : Verso.Output.Html)
-    (className : String := "bp_code_link")
+    (className : String := "")
     (href? : Option String := none)
     (linkTitle? : Option String := none)
-    (previewTitle : String := "Lean code")
+    (previewTitle : String := s!"Lean declaration {decl}")
     (previewDetail? : Option String := none) : Verso.Output.Html :=
   let linkNode := renderLinkNode node href? className linkTitle?
   Informal.HoverRender.inlinePreviewNode
     false linkNode .empty
-    (previewId label)
+    (previewId decl)
     previewTitle
-    (previewLookupKey? := some (previewLookupKey label))
+    (previewLookupKey? := some (previewLookupKey decl))
     (previewFallbackDetail? := previewDetail?)
 
-def render
-    (state : Verso.Genre.Manual.TraverseState)
-    (label : Informal.Data.Label)
-    (node : Verso.Output.Html)
-    (className : String := "bp_code_link")
-    (href? : Option String := none)
-    (linkTitle? : Option String := none)
-    (previewTitle : String := "Lean code")
-    (previewDetail? : Option String := none) : Verso.Output.Html :=
-  let href? := href? <|> Resolve.resolveInformalCodeHref? state label
-  renderResolved label node className href? linkTitle? previewTitle previewDetail?
-
 def renderText
-    (state : Verso.Genre.Manual.TraverseState)
-    (label : Informal.Data.Label)
+    (decl : Name)
     (text : String)
-    (className : String := "bp_code_link")
+    (className : String := "")
     (href? : Option String := none)
     (linkTitle? : Option String := none)
-    (previewTitle : String := "Lean code")
+    (previewTitle : String := s!"Lean declaration {decl}")
     (previewDetail? : Option String := none) : Verso.Output.Html :=
-  render state label (.text true text) className href? linkTitle? previewTitle previewDetail?
+  renderResolved decl (.text true text) className href? linkTitle? previewTitle previewDetail?
 
 def renderResolvedText
-    (label : Informal.Data.Label)
+    (decl : Name)
     (text : String)
-    (className : String := "bp_code_link")
+    (className : String := "")
     (href? : Option String := none)
     (linkTitle? : Option String := none)
-    (previewTitle : String := "Lean code")
+    (previewTitle : String := s!"Lean declaration {decl}")
     (previewDetail? : Option String := none) : Verso.Output.Html :=
-  renderResolved label (.text true text) className href? linkTitle? previewTitle previewDetail?
+  renderResolved decl (.text true text) className href? linkTitle? previewTitle previewDetail?
 
 end Informal.LeanCodeLink

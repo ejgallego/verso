@@ -29,7 +29,7 @@ Last updated: 2026-03-10 (`feat/link-preview-audit-20260308` checkpoint)
 
 Rationale: these behaviors are correctness-sensitive and were diverging via copy/paste.
 
-### 2. Preview facet API is sum-type based end-to-end
+### 2. Statement/proof previews stay in `PreviewCache`
 
 - Added `PreviewCache.Facet.ofInProgressKind : Data.InProgressKind -> Facet`.
 - Changed `PreviewCache.Entry.ofBlocks` to accept `facet : Facet` (removed `isProof : Bool`).
@@ -38,7 +38,16 @@ Rationale: these behaviors are correctness-sensitive and were diverging via copy
 
 Rationale: statement/proof is a domain choice, not a boolean toggle.
 
-### 3. One helper for preview-render context injection
+### 3. Lean-code previews use a dedicated manifest namespace
+
+- Lean declaration links now use `Informal.LeanCodePreview`, not `PreviewCache`.
+- The preview key is derived from a regular Lean `Name` namespace rooted at `Informal.LeanCodePreview`.
+- Inline code blocks and external declaration panels are normalized into one shared code-preview entry type before they are rendered into the shared manifest.
+- `Informal.CodeSummary` remains responsible for high-level status/summary UI, not for code-preview hover payloads.
+
+Rationale: a link-to-code preview is a different concern from a statement/proof overview, so the APIs should not share one cache abstraction just because both eventually feed hover UI.
+
+### 4. One helper for preview-render context injection
 
 - Added `Informal.HoverRender.withInlinePreviewRenderContext`.
 - Replaced duplicated `withReader` context rewrites in:
@@ -48,7 +57,7 @@ Rationale: statement/proof is a domain choice, not a boolean toggle.
 
 Rationale: this marker is the anti-recursion boundary for preview rendering, so it must be uniform.
 
-### 4. `uses` HTML path simplified to remove duplicated branches
+### 5. `uses` HTML path simplified to remove duplicated branches
 
 - Consolidated the previous `(some block, true)` and `(some block, false)` branches into one block-resolved path.
 - Shared logic now computes:
@@ -63,7 +72,7 @@ Behavior intentionally preserved:
 - unresolved + non-empty inline content: pass-through rendered inlines,
 - resolved content keeps same hover template dedupe and fallback body semantics.
 
-### 5. Preview behavior is now expressed as `mode` + `placement`
+### 6. Preview behavior is now expressed as `mode` + `placement`
 
 - Introduced shared behavior enums in `HoverRender`:
   - `PreviewMode`: `hover | pinned`
@@ -84,7 +93,7 @@ Behavior intentionally preserved:
 
 Rationale: this keeps one code path for future configurability and avoids per-command behavior drift.
 
-### 6. Hover metadata has two storage paths with different ownership boundaries
+### 7. Hover metadata has two storage paths with different ownership boundaries
 
 - Editor/LSP hovers use `Verso.Hover.addCustomHover` in `src/verso/Verso/Hover.lean`.
 - That API stores `CustomHover` values in Lean's info tree via `Info.ofCustomInfo`.
@@ -95,7 +104,7 @@ Rationale: this keeps one code path for future configurability and avoids per-co
 
 Rationale: editor hovers are syntax/info-tree scoped, while rendered-page hovers are document-output scoped and optimized for HTML size by deduplicating repeated payloads.
 
-### 7. Isolated HTML renderers must not emit raw `data-verso-hover` ids without a merge step
+### 8. Isolated HTML renderers must not emit raw `data-verso-hover` ids without a merge step
 
 - A raw `data-verso-hover="<id>"` token is only valid relative to the page-level `Hover.State Html` that produced the corresponding `-verso-docs.json`.
 - Direct or nested renderers that run `HighlightHtmlM` in isolation have their own local hover table, so their ids are not meaningful unless those tables are merged into the surrounding page-level state.
@@ -110,11 +119,13 @@ This section captures the branch-local hover-link architecture that survived the
 
 ### Current Hover-Link Approach
 
-1. Preview data is shared primarily through the traversal preview cache.
+1. Preview data now has two intentional stores.
 
 - Informal blocks register canonical preview payloads in `Informal.Block` via `PreviewCache.Entry.ofBlocks`.
+- Lean declaration-link previews register in `Informal.LeanCodePreview` under a dedicated Lean-name namespace.
 - `uses` links derive stable inline preview ids from `usePreviewId`, keyed by label plus preview facet suffix.
-- Summary, graph, bibliography backrefs, and `used by` all reuse the same traversal-rendered preview bodies where available.
+- Summary label previews, graph previews, bibliography backrefs, and `used by` all reuse the same traversal-rendered statement/proof bodies where available.
+- Existing Lean declaration links consume the dedicated declaration-preview manifest entries instead.
 - Widget previews are still the notable exception: they continue to use the widget/elaboration-side cache rather than the traversal cache.
 
 2. HTML hover surfaces use one shared browser runtime, but not one shared panel.

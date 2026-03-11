@@ -15,13 +15,11 @@ open Lean
 inductive Facet where
   | statement
   | proof
-  | code
 deriving Inhabited, Repr, BEq, ToJson, FromJson
 
 def Facet.suffix : Facet → String
   | .statement => "statement"
   | .proof => "proof"
-  | .code => "code"
 
 def Facet.ofInProgressKind : Informal.Data.InProgressKind → Facet
   | .statement _ => .statement
