@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (created `feat/blueprint-tests-consolidation-20260311`)
+Last updated: 2026-03-11 (merged and cleaned up `feat/blueview-20260311`; created `feat/blueprint-tests-consolidation-20260311`)
 
 ## Active Worktrees
 
@@ -108,15 +108,10 @@ Last updated: 2026-03-11 (created `feat/blueprint-tests-consolidation-20260311`)
   - `git status --short`
   - `git rebase bp`
 
-### `feat/blueview-20260311`
+## Recently Completed
 
-- Status: `active` (owner action: polish the summary UI now that status evaluation is centralized)
-- Summary: isolated review worktree for an audit of blueprint implementation quality. The core cleanup passes are now in place: the repo-level docs were consolidated, `@[blueprint]` export persistence was fixed, duplicate identity handling was hardened, preview sources were unified, and status evaluation was centralized. The current phase is summary polish: hide zero-value sections, consolidate blocker reporting, and reduce duplicated theorem/group views.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
-- Branch: `feat/blueview-20260311`
-- Base commit/branch:
-  - rebased onto `bp` at `059bb0dd`
-- Key commits:
+- Merged `feat/blueview-20260311` into `bp` (`7eb36503 -> 951d8fae`, fast-forward).
+- Feature branch key commits:
   - `45fb17bc` docs(blueprint): adopt manual rationale roadmap layout
   - `9e3017b3` fix(blueprint): persist attribute-registered nodes
   - `294df5b2` test(blueprint): expand attribute persistence coverage
@@ -124,52 +119,15 @@ Last updated: 2026-03-11 (created `feat/blueprint-tests-consolidation-20260311`)
   - `629ae567` refactor(preview): unify preview source path
   - `28469aa0` refactor(status): share blueprint status evaluation
   - `378b2c1f` feat(summary): streamline zero-state sections
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
-  - started shared `_out` preview server on `http://127.0.0.1:8155`
-  - `./script/lean-low-priority lake build Tests.BlueprintAttribute`
-  - `./script/lean-low-priority lake build Tests`
-  - `./script/lean-low-priority lake build Tests.BlueprintInformal Tests.BlueprintImportedDuplicates.Direct Tests.BlueprintImportedDuplicates.Transitive`
-  - `./script/lean-low-priority lake build Tests`
-  - `./script/lean-low-priority lake build VersoBlueprint.Lib.PreviewSource VersoBlueprint.Widget VersoBlueprint.Informal.Block VersoBlueprint.PreviewRender`
-  - `./script/lean-low-priority lake build Tests.BlueprintPreviewSource Tests.BlueprintTexMacros`
-  - `./script/lean-low-priority lake build Tests`
-  - `./script/lean-low-priority lake build VersoBlueprint.Graph VersoBlueprint.Informal.CodeSummary VersoBlueprint.Commands.Summary VersoBlueprint.Informal.Block`
-  - `./script/lean-low-priority lake build Tests.BlueprintGraph Tests.BlueprintSummaryStatus Tests.BlueprintExternalHeadingStatus Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks`
-  - `./script/lean-low-priority lake build Tests`
-  - `./script/lean-low-priority lake build Tests.BlueprintSummaryLinks Tests.BlueprintMetadataPanel Tests.BlueprintPreviewWiring`
+  - `1d8ec63f` test(preview): relax preview wiring invariants after shared runtime cleanup
+- Validation on rebased feature branch:
   - `./script/lean-low-priority lake build Tests`
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
-  - rebased cleanly onto `bp` at `059bb0dd`
-  - post-rebase validation rerun:
-  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
-- Preview link:
-  - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/noperthedron/html-multi/`
-  - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/spherepackingblueprint/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
-  - inspect `src/verso-blueprint/VersoBlueprint`, `doc/`, and `test-projects/Noperthedron`
-  - review findings already captured in chat; `doc/blueprint/` now contains `USER_MANUAL.md`, `DESIGN_RATIONALE.md`, and `ROADMAP.md`
-  - `USER_MANUAL.md` is the operational entry point; `DESIGN_RATIONALE.md` absorbs the old preview/graph rationale docs; `ROADMAP.md` holds live cleanup sequencing
-  - `@[blueprint]` export persistence is fixed and now covered by a broader `Tests.BlueprintAttribute` matrix:
-  - direct + transitive import path, imported `data` vs `localData`, code origin/kind, and documented vs undocumented declarations
-  - duplicate-identity hardening is now implemented:
-  - local scope: nested/duplicate block rejection now happens before stack mutation
-  - imported scope: cross-module collision detection now records and reports duplicate nodes, groups, and authors
-  - regression coverage includes direct + transitive imported collisions plus local duplicate/nesting checks
-  - preview-source duplication cleanup is now implemented:
-  - persistent node payloads now store preview blocks, and `PreviewSource` renders from preview blocks first with syntax fallback only when needed
-  - widget preview and imported preview regressions now cover the unified preview path
-  - shared status evaluation is now implemented:
-  - graph, summary, and local code-summary heading status all consume the same `Graph.CodeHealth` evaluation path
-  - summary polish is now implemented on top of the centralized status logic:
-  - zero-value warning/secondary cards are hidden by default
-  - Lean blockers are consolidated under one blockers section with nested detail filters
-  - theorem-by-parent is now a secondary nested view under the main theorem index
-  - the next implementation target should come from the remaining roadmap items after this pass
-
-## Recently Completed
+- Cleanup authorized and completed:
+  - remove worktree `/home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
+  - delete branch `feat/blueview-20260311`
+  - remove preview artifacts `/home/egallego/lean/verso-blueprint/_out/blueview-20260311`
+  - shared `_out` server was already not running; no stop action needed
 
 - Merged `feat/style-review-20260311` into `bp` (`e3468db1 -> 21374533`, fast-forward).
 - Feature branch key commits:
