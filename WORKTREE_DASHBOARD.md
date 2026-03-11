@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged and cleaned up `feat/lean-code-link-preview-api-20260311`)
+Last updated: 2026-03-11 (created review worktree `feat/blueview-20260311`)
 
 ## Active Worktrees
 
@@ -86,6 +86,28 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/lean-code-link-preview-api
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/lsp-folding-chain`
   - `git status --short`
   - `git rebase bp`
+
+### `feat/blueview-20260311`
+
+- Status: `active` (owner action: complete the in-depth blueprint code review and report prioritized findings)
+- Summary: isolated review worktree for an audit of blueprint implementation quality, focused on duplication, weak datatypes, soft-fail paths, missing error handling, and documentation/setup coherence.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
+- Branch: `feat/blueview-20260311`
+- Base commit/branch:
+  - branched from `bp` at `57ebc3a7`
+- Key commits:
+  - none yet
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
+  - started shared `_out` preview server on `http://127.0.0.1:8155`
+- Preview link:
+  - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/noperthedron/html-multi/`
+  - `http://127.0.0.1:8155/blueview-20260311/example-blueprints/spherepackingblueprint/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
+  - inspect `src/verso-blueprint/VersoBlueprint`, `doc/`, and `test-projects/Noperthedron`
+  - focus findings on type design, error propagation, duplicated logic, and mismatches between docs/setup and implementation
 
 ## Recently Completed
 
