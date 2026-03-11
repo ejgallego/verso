@@ -8,8 +8,8 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Data
+import VersoBlueprint.Informal.LeanDeclPreviewKey
 import VersoBlueprint.Informal.ExternalCode
-import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.PreviewRender
 
 namespace Informal.LeanCodePreview
@@ -26,15 +26,6 @@ target Lean declarations/definitions.
 -/
 def domainName : Name := Name.mkSimple "Informal.LeanCodePreview"
 
-private def namespaceRoot : Name :=
-  Name.str (Name.str .anonymous "Informal") "LeanCodePreview"
-
-private partial def appendName (rootName : Name) (suffixName : Name) : Name :=
-  match suffixName with
-  | .anonymous => rootName
-  | .str parent component => .str (appendName rootName parent) component
-  | .num parent component => .num (appendName rootName parent) component
-
 /--
 Canonical internal preview target for one Lean declaration.
 
@@ -42,13 +33,10 @@ The preview namespace mirrors regular Lean names so the manifest keys stay
 declaration-centric rather than blueprint-label-centric.
 -/
 def targetName (decl : Name) : Name :=
-  appendName namespaceRoot decl.eraseMacroScopes
+  Informal.LeanDeclPreviewKey.targetName decl
 
 def lookupKey (decl : Name) : String :=
-  (targetName decl).toString
-
-def previewId (decl : Name) : String :=
-  s!"bp-lean-code-{Informal.HoverRender.previewKey (lookupKey decl)}"
+  Informal.LeanDeclPreviewKey.lookupKey decl
 
 inductive Source where
   | inlineBlocks (blocks : Array ManualBlock)
@@ -71,9 +59,6 @@ def Entry.ofInlineBlocks (target : Name) (blocks : Array ManualBlock) : Entry :=
 
 def Entry.ofExternalDecl (target : Name) (decl : Informal.Data.ExternalRef) : Entry :=
   { target := target.eraseMacroScopes, source := .externalDecl decl }
-
-def exists? (s : Verso.Genre.Manual.TraverseState) (decl : Name) : Bool :=
-  (s.getDomainObject? domainName (lookupKey decl)).isSome
 
 def title (decl : Name) : String :=
   s!"Lean declaration {decl}"

@@ -8,6 +8,7 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Data
+import VersoBlueprint.Informal.LeanDeclPreviewKey
 import VersoBlueprint.Lib.HoverRender
 
 namespace Informal.LeanCodeLink
@@ -22,20 +23,11 @@ declarations/definitions and should carry a manifest-backed hover preview.
 It intentionally does not compute blueprint/code-status summaries; that remains
 the responsibility of `Informal.CodeSummary`.
 -/
-private def namespaceRoot : Name :=
-  Name.str (Name.str .anonymous "Informal") "LeanCodePreview"
+private def previewLookupKey (decl : Name) : String :=
+  Informal.LeanDeclPreviewKey.lookupKey decl
 
-private partial def appendName (rootName : Name) (suffixName : Name) : Name :=
-  match suffixName with
-  | .anonymous => rootName
-  | .str parent component => .str (appendName rootName parent) component
-  | .num parent component => .num (appendName rootName parent) component
-
-def previewLookupKey (decl : Name) : String :=
-  (appendName namespaceRoot decl.eraseMacroScopes).toString
-
-def previewId (decl : Name) : String :=
-  s!"bp-lean-code-{Informal.HoverRender.previewKey (previewLookupKey decl)}"
+private def previewId (decl : Name) : String :=
+  Informal.LeanDeclPreviewKey.previewId decl
 
 private def renderLinkNode
     (node : Verso.Output.Html) (href? : Option String)
@@ -68,25 +60,5 @@ def renderResolved
     previewTitle
     (previewLookupKey? := some (previewLookupKey decl))
     (previewFallbackDetail? := previewDetail?)
-
-def renderText
-    (decl : Name)
-    (text : String)
-    (className : String := "")
-    (href? : Option String := none)
-    (linkTitle? : Option String := none)
-    (previewTitle : String := s!"Lean declaration {decl}")
-    (previewDetail? : Option String := none) : Verso.Output.Html :=
-  renderResolved decl (.text true text) className href? linkTitle? previewTitle previewDetail?
-
-def renderResolvedText
-    (decl : Name)
-    (text : String)
-    (className : String := "")
-    (href? : Option String := none)
-    (linkTitle? : Option String := none)
-    (previewTitle : String := s!"Lean declaration {decl}")
-    (previewDetail? : Option String := none) : Verso.Output.Html :=
-  renderResolved decl (.text true text) className href? linkTitle? previewTitle previewDetail?
 
 end Informal.LeanCodeLink
