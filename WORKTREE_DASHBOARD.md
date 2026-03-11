@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (simplified the preview manifest schema and refreshed docs on `feat/blueprint-metadata-json-review-bp-20260311`)
+Last updated: 2026-03-11 (merged and cleaned up `feat/blueprint-metadata-json-review-bp-20260311`)
 
 ## Active Worktrees
 
@@ -44,39 +44,6 @@ Last updated: 2026-03-11 (simplified the preview manifest schema and refreshed d
   - inspect `src/verso-blueprint/VersoBlueprint/Lean.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Code.lean`, `src/verso/Verso/Doc/Lsp.lean`, and `doc/UsersGuide/Elab.lean`
   - likely change shape: thread an explicit interactive flag from outer `Command.Context.snap?` into `DocElabContext`, then gate highlight generation and declaration analysis in blueprint Lean blocks
   - manual target: record that interactive Lean editing uses a latency-oriented fast path while batch builds still run full highlighting and blueprint analysis
-
-### `feat/blueprint-metadata-json-review-bp-20260311`
-
-- Status: `ready-for-review` (owner action: review the shared-manifest mode and decide whether to merge it)
-- Summary: makes the shared preview manifest the sole source of truth for block previews, routes related panels and graph hovers through exact preview keys, and adds a metaprogrammed `--dump-schema` flag that emits a deduplicated JSON Schema for the current manifest format.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
-- Branch: `feat/blueprint-metadata-json-review-bp-20260311`
-- Base commit/branch:
-  - branched from `bp` at `6501559a`
-- Key commits:
-  - `ca6e8528` feat(preview): add schema dump and document manifest
-  - `ef12b338` feat(preview): add manifest schema dump flag
-  - `8b5aaccc` refactor(preview): manifest-drive related-panel previews
-  - `c14ab66c` refactor(preview): canonicalize manifest-only block previews
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
-  - `script/lean-low-priority lake build VersoBlueprint.PreviewManifest Tests.BlueprintPreviewSchema Main SpherePackingBlueprintMain`
-  - `script/lean-low-priority lake build VersoBlueprint Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
-  - `script/lean-low-priority lake exe noperthedron --dump-schema`
-  - `script/lean-low-priority lake exe spherepackingblueprint --dump-schema`
-  - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints`
-  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi` (`8` passed)
-  - emitted shared preview manifests:
-  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi/-verso-data/bp-previews.json` (`134` entries, `389087` bytes, minified)
-  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/spherepackingblueprint/html-multi/-verso-data/bp-previews.json` (`222` entries, `195247` bytes, minified)
-  - output shape check on `noperthedron`: `bp_label_preview_tpl=0`, `bp_summary_preview_tpl=0`, `bp_inline_preview_tpl=107`, `bp_used_by_preview_tpl=0`
-- Preview link:
-  - `http://127.0.0.1:8154/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
-  - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/PreviewRender.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, and `src/tests/Tests/BlueprintPreviewSchema.lean`
-  - canonical manifest mode now lives at the extra-step boundary via `Informal.PreviewManifest.emitSharedPreviewManifest`
-  - `lake exe noperthedron --dump-schema` now prints the current deduplicated JSON Schema for `bp-previews.json`
 
 ### `feat/blueprint-metadata-json-review-20260310`
 
@@ -166,6 +133,28 @@ Last updated: 2026-03-11 (simplified the preview manifest schema and refreshed d
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/blueprint-metadata-json-review-bp-20260311` into `bp` (`129909cd -> 06f71a3f`, fast-forward).
+- Feature branch key commits:
+  - `06f71a3f` feat(preview): add schema dump and document manifest
+  - `79687bc6` feat(preview): add manifest schema dump flag
+  - `75e3be09` refactor(preview): manifest-drive related-panel previews
+  - `d3b92c05` refactor(preview): canonicalize manifest-only block previews
+- Validation on rebased feature branch:
+  - `script/lean-low-priority lake build VersoBlueprint.PreviewManifest Tests.BlueprintPreviewSchema Main SpherePackingBlueprintMain`
+  - `script/lean-low-priority lake build VersoBlueprint Tests.BlueprintPreviewSchema Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `script/lean-low-priority lake exe noperthedron --dump-schema`
+  - `script/lean-low-priority lake exe spherepackingblueprint --dump-schema`
+  - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi`
+- Validation on `bp` after merge:
+  - merge was fast-forward from the already-validated rebased feature head
+- Removed preview artifacts:
+  - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311`
+- Removed worktree:
+  - `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
+- Deleted branch:
+  - `feat/blueprint-metadata-json-review-bp-20260311`
 
 - Retired the old checkout for `feat/code-summary-badge-unification-20260310` after starting `feat/lean-code-link-preview-api-20260311`.
 - Preserved branch:
