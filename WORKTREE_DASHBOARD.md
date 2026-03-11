@@ -54,16 +54,17 @@ Last updated: 2026-03-11 (retired the old `feat/code-summary-badge-unification-2
 - Base commit/branch:
   - branched from `bp` at `6501559a`
 - Key commits:
+  - `4f2e9ae1` refactor(preview): manifest-drive related-panel previews
   - `ad71eb86` refactor(preview): canonicalize manifest-only block previews
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
   - `script/lean-low-priority lake build VersoBlueprint Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
   - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints`
-  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi` (`6` passed)
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi` (`8` passed)
   - emitted shared preview manifests:
   - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi/-verso-data/bp-previews.json` (`134` entries, `395840` bytes, minified)
   - `/home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/spherepackingblueprint/html-multi/-verso-data/bp-previews.json` (`222` entries, `206547` bytes, minified)
-  - output shape check on `noperthedron`: `bp_label_preview_tpl=0`, `bp_summary_preview_tpl=0`, `bp_inline_preview_tpl=178`
+  - output shape check on `noperthedron`: `bp_label_preview_tpl=0`, `bp_summary_preview_tpl=0`, `bp_inline_preview_tpl=107`, `bp_used_by_preview_tpl=0`
 - Preview link:
   - `http://127.0.0.1:8154/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi/`
 - Resume commands/notes:
