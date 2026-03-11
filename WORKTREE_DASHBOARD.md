@@ -31,6 +31,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Base commit/branch:
   - branched from `bp` at `2a11a8f9`
 - Key commits:
+  - `68073da2` fix(html): use native blueprint controls
   - `6ddaf4ae` refactor(style): promote bp selector surface
   - `698ceb47` refactor(style): unify blueprint asset registration
 - Validation status:
@@ -141,6 +142,9 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - selector-boundary checkpoint validated after `6ddaf4ae`:
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
   - emitted HTML now carries `bp_style_*` / `bp_kind_*_*` selectors while preserving the legacy leanblueprint-compatible theorem/proof classes in parallel
+  - semantic-controls checkpoint validated after `68073da2`:
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
+  - emitted HTML now uses native `button` controls for multi-entry used-by/group panels and wires the graph “View” label to a real select id
 - Planned commit slices:
   - `1.` unify asset registration so each CSS/JS payload is added through one path only
   - `2.` preserve leanblueprint compatibility classes, but retarget blueprint-owned styling to primary `bp_*` selectors
