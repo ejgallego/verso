@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (merged and cleaned up `feat/preview-manifest-cli-20260311`)
+Last updated: 2026-03-11 (merged and cleaned up `feat/lean-code-link-preview-api-20260311`)
 
 ## Active Worktrees
 
@@ -45,28 +45,6 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/preview-manifest-cli-20260
   - likely change shape: thread an explicit interactive flag from outer `Command.Context.snap?` into `DocElabContext`, then gate highlight generation and declaration analysis in blueprint Lean blocks
   - manual target: record that interactive Lean editing uses a latency-oriented fast path while batch builds still run full highlighting and blueprint analysis
 
-### `feat/lean-code-link-preview-api-20260311`
-
-- Status: `active` (owner action: introduce a canonical Lean-code link API, switch existing Lean-link call sites onto it, then add hover preview through that single path)
-- Summary: new feature worktree for unifying Lean-code linking across code summary surfaces and blueprint summary views behind one API, with shared hover preview behavior layered on top.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/lean-code-link-preview-api-20260311`
-- Branch: `feat/lean-code-link-preview-api-20260311`
-- Base commit/branch:
-  - branched from `bp` at `c45986f8`
-- Key commits:
-  - none yet
-- Validation status:
-  - setup complete: worktree created, root `.lake` copied, and `lake exe cache get` run
-  - `./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/lean-code-link-preview-api-20260311/example-blueprints`
-  - `lake exe noperthedron --output /home/egallego/lean/verso-blueprint/_out/lean-code-link-preview-api-20260311/noperthedron`
-- Preview link:
-  - `http://127.0.0.1:8156/lean-code-link-preview-api-20260311/noperthedron/html-multi/`
-  - `http://127.0.0.1:8156/lean-code-link-preview-api-20260311/example-blueprints/noperthedron/html-multi/`
-- Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/lean-code-link-preview-api-20260311`
-  - `git status --short`
-  - inspect `src/verso-blueprint/VersoBlueprint/Resolve.lean`, `src/verso-blueprint/VersoBlueprint/Informal/CodeSummary.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, `src/verso-blueprint/VersoBlueprint/Informal/Block.lean`
-
 ### `feat/lean-commandm-incremental-20260306`
 
 - Status: `active` (owner action: retest editor UX from the reverted “best current” checkpoint and decide whether a true incremental elaborator is still needed)
@@ -110,6 +88,22 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/preview-manifest-cli-20260
   - `git rebase bp`
 
 ## Recently Completed
+
+- Merged `feat/lean-code-link-preview-api-20260311` into `bp` (`4f0d4bb0 -> 6e7eabc3`, fast-forward).
+- Feature branch key commits:
+  - `c09e7475` feat(blueprint): add lean code link preview api
+  - `953fe7e0` refactor(preview): instrument lean declaration links
+  - `06afbe97` refactor(preview): dedupe lean declaration preview keys
+  - `65b80ca5` fix(preview): keep manifest schema aligned after rebase
+- Validation on merged feature head:
+  - `./script/lean-low-priority lake build Tests.BlueprintPreviewWiring Tests.BlueprintSummaryLinks`
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/lean-code-link-preview-api-20260311/example-blueprints`
+  - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/lean-code-link-preview-api-20260311/example-blueprints/noperthedron/html-multi`
+- Cleanup authorized and completed:
+  - remove worktree `/home/egallego/lean/verso-blueprint/.worktrees/lean-code-link-preview-api-20260311`
+  - delete branch `feat/lean-code-link-preview-api-20260311`
+  - remove preview artifacts `/home/egallego/lean/verso-blueprint/_out/lean-code-link-preview-api-20260311`
+  - keep shared server running for other active worktrees
 
 - Merged `feat/preview-manifest-cli-20260311` into `bp` (`4997ab44 -> 98cc88d9`, fast-forward).
 - Feature branch key commit:
