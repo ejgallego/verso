@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (continued `feat/blueprint-tests-consolidation-20260311` with preview-wiring module split)
+Last updated: 2026-03-11 (validated split `Tests.BlueprintPreviewWiring` modules in `feat/blueprint-tests-consolidation-20260311`)
 
 ## Active Worktrees
 
@@ -24,19 +24,22 @@ Last updated: 2026-03-11 (continued `feat/blueprint-tests-consolidation-20260311
 
 ### `feat/blueprint-tests-consolidation-20260311`
 
-- Status: `active` (owner action: split `Tests.BlueprintPreviewWiring` into smaller feature-focused modules, then rerun blueprint test and preview validation)
-- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The shared harness and umbrella import refactor is checkpointed, and the current phase is decomposing the still-large preview wiring scenario file into smaller modules without losing coverage.
+- Status: `ready-for-review` (owner action: review the now-split preview-wiring modules and decide whether any other oversized blueprint test files should follow the same pattern)
+- Summary: isolated cleanup worktree for the organically-grown blueprint tests. The suite now has a shared blueprint harness, a `Tests.Blueprint` umbrella import, and a decomposed preview-wiring area with `Shared`, `Summary`, `Graph`, `UsedBy`, and `LeanStatus` modules behind a thin compatibility umbrella.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
 - Branch: `feat/blueprint-tests-consolidation-20260311`
 - Base commit/branch:
   - branched from `bp` at `951d8fae`
 - Key commits:
   - `853a52d7` refactor(tests): consolidate blueprint test support
+  - `2cc0f73e` refactor(tests): split blueprint preview wiring scenarios
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
   - `script/lean-low-priority lake build Tests.Blueprint.Support Tests.BlueprintLinkHover Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring Tests.BlueprintExternalHeadingStatus Tests.BlueprintTexMacros Tests`
   - `script/lean-low-priority lake build Tests.Blueprint.Support Tests.Blueprint Tests`
+  - `script/lean-low-priority lake build Tests.BlueprintPreviewWiring.Shared Tests.BlueprintPreviewWiring.Summary Tests.BlueprintPreviewWiring.Graph Tests.BlueprintPreviewWiring.UsedBy Tests.BlueprintPreviewWiring.LeanStatus Tests.BlueprintPreviewWiring Tests.Blueprint Tests`
   - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints`
+  - reran `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints` after the preview-wiring split
   - started shared `_out` preview server on `http://127.0.0.1:8155`
 - Preview link:
   - `http://127.0.0.1:8155/blueprint-tests-consolidation-20260311/example-blueprints/noperthedron/html-multi/`
@@ -44,8 +47,8 @@ Last updated: 2026-03-11 (continued `feat/blueprint-tests-consolidation-20260311
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
   - inspect `src/tests/Tests/Blueprint.lean` and `src/tests/Tests/Blueprint/Support.lean` first; that is now the suite entry point and shared renderer harness
-  - split `src/tests/Tests/BlueprintPreviewWiring.lean` by preview feature while keeping a thin compatibility umbrella at `Tests.BlueprintPreviewWiring`
-  - `git show --stat 853a52d7`
+  - `src/tests/Tests/BlueprintPreviewWiring.lean` is now only the umbrella import; inspect `src/tests/Tests/BlueprintPreviewWiring/` for the actual scenarios
+  - `git show --stat 2cc0f73e`
 
 ### `feat/lean-lean-interactive-latency-20260310`
 
