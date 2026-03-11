@@ -174,6 +174,7 @@ def blueprintCss : String := r##"
   font-variant-numeric: tabular-nums;
 }
 
+.bp_label::after,
 span[class$="_thmlabel"]::after {
   content: ".";
 }
@@ -1102,21 +1103,25 @@ span[class$="_thmlabel"]::after {
   content: "";
 }
 
+.bp_wrapper.bp_style_plain .bp_heading,
 div.theorem-style-plain div[class$="_thmheading"] {
   font-style: normal;
   font-weight: bold;
 }
 
+.bp_wrapper.bp_style_plain .bp_content,
 div.theorem-style-plain div[class$="_thmcontent"] {
   font-style: italic;
   font-weight: normal;
 }
 
+.bp_wrapper.bp_style_definition .bp_heading,
 div.theorem-style-definition div[class$="_thmheading"] {
   font-style: normal;
   font-weight: bold;
 }
 
+.bp_kind_theorem_content,
 div.theorem_thmcontent {
   border-left: 0.15rem solid black;
 }
@@ -1125,14 +1130,17 @@ div.proposition_thmcontent {
   border-left: 0.15rem solid black;
 }
 
+.bp_kind_lemma_content,
 div.lemma_thmcontent {
   border-left: 0.1rem solid black;
 }
 
+.bp_kind_corollary_content,
 div.corollary_thmcontent {
   border-left: 0.1rem solid black;
 }
 
+.bp_kind_proof_content,
 div.proof_content {
   border-left: 0.08rem solid grey;
 }
@@ -1565,31 +1573,31 @@ private def renderInformalBlock (data : BlockData) (numberText : String) (attrs 
   let (kindText, showLabel, kindCss, wrapperCss, headingCss, captionCss, labelCss, contentCss) :=
     match data.kind with
     | .proof =>
-      ("Proof", false, "proof", "proof_wrapper bp_kind_proof",
+      ("Proof", false, "proof", "proof_wrapper bp_kind_proof bp_style_proof",
         "proof_heading", "proof_caption", "proof_label", "proof_content")
     | .statement nodeKind =>
       match nodeKind with
       | .definition =>
         (s!"{nodeKind}", true, "definition",
-          "definition_thmwrapper theorem-style-definition bp_kind_definition",
+          "definition_thmwrapper theorem-style-definition bp_kind_definition bp_style_definition",
           "definition_thmheading", "definition_thmcaption", "definition_thmlabel", "definition_thmcontent")
       | .theorem =>
         (s!"{nodeKind}", true, "theorem",
-          "theorem_thmwrapper theorem-style-plain bp_kind_theorem",
+          "theorem_thmwrapper theorem-style-plain bp_kind_theorem bp_style_plain",
           "theorem_thmheading", "theorem_thmcaption", "theorem_thmlabel", "theorem_thmcontent")
       | .lemma =>
         (s!"{nodeKind}", true, "lemma",
-          "lemma_thmwrapper theorem-style-plain bp_kind_lemma",
+          "lemma_thmwrapper theorem-style-plain bp_kind_lemma bp_style_plain",
           "lemma_thmheading", "lemma_thmcaption", "lemma_thmlabel", "lemma_thmcontent")
       | .corollary =>
         (s!"{nodeKind}", true, "corollary",
-          "corollary_thmwrapper theorem-style-plain bp_kind_corollary",
+          "corollary_thmwrapper theorem-style-plain bp_kind_corollary bp_style_plain",
           "corollary_thmheading", "corollary_thmcaption", "corollary_thmlabel", "corollary_thmcontent")
-  let wrapperClass := s!"bp_wrapper {kindCss}_thmwrapper {wrapperCss}"
-  let headingClass := s!"bp_heading {headingCss}"
-  let captionClass := s!"bp_caption {captionCss}"
-  let labelClass := s!"bp_label {labelCss}"
-  let contentClass := s!"bp_content {contentCss}"
+  let wrapperClass := s!"bp_wrapper bp_kind_{kindCss}_wrapper {kindCss}_thmwrapper {wrapperCss}"
+  let headingClass := s!"bp_heading bp_kind_{kindCss}_heading {headingCss}"
+  let captionClass := s!"bp_caption bp_kind_{kindCss}_caption {captionCss}"
+  let labelClass := s!"bp_label bp_kind_{kindCss}_label {labelCss}"
+  let contentClass := s!"bp_content bp_kind_{kindCss}_content {contentCss}"
   let titleRowClass :=
     if showLabel then
       "bp_heading_title_row bp_heading_title_row_statement"

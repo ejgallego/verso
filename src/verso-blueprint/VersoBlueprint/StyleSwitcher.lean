@@ -66,6 +66,10 @@ html[data-bp-style="blueprint"] .bp_content {
   padding-left: 0.45rem;
 }
 
+html[data-bp-style="blueprint"] .bp_kind_theorem_content,
+html[data-bp-style="blueprint"] .bp_kind_lemma_content,
+html[data-bp-style="blueprint"] .bp_kind_corollary_content,
+html[data-bp-style="blueprint"] .bp_kind_proof_content,
 html[data-bp-style="blueprint"] div.theorem_thmcontent,
 html[data-bp-style="blueprint"] div.proposition_thmcontent,
 html[data-bp-style="blueprint"] div.lemma_thmcontent,
@@ -98,6 +102,10 @@ html[data-bp-style="modern"] .bp_content {
   padding-left: 0.5rem;
 }
 
+html[data-bp-style="modern"] .bp_kind_theorem_content,
+html[data-bp-style="modern"] .bp_kind_lemma_content,
+html[data-bp-style="modern"] .bp_kind_corollary_content,
+html[data-bp-style="modern"] .bp_kind_proof_content,
 html[data-bp-style="modern"] .bp_wrapper div.theorem_thmcontent,
 html[data-bp-style="modern"] .bp_wrapper div.proposition_thmcontent,
 html[data-bp-style="modern"] .bp_wrapper div.lemma_thmcontent,
@@ -154,6 +162,10 @@ html[data-bp-style="bold"] .bp_content {
   padding-left: 0.6rem;
 }
 
+html[data-bp-style="bold"] .bp_kind_theorem_content,
+html[data-bp-style="bold"] .bp_kind_lemma_content,
+html[data-bp-style="bold"] .bp_kind_corollary_content,
+html[data-bp-style="bold"] .bp_kind_proof_content,
 html[data-bp-style="bold"] .bp_wrapper div.theorem_thmcontent,
 html[data-bp-style="bold"] .bp_wrapper div.proposition_thmcontent,
 html[data-bp-style="bold"] .bp_wrapper div.lemma_thmcontent,
