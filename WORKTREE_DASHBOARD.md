@@ -31,6 +31,7 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Base commit/branch:
   - branched from `bp` at `2a11a8f9`
 - Key commits:
+  - `b2979b45` refactor(preview): share panel chrome
   - `376b20bc` chore(style): remove dead blueprint placeholders
   - `68073da2` fix(html): use native blueprint controls
   - `6ddaf4ae` refactor(style): promote bp selector surface
@@ -151,6 +152,9 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
   - dead-code checkpoint validated after `376b20bc`:
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
   - emitted HTML no longer contains the empty `bp_hiddenextras` placeholder or the dead `.bp_summary_preview` mobile rule; `Summary.lean` now carries a short note to force future `summary.css` edits through a module rebuild
+  - shared-preview checkpoint validated after `b2979b45`:
+  - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/style-review-20260311/example-blueprints`
+  - graph and summary previews now share a common `bp_preview_panel*` chrome layer in both markup and CSS, while their existing graph/summary-specific hook classes remain in place for behavior and local sizing overrides
 - Planned commit slices:
   - `1.` unify asset registration so each CSS/JS payload is added through one path only
   - `2.` preserve leanblueprint compatibility classes, but retarget blueprint-owned styling to primary `bp_*` selectors
