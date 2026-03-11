@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-11 (retired the old `feat/code-summary-badge-unification-20260310` checkout while preserving its unmerged branch)
+Last updated: 2026-03-11 (added `--dump-schema` support to `feat/blueprint-metadata-json-review-bp-20260311` and revalidated the branch)
 
 ## Active Worktrees
 
@@ -48,17 +48,21 @@ Last updated: 2026-03-11 (retired the old `feat/code-summary-badge-unification-2
 ### `feat/blueprint-metadata-json-review-bp-20260311`
 
 - Status: `ready-for-review` (owner action: review the shared-manifest mode and decide whether to merge it)
-- Summary: makes the shared preview manifest the sole source of truth for block previews, stops emitting block label preview templates entirely, removes label-based manifest fallback, factors the preview HTML renderer setup, and keeps manifest fetches lazy.
+- Summary: makes the shared preview manifest the sole source of truth for block previews, routes related panels and graph hovers through exact preview keys, and adds a metaprogrammed `--dump-schema` flag that emits a deduplicated JSON Schema for the current manifest format.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
 - Branch: `feat/blueprint-metadata-json-review-bp-20260311`
 - Base commit/branch:
   - branched from `bp` at `6501559a`
 - Key commits:
+  - `930e4e05` feat(preview): add manifest schema dump flag
   - `3292bddd` refactor(preview): manifest-drive related-panel previews
   - `248206c1` refactor(preview): canonicalize manifest-only block previews
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
+  - `script/lean-low-priority lake build VersoBlueprint.PreviewManifest Tests.BlueprintPreviewSchema Main SpherePackingBlueprintMain`
   - `script/lean-low-priority lake build VersoBlueprint Tests.BlueprintPreviewWiring Tests.BlueprintLinkHover Tests.BlueprintSummaryLinks Tests.BlueprintTexMacros`
+  - `script/lean-low-priority lake exe noperthedron --dump-schema`
+  - `script/lean-low-priority lake exe spherepackingblueprint --dump-schema`
   - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints`
   - `uv run --project browser-tests --extra test python -m pytest browser-tests/test_preview_runtime_regressions.py -q --site-dir /home/egallego/lean/verso-blueprint/_out/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi` (`8` passed)
   - emitted shared preview manifests:
@@ -69,7 +73,7 @@ Last updated: 2026-03-11 (retired the old `feat/code-summary-badge-unification-2
   - `http://127.0.0.1:8154/blueprint-metadata-json-review-bp-20260311/example-blueprints/noperthedron/html-multi/`
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-metadata-json-review-bp-20260311`
-  - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/PreviewRender.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, and `src/verso-blueprint/VersoBlueprint/Lib/HoverRender.lean`
+  - inspect `src/verso-blueprint/VersoBlueprint/PreviewManifest.lean`, `src/verso-blueprint/VersoBlueprint/PreviewRender.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Common.lean`, and `src/tests/Tests/BlueprintPreviewSchema.lean`
   - canonical manifest mode now lives at the extra-step boundary via `Informal.PreviewManifest.emitSharedPreviewManifest`
 
 ### `feat/blueprint-metadata-json-review-20260310`
