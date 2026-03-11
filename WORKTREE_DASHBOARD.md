@@ -89,8 +89,8 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 
 ### `feat/blueview-20260311`
 
-- Status: `active` (owner action: complete the in-depth blueprint code review and report prioritized findings)
-- Summary: isolated review worktree for an audit of blueprint implementation quality, focused on duplication, weak datatypes, soft-fail paths, missing error handling, and documentation/setup coherence.
+- Status: `active` (owner action: consolidate blueprint docs first, then apply the prioritized review fixes)
+- Summary: isolated review worktree for an audit of blueprint implementation quality. The review findings are now in hand; the next step is to consolidate scattered blueprint-specific docs under `doc/blueprint/` before landing code/doc follow-ups on duplication, weak datatypes, and soft-fail behavior.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
 - Branch: `feat/blueview-20260311`
 - Base commit/branch:
@@ -107,7 +107,8 @@ Last updated: 2026-03-11 (checkpointed staged cleanup plan for `feat/style-revie
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
   - inspect `src/verso-blueprint/VersoBlueprint`, `doc/`, and `test-projects/Noperthedron`
-  - focus findings on type design, error propagation, duplicated logic, and mismatches between docs/setup and implementation
+  - review findings already captured in chat; start by moving blueprint-specific docs into `doc/blueprint/` and updating references
+  - then follow up on the highest-priority implementation issues: `@[blueprint]` export persistence, nested/duplicate block soft-fail paths, and preview-source duplication
 
 ### `feat/style-review-20260311`
 
