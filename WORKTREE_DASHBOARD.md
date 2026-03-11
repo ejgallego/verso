@@ -98,16 +98,15 @@ Last updated: 2026-03-11 (merged and cleaned up `feat/style-review-20260311`)
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueview-20260311`
 - Branch: `feat/blueview-20260311`
 - Base commit/branch:
-  - branched from `bp` at `57ebc3a7`
+  - rebased onto `bp` at `059bb0dd`
 - Key commits:
-  - `bfa10976` docs(blueprint): centralize blueprint docs
-  - `af681591` docs(blueprint): condense overlapping notes
-  - `6349d4d6` fix(blueprint): persist attribute-registered nodes
-  - `815b6600` test(blueprint): expand attribute persistence coverage
-  - `f2f6e2a4` fix(blueprint): harden duplicate identity handling
-  - `e3538ae3` refactor(preview): unify preview source path
-  - `d8ffb462` refactor(status): share blueprint status evaluation
-  - `0a22802e` feat(summary): streamline zero-state sections
+  - `45fb17bc` docs(blueprint): adopt manual rationale roadmap layout
+  - `9e3017b3` fix(blueprint): persist attribute-registered nodes
+  - `294df5b2` test(blueprint): expand attribute persistence coverage
+  - `0ba1b5d0` fix(blueprint): harden duplicate identity handling
+  - `629ae567` refactor(preview): unify preview source path
+  - `28469aa0` refactor(status): share blueprint status evaluation
+  - `378b2c1f` feat(summary): streamline zero-state sections
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `./script/lean-low-priority lake exe cache get` completed successfully
   - `./script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueview-20260311/example-blueprints`
