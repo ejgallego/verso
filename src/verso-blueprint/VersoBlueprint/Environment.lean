@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean.CoreM
 import Lean.EnvExtension
+import VersoManual
 import VersoBlueprint.Data
 
 namespace Informal.Environment
@@ -24,6 +25,7 @@ structure InProgress where
   effort : Option String := none
   prUrl : Option String := none
   deps : Array Label := #[]
+  previewBlocks : Array (Verso.Doc.Block Verso.Genre.Manual) := #[]
   elabStx : Array Syntax := #[]
 deriving Inhabited, Repr
 
@@ -121,8 +123,10 @@ initialize informalExt : PersistentEnvExtension Entry Entry State ←
     -- Strip transient elaboration cache before exporting nodes to the environment.
     exportEntriesFnEx env := fun state _level =>
       let nodeEntries := state.localData.toArray.map fun (name, node) =>
-        let statement := node.statement.map fun s => { s with elabStx := #[] }
-        let proof := node.proof.map fun p => { p with elabStx := #[] }
+        let statement := node.statement.map fun s =>
+          if s.previewBlocks.isEmpty then s else { s with elabStx := #[] }
+        let proof := node.proof.map fun p =>
+          if p.previewBlocks.isEmpty then p else { p with elabStx := #[] }
         Entry.node name { node with statement, proof }
       let groupEntries := state.localGroups.toArray.map fun (label, header) =>
         Entry.group label header
@@ -221,6 +225,7 @@ def pop (ref : Syntax) : m Nat := do
         let payload : InformalData := {
           stx := ref
           deps := cur.deps
+          previewBlocks := cur.previewBlocks
           elabStx := cur.elabStx
         }
         let data ← state.data.register
@@ -257,6 +262,13 @@ def setStatementElab (stxs : Array Syntax) : m Unit := do
     | .statement _ =>
       let cur := { cur with elabStx := stxs }
       modify fun state => { state with stack := cur :: rest }
+
+def setPreviewBlocks (blocks : Array (Verso.Doc.Block Verso.Genre.Manual)) : m Unit := do
+  match (informalExt.getState (← getEnv)).stack with
+  | [] => pure ()
+  | cur :: rest =>
+    let cur := { cur with previewBlocks := blocks }
+    modify fun state => { state with stack := cur :: rest }
 
 def registerCode (label : Label) (code : Syntax)
     (definedDefs : Array LiterateDef := #[]) (definedTheorems : Array LiterateThm := #[]) : m Unit := do

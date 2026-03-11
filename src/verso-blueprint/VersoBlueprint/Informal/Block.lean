@@ -24,6 +24,7 @@ import VersoBlueprint.Informal.Group
 import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.Lib.HoverRender
 import VersoBlueprint.PreviewCache
+import VersoBlueprint.PreviewRender
 import VersoBlueprint.Resolve
 import VersoBlueprint.StyleSwitcher
 import VersoBlueprint.Widget
@@ -1958,10 +1959,8 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let contents ← contents.mapM elabBlock
     if !accepted then
       return ← ``(Block.concat #[$contents,*])
-    if !isProof then
-      -- TODO: consolidate this widget-oriented elaboration cache with the traversal preview cache
-      -- once we have a phase-safe representation that can serve both pipelines.
-      Environment.setStatementElab contents
+    let previewBlocks ← liftM <| Informal.evalElaboratedBlocks (contents.map (·.raw))
+    Environment.setPreviewBlocks previewBlocks
     let count ← Environment.pop blockRef
     let node? ← Environment.getNode? label
     let nodeCodeRef? := node?.bind (·.code)

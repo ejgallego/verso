@@ -14,6 +14,7 @@ import Tests.BlueprintExternalHeadingStatus
 import Tests.BlueprintGraph
 import Tests.BlueprintInlinePrecision
 import Tests.BlueprintMathLint
+import Tests.BlueprintPreviewSource
 import Tests.BlueprintSummaryStatus
 import Tests.BlueprintLinkHover
 import Tests.BlueprintPreviewSchema

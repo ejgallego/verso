@@ -56,6 +56,7 @@ Widget preview uses $`\widgetmacro`.
     let statementHtml := toJson (← Informal.PreviewSource.renderWidgetHtml out.statementPreview?)
     let encoded := Json.compress statementHtml
     pure (
+      out.statementPreview?.map (fun preview => !preview.blocks.isEmpty && preview.stxs.isEmpty) == some true &&
       hasSubstr encoded "data-bp-tex-prelude" &&
       hasSubstr encoded "sharedmacro" &&
       hasSubstr encoded "widgetmacro" &&

@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean
 import Lean.Data.Json
+import VersoManual
 import VersoBlueprint.DocGenNameRender
 
 namespace Informal.Data
@@ -332,6 +333,7 @@ deriving Repr, Inhabited
 structure InformalData where
   stx : Syntax
   deps : Array Label := #[]
+  previewBlocks : Array (Verso.Doc.Block Verso.Genre.Manual) := #[]
   elabStx : Array Syntax := #[] -- Syntax is going to have type Verso.Block ...
 deriving Repr, Inhabited
 

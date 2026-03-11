@@ -254,7 +254,7 @@ def Graph.toDot (g : Graph) (resolveGroupTitle : Name → Option String := fun _
 open Informal Data Environment
 structure BuildResult where
   dot : String
-  statementPreview? : Option (Array Lean.Syntax) := none
+  statementPreview? : Option Informal.PreviewSource.Preview := none
   legend : Json
 
 def buildFor [Monad m] [MonadEnv m] [MonadError m] (label : Name) : m BuildResult := do
@@ -280,7 +280,7 @@ def updatePanel (title label : String) (statementHtml legend : Json) (dot : Stri
     (blueprintWidget.javascriptHash)
     (rpcEncode ({ title, label, statementHtml, dot, legend } : GraphParams )) stx
 
-private def renderStatementPreviewJson (statementPreview? : Option (Array Lean.Syntax)) :
+private def renderStatementPreviewJson (statementPreview? : Option Informal.PreviewSource.Preview) :
     Lean.Elab.Term.TermElabM Json := do
   toJson <$> Informal.PreviewSource.renderWidgetHtml statementPreview?
 

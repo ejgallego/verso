@@ -73,10 +73,10 @@ private def isBlueprintAttrRef (expectedDecl : Name) (expectedKind : Informal.Da
       isBlueprintAttrRef `Verso.Tests.BlueprintAttribute.Provider.exportedTheorem .theorem theoremNode &&
       isBlueprintAttrRef `Verso.Tests.BlueprintAttribute.Provider.exportedDefinition .definition definitionNode
 
-/-- Imported statement payloads should keep empty deps and exported elab cache. -/
+/-- Imported statement payloads should keep empty deps and at least one preview source. -/
 private def importedStatementExportOk (node : Informal.Data.Node) : Bool :=
   match node.statement with
-  | some st => st.deps.isEmpty && st.elabStx.isEmpty
+  | some st => st.deps.isEmpty && (!st.previewBlocks.isEmpty || !st.elabStx.isEmpty)
   | none => false
 
 /-- info: true -/

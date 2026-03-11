@@ -20,8 +20,9 @@ open Informal Data Environment
 
 abbrev ManualBlock := Verso.Doc.Block Verso.Genre.Manual
 
-structure TraversalPreview where
+structure Preview where
   blocks : Array ManualBlock := #[]
+  stxs : Array Syntax := #[]
 deriving Inhabited, Repr
 
 private def nonEmptyOrNone {α} (xs : Array α) : Option (Array α) :=
@@ -51,7 +52,7 @@ private def firstNonEmptyEntry?
     | none => none
 
 def traversalPreview?
-    (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option TraversalPreview := do
+    (s : Verso.Genre.Manual.TraverseState) (label : Name) : Option Preview := do
   let traversalFacetEntry? (facet : PreviewCache.Facet) : Option PreviewCache.Entry := do
     let key := PreviewCache.key label facet
     let obj ← s.getDomainObject? Resolve.informalPreviewDomainName key
@@ -72,19 +73,47 @@ def renderTraversalPreview? {m} [Monad m]
   | some preview =>
     pure <| some (← preview.blocks.mapM renderBlock)
 
+private def envFacetPreview? (node : Data.Node) (facet : PreviewCache.Facet) : Option Preview := do
+  let informalData ←
+    match facet with
+    | .statement => node.statement
+    | .proof => node.proof
+  match nonEmptyOrNone informalData.previewBlocks with
+  | some blocks => some { blocks }
+  | none =>
+    match nonEmptyOrNone informalData.elabStx with
+    | some stxs => some { stxs }
+    | none => none
+
+private def firstNonEmptyPreview?
+    (fetch : PreviewCache.Facet → Option Preview) : Option Preview :=
+  match fetch .statement with
+  | some preview =>
+    if !(preview.blocks.isEmpty && preview.stxs.isEmpty) then
+      some preview
+    else
+      fetch .proof
+  | none => fetch .proof
+
 private def envFacetStxs? (node : Data.Node) (facet : PreviewCache.Facet) : Option (Array Syntax) :=
   match facet with
   | .statement => node.statement.bind (nonEmptyOrNone ·.elabStx)
   | .proof => node.proof.bind (nonEmptyOrNone ·.elabStx)
 
-def fromEnvironment? (env : Environment) (label : Name) : Option (Array Syntax) := do
+def fromEnvironment? (env : Environment) (label : Name) : Option Preview := do
   let state := informalExt.getState env
   let node ← state.data.get? label
-  firstNonEmptyFacet? (envFacetStxs? node)
+  firstNonEmptyPreview? (envFacetPreview? node)
 
-def renderWidgetHtml (stxs? : Option (Array Syntax)) : Lean.Elab.Term.TermElabM Verso.Output.Html := do
-  match stxs? with
+def renderWidgetHtml (preview? : Option Preview) : Lean.Elab.Term.TermElabM Verso.Output.Html := do
+  match preview? with
   | none => pure .empty
-  | some stxs => Informal.renderStatementElabHtml stxs
+  | some preview =>
+    if !preview.blocks.isEmpty then
+      Informal.renderPreviewBlocksHtml preview.blocks
+    else if !preview.stxs.isEmpty then
+      Informal.renderStatementElabHtml preview.stxs
+    else
+      pure .empty
 
 end Informal.PreviewSource
