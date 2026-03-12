@@ -31,10 +31,10 @@ Last updated: 2026-03-12 (merged and cleaned up `feat/blueprint-tests-consolidat
 - Base commit/branch:
   - branched from `bp` at `866ea001`
 - Key commits:
-  - worktree setup and initial scaffold (uncommitted `verso-blueprint/` directory in this branch)
+  - `2e79f7db` feat(blueprint): add standalone in-repo VersoBlueprint package scaffold
 - Validation status:
   - worktree created with copied root `.lake`
-  - scaffold files copied from root working tree state
+  - scaffold files copied from root and committed in this branch
 - Resume commands/notes:
   - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-standalone-extract`
   - continue refining `verso-blueprint/lakefile.lean`, `README.md`, and example wiring
