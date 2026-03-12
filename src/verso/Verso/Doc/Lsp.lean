@@ -597,6 +597,16 @@ private meta def embeddedSyntaxTokens
     | _ => roots
   if Array.isEmpty roots then
     return #[]
+  /-
+  Upstream API follow-up:
+  1. Expose a public helper for collecting syntax-based semantic tokens from arbitrary syntax roots.
+  2. Expose a public helper for converting those tokens to absolute LSP tokens, including overlap handling.
+  3. Prefer a stable module boundary outside `Lean.Server.FileWorker`, or a single wrapper from roots to
+     `SemanticTokens`, so document tools like Verso can reuse Lean's token classification directly.
+  4. Expose an extension hook inside Lean's existing partial `semanticTokens/full` pipeline so tools like
+     Verso can contribute extra syntax roots without doing a second finished-prefix query, snapshot
+     traversal, and merge pass on top of Lean's already-partial response.
+  -/
   let tokens := Array.flatMap (f := Lean.Server.FileWorker.collectSyntaxBasedSemanticTokens text) roots
   let absolute := Lean.Server.FileWorker.computeAbsoluteLspSemanticTokens text beginPos none tokens
   let absolute := Lean.Server.FileWorker.handleOverlappingSemanticTokens absolute
