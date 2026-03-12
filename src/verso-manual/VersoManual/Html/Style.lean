@@ -877,6 +877,67 @@ main section li ol {
     margin-left: 0.75em;
 }
 
+.multilean {
+    margin: 1.5rem 0;
+}
+
+.multilean > .multilean-segment:first-child > .hl.lean.block {
+    margin-top: 0;
+}
+
+.multilean > .multilean-segment:last-child > .hl.lean.block {
+    margin-bottom: 0;
+}
+
+.multilean-explanation {
+    position: relative;
+    margin: 0.9rem 0 0.9rem 2rem;
+    padding-left: 1.2rem;
+}
+
+.multilean-explanation::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.15rem;
+    bottom: 0.15rem;
+    width: 0.2rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--verso-info-indicator-color) 72%, white);
+}
+
+.multilean-explanation-inner {
+    position: relative;
+    padding: 0.8rem 1rem 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--verso-info-indicator-color) 24%, white);
+    border-radius: 0.9rem;
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--verso-selected-color) 45%, white),
+        color-mix(in srgb, var(--verso-toc-background-color) 60%, white));
+    box-shadow: 0 0.35rem 1.2rem color-mix(in srgb, var(--verso-selected-color) 35%, transparent);
+}
+
+.multilean-explanation-inner::before {
+    content: "Explanation";
+    display: inline-block;
+    margin-bottom: 0.45rem;
+    font-family: var(--verso-structure-font-family);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--verso-info-indicator-color) 78%, black);
+}
+
+.multilean-explanation-inner > :first-child {
+    margin-top: 0;
+}
+
+.multilean-explanation-inner > :last-child {
+    margin-bottom: 0;
+}
+
 .lean-output {
     overflow-x: auto;
     margin: 0px;

@@ -125,6 +125,7 @@ block_extension Block.multilean
         for piece in pieces do
           match piece with
           | .inl code =>
+            let code := code.trim
             if !code.isEmpty then
               out := out ++ (← code.toTeX (g := Manual) (m := ReaderT ExtensionImpls IO))
           | .inr idx =>
@@ -147,11 +148,17 @@ block_extension Block.multilean
         for piece in pieces do
           match piece with
           | .inl code =>
+            let code := code.trim
             if !code.isEmpty then
-              out := out.push (← code.blockHtml (g := Manual) "examples" (trim := false))
+              let rendered ← code.blockHtml (g := Manual) "examples"
+              out := out.push {{<div class="multilean-segment multilean-code">{{rendered}}</div>}}
           | .inr idx =>
             if h : idx < renderedBlocks.size then
-              out := out.push renderedBlocks[idx]
+              out := out.push {{
+                <div class="multilean-segment multilean-explanation">
+                  <div class="multilean-explanation-inner">{{renderedBlocks[idx]}}</div>
+                </div>
+              }}
             else
               HtmlT.logError s!"Missing multilean explanation block {idx}"
         pure {{<div class="multilean">{{out}}</div>}}
