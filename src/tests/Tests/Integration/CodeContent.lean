@@ -86,4 +86,24 @@ And now some inline code:
  * {lean}`true || false`
  * {lean}`False → True`
 
+And here is a proof explained step-by-step with `:::multilean`:
+
+:::multilean
+```lean
+theorem reverse_reverse_demo (xs : List α) :
+    xs.reverse.reverse = xs := by
+  induction xs with
+  | nil =>
+      rfl
+  | cons x xs ih =>
+```
+The induction turns the theorem into the empty-list case and the cons case. In the second branch,
+`ih` records that reversing the tail twice gives back the original tail.
+```lean
+      simp [List.reverse_cons, ih]
+```
+The final `simp` unfolds `List.reverse_cons` and uses the induction hypothesis to collapse the
+double reverse on the tail.
+:::
+
 :::::::

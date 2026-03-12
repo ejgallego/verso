@@ -20,6 +20,41 @@ open SubVerso.Highlighting
 
 namespace Verso.Genre.Manual.InlineLean
 
+public structure ExplanationPlaceholder where
+  marker : String
+  lineCount : Nat
+deriving ToJson, FromJson, Repr, Quote, Inhabited
+
+public structure MultiLeanData where
+  code : Highlighted
+  placeholders : Array ExplanationPlaceholder
+  file : Option System.FilePath := none
+  range : Option Lsp.Range := none
+deriving ToJson, FromJson, Repr, Quote
+
+public def splitMultileanCode (hls : Highlighted) (placeholders : Array ExplanationPlaceholder) :
+    Array (Highlighted ⊕ Nat) := Id.run do
+  let lines := hls.lines
+  let mut out := #[]
+  let mut current := Highlighted.empty
+  let mut lineIdx := 0
+  while h : lineIdx < lines.size do
+    let line := lines[lineIdx]
+    let marker? := placeholders.findIdx? fun ph => line.toString.trimAscii == ph.marker
+    match marker? with
+    | some idx =>
+      if !current.isEmpty then
+        out := out.push (.inl current)
+        current := .empty
+      out := out.push (.inr idx)
+      lineIdx := lineIdx + placeholders[idx]!.lineCount
+    | none =>
+      current := current ++ line
+      lineIdx := lineIdx + 1
+  if !current.isEmpty then
+    out := out.push (.inl current)
+  out
+
 block_extension Block.lean
     (hls : Highlighted) (file : Option System.FilePath := none) (range : Option Lsp.Range := none)
     via withHighlighting where
@@ -60,3 +95,63 @@ block_extension Block.lean
       | .ok (hl : Highlighted) =>
 
         hl.blockHtml (g := Manual) "examples"
+
+block_extension Block.multilean
+    (hls : Highlighted) (placeholders : Array ExplanationPlaceholder)
+    (file : Option System.FilePath := none) (range : Option Lsp.Range := none)
+    via withHighlighting where
+  init s := s.addQuickJumpMapper exampleDomain exampleDomainMapper
+  data := ToJson.toJson <| MultiLeanData.mk hls placeholders file range
+
+  traverse id data _ := do
+    match FromJson.fromJson? data with
+    | .error err =>
+      logError <| "Couldn't deserialize multilean block while traversing example: " ++ err
+      pure none
+    | .ok (info : MultiLeanData) =>
+      let defs := definedNames info.code
+      saveExampleDefs id defs
+      pure none
+  toTeX :=
+    some <| fun _ go _ data content => do
+      match FromJson.fromJson? data with
+      | .error err =>
+        TeX.logError <| "Couldn't deserialize multilean block while rendering TeX: " ++ err
+        pure .empty
+      | .ok (info : MultiLeanData) =>
+        let pieces := splitMultileanCode info.code info.placeholders
+        let renderedBlocks ← content.mapM go
+        let mut out := TeX.empty
+        for piece in pieces do
+          match piece with
+          | .inl code =>
+            if !code.isEmpty then
+              out := out ++ (← code.toTeX (g := Manual) (m := ReaderT ExtensionImpls IO))
+          | .inr idx =>
+            if h : idx < renderedBlocks.size then
+              out := out ++ renderedBlocks[idx]
+            else
+              TeX.logError s!"Missing multilean explanation block {idx}"
+        pure out
+  toHtml :=
+    open Verso.Output.Html in
+    some <| fun _ go _ data content => do
+      match FromJson.fromJson? data with
+      | .error err =>
+        HtmlT.logError <| "Couldn't deserialize multilean block while rendering HTML: " ++ err
+        pure .empty
+      | .ok (info : MultiLeanData) =>
+        let pieces := splitMultileanCode info.code info.placeholders
+        let renderedBlocks ← content.mapM go
+        let mut out : Array Html := #[]
+        for piece in pieces do
+          match piece with
+          | .inl code =>
+            if !code.isEmpty then
+              out := out.push (← code.blockHtml (g := Manual) "examples" (trim := false))
+          | .inr idx =>
+            if h : idx < renderedBlocks.size then
+              out := out.push renderedBlocks[idx]
+            else
+              HtmlT.logError s!"Missing multilean explanation block {idx}"
+        pure {{<div class="multilean">{{out}}</div>}}

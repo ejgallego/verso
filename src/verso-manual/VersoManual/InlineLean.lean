@@ -218,6 +218,67 @@ private def toHighlightedLeanInline (shouldShow : Bool) (hls : Highlighted) (str
 
   ``(Inline.other (Verso.Genre.Manual.InlineLean.Inline.lean $(← quoteHighlightViaSerialization hls)) #[Inline.code $(quote str.getString)])
 
+private def explanationMarker (idx : Nat) : String :=
+  s!"--{idx}"
+
+private def utf8Size (str : String) : Nat :=
+  str.foldl (init := 0) fun acc c => acc + c.utf8Size
+
+private def blankOfSameShape (str : String) : String := Id.run do
+  let mut out := ""
+  for c in str do
+    if c == '\n' then
+      out := out.push '\n'
+    else
+      for _ in [0:c.utf8Size] do
+        out := out.push ' '
+  out
+
+private def lineCommentOfWidth (width : Nat) (marker : String) : String :=
+  if width = 0 then ""
+  else
+    let marker := marker.take width |>.toString
+    marker ++ String.ofList (List.replicate (width - marker.length) ' ')
+
+private def explanationPlaceholderSource (idx : Nat) (source : String) :
+    ExplanationPlaceholder × String :=
+  let marker := explanationMarker idx
+  let lines := source.splitOn "\n" |>.toArray
+  let rendered :=
+    lines.mapIdx fun lineIdx line =>
+      let width := utf8Size line
+      if lineIdx = 0 then
+        lineCommentOfWidth width marker
+      else if width >= 2 then
+        lineCommentOfWidth width "--"
+      else
+        String.ofList (List.replicate width ' ')
+  let placeholder := Id.run do
+    let mut placeholder := ""
+    for i in [0:rendered.size] do
+      let line := rendered[i]!
+      placeholder :=
+        if i = 0 then line
+        else placeholder ++ "\n" ++ line
+    placeholder
+  ({ marker, lineCount := rendered.size }, placeholder)
+
+private def toHighlightedMultileanBlock
+    (placeholders : Array ExplanationPlaceholder)
+    (content : Array Term)
+    (shouldShow : Bool) (hls : Highlighted) : DocElabM Term := do
+  if !shouldShow then
+    return ← ``(Block.concat #[])
+
+  let range := (← getRef).getRange? |>.map (← getFileMap).utf8RangeToLspRange
+  ``(Block.other
+      (Block.multilean
+        $(← quoteHighlightViaSerialization hls)
+        $(quote placeholders)
+        (some $(quote (← getFileName)))
+        $(quote range))
+      #[$content,*])
+
 
 /--
 Sets `linter.unusedVariables` to `false` in all `CommandContextInfo.options` within an info tree.
@@ -239,17 +300,16 @@ private partial def disableUnusedVarLinterInInfoTree : InfoTree → InfoTree
     .node info (children.map disableUnusedVarLinterInInfoTree)
   | .hole id => .hole id
 
-def elabCommands (config : LeanBlockConfig) (str : StrLit)
-    (toHighlightedLeanContent : (shouldShow : Bool) → (hls : Highlighted) → (str: StrLit) → DocElabM Term)
+def elabCommandsCore (config : LeanBlockConfig) (source : String) (blame : Syntax)
+    (summary : String)
+    (toHighlightedLeanContent : (shouldShow : Bool) → (hls : Highlighted) → DocElabM Term)
     (minCommands : Option Nat := none)
     (maxCommands : Option Nat := none) :
     DocElabM Term :=
   withoutAsync <| do
-    PointOfInterest.save (← getRef) ((config.name.map (·.toString)).getD (abbrevFirstLine 20 str.getString))
+    PointOfInterest.save (← getRef) ((config.name.map (·.toString)).getD (abbrevFirstLine 20 summary))
       (kind := Lsp.SymbolKind.file)
       (detail? := some ("Lean code" ++ config.outlineMeta))
-
-    let col? := (← getRef).getPos? |>.map (← getFileMap).utf8PosToLspPos |>.map (·.character)
 
     let origScopes ← if config.fresh then pure [{header := ""}] else getScopes
 
@@ -259,10 +319,8 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       let opts := pp.tagAppFns.set opts true
       { sc with opts }
 
-    let altStr ← parserInputString str
-
-    let ictx := Parser.mkInputContext altStr (← getFileName)
-    let cctx : Command.Context := { fileName := ← getFileName, fileMap := FileMap.ofString altStr, snap? := none, cancelTk? := none}
+    let ictx := Parser.mkInputContext source (← getFileName)
+    let cctx : Command.Context := { fileName := ← getFileName, fileMap := FileMap.ofString source, snap? := none, cancelTk? := none}
 
     let mut cmdState : Command.State := {env := ← getEnv, maxRecDepth := ← MonadRecDepth.getMaxRecDepth, scopes := origScopes}
     let mut pstate := {pos := 0, recovering := false}
@@ -318,7 +376,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
         hls := hls ++ (← highlightIncludingUnparsed cmd nonSilentMsgs cmdState.infoState.trees (startPos? := lastPos))
         lastPos := (cmd.getTrailingTailPos?).getD lastPos
 
-      toHighlightedLeanContent config.show hls str
+      toHighlightedLeanContent config.show hls
     finally
       if !config.keep then
         setEnv origEnv
@@ -332,10 +390,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
 
         saveOutputs name msgs
 
-      reportMessages config.error str cmdState.messages
-
-      if config.show then
-        warnLongLines col? str
+      reportMessages config.error blame cmdState.messages
 where
   runCommand (act : Command.CommandElabM Unit) (stx : Syntax)
       (cctx : Command.Context) (cmdState : Command.State) :
@@ -355,6 +410,21 @@ where
     | .error _ => pure cmdState
     | .ok ((), cmdState) => pure cmdState
 
+def elabCommands (config : LeanBlockConfig) (str : StrLit)
+    (toHighlightedLeanContent : (shouldShow : Bool) → (hls : Highlighted) → (str: StrLit) → DocElabM Term)
+    (minCommands : Option Nat := none)
+    (maxCommands : Option Nat := none) :
+    DocElabM Term := do
+  let col? := (← getRef).getPos? |>.map (← getFileMap).utf8PosToLspPos |>.map (·.character)
+  let source ← parserInputString str
+  let result ← elabCommandsCore config source str str.getString
+    (fun shouldShow hls => toHighlightedLeanContent shouldShow hls str)
+    (minCommands := minCommands)
+    (maxCommands := maxCommands)
+  if config.show then
+    warnLongLines col? str
+  pure result
+
 /--
 Elaborates the provided Lean command in the context of the current Verso module.
 -/
@@ -369,6 +439,66 @@ def leanCommand : RoleExpanderOf LeanBlockConfig
       elabCommands config str toHighlightedLeanInline (minCommands := some 1) (maxCommands := some 1)
     else
       `(sorry)
+
+/--
+Interleave Lean code blocks with explanatory Verso prose while elaborating the Lean fragments as one
+combined command stream.
+
+Each ````lean` fence inside `:::multilean` contributes to a single synthetic Lean source file. The
+non-Lean blocks are preserved as explanation placeholders and reinserted between the highlighted
+code segments in the rendered output.
+
+Current limitation: the explanatory prose is still elaborated as ordinary Verso content, so local
+Lean bindings introduced by earlier proof steps are not yet available for scoped references inside
+the explanation blocks.
+-/
+@[directive]
+def multilean : DirectiveExpanderOf LeanBlockConfig
+  | config, blocks => do
+    let sourceText := (← getFileMap).source
+    let mut source := ""
+    let mut lastPos : String.Pos.Raw := 0
+    let mut placeholders : Array ExplanationPlaceholder := #[]
+    let mut explanationBlocks : Array Term := #[]
+    let mut leanBodies : Array StrLit := #[]
+    for block in blocks do
+      match block with
+      | `(block|``` $nameStx:ident $argsStx* | $contents:str ```) =>
+        if nameStx.getId == `lean then
+          let start := contents.raw.getPos?.getD lastPos
+          source := source ++ blankOfSameShape (lastPos.extract sourceText start)
+          let stop := contents.raw.getTailPos?.getD start
+          if argsStx.size != 0 then
+            throwErrorAt nameStx "Lean blocks inside `:::multilean` do not support per-block arguments"
+          source := source ++ (start.extract sourceText stop)
+          leanBodies := leanBodies.push contents
+          lastPos := stop
+        else
+          let start := block.raw.getPos?.getD lastPos
+          source := source ++ blankOfSameShape (lastPos.extract sourceText start)
+          let stop := block.raw.getTrailingTailPos?.getD start
+          let (placeholder, masked) := explanationPlaceholderSource placeholders.size (start.extract sourceText stop)
+          source := source ++ masked
+          placeholders := placeholders.push placeholder
+          explanationBlocks := explanationBlocks.push (← elabBlock block)
+          lastPos := stop
+      | other =>
+        let start := other.raw.getPos?.getD lastPos
+        source := source ++ blankOfSameShape (lastPos.extract sourceText start)
+        let stop := other.raw.getTrailingTailPos?.getD start
+        let (placeholder, masked) := explanationPlaceholderSource placeholders.size (start.extract sourceText stop)
+        source := source ++ masked
+        placeholders := placeholders.push placeholder
+        explanationBlocks := explanationBlocks.push (← elabBlock other)
+        lastPos := stop
+    if leanBodies.isEmpty then
+      throwErrorAt (← getRef) "`:::multilean` requires at least one ```lean``` block"
+    for body in leanBodies do
+      if config.show then
+        let col? := body.raw.getPos? |>.map (← getFileMap).utf8PosToLspPos |>.map (·.character)
+        warnLongLines col? body
+    elabCommandsCore config source (← getRef) source
+      (toHighlightedMultileanBlock placeholders explanationBlocks)
 
 
 /--

@@ -51,6 +51,47 @@ error: No error expected in code block, one occurred
 {lean}`x + 3` is a Lean expression
 :::::::
 
+#docs (Genre.Manual) multileanInspect "Test" :=
+:::::::
+:::multilean
+```lean
+theorem multilean_demo : True := by
+  have h : True := by trivial
+```
+This explanation should be interleaved between the proof steps.
+```lean
+  exact h
+```
+:::
+:::::::
+
+#guard
+  let top := multileanInspect.toPart.content
+  let blocks :=
+    match top[0]? with
+    | some (.concat more) => more
+    | _ => top
+  match blocks[0]? with
+  | some block =>
+      match block with
+      | .other code contents =>
+          match Lean.FromJson.fromJson? code.data with
+          | Except.ok (data : MultiLeanData) =>
+              let pieces := splitMultileanCode data.code data.placeholders
+              code.name == ``Verso.Genre.Manual.InlineLean.Block.multilean &&
+              contents.size = 1 &&
+              data.placeholders.size = 1 &&
+              pieces.size = 3 &&
+              match (pieces[0]?, pieces[1]?, pieces[2]?) with
+              | (some (Sum.inl before), some (Sum.inr 0), some (Sum.inl after)) =>
+                  let beforeOk := (before.toString.splitOn "have h : True := by trivial").length > 1;
+                  let afterOk := (after.toString.splitOn "exact h").length > 1;
+                  beforeOk && afterOk
+              | _ => false
+          | Except.error _ => false
+      | _ => false
+  | _ => false
+
 /--
 info: (some (Verso.Genre.Manual.InlineLean.Inline.lean, [{"seq":
   {"highlights":

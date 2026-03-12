@@ -213,6 +213,24 @@ And now some inline code:
 
 \end{itemize}
 
+And here is a proof explained step-by-step with \LeanVerb|:::multilean|:
+\begin{LeanVerbatim}
+\textbf{theorem} reverse_reverse_demo (\textit{xs} : List \textit{α}) :
+    \textit{xs}.reverse.reverse = \textit{xs} := \textbf{by}
+  \textbf{induction} \textit{xs} \textbf{with}
+  \symbol{124} nil =>
+      \textbf{rfl}
+  \symbol{124} cons \textit{x} \textit{xs} \textit{ih} =>
+   
+\end{LeanVerbatim}
+The induction turns the theorem into the empty-list case and the cons case. In the second branch,
+\LeanVerb|ih| records that reversing the tail twice gives back the original tail.\begin{LeanVerbatim}
+       
+      \textbf{simp} [List.reverse_cons, \textit{ih}]
+   
+\end{LeanVerbatim}
+The final \LeanVerb|simp| unfolds \LeanVerb|List.reverse_cons| and uses the induction hypothesis to collapse the
+double reverse on the tail.
 
 \mainmatter
 \end{document}
