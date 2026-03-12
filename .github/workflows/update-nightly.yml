@@ -16,7 +16,7 @@ jobs:
     # successful automatic update
     check-update:
         runs-on: ubuntu-latest
-        if: github.repository == 'leanprover/verso'
+        if: false # Blueprint split stays pinned to rc3 for now.
         outputs:
             update-needed: ${{ steps.check-update.outputs.update-needed }}
             latest-version: ${{ steps.latest-available.outputs.version }}
@@ -72,7 +72,7 @@ jobs:
     test-and-update:
         runs-on: nscloud-ubuntu-22.04-amd64-8x16
         needs: check-update
-        if: needs.check-update.outputs.update-needed == 'true'
+        if: false
         permissions:
             contents: write
 

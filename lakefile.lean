@@ -44,3 +44,13 @@ lean_exe spherepackingblueprint where
   srcDir := "test-projects/Sphere-Packing-Lean"
   root := `SpherePackingBlueprintMain
   supportInterpreter := true
+
+@[default_target]
+lean_lib Tests where
+  srcDir := "src/tests"
+
+@[test_driver]
+lean_exe «verso-tests» where
+  root := `TestMain
+  srcDir := "src/tests"
+  supportInterpreter := true

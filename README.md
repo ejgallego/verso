@@ -101,12 +101,14 @@ try to make the system more extensible.
 
 ## Building Documentation
 
-To generate the Verso documentation for Verso itself, run
-`generate.sh`.
+This checkout now provides the standalone blueprint package surface:
+`VersoBlueprint`, the blueprint example executables, and the test
+suite. The core Verso CLI/manual/demo targets remain in the sibling
+`../verso` checkout while the repository split is in progress.
 
 To validate the blueprint example projects, run
-`./generate-example-blueprints.sh`. This builds `noperthedron` and
-`spherepackingblueprint` in parallel under
+`./generate-example-blueprints.sh` or `./generate.sh`. This builds
+`noperthedron` and `spherepackingblueprint` in parallel under
 `_out/example-blueprints/`.
 
 Repository-level Blueprint docs now live under `doc/blueprint/`, organized as:

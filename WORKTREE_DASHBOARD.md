@@ -1,18 +1,19 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-12 (merged and cleaned up `feat/blueprint-tests-consolidation-20260311`)
+Last updated: 2026-03-12 (merged standalone extraction on `bp`; rc3 boundary cleanup in progress)
 
 ## Active Worktrees
 
 ### `bp` (root checkout)
 
-- Status: `active` (owner action: monitor follow-up builder-boundary work)
-- Summary: integration baseline branch with recent commands-path and renderer refactors already validated for `noperthedron`.
+- Status: `active` (owner action: review/cleanup remaining stale worktree bookkeeping)
+- Summary: integration branch now carries the standalone extraction directly on `bp`, with the repo boundary pinned back to Lean rc3 and blueprint-only build/docs wiring being repaired in place.
 - Path: `/home/egallego/lean/verso-blueprint`
 - Branch: `bp`
 - Base commit/branch:
   - local integration branch
-- Key commit:
+- Key commits:
+  - `c8a0d5ea` verso-blueprint: point to local verso via path and use rc3
   - `b579013b` informal: harden block parsing and extract group directive
 - Validation status:
   - commands-path validation passed before merge:
@@ -24,8 +25,8 @@ Last updated: 2026-03-12 (merged and cleaned up `feat/blueprint-tests-consolidat
 
 ### `feat/blueprint-standalone-extract`
 
-- Status: `active` (owner action: continue blueprint package extraction)
-- Summary: fresh worktree for preparing `verso-blueprint` as an in-repo standalone package entrypoint with path dependency to sibling `verso` and copied blueprint sources/examples.
+- Status: `superseded` (owner action: cleanup pending explicit authorization)
+- Summary: the intended standalone extraction landed directly on `bp` via `c8a0d5ea`; this worktree is now stale bookkeeping and should not receive new work.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-standalone-extract`
 - Branch: `feat/blueprint-standalone-extract`
 - Base commit/branch:
@@ -33,11 +34,11 @@ Last updated: 2026-03-12 (merged and cleaned up `feat/blueprint-tests-consolidat
 - Key commits:
   - `2e79f7db` feat(blueprint): add standalone in-repo VersoBlueprint package scaffold
 - Validation status:
-  - worktree created with copied root `.lake`
-  - scaffold files copied from root and committed in this branch
+  - superseded by direct `bp` commit `c8a0d5ea`
+  - cleanup deferred until explicit branch/worktree removal authorization
 - Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-standalone-extract`
-  - continue refining `verso-blueprint/lakefile.lean`, `README.md`, and example wiring
+  - do not resume implementation here
+  - remove the worktree and branch only after explicit cleanup authorization
 
 ### `feat/blueprint-data-review-20260312`
 
