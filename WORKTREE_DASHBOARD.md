@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-12 (created and validated `feat/blueprint-data-review-20260312` review worktree)
+Last updated: 2026-03-12 (merged and cleaned up `feat/blueprint-tests-consolidation-20260311`)
 
 ## Active Worktrees
 
@@ -46,9 +46,9 @@ Last updated: 2026-03-12 (created and validated `feat/blueprint-data-review-2026
 
 ### `feat/blueprint-tests-consolidation-20260311`
 
-- Status: `ready-for-review` (owner action: await merge authorization; review itemization is complete)
+- Status: `merged` (owner action: none; merge and cleanup completed)
 - Summary: isolated cleanup worktree for the organically-grown blueprint tests. The major blueprint-specific monoliths now all follow the same pattern: shared harness helpers plus thin umbrella modules over smaller scenario-focused files.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311` (removed after merge)
 - Branch: `feat/blueprint-tests-consolidation-20260311`
 - Base commit/branch:
   - branched from `bp` at `951d8fae`
@@ -69,14 +69,15 @@ Last updated: 2026-03-12 (created and validated `feat/blueprint-data-review-2026
   - reran `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints` after the graph/informal split
   - reran `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311/example-blueprints` after the summary-links split
   - started shared `_out` preview server on `http://127.0.0.1:8155`
+- Merge status:
+  - merged into `bp` via `8cc7e7f2`
+  - worktree and local branch removed
+  - preview artifacts removed from `/home/egallego/lean/verso-blueprint/_out/blueprint-tests-consolidation-20260311`
 - Preview link:
   - `http://127.0.0.1:8155/blueprint-tests-consolidation-20260311/example-blueprints/noperthedron/html-multi/`
   - `http://127.0.0.1:8155/blueprint-tests-consolidation-20260311/example-blueprints/spherepackingblueprint/html-multi/`
 - Resume commands/notes:
-  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
-  - inspect `src/tests/Tests/Blueprint.lean` and `src/tests/Tests/Blueprint/Support.lean` first; that is now the suite entry point and shared renderer harness
-  - `src/tests/Tests/BlueprintPreviewWiring.lean`, `src/tests/Tests/BlueprintGraph.lean`, `src/tests/Tests/BlueprintInformal.lean`, and `src/tests/Tests/BlueprintSummaryLinks.lean` are now umbrella imports; inspect their sibling directories for the scenario files
-  - `git show --stat f4a79495`
+  - no longer applicable (worktree cleaned up)
 
 ### `feat/lean-lean-interactive-latency-20260310`
 
