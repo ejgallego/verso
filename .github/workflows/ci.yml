@@ -26,11 +26,6 @@ jobs:
 
             - uses: actions/checkout@v6
 
-            - name: Checkout sibling verso
-              run: |
-                  git clone --depth 1 https://github.com/leanprover/verso.git ../verso
-                  echo "leanprover/lean4:v4.29.0-rc3" > ../verso/lean-toolchain
-
             - name: List all files
               run: |
                   find . -name "*.lean" -type f
@@ -55,9 +50,17 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-${{ hashFiles('lake-manifest.json') }}-${{ hashFiles('lean-toolchain') }}-
 
+            # This was failing CI from clang crashing, so do it first for fast turnaround
+            - name: Build the website examples subproject
+              run: |
+                  pushd test-projects/website-examples
+                  lake build
+                  lake build :examples
+                  popd
+
             - name: Build the project
               run: |
-                  lake build VersoBlueprint Tests noperthedron spherepackingblueprint
+                  lake build
 
             - name: Install PDF Dependencies
               uses: ./.github/actions/install-texlive
@@ -66,9 +69,64 @@ jobs:
               run: |
                   lake test -- --verbose --check-tex
 
-            - name: Generate the blueprint example artifacts
+            - name: Generate the test website
               run: |
-                  ./generate-example-blueprints.sh
+                  lake exe demosite --output _out/test-projects/demosite
+
+            - name: Generate the test genre's document
+              run: |
+                  lake exe simplepage
+
+            - name: Generate some source HTML
+              run: |
+                  lake build Verso.Hover:literate
+                  lake exe verso-html .lake/build/literate htmlout
+
+            - name: Install linkchecker
+              run: pip install linkchecker
+
+            - name: Check internal links on the test website
+              run: |
+                  linkchecker --config=.linkchecker/linkcheckerrc --no-status ./_out/test-projects/demosite/
+
+            - name: Generate the test tutorial site
+              run: |
+                  lake exe tutorial-example
+
+            - name: Check internal links on the test tutorial site
+              run: |
+                  linkchecker --config=.linkchecker/linkcheckerrc --no-status ./_out/tut/
+
+            - name: Generate the manual
+              run: |
+                  ./generate.sh
+                  cp _out/tex/main.pdf ./manual.pdf
+                  cp -r _out/html-multi html-multi
+                  cp README-html.md html-multi/README.md
+                  zip -r html-manual.zip html-multi
+
+            - name: Install TypeScript
+              run: |
+                  sudo apt update && sudo apt install node-typescript
+
+            - name: Type check the search bar code
+              run: |
+                  pushd _out/html-multi/-verso-search
+                  tsc --noEmit -p jsconfig.json
+                  popd
+
+            - name: Type check the xref redirect JS code
+              run: |
+                  pushd static-web
+                  tsc --noEmit -p jsconfig.json
+                  popd
+
+            - name: Generate the demo site and make sure page_link works
+              run: |
+                  lake exe demosite --output _out/demosite
+                  # Fail if the generated about page doesn't have the expected base tag and blog link
+                  grep -qF '<a href="blog/">blog</a> genre' _out/demosite/about/index.html
+                  grep -qF '<base href=".././">' _out/demosite/about/index.html
 
             # Begin browser testing
             - name: Install uv
@@ -90,6 +148,25 @@ jobs:
             - name: Run browser tests
               run: uv run --project browser-tests --extra test pytest browser-tests -v
             # End browser testing
+
+            - name: Upload docs to artifact storage
+              if: github.ref != 'refs/heads/main'
+              uses: actions/upload-artifact@v7
+              with:
+                  name: "Verso manual (PDF and HTML)"
+                  path: |
+                      manual.pdf
+                      html-manual.zip
+
+            - uses: "marvinpinto/action-automatic-releases@v1.2.1"
+              if: github.ref == 'refs/heads/main'
+              with:
+                  repo_token: "${{ secrets.GITHUB_TOKEN }}"
+                  automatic_release_tag: "latest"
+                  title: "Verso manual (PDF and HTML)"
+                  files: |
+                      manual.pdf
+                      html-manual.zip
 
               # deploy-info computes metadata that's shown in the Netlify interface
               # about the deployment (for non-PR deploys)

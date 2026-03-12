@@ -15,7 +15,7 @@ env:
 jobs:
     merge-to-nightly:
         runs-on: nscloud-ubuntu-22.04-amd64-8x16
-        if: false # Blueprint split stays pinned to rc3 for now.
+        if: github.repository == 'leanprover/verso'
         steps:
             - name: Checkout repository
               uses: actions/checkout@v6

@@ -4,12 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 import Tests.Basic
-import Tests.Blueprint
 import Tests.Elab
 import Tests.GenericCode
 import Tests.Golden
 import Tests.CommentSkipping
-import Tests.DocGenNameRender
 import Tests.HighlightedToTeX
 import Tests.Html
 import Tests.HtmlEntities

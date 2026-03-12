@@ -101,48 +101,8 @@ try to make the system more extensible.
 
 ## Building Documentation
 
-This checkout now provides the standalone blueprint package surface:
-`VersoBlueprint`, the blueprint example executables, and the test
-suite. The core Verso CLI/manual/demo targets remain in the sibling
-`../verso` checkout while the repository split is in progress.
-
-To validate the blueprint example projects, run
-`./generate-example-blueprints.sh` or `./generate.sh`. This builds
-`noperthedron` and `spherepackingblueprint` in parallel under
-`_out/example-blueprints/`.
-
-Repository-level Blueprint docs now live under `doc/blueprint/`, organized as:
-
-- `doc/blueprint/USER_MANUAL.md`
-- `doc/blueprint/DESIGN_RATIONALE.md`
-- `doc/blueprint/ROADMAP.md`
-
-Each generated blueprint site also emits a shared preview manifest at
-`html-multi/-verso-data/blueprint-preview-manifest.json`. This is the canonical runtime
-source for blueprint statement/proof preview bodies, and it is now emitted
-automatically by blueprint builds that import `VersoBlueprint`. The manifest
-also carries structured preview metadata such as label, facet, kind, parent,
-dependencies, and ownership/triage fields.
-
-To inspect the current JSON Schema for that manifest, run either example
-executable with `--dump-schema`, for example:
-
-```bash
-lake exe noperthedron --dump-schema
-```
-
-To print the generated manifest JSON itself, use:
-
-```bash
-lake exe noperthedron --dump-manifest
-```
-
-To list the preview-manifest-specific CLI options together with the standard
-manual-rendering flags, use:
-
-```bash
-lake exe noperthedron --help
-```
+To generate the Verso documentation for Verso itself, run
+`generate.sh`.
 
 ### Customization of Manual Genre HTML
 
@@ -535,11 +495,6 @@ Currently-applied overlays:
 - **Canonical URL**: Added to every HTML file, pointing to the
   corresponding page under `latest/`. This tells search engines where
   the authoritative version lives.
-- **Unicode input JS files**: The vendored Unicode input files
-  (`unicode-input.min.js` and `unicode-input-component.min.js`) in
-  every version's `-verso-search/` directory are replaced with the
-  versions from `main` at the time of deployment. This ensures all
-  deployed versions use the latest Unicode input implementation.
 
 Examples of additional overlays we might add in the future:
 
