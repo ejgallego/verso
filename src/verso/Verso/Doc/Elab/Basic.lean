@@ -152,3 +152,11 @@ public structure DocListInfo where
   bullets : Array Syntax
   items : Array Syntax
 deriving Repr, TypeName
+
+/--
+Custom info tree data to save embedded Lean syntax roots so LSP consumers can reuse Lean's own
+syntax-based analyses on inline/block examples.
+-/
+public structure EmbeddedSyntaxInfo where
+  roots : Array Syntax
+deriving Repr, TypeName

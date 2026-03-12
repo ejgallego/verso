@@ -239,6 +239,11 @@ private partial def disableUnusedVarLinterInInfoTree : InfoTree → InfoTree
     .node info (children.map disableUnusedVarLinterInInfoTree)
   | .hole id => .hole id
 
+private def saveEmbeddedSyntaxRoots [Monad m] [MonadInfoTree m]
+    (blame : Syntax) (roots : Array Syntax) : m Unit := do
+  unless roots.isEmpty do
+    pushInfoLeaf <| .ofCustomInfo { stx := blame, value := Dynamic.mk <| Verso.Doc.Elab.EmbeddedSyntaxInfo.mk roots }
+
 def elabCommands (config : LeanBlockConfig) (str : StrLit)
     (toHighlightedLeanContent : (shouldShow : Bool) → (hls : Highlighted) → (str: StrLit) → DocElabM Term)
     (minCommands : Option Nat := none)
@@ -309,6 +314,7 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit)
       -- re-running it.
       for t in cmdState.infoState.trees do
         pushInfoTree (disableUnusedVarLinterInInfoTree t)
+      saveEmbeddedSyntaxRoots str nonTerm
 
 
       let mut hls := Highlighted.empty
@@ -430,6 +436,7 @@ def leanTerm : CodeBlockExpanderOf LeanInlineConfig
         saveOutputs name msgs
 
       pushInfoTree tree
+      saveEmbeddedSyntaxRoots str #[stx]
 
       if config.error then
         if newMsgs.hasErrors then
@@ -512,6 +519,7 @@ def leanInline : RoleExpanderOf LeanInlineConfig
         saveOutputs name msgs
 
       pushInfoTree tree
+      saveEmbeddedSyntaxRoots term #[stx]
 
       if let `(inline|role{%$s $f $_*}%$e[$_*]) ← getRef then
         Hover.addCustomHover (mkNullNode #[s, e]) type

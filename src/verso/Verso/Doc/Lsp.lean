@@ -21,7 +21,7 @@ public meta import Verso.Doc.Name
 
 namespace Verso.Lsp
 
-open Verso.Doc.Elab (DocListInfo DocRefInfo TOC)
+open Verso.Doc.Elab (DocListInfo DocRefInfo TOC EmbeddedSyntaxInfo)
 open Verso.Doc (PointOfInterest)
 open Verso.Hover
 open Lean.Doc.Syntax
@@ -400,6 +400,20 @@ deriving Inhabited, Repr
 protected meta def SemanticTokenEntry.ordLt (a b : SemanticTokenEntry) : Bool :=
   a.line < b.line ∨ (a.line = b.line ∧ a.startChar < b.startChar)
 
+private meta def sameSemanticTokenEntry (a b : SemanticTokenEntry) : Bool :=
+  a.line == b.line &&
+    a.startChar == b.startChar &&
+    a.length == b.length &&
+    a.type == b.type &&
+    a.modifierMask == b.modifierMask
+
+private meta def dedupSortedTokenEntries (entries : Array SemanticTokenEntry) : Array SemanticTokenEntry := Id.run do
+  let mut out := #[]
+  for entry in entries do
+    if ! (out.back?.any (sameSemanticTokenEntry entry)) then
+      out := out.push entry
+  out
+
 meta def encodeTokenEntries (entries : Array SemanticTokenEntry) : Array Nat := Id.run do
   let mut data := #[]
   let mut lastLine := 0
@@ -561,17 +575,61 @@ where
       }]
     else #[]
 
-meta def mergeTokens (mine : Array SemanticTokenEntry) (leans : SemanticTokens) : Array Nat:=
+private meta def absoluteToEntry
+    (tok : Lean.Server.FileWorker.AbsoluteLspSemanticToken) : Option SemanticTokenEntry := do
+  guard <| tok.pos.line == tok.tailPos.line
+  some {
+    line := tok.pos.line
+    startChar := tok.pos.character
+    length := tok.tailPos.character - tok.pos.character
+    type := tok.type.toNat
+    modifierMask := 0
+  }
+
+private meta def embeddedSyntaxTokens
+    (beginPos : String.Pos.Raw) (text : FileMap) (snap : Lean.Server.Snapshots.Snapshot) : Array SemanticTokenEntry := Id.run do
+  let roots : Array Syntax := snap.infoTree.foldInfo (init := #[]) fun _ info roots =>
+    match info with
+    | .ofCustomInfo ⟨_, data⟩ =>
+      match data.get? EmbeddedSyntaxInfo with
+      | some info => roots ++ info.roots
+      | none => roots
+    | _ => roots
+  if Array.isEmpty roots then
+    return #[]
+  let tokens := Array.flatMap (f := Lean.Server.FileWorker.collectSyntaxBasedSemanticTokens text) roots
+  let absolute := Lean.Server.FileWorker.computeAbsoluteLspSemanticTokens text beginPos none tokens
+  let absolute := Lean.Server.FileWorker.handleOverlappingSemanticTokens absolute
+  absolute.filterMap absoluteToEntry
+
+meta def mergeTokens (mine : Array SemanticTokenEntry) (leans : SemanticTokens) : Array Nat :=
   let toks := decodeLeanTokens leans.data
-  encodeTokenEntries (toks ++ mine |>.qsort (·.ordLt ·))
+  let merged := dedupSortedTokenEntries <| (toks ++ mine).qsort (·.ordLt ·)
+  encodeTokenEntries merged
+
+private meta def filterTokenEntries
+    (beginPos : Lsp.Position) (endPos? : Option Lsp.Position)
+    (entries : Array SemanticTokenEntry) : Array SemanticTokenEntry :=
+  entries.filter fun entry =>
+    let pos : Lsp.Position := ⟨entry.line, entry.startChar⟩
+    beginPos <= pos && endPos?.all (pos < ·)
 
 open Lean Server Lsp RequestM in
-meta def snapshotTokens (beginPos : String.Pos.Raw) (text : FileMap) (snap : Snapshots.Snapshot) : Array SemanticTokenEntry :=
-  if snap.endPos <= beginPos then #[] else versoTokens text snap.stx
+meta def snapshotTokens
+    (beginPos : String.Pos.Raw) (endPos? : Option String.Pos.Raw)
+    (text : FileMap) (snap : Snapshots.Snapshot) : Array SemanticTokenEntry :=
+  if snap.endPos <= beginPos then
+    #[]
+  else
+    let beginLspPos := text.utf8PosToLspPos beginPos
+    let endLspPos? := endPos?.map text.utf8PosToLspPos
+    filterTokenEntries beginLspPos endLspPos? <| versoTokens text snap.stx ++ embeddedSyntaxTokens beginPos text snap
 
 open Lean Server Lsp RequestM in
-meta def snapshotsTokens (beginPos : String.Pos.Raw) (text : FileMap) (snaps : List Snapshots.Snapshot) : Array SemanticTokenEntry :=
-  snaps.foldl (init := #[]) fun toks snap => toks ++ snapshotTokens beginPos text snap
+meta def snapshotsTokens
+    (beginPos : String.Pos.Raw) (endPos? : Option String.Pos.Raw)
+    (text : FileMap) (snaps : List Snapshots.Snapshot) : Array SemanticTokenEntry :=
+  snaps.foldl (init := #[]) fun toks snap => toks ++ snapshotTokens beginPos endPos? text snap
 
 open Lean Server Lsp IO in
 partial def getFinishedPrefixWithTimeout' (xs : AsyncList ε α) (timeoutMs : UInt32)
@@ -659,13 +717,13 @@ meta partial def handleTokens (prev : RequestTask SemanticTokens)
   if let some endPos := endPos? then
     let t := doc.cmdSnaps.waitUntil (·.endPos >= endPos)
     let toks : RequestTask (Array SemanticTokenEntry) :=
-      t.mapCostly fun (snaps, _) => pure <| snapshotsTokens beginPos text snaps
+      t.mapCostly fun (snaps, _) => pure <| snapshotsTokens beginPos endPos? text snaps
     let response ← mergeIntoPrev toks
     return response.mapCheap fun t =>
       t.map ({ response := ·, isComplete := true })
   else
     let (snaps, _, isComplete) ← doc.cmdSnaps.getFinishedPrefixWithTimeout 2000 (cancelTks := ctx.cancelTk.cancellationTasks)
-    let toks : Array SemanticTokenEntry := snapshotsTokens beginPos text snaps
+    let toks : Array SemanticTokenEntry := snapshotsTokens beginPos endPos? text snaps
     let response ← mergeIntoPrev (.pure toks)
     pure <| response.mapCheap fun t => t.map ({ response := ·, isComplete := isComplete })
 
@@ -673,7 +731,7 @@ where
   mergeIntoPrev (toks : RequestTask (Array SemanticTokenEntry)) :=
     mergeResponses toks prev fun
       | none, none => SemanticTokens.mk none #[]
-      | some xs, none => SemanticTokens.mk none <| encodeTokenEntries <| xs.qsort (·.ordLt ·)
+      | some xs, none => SemanticTokens.mk none <| encodeTokenEntries <| dedupSortedTokenEntries <| xs.qsort (·.ordLt ·)
       | none, some r => r
       | some mine, some leans => {leans with data := mergeTokens mine leans}
 
@@ -701,7 +759,7 @@ meta def handleTokensFullStateful
   let text := doc.meta.text
   let (snaps, _, isComplete) ← doc.cmdSnaps.getFinishedPrefixWithTimeout 2000
   RequestM.checkCancelled
-  let toks : Array SemanticTokenEntry := snapshotsTokens 0 text snaps
+  let toks : Array SemanticTokenEntry := snapshotsTokens 0 none text snaps
   RequestM.checkCancelled
   let response := {prev with data := mergeTokens toks prev.response}
   RequestM.checkCancelled
