@@ -46,17 +46,17 @@ Last updated: 2026-03-12 (created and validated `feat/blueprint-data-review-2026
 
 ### `feat/blueprint-tests-consolidation-20260311`
 
-- Status: `ready-for-review` (owner action: review whether this cleanup level is sufficient or whether we want one final conventions/documentation pass before merge prep)
+- Status: `ready-for-review` (owner action: await merge authorization; review itemization is complete)
 - Summary: isolated cleanup worktree for the organically-grown blueprint tests. The major blueprint-specific monoliths now all follow the same pattern: shared harness helpers plus thin umbrella modules over smaller scenario-focused files.
 - Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-tests-consolidation-20260311`
 - Branch: `feat/blueprint-tests-consolidation-20260311`
 - Base commit/branch:
   - branched from `bp` at `951d8fae`
 - Key commits:
-  - `853a52d7` refactor(tests): consolidate blueprint test support
-  - `2cc0f73e` refactor(tests): split blueprint preview wiring scenarios
-  - `862efb1c` refactor(tests): split blueprint graph and informal scenarios
-  - `f4a79495` refactor(tests): split blueprint summary link scenarios
+  - `04be9aac` refactor(tests): consolidate blueprint test support
+  - `80a885d1` refactor(tests): split blueprint preview wiring scenarios
+  - `95c0d50d` refactor(tests): split blueprint graph and informal scenarios
+  - `3f8c62dc` refactor(tests): split blueprint summary link scenarios
 - Validation status:
   - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
   - `script/lean-low-priority lake build Tests.Blueprint.Support Tests.BlueprintLinkHover Tests.BlueprintMetadataPanel Tests.BlueprintSummaryLinks Tests.BlueprintPreviewWiring Tests.BlueprintExternalHeadingStatus Tests.BlueprintTexMacros Tests`
