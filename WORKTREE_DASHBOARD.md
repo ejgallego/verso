@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-12 (merged standalone extraction on `bp`; rc3 boundary cleanup in progress)
+Last updated: 2026-03-12 (cleaned up stale standalone extraction worktree after landing on `bp`)
 
 ## Active Worktrees
 
@@ -25,9 +25,9 @@ Last updated: 2026-03-12 (merged standalone extraction on `bp`; rc3 boundary cle
 
 ### `feat/blueprint-standalone-extract`
 
-- Status: `superseded` (owner action: cleanup pending explicit authorization)
-- Summary: the intended standalone extraction landed directly on `bp` via `c8a0d5ea`; this worktree is now stale bookkeeping and should not receive new work.
-- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-standalone-extract`
+- Status: `merged` (owner action: none; cleanup completed)
+- Summary: the intended standalone extraction landed directly on `bp` via `c8a0d5ea`; the older feature worktree and branch were stale bookkeeping and have now been removed.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-standalone-extract` (removed after cleanup)
 - Branch: `feat/blueprint-standalone-extract`
 - Base commit/branch:
   - branched from `bp` at `866ea001`
@@ -35,10 +35,9 @@ Last updated: 2026-03-12 (merged standalone extraction on `bp`; rc3 boundary cle
   - `2e79f7db` feat(blueprint): add standalone in-repo VersoBlueprint package scaffold
 - Validation status:
   - superseded by direct `bp` commit `c8a0d5ea`
-  - cleanup deferred until explicit branch/worktree removal authorization
+  - ignored untracked `verso-blueprint/lake-manifest.json` in the stale worktree because it was not up to date with the landed package layout
 - Resume commands/notes:
-  - do not resume implementation here
-  - remove the worktree and branch only after explicit cleanup authorization
+  - no longer applicable (worktree and branch cleaned up)
 
 ### `feat/blueprint-data-review-20260312`
 
