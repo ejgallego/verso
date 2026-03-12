@@ -22,6 +22,23 @@ Last updated: 2026-03-12 (merged and cleaned up `feat/blueprint-tests-consolidat
   - `git status --short`
   - `git log --oneline -1`
 
+### `feat/blueprint-standalone-extract`
+
+- Status: `active` (owner action: continue blueprint package extraction)
+- Summary: fresh worktree for preparing `verso-blueprint` as an in-repo standalone package entrypoint with path dependency to sibling `verso` and copied blueprint sources/examples.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-standalone-extract`
+- Branch: `feat/blueprint-standalone-extract`
+- Base commit/branch:
+  - branched from `bp` at `866ea001`
+- Key commits:
+  - worktree setup and initial scaffold (uncommitted `verso-blueprint/` directory in this branch)
+- Validation status:
+  - worktree created with copied root `.lake`
+  - scaffold files copied from root working tree state
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-standalone-extract`
+  - continue refining `verso-blueprint/lakefile.lean`, `README.md`, and example wiring
+
 ### `feat/blueprint-data-review-20260312`
 
 - Status: `active` (owner action: complete the blueprint data/API review and report findings)
