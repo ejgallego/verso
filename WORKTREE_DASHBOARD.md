@@ -1,6 +1,6 @@
 # Worktree Dashboard
 
-Last updated: 2026-03-12 (validated split `Tests.BlueprintSummaryLinks` modules in `feat/blueprint-tests-consolidation-20260311`)
+Last updated: 2026-03-12 (created and validated `feat/blueprint-data-review-20260312` review worktree)
 
 ## Active Worktrees
 
@@ -21,6 +21,28 @@ Last updated: 2026-03-12 (validated split `Tests.BlueprintSummaryLinks` modules 
 - Resume commands/notes:
   - `git status --short`
   - `git log --oneline -1`
+
+### `feat/blueprint-data-review-20260312`
+
+- Status: `active` (owner action: complete the blueprint data/API review and report findings)
+- Summary: dedicated review worktree for auditing the blueprint data model, the APIs that expose it, and how summary/graph/preview consumers map that data back onto the intended blueprint semantics.
+- Path: `/home/egallego/lean/verso-blueprint/.worktrees/blueprint-data-review-20260312`
+- Branch: `feat/blueprint-data-review-20260312`
+- Base commit/branch:
+  - branched from `bp` at `9dbb26c0`
+- Key commit:
+  - `9dbb26c0` docs(dashboard): record summary links split
+- Validation status:
+  - setup complete: worktree created, root `.lake` copied, and `script/lean-low-priority lake exe cache get` completed successfully
+  - `script/lean-low-priority ./generate-example-blueprints.sh /home/egallego/lean/verso-blueprint/_out/blueprint-data-review-20260312/example-blueprints`
+  - reused shared `_out` preview server on `http://127.0.0.1:8155`
+- Preview link:
+  - `http://127.0.0.1:8155/blueprint-data-review-20260312/example-blueprints/noperthedron/html-multi/`
+  - `http://127.0.0.1:8155/blueprint-data-review-20260312/example-blueprints/spherepackingblueprint/html-multi/`
+- Resume commands/notes:
+  - `cd /home/egallego/lean/verso-blueprint/.worktrees/blueprint-data-review-20260312`
+  - inspect `src/verso-blueprint/VersoBlueprint/Data.lean`, `src/verso-blueprint/VersoBlueprint/Environment.lean`, `src/verso-blueprint/VersoBlueprint/Commands/Summary.lean`, and `src/verso-blueprint/VersoBlueprint/Graph.lean`
+  - focus review on semantic-status modeling, alias/option naming, and consumer duplication across summary, graph, and preview surfaces
 
 ### `feat/blueprint-tests-consolidation-20260311`
 
