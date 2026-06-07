@@ -14,7 +14,7 @@ import Lean.DocString
 
 import SubVerso.Highlighting
 import Verso.Doc
-import Verso.EnvExtension
+public import Verso.EnvExtension
 public import Verso.Doc.ArgParse
 public import Verso.Doc.Elab.InlineString
 meta import Verso.Doc.Elab.InlineString
@@ -585,7 +585,7 @@ private def addExpanderEntry (entries : NameMap (Array Name)) (key value : Name)
     NameMap (Array Name) :=
   entries.insert key <| (entries.find? key |>.getD #[]).push value
 
-private abbrev ExpanderExtension :=
+public abbrev ExpanderExtension :=
   LocalPersistentEnvExtension (Name × Array Name) (Name × Name) (NameMap (Array Name))
 
 private def mkExpanderExtension (name : Name) : IO ExpanderExtension :=
