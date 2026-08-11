@@ -1,0 +1,8 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "benchmark": "node benchmark.mjs",
+        "smoke": "node smoke.mjs"
+    }
+}

@@ -241,6 +241,14 @@ structure Config extends HtmlConfig, TeXConfig, OutputConfig where
   both sides.
   -/
   searchPriorities : SearchPriorities := {}
+
+  /--
+  Opt-in browser configuration for the experimental VIR-backed search mapper and ranker.
+
+  The JavaScript implementation remains the fallback if these assets cannot be loaded or an
+  extension domain does not have a Lean mapper.
+  -/
+  experimentalSearchVir : Option VirSearchConfig := none
 deriving ToJson, FromJson
 
 structure RenderConfig extends Config where
@@ -676,16 +684,14 @@ results view. The combobox reads it via `window.searchPagePath` and enables Ente
 def emitSearchBox
     (dir : System.FilePath) (domains : DomainMappers)
     (priorities : SearchPriorities := {})
-    (searchPagePath : Option String := none) : IO Unit := do
+    (searchPagePath : Option String := none)
+    (vir : Option VirSearchConfig := none) : IO Unit := do
   ensureDir dir
   for (file, contents) in searchBoxCode do
     IO.FS.writeBinFile (dir / file) contents
   IO.FS.writeFile (dir / "domain-mappers.js") ((domains.toJs priorities).pretty (width := 70))
   IO.FS.writeFile (dir / "domain-display.css") domains.quickJumpCss
-  let configJs := match searchPagePath with
-    | some path => s!"window.searchPagePath = {toString (Json.str path)};\n"
-    | none => ""
-  IO.FS.writeFile (dir / "search-config.js") configJs
+  IO.FS.writeFile (dir / "search-config.js") (searchConfigJs searchPagePath vir)
 
 end
 
@@ -722,7 +728,8 @@ def emitHtmlSingle
   let ((), htmlState) ← emitContent dir |>.run .empty |>.run remoteContent
   IO.FS.writeFile (dir.join "-verso-docs.json") (toString htmlState.dedup.docJson)
   if .search ∈ config.features then
-    emitSearchBox (dir / "-verso-search") state.quickJump config.searchPriorities (searchPagePath := some "search/")
+    emitSearchBox (dir / "-verso-search") state.quickJump config.searchPriorities
+      (searchPagePath := some "search/") (vir := config.experimentalSearchVir)
     emitSearchIndex (dir / "-verso-search") state { draft := config.draft } text
 where
   emitContent (dir : System.FilePath) : StateT (State Html) (ReaderT AllRemotes (ReaderT ExtensionImpls (BuildLogT IO))) Unit := do
@@ -813,7 +820,8 @@ def emitHtmlMulti (config : RenderConfig)
   let ((), htmlState) ← emitContent root |>.run .empty |>.run remoteContent
   IO.FS.writeFile (root.join "-verso-docs.json") (toString htmlState.dedup.docJson)
   if .search ∈ config.features then
-    emitSearchBox (root / "-verso-search") state.quickJump config.searchPriorities (searchPagePath := some "search/")
+    emitSearchBox (root / "-verso-search") state.quickJump config.searchPriorities
+      (searchPagePath := some "search/") (vir := config.experimentalSearchVir)
     emitSearchIndex (root / "-verso-search") state { draft := config.draft } text
 where
   /--
