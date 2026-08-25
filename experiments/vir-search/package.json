@@ -3,6 +3,7 @@
     "type": "module",
     "scripts": {
         "benchmark": "node benchmark.mjs",
+        "benchmark:full-lean": "uv --cache-dir ../../_out/uv-cache run --project ../../browser-tests --extra test python full-lean-performance.py",
         "stage-full-lean-demo": "node stage-full-lean-demo.mjs",
         "smoke": "node smoke.mjs"
     }

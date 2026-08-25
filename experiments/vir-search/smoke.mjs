@@ -116,7 +116,7 @@ try {
             semanticHits,
             fullTextHits,
         );
-        const shape = ranked.map(({ kind, sourceIndex }) => [kind, sourceIndex]);
+        const shape = ranked.map(({ kind, sourceIndex }) => [kind, Number(sourceIndex)]);
         const expected = [
             ["semantic", 0],
             ["semantic", 1],
