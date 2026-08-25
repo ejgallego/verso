@@ -3,6 +3,7 @@
     "type": "module",
     "scripts": {
         "benchmark": "node benchmark.mjs",
+        "stage-full-lean-demo": "node stage-full-lean-demo.mjs",
         "smoke": "node smoke.mjs"
     }
 }

@@ -72,7 +72,10 @@ export const loadSearchVirProvider = () =>
                     if (!Array.isArray(result)) {
                         throw new Error(`Unexpected ${config.rankEntry} result`);
                     }
-                    return result;
+                    return result.map((candidate) => ({
+                        ...candidate,
+                        sourceIndex: Number(candidate.sourceIndex),
+                    }));
                 },
             };
         } catch (error) {
