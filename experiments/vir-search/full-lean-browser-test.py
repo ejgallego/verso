@@ -27,18 +27,22 @@ with sync_playwright() as playwright:
             ]);
             const data = JSON.parse(document.querySelector('#verso-full-lean-xref').textContent);
             const mapped = buildSearchableMap(data, domainMappers);
-            const prepared = Object.keys(mapped).map(name => window.fuzzysort.prepare(name));
+            const keys = Object.keys(mapped);
+            const prepared = keys.map(name => window.fuzzysort.prepare(name));
             window.__fullLeanReference = {mapped, prepared};
             return {
                 keys: prepared.length,
                 items: Object.values(mapped).reduce((count, values) => count + values.length, 0),
+                asciiKeys: keys.filter(key => /^[\x00-\x7f]*$/.test(key)).length,
+                maxCodePoints: Math.max(...keys.map(key => [...key].length)),
+                cacheStressQueries: keys.slice(0, 24),
             };
         }"""
     )
 
     timings = []
     timings_by_query = {}
-    queries = ["websites", "markup", "lean", "site config", "html", "manual"]
+    queries = ["websites", "markup", "lean", "site config", "html", "manual", "positional'"]
     for query in queries * 3:
         measurement = page.evaluate(
             """query => {
@@ -84,6 +88,25 @@ with sync_playwright() as playwright:
         timings.append(measurement["elapsedMs"])
         timings_by_query.setdefault(query, []).append(measurement["elapsedMs"])
 
+    cache_stress_queries = reference["cacheStressQueries"]
+    cache_stress_dispatches = 0
+    for query in cache_stress_queries + list(reversed(cache_stress_queries)):
+        measurement = page.evaluate(
+            """query => {
+                const input = document.querySelector('#verso-full-lean-query');
+                input.value = query;
+                input.dispatchEvent(new Event('input', {bubbles: true}));
+                return {
+                    count: Number(document.querySelector('#verso-full-lean-results').dataset.resultCount),
+                    lists: document.querySelectorAll('#verso-full-lean-results').length,
+                };
+            }""",
+            query,
+        )
+        assert measurement["count"] > 0, {"query": query, **measurement}
+        assert measurement["lists"] == 1, {"query": query, **measurement}
+        cache_stress_dispatches += 1
+
     javascript_timings = page.evaluate(
         """queries => {
             const timings = [];
@@ -111,6 +134,8 @@ with sync_playwright() as playwright:
                 "entries": entry_status,
                 "referenceItems": reference["items"],
                 "referenceKeys": reference["keys"],
+                "referenceAsciiKeys": reference["asciiKeys"],
+                "referenceMaxCodePoints": reference["maxCodePoints"],
                 "medianQueryMs": statistics.median(timings),
                 "maxQueryMs": max(timings),
                 "medianByQueryMs": {
@@ -118,6 +143,8 @@ with sync_playwright() as playwright:
                 },
                 "javascriptFuzzysortMedianMs": statistics.median(javascript_timings),
                 "queries": len(timings),
+                "cacheStressQueries": len(cache_stress_queries),
+                "cacheStressDispatches": cache_stress_dispatches,
             }
         )
     )

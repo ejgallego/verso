@@ -38,3 +38,10 @@ python3 -m http.server 8769 --bind 127.0.0.1 --directory ../../_out/full-lean-de
 Run `full-lean-browser-test.py` against the served URL for the JavaScript differential. The shared
 performance harness can compare any two staged descendants without placing instrumentation in the
 timing pages.
+
+## Retained-subtree cache alternative
+
+This child branch keeps the direct per-element renderer and retains completed detached `<ul>`
+subtrees in a bounded sixteen-query Lean cache. A cache miss constructs the list once; an exact
+repeat performs no DOM work, and a revisit swaps the retained list without HTML encoding or browser
+parsing. Six static tag resources are prepared once at mount time.
