@@ -204,9 +204,38 @@ private def mapDomainWith
   | "Verso.Genre.Manual.example" => mapExamples domainId domainData reverseForVIR
   | _ => throw s!"No experimental VIR mapper is registered for domain {domainId.quote}"
 
+private def hasBuiltInMapper (domainId : String) : Bool :=
+  domainId == "VersoHtml.module" ||
+  domainId == "Verso.Genre.Manual.doc" ||
+  domainId == "Verso.Genre.Manual.doc.option" ||
+  domainId == "VersoHtml.constant" ||
+  domainId == "Verso.Genre.Manual.doc.tech" ||
+  domainId == "Verso.Genre.Manual.doc.tactic" ||
+  domainId == "Verso.Genre.Manual.doc.tactic.conv" ||
+  domainId == "Verso.Genre.Manual.doc.suggestion" ||
+  domainId == "Verso.Genre.Manual.section" ||
+  domainId == "Verso.Genre.Manual.example"
+
 /-- Native typed mapper for one built-in Verso cross-reference domain. -/
 public def mapDomain (domainId : String) (domainData : Json) : Except String (Array Searchable) :=
   mapDomainWith false domainId domainData
+
+/--
+Maps a complete `xref.json` payload for a VIR-owned quick-jump component.
+
+The current VIR JSON interpreter visits object members in reverse source order, so both the outer
+domain object and each domain's `contents` object are corrected here. Unknown extension domains are
+ignored just as the stock browser search ignores domains without a registered mapper. A malformed
+built-in domain remains an error.
+-/
+public def mapXrefJsonVIR (xrefJson : String) : Except String (Array Searchable) := do
+  let json ← Json.parse xrefJson
+  let domains ← json.getObj?
+  let mut out := #[]
+  for (domainId, domainData) in domains.toArray.reverse do
+    if hasBuiltInMapper domainId then
+      out := out ++ (← mapDomainWith true domainId domainData)
+  return out
 
 private def mapDomainJsonWith
     (reverseForVIR : Bool) (domainId domainData : String) : Except String String := do

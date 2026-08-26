@@ -6,10 +6,16 @@ Author: Emilio J. Gallego Arias
 
 import Vir
 import VersoSearch.ExperimentalVIR
+import VersoSearchVir.FullLean
 
 namespace VersoSearchVir.Runtime
 
 open Verso.Search.ExperimentalVIR
+
+/-- Starts the Lean-owned quick-jump component without a Verso-specific JavaScript call. -/
+@[vir_startup]
+def mountFullLeanSearch : Lean.Vir.Browser.DomM Unit :=
+  VersoSearchVir.FullLean.mount
 
 /-- Maps a built-in Verso xref domain through the experimental typed Lean implementation. -/
 @[vir_export]

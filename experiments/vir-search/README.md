@@ -20,3 +20,21 @@ revision before installation.
 `VersoSearch.ExperimentalRanking` owns JSON-free candidate scoring, normalization, merging, and
 stable ordering. `Verso.Search.ExperimentalVIR` owns built-in xref-domain mapping and the JSON
 boundary used by the optional JavaScript-provider lane.
+
+## Direct-DOM full-Lean reference
+
+This branch adds the simplest full-Lean semantic quick-jump. A generic startup module mounts the
+component, after which Lean decodes and maps xref data, prepares and scores targets, selects the best
+thirty matches, constructs each DOM element, and handles input callbacks. It performs no result
+cache and serves as the common behavioral and code-review parent for renderer alternatives.
+
+Given an existing generated multi-page site, stage an independent demo with:
+
+```console
+npm run stage-full-lean-demo -- ../../_out/html-multi ../../_out/full-lean-demo
+python3 -m http.server 8769 --bind 127.0.0.1 --directory ../../_out/full-lean-demo
+```
+
+Run `full-lean-browser-test.py` against the served URL for the JavaScript differential. The shared
+performance harness can compare any two staged descendants without placing instrumentation in the
+timing pages.
