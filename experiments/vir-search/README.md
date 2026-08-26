@@ -38,3 +38,10 @@ python3 -m http.server 8769 --bind 127.0.0.1 --directory ../../_out/full-lean-de
 Run `full-lean-browser-test.py` against the served URL for the JavaScript differential. The shared
 performance harness can compare any two staged descendants without placing instrumentation in the
 timing pages.
+
+## Escaped-HTML cache alternative
+
+This child branch replaces per-result DOM construction with safely escaped HTML strings and a
+bounded sixteen-query Lean cache. Each update crosses the host boundary once through `innerHTML`;
+cached queries avoid rescoring and re-encoding, but the browser still parses and replaces the list
+subtree on every revisit.

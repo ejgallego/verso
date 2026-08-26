@@ -23,6 +23,15 @@ private structure Candidate where
   indexes : Array Nat
   sourceIndex : Nat
 
+private structure RenderedSearch where
+  html : String
+  status : String
+  count : Nat
+
+private structure CachedSearch where
+  query : String
+  rendered : RenderedSearch
+
 private structure PreparedTarget where
   item : Searchable
   chars : Array Char
@@ -277,60 +286,111 @@ private def setTextContentString (element : Js Element) (text : String) : DomM U
   let jsText ← JsValue.ofString text
   Element.setTextContent element (← Js.Nullable.ofJs jsText)
 
-private def setInnerHTMLString (element : Js Element) (html : String) : DomM Unit := do
-  Element.setInnerHTML element (← JsValue.ofString html)
+private def escapeHtmlText (text : String) : String := Id.run do
+  let mut escaped := ""
+  for c in text.toList do
+    match c with
+    | '&' => escaped := escaped ++ "&amp;"
+    | '<' => escaped := escaped ++ "&lt;"
+    | '>' => escaped := escaped ++ "&gt;"
+    | _ => escaped := escaped.push c
+  return escaped
 
-private def appendTextRun (parent : Js Element) (highlighted : Bool) (text : String) : DomM Unit := do
-  if text.isEmpty then return
-  let node ← Document.createElementString (if highlighted then "em" else "span")
-  setTextContentString node text
-  Element.appendChild parent node
+private def escapeHtmlAttribute (text : String) : String := Id.run do
+  let mut escaped := ""
+  for c in text.toList do
+    match c with
+    | '&' => escaped := escaped ++ "&amp;"
+    | '<' => escaped := escaped ++ "&lt;"
+    | '>' => escaped := escaped ++ "&gt;"
+    | '"' => escaped := escaped ++ "&quot;"
+    | '\'' => escaped := escaped ++ "&#39;"
+    | _ => escaped := escaped.push c
+  return escaped
 
-private def appendHighlighted
-    (parent : Js Element) (text : String) (indexes : Array Nat) : DomM Unit := do
+private example : escapeHtmlText "<&>" = "&lt;&amp;&gt;" := by decide
+
+private example :
+    escapeHtmlAttribute "\"'<&>" = "&quot;&#39;&lt;&amp;&gt;" := by decide
+
+private def highlightedHtml (text : String) (indexes : Array Nat) : String := Id.run do
   let chars := text.toList.toArray
-  if chars.isEmpty then return
+  if chars.isEmpty then return ""
   let mut highlighted := indexes.contains 0
   let mut run := ""
+  let mut html := ""
   for i in [:chars.size] do
     let nextHighlighted := indexes.contains i
     if nextHighlighted != highlighted then
-      appendTextRun parent highlighted run
+      let tag := if highlighted then "em" else "span"
+      html := html ++ s!"<{tag}>{escapeHtmlText run}</{tag}>"
       run := ""
       highlighted := nextHighlighted
     run := run.push chars[i]!
-  appendTextRun parent highlighted run
+  let tag := if highlighted then "em" else "span"
+  return html ++ s!"<{tag}>{escapeHtmlText run}</{tag}>"
 
-private def renderCandidate (list : Js Element) (candidate : Candidate) : DomM Unit := do
-  let li ← Document.createElementString "li"
-  Element.ClassList.add li "search-result"
-  Element.setAttribute li "role" "option"
-  let link ← Document.createElementString "a"
-  Element.ClassList.add link "search-result-link"
-  Element.setAttribute link "href" candidate.item.address
-  Element.setAttribute link "data-search-key" candidate.item.searchKey
-  let label ← Document.createElementString "p"
-  appendHighlighted label candidate.item.searchKey candidate.indexes
-  Element.appendChild link label
-  let domain ← Document.createElementString "p"
-  Element.ClassList.add domain "domain"
-  setTextContentString domain (domainName candidate.item.domainId)
-  Element.appendChild link domain
-  Element.appendChild li link
-  Element.appendChild list li
+private def renderCandidateHtml (candidate : Candidate) : String :=
+  let address := escapeHtmlAttribute candidate.item.address
+  let searchKey := escapeHtmlAttribute candidate.item.searchKey
+  let label := highlightedHtml candidate.item.searchKey candidate.indexes
+  let domain := escapeHtmlText (domainName candidate.item.domainId)
+  s!"<li class=\"search-result\" role=\"option\">" ++
+    s!"<a class=\"search-result-link\" href=\"{address}\" data-search-key=\"{searchKey}\">" ++
+    s!"<p>{label}</p><p class=\"domain\">{domain}</p></a></li>"
 
-private def render
-    (items : Array PreparedTarget) (list status : Js Element) (query : String) : DomM Unit := do
-  setInnerHTMLString list ""
+private def renderCandidatesHtml (candidates : Array Candidate) : String := Id.run do
+  let mut html := ""
+  for candidate in candidates do
+    html := html ++ renderCandidateHtml candidate
+  return html
+
+private def makeRendering (items : Array PreparedTarget) (query : String) : RenderedSearch :=
   if query.isEmpty || query.all Char.isWhitespace then
-    setTextContentString status s!"Ready: {items.size} quick-jump entries"
-    Element.setAttribute list "data-result-count" "0"
+    { html := "", status := s!"Ready: {items.size} quick-jump entries", count := 0 }
   else
     let candidates := search query items
-    for candidate in candidates do renderCandidate list candidate
     let count := candidates.size
-    setTextContentString status s!"{count} result{if count == 1 then "" else "s"}"
-    Element.setAttribute list "data-result-count" (toString count)
+    {
+      html := renderCandidatesHtml candidates
+      status := s!"{count} result{if count == 1 then "" else "s"}"
+      count
+    }
+
+private def findCached (query : String) (cache : Array CachedSearch) : Option RenderedSearch := Id.run do
+  for entry in cache do
+    if entry.query == query then return some entry.rendered
+  return none
+
+private def cacheRendering
+    (query : String) (rendered : RenderedSearch) (cache : Array CachedSearch) : Array CachedSearch :=
+  -- The xref data is immutable after mounting, so exact-query renderings remain valid. Keep this
+  -- deliberately small: it covers ordinary typing/backspacing without turning the browser lane
+  -- into an unbounded HTML store.
+  let cache := if cache.size < 16 then cache else cache.extract 1 cache.size
+  cache.push { query, rendered }
+
+private def applyRendering (list status : Js Element) (rendered : RenderedSearch) : DomM Unit := do
+  let html ← JsValue.ofString rendered.html
+  Element.setInnerHTML list html
+  setTextContentString status rendered.status
+  Element.setAttribute list "data-result-count" (toString rendered.count)
+
+private def render
+    (items : Array PreparedTarget) (cache : Lean.Vir.RuntimeRef (Array CachedSearch))
+    (list status : Js Element) (query : String) : DomM Unit := do
+  let rendered ←
+    if query.isEmpty || query.all Char.isWhitespace then
+      pure (makeRendering items query)
+    else
+      let previous ← Lean.Vir.RuntimeRef.get cache
+      match findCached query previous with
+      | some rendered => pure rendered
+      | none =>
+          let rendered := makeRendering items query
+          Lean.Vir.RuntimeRef.set cache (cacheRendering query rendered previous)
+          pure rendered
+  applyRendering list status rendered
 
 /-- Mounts an entirely Lean-owned semantic quick-jump component into an opt-in DOM root. -/
 def mount : DomM Unit := do
@@ -343,6 +403,7 @@ def mount : DomM Unit := do
       setTextContentString root s!"Lean search could not decode xref.json: {message}"
   | .ok items =>
       let preparedItems := prepareTargets items
+      let renderCache ← Lean.Vir.RuntimeRef.new (#[] : Array CachedSearch)
       let label ← Document.createElementString "label"
       Element.setAttribute label "for" "verso-full-lean-query"
       setTextContentString label "Search this manual"
@@ -364,11 +425,11 @@ def mount : DomM Unit := do
       Element.setAttribute list "role" "listbox"
       Element.ClassList.add list "verso-search-results"
       Element.appendChild root list
-      render preparedItems list status ""
+      render preparedItems renderCache list status ""
       let _listener ← Element.addEventListener inputElement "input" fun event => do
         match ← Event.inputValue? event with
         | none => pure ()
-        | some query => render preparedItems list status query
+        | some query => render preparedItems renderCache list status query
       Element.setAttribute root "data-lean-search-state" "ready"
 
 end VersoSearchVir.FullLean

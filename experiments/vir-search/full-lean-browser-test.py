@@ -27,18 +27,21 @@ with sync_playwright() as playwright:
             ]);
             const data = JSON.parse(document.querySelector('#verso-full-lean-xref').textContent);
             const mapped = buildSearchableMap(data, domainMappers);
-            const prepared = Object.keys(mapped).map(name => window.fuzzysort.prepare(name));
+            const keys = Object.keys(mapped);
+            const prepared = keys.map(name => window.fuzzysort.prepare(name));
             window.__fullLeanReference = {mapped, prepared};
             return {
                 keys: prepared.length,
                 items: Object.values(mapped).reduce((count, values) => count + values.length, 0),
+                asciiKeys: keys.filter(key => /^[\x00-\x7f]*$/.test(key)).length,
+                maxCodePoints: Math.max(...keys.map(key => [...key].length)),
             };
         }"""
     )
 
     timings = []
     timings_by_query = {}
-    queries = ["websites", "markup", "lean", "site config", "html", "manual"]
+    queries = ["websites", "markup", "lean", "site config", "html", "manual", "positional'"]
     for query in queries * 3:
         measurement = page.evaluate(
             """query => {
@@ -111,6 +114,8 @@ with sync_playwright() as playwright:
                 "entries": entry_status,
                 "referenceItems": reference["items"],
                 "referenceKeys": reference["keys"],
+                "referenceAsciiKeys": reference["asciiKeys"],
+                "referenceMaxCodePoints": reference["maxCodePoints"],
                 "medianQueryMs": statistics.median(timings),
                 "maxQueryMs": max(timings),
                 "medianByQueryMs": {
