@@ -14,6 +14,7 @@ import {
     renderCandidateLi,
     getDocContentsFor,
 } from "./search-box.js";
+import { loadSearchVirProvider } from "./vir-search.js";
 
 const fuzzysort = /** @type {{fuzzysort: Fuzzysort.Fuzzysort}} */ (/** @type {unknown} */ (window))
     .fuzzysort;
@@ -29,6 +30,7 @@ const fuzzysort = /** @type {{fuzzysort: Fuzzysort.Fuzzysort}} */ (/** @type {un
  *   searchPriorities: any,
  *   docPriorities: Record<string, number>,
  *   searchIndex: any,
+ *   virProvider: SearchVirProvider | null,
  * }>}
  */
 let statePromise = null;
@@ -42,8 +44,11 @@ let stateReady = false;
 
 const ensureState = () =>
     (statePromise ??= (async () => {
-        const json = await fetch("xref.json").then((r) => r.json());
-        const mappedData = buildSearchableMap(json, domainMappers);
+        const [json, virProvider] = await Promise.all([
+            fetch("xref.json").then((r) => r.json()),
+            loadSearchVirProvider(),
+        ]);
+        const mappedData = buildSearchableMap(json, domainMappers, virProvider);
         const preparedData = Object.keys(mappedData).map((name) => fuzzysort.prepare(name));
         const state = {
             preparedData,
@@ -55,6 +60,7 @@ const ensureState = () =>
             },
             docPriorities: /** @type {any} */ (window).docPriorities ?? {},
             searchIndex: /** @type {any} */ (window).searchIndex,
+            virProvider,
         };
         stateReady = true;
         return state;

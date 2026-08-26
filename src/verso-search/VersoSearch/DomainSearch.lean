@@ -207,6 +207,37 @@ public structure SearchPriorities where
 deriving Repr, BEq, ToJson, FromJson
 
 /--
+Browser asset locations and exported declaration names for the experimental VIR search backend.
+
+All paths are interpreted relative to the generated page's `<base>` URL. The configuration is
+deliberately asset-only: building and copying the matching VIR SDK and package set remains the
+responsibility of the consuming Lake target.
+-/
+public structure VirSearchConfig where
+  /-- ES module that exports {lit}`createVirRuntime`. -/
+  runtimeModule : String
+  /-- VIR interpreter Wasm binary. -/
+  wasmUrl : String
+  /-- VIR package-set descriptor containing the search exports. -/
+  packageSetUrl : String
+  /-- Export used to map one xref domain. -/
+  mapEntry : String := "VersoSearchVir.Runtime.mapDomainJson"
+  /-- Export used to rank raw semantic and full-text hits. -/
+  rankEntry : String := "VersoSearchVir.Runtime.rankCandidates"
+deriving Repr, BEq, ToJson, FromJson
+
+/-- Generates the globals consumed by the browser search initialization module. -/
+public def searchConfigJs
+    (searchPagePath : Option String := none) (vir : Option VirSearchConfig := none) : String :=
+  let searchPage := match searchPagePath with
+    | some path => s!"window.searchPagePath = {toString (Json.str path)};\n"
+    | none => ""
+  let vir := match vir with
+    | some config => s!"window.versoSearchVir = {(ToJson.toJson config).compress};\n"
+    | none => ""
+  searchPage ++ vir
+
+/--
 A mapping from Verso domain names to their search customizations.
 -/
 public abbrev DomainMappers : Type := HashMap String DomainMapper

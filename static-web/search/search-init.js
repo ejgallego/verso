@@ -6,6 +6,7 @@
 
 import { domainMappers, searchPriorities } from "./domain-mappers.js";
 import { registerSearch } from "./search-box.js";
+import { loadSearchVirProvider } from "./vir-search.js";
 
 // The search box itself. TODO: add to template
 // autocorrect is a safari-only attribute. It is required to prevent autocorrect on iOS.
@@ -49,7 +50,7 @@ window.addEventListener("load", () => {
     if (!mount) return;
     mount.insertAdjacentHTML("beforeend", searchHTML);
     const searchWrapper = document.querySelector(".combobox-list");
-    data.then((data) => {
+    Promise.all([data, loadSearchVirProvider()]).then(([data, virProvider]) => {
         const windowAny = /** @type {any} */ (window);
         const docPriorities = windowAny.docPriorities;
         // Set by `search-config.js` (written by `emitSearchBox`) when the genre provides a
@@ -63,6 +64,7 @@ window.addEventListener("load", () => {
             searchPriorities,
             docPriorities,
             searchPagePath,
+            virProvider,
         });
     });
 });

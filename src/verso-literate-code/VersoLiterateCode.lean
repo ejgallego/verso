@@ -1026,17 +1026,16 @@ Emits the search box static assets plus a tiny `search-config.js` loaded by ever
 `searchPagePath`, when supplied, is the site-root-relative path of the full-page search
 results view. The combobox reads it via `window.searchPagePath` and enables Enter-to-submit.
 -/
-def emitSearchBox (dir : System.FilePath) (searchPagePath : Option String := none) : IO Unit := do
+def emitSearchBox
+    (dir : System.FilePath) (searchPagePath : Option String := none)
+    (vir : Option VirSearchConfig := none) : IO Unit := do
   let domains : DomainMappers := .ofList [(constDomainName.toString, constMapper), (moduleDomainName.toString, moduleMapper)]
   Verso.FS.ensureDir dir
   for (file, contents) in searchBoxCode do
     IO.FS.writeBinFile (dir / file) contents
   IO.FS.writeFile (dir / "domain-mappers.js") (domains.toJs.pretty (width := 70))
   IO.FS.writeFile (dir / "domain-display.css") domains.quickJumpCss
-  let configJs := match searchPagePath with
-    | some path => s!"window.searchPagePath = {toString (Json.str path)};\n"
-    | none => ""
-  IO.FS.writeFile (dir / "search-config.js") configJs
+  IO.FS.writeFile (dir / "search-config.js") (searchConfigJs searchPagePath vir)
 
 /--
 Adds a header to the current context and updates the traversal context.

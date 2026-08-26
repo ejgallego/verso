@@ -101,6 +101,14 @@ export const combineScore = (rawScore, ...priorities) => {
  * @typedef {Record<string, DomainMapper>} DomainMappers
  * @typedef {{semantic: number, fullText: number, domains: Record<string, number>}} SearchPriorities
  * @typedef {{semantic?: number, fullText?: number, domains?: Record<string, number>}} SearchPrioritiesInput
+ * @typedef {{sourceIndex: number, rawScore: number, semanticPriority: number | null,
+ *            domainPriority: number | null, itemPriority: number | null}} VirSemanticHit
+ * @typedef {{sourceIndex: number, rawScore: number, fullTextPriority: number | null,
+ *            documentPriority: number | null}} VirFullTextHit
+ * @typedef {{kind: 'semantic' | 'fullText', sourceIndex: number, score: number}} VirRankedCandidate
+ * @typedef {{mapDomain: (domainId: string, domainData: any) => Searchable[] | null,
+ *            rankCandidates: (semantic: VirSemanticHit[], fullText: VirFullTextHit[]) => VirRankedCandidate[]}}
+ *            SearchVirProvider
  * @typedef {{ref: string, score: number, doc: DocContent}} TextMatch
  * @typedef {{item: Searchable, fuzzysortResult: Fuzzysort.Result, htmlItem: HTMLLIElement}|{terms: string, textItem: TextMatch, htmlItem: HTMLLIElement}} SearchResult
  * @typedef {{run: (tokens: string[]) => string[]}} ElasticLunrPipeline
@@ -293,24 +301,33 @@ const highlightTextResult = (text, query, options = {}) => {
  *
  * @param {any} json
  * @param {DomainMappers} domainMappers
+ * @param {SearchVirProvider | null} [virProvider]
  * @return {Record<string, Searchable[]>}
  */
-const dataToSearchableMap = (json, domainMappers) =>
-    Object.entries(json)
-        .flatMap(([key, value]) =>
-            key in domainMappers ? domainMappers[key].dataToSearchables(value) : undefined,
-        )
-        .reduce((acc, cur) => {
-            if (cur == null) {
-                return acc;
-            }
+const dataToSearchableMap = (json, domainMappers, virProvider = null) => {
+    /** @type {Searchable[]} */
+    const searchables = [];
+    for (const [domainId, domainData] of Object.entries(json)) {
+        const mapper = domainMappers[domainId];
+        if (!mapper) continue;
 
-            if (!acc.hasOwnProperty(cur.searchKey)) {
-                acc[cur.searchKey] = [];
+        let /** @type {Searchable[] | null} */ mapped = null;
+        if (virProvider) {
+            try {
+                mapped = virProvider.mapDomain(domainId, domainData);
+            } catch (error) {
+                console.warn(`VIR search mapper failed for ${domainId}; using JavaScript`, error);
             }
-            acc[cur.searchKey].push(cur);
-            return acc;
-        }, {});
+        }
+        searchables.push(...(mapped ?? mapper.dataToSearchables(domainData)));
+    }
+
+    return searchables.reduce((acc, cur) => {
+        if (!acc.hasOwnProperty(cur.searchKey)) acc[cur.searchKey] = [];
+        acc[cur.searchKey].push(cur);
+        return acc;
+    }, /** @type {Record<string, Searchable[]>} */ ({}));
+};
 
 /**
  * Maps from a data item to a HTML LI element. `asOption` controls whether the `<li>` gets
@@ -432,12 +449,13 @@ const getDocContents = async (ref) => {
  *   searchPriorities: SearchPriorities,
  *   docPriorities: Record<string, number>,
  *   searchIndex: TextSearchIndex,
+ *   virProvider?: SearchVirProvider | null,
  * }} opts
  * @return {Candidate[]}
  */
 export const computeCandidates = (
     filter,
-    { preparedData, mappedData, searchPriorities, docPriorities, searchIndex },
+    { preparedData, mappedData, searchPriorities, docPriorities, searchIndex, virProvider = null },
 ) => {
     if (filter.length === 0) return [];
 
@@ -461,38 +479,78 @@ export const computeCandidates = (
           })
         : [];
 
-    // Normalize the scores for text results by capping at a threshold, to better integrate with fuzzysearch results
-    const bestPossibleText = 0.8;
-    const maxTextScore = textResults.reduce((max, item) => Math.max(max, item.score), -Infinity);
-    if (maxTextScore > bestPossibleText) {
-        const factor = bestPossibleText / maxTextScore;
-        for (const res of textResults) res.score = res.score * factor;
-    }
-
-    // Flatten results into a single candidate list so per-item priorities can reorder
-    // entries even within a single fuzzysort match (multiple Searchables may share a searchKey).
-    // Text-result scores are scaled by the fullText priority AFTER the normalization above so
-    // that the cap keeps doing its job before the global multiplier is applied. Priority
-    // combining is delegated to `combineScore`; see its definition for the semantics.
-    /** @type {Candidate[]} */
-    const candidates = [];
+    // Flatten semantic results before crossing the optional VIR boundary. JavaScript retains the
+    // original fuzzysort objects because their `.highlight()` method is used by the renderer; Lean
+    // only receives scalar scores, priorities, and source-array indices.
+    /** @type {{fuzzysortResult: Fuzzysort.Result, searchable: Searchable}[]} */
+    const semanticSources = [];
     for (const fr of results) {
         const dataItems = mappedData[fr.target];
         for (const searchable of dataItems) {
-            const eff = combineScore(
-                fr.score,
-                searchPriorities.semantic,
-                searchPriorities.domains[searchable.domainId],
-                searchable.priority,
-            );
-            candidates.push({ kind: "semantic", score: eff, fuzzysortResult: fr, searchable });
+            semanticSources.push({ fuzzysortResult: fr, searchable });
         }
     }
-    for (const tr of textResults) {
+
+    if (virProvider) {
+        try {
+            const ranked = virProvider.rankCandidates(
+                semanticSources.map(({ fuzzysortResult, searchable }, sourceIndex) => ({
+                    sourceIndex,
+                    rawScore: fuzzysortResult.score,
+                    semanticPriority: searchPriorities.semantic ?? null,
+                    domainPriority: searchPriorities.domains[searchable.domainId] ?? null,
+                    itemPriority: searchable.priority ?? null,
+                })),
+                textResults.map((textMatch, sourceIndex) => ({
+                    sourceIndex,
+                    rawScore: textMatch.score,
+                    fullTextPriority: searchPriorities.fullText ?? null,
+                    documentPriority: docPriorities[textMatch.ref] ?? null,
+                })),
+            );
+
+            return ranked.map(({ kind, sourceIndex, score }) => {
+                if (kind === "semantic") {
+                    const source = semanticSources[sourceIndex];
+                    if (!source)
+                        throw new Error(`Invalid VIR semantic source index ${sourceIndex}`);
+                    return { kind, score, ...source };
+                }
+                const textMatch = textResults[sourceIndex];
+                if (!textMatch)
+                    throw new Error(`Invalid VIR full-text source index ${sourceIndex}`);
+                return { kind, score, textMatch };
+            });
+        } catch (error) {
+            console.warn("VIR search ranking failed; using JavaScript", error);
+        }
+    }
+
+    // JavaScript reference implementation and runtime fallback.
+    const bestPossibleText = 0.8;
+    const maxTextScore = textResults.reduce((max, item) => Math.max(max, item.score), -Infinity);
+    const textFactor = maxTextScore > bestPossibleText ? bestPossibleText / maxTextScore : 1;
+    /** @type {Candidate[]} */
+    const candidates = semanticSources.map(({ fuzzysortResult, searchable }) => ({
+        kind: "semantic",
+        score: combineScore(
+            fuzzysortResult.score,
+            searchPriorities.semantic,
+            searchPriorities.domains[searchable.domainId],
+            searchable.priority,
+        ),
+        fuzzysortResult,
+        searchable,
+    }));
+    for (const textMatch of textResults) {
         candidates.push({
             kind: "fullText",
-            score: combineScore(tr.score, searchPriorities.fullText, docPriorities[tr.ref]),
-            textMatch: tr,
+            score: combineScore(
+                textMatch.score * textFactor,
+                searchPriorities.fullText,
+                docPriorities[textMatch.ref],
+            ),
+            textMatch,
         });
     }
     candidates.sort((a, b) => b.score - a.score);
@@ -796,6 +854,9 @@ class SearchBox {
      */
     docPriorities;
 
+    /** @type {SearchVirProvider | null} */
+    virProvider;
+
     /**
      * Site-root-relative path of the full-page search results view, e.g. `"search/"`. When
      * unset, pressing Enter with no listbox selection is a no-op (the combobox is still
@@ -822,6 +883,7 @@ class SearchBox {
      * @param {SearchPriorities} searchPriorities
      * @param {Record<string, number>} docPriorities
      * @param {string | null} searchPagePath
+     * @param {SearchVirProvider | null} virProvider
      */
     constructor(
         comboboxNode,
@@ -832,6 +894,7 @@ class SearchBox {
         searchPriorities,
         docPriorities,
         searchPagePath,
+        virProvider,
     ) {
         this.comboboxNode = comboboxNode;
         this.buttonNode = buttonNode;
@@ -841,6 +904,7 @@ class SearchBox {
         this.searchPriorities = searchPriorities;
         this.docPriorities = docPriorities;
         this.searchPagePath = searchPagePath;
+        this.virProvider = virProvider;
         this.preparedData = Object.keys(this.mappedData).map((name) => fuzzysort.prepare(name));
         this.requestCounter = 0;
 
@@ -999,6 +1063,7 @@ class SearchBox {
             searchPriorities: this.searchPriorities,
             docPriorities: this.docPriorities,
             searchIndex,
+            virProvider: this.virProvider,
         });
 
         if (candidates.length === 0) {
@@ -1452,6 +1517,7 @@ class SearchBox {
  *   searchPriorities?: SearchPrioritiesInput;
  *   docPriorities?: Record<string, number>;
  *   searchPagePath?: string | null;
+ *   virProvider?: SearchVirProvider | null;
  * }} RegisterSearchArgs
  * @param {RegisterSearchArgs} args
  */
@@ -1462,6 +1528,7 @@ export const registerSearch = ({
     searchPriorities,
     docPriorities,
     searchPagePath,
+    virProvider,
 }) => {
     const comboboxNode = /** @type {HTMLDivElement} */ (
         searchWrapper.querySelector("div[contenteditable]")
@@ -1483,10 +1550,11 @@ export const registerSearch = ({
             buttonNode,
             listboxNode,
             domainMappers,
-            dataToSearchableMap(data, domainMappers),
+            dataToSearchableMap(data, domainMappers, virProvider),
             priorities,
             docPriorities ?? {},
             searchPagePath ?? null,
+            virProvider ?? null,
         );
     }
 };
@@ -1505,6 +1573,8 @@ export const getDocContentsFor = (ref) => getDocContents(ref);
  *
  * @param {any} json
  * @param {DomainMappers} domainMappers
+ * @param {SearchVirProvider | null} [virProvider]
  * @return {Record<string, Searchable[]>}
  */
-export const buildSearchableMap = (json, domainMappers) => dataToSearchableMap(json, domainMappers);
+export const buildSearchableMap = (json, domainMappers, virProvider = null) =>
+    dataToSearchableMap(json, domainMappers, virProvider);

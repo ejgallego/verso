@@ -20,3 +20,18 @@ revision before installation.
 `VersoSearch.ExperimentalRanking` owns JSON-free candidate scoring, normalization, merging, and
 stable ordering. `Verso.Search.ExperimentalVIR` owns built-in xref-domain mapping and the JSON
 boundary used by the optional JavaScript-provider lane.
+
+## JavaScript-provider approach
+
+This branch keeps candidate collection, the search UI, and rendering in the existing JavaScript.
+The optional provider maps built-in xref domains and ranks expanded candidates through VIR, while
+unsupported domains and initialization failures retain the production JavaScript fallback.
+
+Stage the SDK and package set into an existing generated site with:
+
+```console
+node stage-assets.mjs ../../_out/html-multi
+```
+
+Enable it through `Verso.Search.VirSearchConfig`; the generated configuration contains only runtime,
+Wasm, package-set, and exported-entry locations.
