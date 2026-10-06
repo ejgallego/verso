@@ -200,7 +200,7 @@ private meta def quoteHighlightViaSerialization (hls : Highlighted) : DocElabM T
 De-indents and returns (syntax of) a Block representation containing highlighted Lean code.
 The argument `hls` must be a highlighting of the parsed string `str`.
 -/
-private meta def toHighlightedLeanBlock (shouldShow : Bool) (hls : Highlighted) (str: StrLit) : DocElabM Term := do
+meta def toHighlightedLeanBlock (shouldShow : Bool) (hls : Highlighted) (str: StrLit) : DocElabM Term := do
   if !shouldShow then
     return ← ``(Block.concat #[])
 
