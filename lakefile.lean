@@ -8,6 +8,22 @@ require illuminate from git "https://github.com/leanprover/illuminate"@"main"
 require Cli from git "https://github.com/leanprover/lean4-cli"@"main"
 
 package verso where
+  -- Inherited by libraries and executables, including the generated Errata runner.
+  moreLinkLibs :=
+    if System.Platform.isLinux && get_config? sharedLean == some "true" then
+      #[{key := .packageTarget .anonymous `sharedLeanRuntime}]
+    else
+      #[]
+
+-- Use Lake's shared-library dependencies so that executables resolve Lean symbols
+-- before the default static archives. Keep this opt-in: these binaries need the
+-- matching toolchain's shared libraries at runtime (as provided by `lake exe`).
+target sharedLeanRuntime : Dynlib := Job.async do
+  let lean ← getLeanInstall
+  let lake := LakeInstall.ofLean lean
+  let runtime := { lake.sharedDynlib with deps := lean.sharedDynlibs }
+  addPureTrace ((runtime.deps.push runtime).map (·.path.toString)) "shared Lean runtime"
+  return runtime
 
 @[default_target]
 lean_lib VersoUtil where
@@ -538,7 +554,8 @@ script run (args) do
   let warningArgs := driverWarnings.flatMap (#["--driver-warning", ·])
   let child ← IO.Process.spawn {
     cmd := exePath.toString, args := #[errataDriverFlag] ++ warningArgs ++ runnerArgs.toArray
-    env := #[("LEAN_ABORT_ON_PANIC", if exitOnPanic then some "1" else none)]
+    env := ws.augmentedEnvVars ++
+      #[("LEAN_ABORT_ON_PANIC", if exitOnPanic then some "1" else none)]
   }
   child.wait
 

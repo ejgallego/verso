@@ -64,6 +64,19 @@ built-in genres. Today, Verso is usable for running a website and blog
 and for writing long-form technical documentation, such as the
 [Lean language reference](https://lean-lang.org/doc/reference/latest/).
 
+### Shared Lean linking on Linux
+
+When building Verso itself, `lake -R -KsharedLean=true build` links its
+executables against the installed toolchain's shared Lean and Lake
+libraries. This reduces duplication across the command-line tools and
+example generators. Run them with the same option, for example
+`lake -KsharedLean=true exe verso-serve --help`.
+
+The default configuration links Lean statically on Linux. Restore it with
+`lake -R -KsharedLean=false build`. See
+[shared linking](doc/shared-linking.md) for runtime requirements,
+measurements, and validation commands.
+
 ## Branches and Tags
 
 The workflow described in this section helps Verso development work

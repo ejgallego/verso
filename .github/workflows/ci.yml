@@ -90,6 +90,9 @@ jobs:
               run: |
                   lake build
 
+            - name: Check optional shared Lean linking
+              run: python3 scripts/test_shared_linking.py
+
             # Running linters catches forward reference errors in docstrings. Tests are excluded due
             # to some spurious linter warnings.
             #
